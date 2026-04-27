@@ -93,7 +93,6 @@ public:
 
 class Video
 {
-	Plane cursor, planes[2], bg;
 	std::vector<uint32_t> output;
 
 	struct
@@ -125,6 +124,8 @@ class Video
 	} VdscConfig;
 
 public:
+	Plane cursor, FG[2], BG;
+
 	Video()
 	{
 	}
@@ -138,34 +139,40 @@ public:
 		return &output[0];
 	}
 
+	size_t get_display_width()
+	{
+		return FG[0].width;
+	}
+
 	void reset()
 	{
 		cursor.width = cursor.height = 16;
 		VdscConfig = {0};
 	}
 
-	/** Draws planes and corresponding data/parameters. **/
-	void draw(enum Type type, enum Resolution res, size_t line)
+	void set_mode(enum Type type, enum Resolution res)
 	{
-		planes[0].width = (type == NTSCMonitor ? 360 : 384) * (res == NormalRes ? 1 : 2);
-		planes[0].height = (type == PAL ? 280 : 240) * (res == HighRes ? 2 : 1);
-		planes[1].width = planes[0].width;
-		planes[1].height = planes[0].height;
+		FG[0].width = (type == NTSCMonitor ? 360 : 384) * (res == NormalRes ? 1 : 2);
+		FG[0].height = (type == PAL ? 280 : 240) * (res == HighRes ? 2 : 1);
+		BG.width = FG[1].width = FG[0].width;
+		BG.height = FG[1].height = FG[0].height;
 
-		if (output.size() != planes[0].width * planes[0].height)
-		{
-			output.resize(planes[0].width * planes[0].height, 0x000000ff);
-		}
+		if (output.size() != FG[0].width * FG[0].height)
+			output.resize(FG[0].width * FG[0].height, 0x000000ff);
+	}
 
-		for (size_t i = line * planes[0].width; i < (line+1) * planes[0].width; i++)
+	/** Draws planes and corresponding data/parameters. **/
+	void draw_line(size_t line, bool pathB)
+	{
+		for (size_t i = line * FG[pathB].width; i < (line+1) * FG[pathB].width; i++)
 		{
-			switch (VdscConfig.FT[0])
+			switch (VdscConfig.FT[pathB])
 			{
 				default:
 					break;
 
 				case RunLength:
-					output[i] = (VdscConfig.ColorCLUT[0] << 8) | 0xff;
+					output[i] = (VdscConfig.ColorCLUT[pathB] << 8) | 0xff;
 					break;
 			}
 		}

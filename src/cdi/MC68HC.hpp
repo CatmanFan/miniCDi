@@ -10,6 +10,7 @@
 class IKAT
 {
 	MiniCDIConfig *emuConfig;
+	int ns;
 
 	uint8_t *ADRW, *BDRW, *CDRW, *DDRW; // Data Write Register. receives command bytes for a specific channel.
 	uint8_t *ADRR, *BDRR, *CDRR, *DDRR; // Data Read Register. writes response bytes for a specific channel.
@@ -18,10 +19,28 @@ class IKAT
 	uint8_t *IMR;
 	uint8_t *MR;
 
+	void execute()
+	{
+		switch (*DDRW)
+		{
+			default:
+				break;
+			case 0xF4:
+				WRITE32(CDRR, 0, 0xA5F600FF | (emuConfig->pal ? 0x0200 : 0x0100));
+				break;
+			// this is just a quick hack for now
+			case 0xF6:
+				WRITE16(CDRW, 0, 0xF600 | (emuConfig->pal ? 0x02 : 0x01));
+				WRITE32(CDRR, 0, 0xA5F600FF | (emuConfig->pal ? 0x0200 : 0x0100));
+				break;
+		}
+	}
+
 public:
 	void init(uint8_t* memory, size_t start, MiniCDIConfig *config)
 	{
 		emuConfig = config;
+		ns = 0;
 
 		ADRW = &memory[start + 0x01];
 		BDRW = &memory[start + 0x03];
@@ -48,21 +67,9 @@ public:
 		// *DSR = 0b00010001u;
 	}
 
-	void execute()
+	void increment_time(int ns)
 	{
-		switch (*DDRW)
-		{
-			default:
-				break;
-			case 0xF4:
-				WRITE32(CDRR, 0, 0xA5F600FF | (emuConfig->pal ? 0x0200 : 0x0100));
-				break;
-			// this is just a quick hack for now
-			case 0xF6:
-				WRITE16(CDRW, 0, 0xF600 | (emuConfig->pal ? 0x02 : 0x01));
-				WRITE32(CDRR, 0, 0xA5F600FF | (emuConfig->pal ? 0x0200 : 0x0100));
-				break;
-		}
+		execute();
 	}
 };
 

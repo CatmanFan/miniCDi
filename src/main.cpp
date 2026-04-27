@@ -12,66 +12,6 @@
 
 #include "CDI220.hpp"
 
-/*
-#include "json.hpp"
-#include "m68k.hpp"
-
-static void m68k_test()
-{
-	nlohmann::json test;
-	FILE *testf;
-	if (access((devicePrefix + "apps/CDIEmu/tests/NOP.json").c_str(), F_OK) == 0) {
-		printf("detected json\n");
-		testf = fopen((devicePrefix + "apps/CDIEmu/tests/NOP.json").c_str(), "rt");
-		if (testf) {
-			printf("opened json\n");
-			test = nlohmann::json::parse(testf, nullptr, false, true);
-			fclose(testf);
-
-			printf("initing cpu\n\n");
-			M68000 m68k;
-			std::vector<uint32_t> memLocations;
-			m68k.memory = memory;
-			for (int i = 0; i < 6; i++) {
-				memLocations.push_back(test[0]["initial"]["ram"][i][0].get_ref<const nlohmann::json::number_unsigned_t&>());
-				m68k.memory[memLocations[i]]
-						  = test[0]["initial"]["ram"][i][1].get_ref<const nlohmann::json::number_unsigned_t&>();
-			}
-
-			m68k.r.d[0] = test[0]["initial"]["d0"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.d[1] = test[0]["initial"]["d1"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.d[2] = test[0]["initial"]["d2"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.d[3] = test[0]["initial"]["d3"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.d[4] = test[0]["initial"]["d4"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.d[5] = test[0]["initial"]["d5"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.d[6] = test[0]["initial"]["d6"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.d[7] = test[0]["initial"]["d7"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.a[0] = test[0]["initial"]["a0"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.a[1] = test[0]["initial"]["a1"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.a[2] = test[0]["initial"]["a2"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.a[3] = test[0]["initial"]["a3"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.a[4] = test[0]["initial"]["a4"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.a[5] = test[0]["initial"]["a5"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.a[6] = test[0]["initial"]["a6"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.usp = test[0]["initial"]["usp"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.ssp = test[0]["initial"]["ssp"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.sr = test[0]["initial"]["sr"].get_ref<const nlohmann::json::number_unsigned_t&>();
-			m68k.r.pc = test[0]["initial"]["pc"].get_ref<const nlohmann::json::number_unsigned_t&>();
-
-			for (int i = 0; i < 8; i++) {
-				printf("d%d: %8x   a%d: %8x\n", i, m68k.r.d[i], i, i == 7 ? m68k.r.usp : m68k.r.a[i]);
-			}
-			printf("\n");
-
-			for (size_t i = 0; i < memLocations.size(); i++) {
-				printf("mem %d, addr %8x = %8x\n", i, memLocations[i], memory[memLocations[i]]);
-			}
-		}
-	} else {
-		printf("failed to access directory");
-	}
-}*/
-
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 
@@ -174,23 +114,22 @@ int main(int argc, char **argv) {
 	}
 
 	MiniCDIConfig config;
-	config.pal = false;
+	config.pal = true;
 
 	CDI220 cdi = CDI220((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
-	SDL screen;
+	// SDL screen;
 
 	while(SYS_MainLoop()) {
 		WPAD_ScanPads();
 		uint32_t down = WPAD_ButtonsDown(0);
 		// uint32_t held = WPAD_ButtonsHeld(0);
 
-		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME) { exit(0); }
+		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
+			break; // exit(0) freezes
 
-		// if (down & WPAD_BUTTON_A) {
-			cdi.step();
-			// VIDEO_WaitVSync();
-			screen.update(cdi.get_display(), 384);
-		// }
+		if (cdi.step())
+			VIDEO_WaitVSync();
+		// screen.update(cdi.get_display(), cdi.get_display_width());
 	}
 
 	VIDEO_SetBlack(true);

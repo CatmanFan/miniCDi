@@ -11,6 +11,11 @@
 							*((x+l)+2) = ((v) >> 8) & 0xFF; \
 							*((x+l)+3) = ((v) >> 0) & 0xFF;
 
+#if defined(HW_RVL) || defined(HW_DOL)
+	#include <ogc/lwp_watchdog.h>
+	#define MY_GETTIME ticks_to_nanosecs(gettime())
+#endif
+
 // Libraries
 #include <stdio.h>
 #include <stdlib.h>

@@ -29,9 +29,10 @@ class CDI220
 private:
 	uint8_t *memory = nullptr; // contains RAM bank 0, RAM bank 1 and rom
 	IKAT slave;
-	MCD212* mcd212;
+	MCD212 mcd212;
 	M68kCpu mpu;
 	OS9::System os9;
+	int ns;
 
 public:
 	MiniCDIConfig config;
@@ -50,6 +51,7 @@ public:
 		9) Starting the kernel */
 
 		this->config = *config;
+		ns = 0;
 
 		memory = (uint8_t *)memalign(32, CDI220_MEM_SIZE);
 		if (memory) {
@@ -63,8 +65,8 @@ public:
 			slave.init(memory, CDI220_SLAVE_START, &this->config);
 
 			// Init video processor (MCD212)
-			mcd212 = new MCD212(memory, CDI220_VDSC_START, &this->config);
-			mcd212->reset();
+			mcd212.init(&mpu, memory, CDI220_VDSC_START, &this->config);
+			mcd212.reset();
 
 			// Init OS-9
 			os9.init(&mpu, &memory[CDI220_ROM_BANK], CDI220_ROM_SIZE);
@@ -73,10 +75,6 @@ public:
 
 	~CDI220()
 	{
-		if (mcd212) {
-			delete mcd212;
-		}
-
 		if (memory) {
 			free(memory);
 		}
@@ -84,30 +82,34 @@ public:
 
 	bool step()
 	{
-		// printf("\x1b[%d;%dH", 3, 0);
+		printf("\x1b[%d;%dH", 3, 0);
 
-		m68k_execute(&mpu, 15500000 / (config.pal ? 50 : 60));
-		slave.execute();
-		os9.execute();
+		ns = MY_GETTIME;
+		m68k_execute(&mpu, 1900);
+		ns = MY_GETTIME - ns;
 
-		mcd212->step(&mpu);
-
-		/*printf("\n[CPU viewer]\n");
+		/*printf("[CPU viewer]\n");
 		printf("pc: %08x\n", mpu.pc);
 		printf("d0: %08x d1: %08x d2: %08x d3: %08x\n", mpu.d_regs[0].l, mpu.d_regs[1].l, mpu.d_regs[2].l, mpu.d_regs[3].l);
 		printf("d4: %08x d5: %08x d6: %08x d7: %08x\n", mpu.d_regs[4].l, mpu.d_regs[5].l, mpu.d_regs[6].l, mpu.d_regs[7].l);
 		printf("a0: %08x a1: %08x a2: %08x a3: %08x\n", mpu.a_regs[0].l, mpu.a_regs[1].l, mpu.a_regs[2].l, mpu.a_regs[3].l);
 		printf("a4: %08x a5: %08x a6: %08x a7: %08x\n", mpu.a_regs[4].l, mpu.a_regs[5].l, mpu.a_regs[6].l, mpu.a_regs[7].l);*/
 
-		return true;
+		// os9.execute();
+		slave.increment_time(ns);
+		mcd212.increment_time(ns);
+
+		return mcd212.check_vsync();
 	}
 
 	uint32_t* get_display()
 	{
-		if (mcd212)
-			return mcd212->get_display();
-		else
-			return nullptr;
+		return mcd212.get_display();
+	}
+
+	size_t get_display_width()
+	{
+		return mcd212.get_display_width();
 	}
 };
 

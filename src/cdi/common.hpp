@@ -13,7 +13,12 @@
 
 #if defined(HW_RVL) || defined(HW_DOL)
 	#include <ogc/lwp_watchdog.h>
-	#define MY_GETTIME ticks_to_nanosecs(gettime())
+	#define MY_GETTIME (ticks_to_nanosecs(gettime()))
+#endif
+
+#if defined(__3DS__)
+	#include <3ds.h>
+	#define MY_GETTIME (osGetTime() * 1000000)
 #endif
 
 // Libraries

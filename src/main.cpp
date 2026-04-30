@@ -30,8 +30,9 @@ public:
 			SDL_RenderClear(this->renderer);
 
 			// Draw screen
+			// SDL_Rect dest = {640 / 2 - (384 / 2), 480 / 2 - (280 / 2), 384, 280};
 			SDL_UpdateTexture(this->texture, NULL, display_output, width);
-			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
+			SDL_RenderCopy(this->renderer, this->texture, NULL, /*&dest*/ NULL);
 			SDL_RenderPresent(this->renderer);
 		}
 	}
@@ -80,6 +81,29 @@ static bool FAT_Init() {
 	return true;
 }
 
+static void RUN_CDI()
+{
+	MiniCDIConfig config;
+	config.pal = true;
+
+	CDI220 cdi = CDI220((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
+	// SDL screen;
+
+	while (SYS_MainLoop()) {
+		WPAD_ScanPads();
+		uint32_t down = WPAD_ButtonsDown(0);
+		// uint32_t held = WPAD_ButtonsHeld(0);
+
+		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
+			break;
+
+		if (cdi.step()) {
+			VIDEO_WaitVSync();
+			// screen.update(cdi.get_display(), cdi.get_display_width());
+		}
+	}
+}
+
 int main(int argc, char **argv) {
 
 	// Init controllers
@@ -99,8 +123,6 @@ int main(int argc, char **argv) {
 		if (rmode->viTVMode & VI_NON_INTERLACE) { VIDEO_WaitVSync(); }
 	}
 
-	printf("miniCDi - Philips CD-i 220/20 F2 experimental emulator\n");
-
 	if (!FAT_Init()) {
 		printf("failed to init FAT, exiting");
 		sleep(5);
@@ -113,24 +135,9 @@ int main(int argc, char **argv) {
 		exit(0);
 	}
 
-	MiniCDIConfig config;
-	config.pal = true;
+	printf("miniCDi - Philips CD-i 220/20 F2 experimental emulator\n");
 
-	CDI220 cdi = CDI220((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
-	// SDL screen;
-
-	while(SYS_MainLoop()) {
-		WPAD_ScanPads();
-		uint32_t down = WPAD_ButtonsDown(0);
-		// uint32_t held = WPAD_ButtonsHeld(0);
-
-		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
-			break; // exit(0) freezes
-
-		if (cdi.step())
-			VIDEO_WaitVSync();
-		// screen.update(cdi.get_display(), cdi.get_display_width());
-	}
+	RUN_CDI();
 
 	VIDEO_SetBlack(true);
 	return 0;

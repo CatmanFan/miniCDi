@@ -51,7 +51,7 @@ class IKAT
 	}
 
 public:
-	void init(uint8_t* memory, size_t start, MiniCDIConfig *config)
+	IKAT(uint8_t* memory, size_t start, MiniCDIConfig *config)
 	{
 		emuConfig = config;
 		ns = 0;

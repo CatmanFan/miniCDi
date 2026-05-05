@@ -3,10 +3,13 @@
 
 /*****
   DISCLAIMER:
-  Sourced partially from MAME CD-i driver (licensed under GPL-2.0).
+  Sourced partially from official documentation of MCD212 by Motorola and
+  MAME CD-i driver by Ryan Holtz and Vincent Halver (licensed under BSD-3-Clause).
  *****/
 
+#include <cassert>
 #include <cmath>
+#include <algorithm>
 
 #define MAX_DISPLAY_WIDTH 384
 #define MAX_DISPLAY_HEIGHT 240
@@ -16,7 +19,6 @@
 #define YUV_GET_V(x) ((x >> 4) & 0x0F)
 
 namespace VideoCDI
-
 {
 
 enum Icm
@@ -125,7 +127,7 @@ class Video
 		enum MosaicFactor MF[2];
 		enum FileType FT[2];
 		enum ColorMode CM[2];
-	} VdscConfig;
+	} Decoder;
 
 	uint32_t YUVtoRGB(uint16_t v)
 	{
@@ -162,7 +164,7 @@ public:
 	void reset()
 	{
 		cursor.width = cursor.height = 16;
-		VdscConfig = {0};
+		Decoder = {0};
 	}
 
 	void set_mode(enum Type type, bool hRes1, bool hRes2, bool vRes = false)
@@ -174,9 +176,9 @@ public:
 		BG.height = FG[1].height = FG[0].height = (type == PAL ? 280 : 240) * (vRes ? 2 : 1);
 
 		if (output.size() != FG[0].width * FG[0].height) {
-			BG.decoded.resize(BG.width * BG.height, 0x000000ff);
-			FG[0].decoded.resize(FG[0].width * FG[0].height, 0x00000000);
-			FG[1].decoded.resize(FG[1].width * FG[1].height, 0x00000000);
+			BG.decoded.resize(BG.width * BG.height, 0);
+			FG[0].decoded.resize(FG[0].width * FG[0].height, 0);
+			FG[1].decoded.resize(FG[1].width * FG[1].height, 0);
 			output.resize(FG[0].width * FG[0].height, 0x000000ff);
 		}
 	}
@@ -185,7 +187,24 @@ public:
 	{
 		for (size_t y = 0; y < FG[0].width; y++) {
 			for (size_t x = 0; x < FG[0].width; x++) {
-				output[(y*x)+x] = FG[0].decoded[(y*x)+x];/*std::min(0, std::max(255, (FG[0]*16) * WEIGHT_A/64 + (B) 16) * WEIGHT_B/64 + 16 );*/
+				// TO-DO: draw backdrop color if both planes are transparent.
+				// Backdrop should just be a single solid color, cursor is handled by byte pattern so they can be drawn directly in this function.
+
+				uint8_t rA, gA, bA, rB, gB, bB, rAB, gAB, bAB;
+
+				rA = (FG[0].decoded[(y*x)+x] & 0xff000000) >> 24;
+				gA = (FG[0].decoded[(y*x)+x] & 0x00ff0000) >> 16;
+				bA = (FG[0].decoded[(y*x)+x] & 0x0000ff00) >> 8;
+
+				rB = (FG[0].decoded[(y*x)+x] & 0xff000000) >> 24;
+				gB = (FG[0].decoded[(y*x)+x] & 0x00ff0000) >> 16;
+				bB = (FG[0].decoded[(y*x)+x] & 0x0000ff00) >> 8;
+
+				rAB = std::clamp((rA * (Decoder.WeightFactor[0]/64)) + (rB * (Decoder.WeightFactor[1]/64)) + 16, 0, 255);
+				gAB = std::clamp((gA * (Decoder.WeightFactor[0]/64)) + (gB * (Decoder.WeightFactor[1]/64)) + 16, 0, 255);
+				bAB = std::clamp((bA * (Decoder.WeightFactor[0]/64)) + (bB * (Decoder.WeightFactor[1]/64)) + 16, 0, 255);
+
+				output[(y*x)+x] = (rAB << 24) | (gAB << 16) | (bAB << 8) | 0xff;
 			}
 		}
 	}
@@ -194,62 +213,63 @@ public:
 	template <size_t Path>
 	void draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t line)
 	{
-		auto lineStart = FG[Path].decoded.begin() + (FG[Path].width*(line));
-		auto lineEnd = FG[Path].decoded.begin() + (FG[Path].width*(line+1));
-
-		if (VdscConfig.Icm[Path] == Off) {
-			std::fill(lineStart, lineEnd, 0x00000000);
-		} else {
-			size_t pixel = 0, dest = 0;
-			do {
+		size_t pixel = 0, dest = 0;
+		do
+		{
+			if (Decoder.Icm[Path] == Off) {
+				FG[Path].decoded[(FG[Path].width*line) + dest] = 0;
+				FG[Path].decoded[(FG[Path].width*line) + dest+1] = 0;
+			} else {
 				const uint8_t byte = memory[((vsr + pixel) & 0x0007ffff) ^ 1];
 				uint32_t color0 = 0, color1 = 0;
 
-				switch (VdscConfig.FT[Path]) {
+				switch (Decoder.FT[Path]) {
 					default:
 						break;
 
 					case Bitmap:
-						switch (VdscConfig.Icm[Path])
+						switch (Decoder.Icm[Path])
 						{
 							default:
 								break;
 							case DYUV:
-								// VdscConfig.ColorDYUV[Path];
+								// Decoder.ColorDYUV[Path];
 								break;
 						}
 						break;
 
 					case RunLength:
-						switch (VdscConfig.Icm[Path])
+						switch (Decoder.Icm[Path])
 						{
 							default:
 								break;
 							case CLUT4:
-								color0 = (VdscConfig.ColorCLUT[(byte >> 4) & 0x0F] << 8) | 0xff;
-								color1 = (VdscConfig.ColorCLUT[byte & 0x0F] << 8) | 0xff;
+								color0 = (Decoder.ColorCLUT[(byte >> 4) & 0x0F] << 8) | 0xff;
+								color1 = (Decoder.ColorCLUT[byte & 0x0F] << 8) | 0xff;
 								break;
 							case CLUT7:
-								color0 = color1 = (VdscConfig.ColorCLUT[byte & 0x7F] << 8) | 0xff;
+								color0 = color1 = (Decoder.ColorCLUT[byte/* & 0x7F */] << 8) | 0xff;
 								break;
 							case CLUT8:
-								color0 = color1 = (VdscConfig.ColorCLUT[byte] << 8) | 0xff;
+								color0 = color1 = (Decoder.ColorCLUT[byte] << 8) | 0xff;
 								break;
 						}
 						break;
 
 					case Mosaic:
 						// to-do
+						Decoder.WeightFactor[Path] /= 2;
+						assert(0);
 						break;
 				}
 
 				FG[Path].decoded[(FG[Path].width*line) + dest] = color0;
 				FG[Path].decoded[(FG[Path].width*line) + dest+1] = color1;
+			}
 
-				pixel += (FG[Path].doubleRes ? 2 : 1);
-				dest += 2;
-			} while (dest < FG[Path].width);
-		}
+			pixel += (FG[Path].doubleRes ? 2 : 1);
+			dest += 2;
+		} while (dest < FG[Path].width);
 	}
 
 	void draw_line(size_t line, uint8_t* memory, const uint32_t vsr1, const uint32_t vsr2)
@@ -257,19 +277,19 @@ public:
 		// Backdrop
 		uint32_t bgColor = 0x000000ff;
 
-		if (VdscConfig.BackdropColor & 0b1001)
+		if (Decoder.BackdropColor & 0b1001)
 			bgColor |= 0x0000ff00;
-		else if (VdscConfig.BackdropColor & 0b0001)
+		else if (Decoder.BackdropColor & 0b0001)
 			bgColor |= 0x00008000;
 
-		if (VdscConfig.BackdropColor & 0b1010)
+		if (Decoder.BackdropColor & 0b1010)
 			bgColor |= 0x00ff0000;
-		else if (VdscConfig.BackdropColor & 0b0010)
+		else if (Decoder.BackdropColor & 0b0010)
 			bgColor |= 0x00800000;
 
-		if (VdscConfig.BackdropColor & 0b1100)
+		if (Decoder.BackdropColor & 0b1100)
 			bgColor |= 0xff000000;
-		else if (VdscConfig.BackdropColor & 0b0100)
+		else if (Decoder.BackdropColor & 0b0100)
 			bgColor |= 0x80000000;
 
 		std::fill(BG.decoded.begin() + (BG.width*(line)), BG.decoded.begin() + (BG.width*(line+1)), bgColor);
@@ -285,8 +305,8 @@ public:
 		{
 			default:
 				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) <= 0xBFu) {
-					VdscConfig.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u] = inst & 0x00FFFFFFu;
-					//printf("[DCA%d] color $%06x\n", pathB, VdscConfig.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u]);
+					Decoder.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u] = inst & 0x00FFFFFFu;
+					printf("[DCA%d] color $%06x\n", pathB, Decoder.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u]);
 				}
 				break;
 
@@ -298,75 +318,80 @@ public:
 			case 0x7d:
 			case 0x7e:
 			case 0x7f:
-				VdscConfig.FT[pathB] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
-				VdscConfig.MF[pathB] = (enum VideoCDI::MosaicFactor)((inst & 0b1100u) >> 2);
-				VdscConfig.CM[pathB] = (enum VideoCDI::ColorMode)((inst & 0b100000000u) >> 8);
-				/*printf("[DCA%d] dprm cm=%s,mf=%s,ft=%s\n", pathB, VdscConfig.CM[pathB] == Double4 ? "p4" : "p8",
-																	VdscConfig.MF[pathB] == x16 ? "x16" : VdscConfig.MF[pathB] == x8 ? "x8"
-																  : VdscConfig.MF[pathB] == x4 ? "x4" : "x2",
-																	VdscConfig.FT[pathB] == Mosaic ? "m" : VdscConfig.FT[pathB] == RunLength ? "rl"
-																  : "bmp");*/
+				Decoder.FT[pathB] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
+				Decoder.MF[pathB] = (enum VideoCDI::MosaicFactor)((inst & 0b1100u) >> 2);
+				Decoder.CM[pathB] = (enum VideoCDI::ColorMode)((inst & 0b100000000u) >> 8);
+				printf("[DCA%d] dprm cm=%s,mf=%s,ft=%s\n", pathB, Decoder.CM[pathB] == Double4 ? "p4" : "p8",
+																	Decoder.MF[pathB] == x16 ? "x16" : Decoder.MF[pathB] == x8 ? "x8"
+																  : Decoder.MF[pathB] == x4 ? "x4" : "x2",
+																	Decoder.FT[pathB] == Mosaic ? "m" : Decoder.FT[pathB] == RunLength ? "rl"
+																  : "bmp");
 				break;
 
 			case 0xC0:
-				VdscConfig.IcmCS = (inst & 0x00400000u) >> 22;
-				VdscConfig.IcmNR = (inst & 0x00100000u) >> 19;
-				VdscConfig.IcmEV = (inst & 0x00080000u) >> 18;
-				VdscConfig.Icm[1] = (enum VideoCDI::Icm)((inst & 0b111100000000u) >> 8);
-				VdscConfig.Icm[0] = (enum VideoCDI::Icm)(inst & 0b1111u);
-				/*printf("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s\n", pathB,
-						  VdscConfig.IcmCS, VdscConfig.IcmNR, VdscConfig.IcmEV,
-						  VdscConfig.Icm[0] == CLUT8 ? "clut8" : VdscConfig.Icm[0] == CLUT7 ? "clut7"
-						: VdscConfig.Icm[0] == CLUT77 ? "clut7+7" : VdscConfig.Icm[0] == DYUV ? "dyuv"
-						: VdscConfig.Icm[0] == CLUT4 ? "clut4" : "off",
-						  VdscConfig.Icm[1] == RGB555 ? "rgb555" : VdscConfig.Icm[1] == DYUV ? "dyuv"
-						: VdscConfig.Icm[1] == CLUT4 ? "clut4" : "off");*/
+				Decoder.IcmCS = (inst & 0x00400000u) >> 22;
+				Decoder.IcmNR = (inst & 0x00100000u) >> 19;
+				Decoder.IcmEV = (inst & 0x00080000u) >> 18;
+				Decoder.Icm[1] = (enum VideoCDI::Icm)((inst & 0b111100000000u) >> 8);
+				Decoder.Icm[0] = (enum VideoCDI::Icm)(inst & 0b1111u);
+				printf("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s\n", pathB,
+						  Decoder.IcmCS, Decoder.IcmNR, Decoder.IcmEV,
+						  Decoder.Icm[0] == CLUT8 ? "clut8" : Decoder.Icm[0] == CLUT7 ? "clut7"
+						: Decoder.Icm[0] == CLUT77 ? "clut7+7" : Decoder.Icm[0] == DYUV ? "dyuv"
+						: Decoder.Icm[0] == CLUT4 ? "clut4" : "off",
+						  Decoder.Icm[1] == RGB555 ? "rgb555" : Decoder.Icm[1] == DYUV ? "dyuv"
+						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");
 				break;
 
 			case 0xC2:
-				VdscConfig.PlaneOrder = inst & 0x00FFFFFFu;
-				//printf("[DCA%d] po %s\n", pathB, VdscConfig.PlaneOrder ? "b,a" : "a,b");
+				Decoder.PlaneOrder = inst & 0x00FFFFFFu;
+				printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
 				break;
 
 			case 0xC3:
-				VdscConfig.BankCLUT = inst & 0x00FFFFFFu;
-				//printf("[DCA%d] cbnk %d\n", pathB, VdscConfig.BankCLUT);
+				Decoder.BankCLUT = inst & 0x00FFFFFFu;
+				printf("[DCA%d] cbnk %d\n", pathB, Decoder.BankCLUT);
 				break;
 
 			case 0xC4:
 			case 0xC6:
-				VdscConfig.TransparentCol[pathB] = inst & 0x00FFFFFFu;
+				Decoder.TransparentCol[pathB] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xC7:
 			case 0xC9:
-				VdscConfig.MaskCol[pathB] = inst & 0x00FFFFFFu;
+				Decoder.MaskCol[pathB] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xCA:
 			case 0xCB:
-				VdscConfig.ColorDYUV[pathB] = inst & 0x00FFFFFFu;
+				Decoder.ColorDYUV[pathB] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xCD: // channel 1
-				VdscConfig.CursorPosition[0] = inst & 0x00000FFFu; // double-resolution
-				VdscConfig.CursorPosition[1] = (inst & 0x00FFF000u) >> 12;
-				//printf("[DCA%d] cpos x=%d,y=%d\n", pathB, VdscConfig.CursorPosition[0], VdscConfig.CursorPosition[1]);
+				Decoder.CursorPosition[0] = inst & 0x00000FFFu; // double-resolution
+				Decoder.CursorPosition[1] = (inst & 0x00FFF000u) >> 12;
+				printf("[DCA%d] cpos x=%d,y=%d\n", pathB, Decoder.CursorPosition[0], Decoder.CursorPosition[1]);
 				break;
 
 			case 0xCE: // channel 1
-				VdscConfig.CursorColor = inst & 0x000000FFu;
-				VdscConfig.CursorBlink = (inst >> 22) & 0b01u;
-				VdscConfig.CursorEnable = (inst >> 23) & 0b01u;
+				Decoder.CursorColor = inst & 0x000000FFu;
+				Decoder.CursorBlink = (inst >> 22) & 0b01u;
+				Decoder.CursorEnable = (inst >> 23) & 0b01u;
 				break;
 
 			case 0xCF: // channel 1
-				VdscConfig.CursorPatternX = inst & 0x0000FFFFu;
-				VdscConfig.CursorPatternY = (inst >> 16) & 0x0Fu;
+				Decoder.CursorPatternX = inst & 0x0000FFFFu;
+				Decoder.CursorPatternY = (inst >> 16) & 0x0Fu;
 				break;
 
 			case 0xD8: // channel 1
-				VdscConfig.BackdropColor = inst & 0x00FFFFFFu;
+				Decoder.BackdropColor = inst & 0x00FFFFFFu;
+				break;
+
+			case 0xDB:
+			case 0xDC:
+				Decoder.WeightFactor[pathB] = inst & 0x0000001Fu;
 				break;
 		}
 	}

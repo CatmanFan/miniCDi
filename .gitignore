@@ -8,6 +8,7 @@ CMakeSettings.json
 *.dol
 *.elf
 *.txt
+*.docx
 
 # MacOS
 .DS_Store

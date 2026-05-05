@@ -15,7 +15,9 @@
 
 class MCD212
 {
-	M68kCpu *mpu;
+	uint8_t* memory;
+
+	SCC68070 *cpu;
 	MiniCDIConfig* emuConfig;
 	VideoCDI::Video video;
 	int ns;
@@ -23,17 +25,9 @@ class MCD212
 	size_t linesV, line;
 	uint64_t frames;
 
-	uint8_t* DRAM;
-
 	// internal registers
-	uint8_t* CSR1R;
-	uint8_t* CSR1W;
-	uint8_t* CSR2R;
-	uint8_t* CSR2W;
-	uint8_t* DCR[2];
-	uint8_t* DDR[2];
-	uint8_t* VSR[2];
-	uint8_t* DCP[2];
+	uint32_t VSR[2];
+	uint32_t DCP[2];
 
 	// bits (components) of internal registers
 	uint8_t DA,			/** (Display Active)	1 = fetching information from video memory **/
@@ -57,77 +51,14 @@ class MCD212
 			FT1[2],		/** (File Type) separate for each channel **/
 			FT2[2];
 
-	void IR_disassemble()
-	{
-		PA = (READ16(CSR1R, 0) >> 5) & 0b01u;
-		DA = (READ16(CSR1R, 0) >> 7) & 0b01u;
-		BE[0] = READ16(CSR2R, 0) & 0b01u;
-		IT1 = (READ16(CSR2R, 0) >> 2) & 0b01u;
-		IT2 = (READ16(CSR2R, 0) >> 1) & 0b01u;
-		BE[1] = READ16(CSR1W, 0) & 0b01u;
-		ST = (READ16(CSR1W, 0) >> 1) & 0b01u;
-		DD = (READ16(CSR1W, 0) >> 3) & 0b01u;
-		TD = (READ16(CSR1W, 0) >> 5) & 0b01u;
-		DD2 = (READ16(CSR1W, 0) >> 8) & 0b01u;
-		DD1 = (READ16(CSR1W, 0) >> 9) & 0b01u;
-		DI1 = (READ16(CSR1W, 0) >> 15) & 0b01u;
-		DI2 = (READ16(CSR2W, 0) >> 15) & 0b01u;
-		DC1 = (READ16(DCR[0], 0) >> 7) & 0b01u;
-		DC2 = (READ16(DCR[1], 0) >> 7) & 0b01u;
-		IC1 = (READ16(DCR[0], 0) >> 8) & 0b01u;
-		IC2 = (READ16(DCR[1], 0) >> 8) & 0b01u;
-		CM[0] = (READ16(DCR[0], 0) >> 10) & 0b01u;
-		CM[1] = (READ16(DCR[1], 0) >> 10) & 0b01u;
-		SM = (READ16(DCR[0], 0) >> 12) & 0b01u;
-		FD = (READ16(DCR[0], 0) >> 13) & 0b01u;
-		CF = (READ16(DCR[0], 0) >> 14) & 0b01u;
-		DE = (READ16(DCR[0], 0) >> 15) & 0b01u;
-		FT2[0] = (READ16(DDR[0], 0) >> 7) & 0b01u;
-		FT1[0] = (READ16(DDR[0], 0) >> 8) & 0b01u;
-		MF2[0] = (READ16(DDR[0], 0) >> 9) & 0b01u;
-		MF1[0] = (READ16(DDR[0], 0) >> 10) & 0b01u;
-		FT2[1] = (READ16(DDR[1], 0) >> 7) & 0b01u;
-		FT1[1] = (READ16(DDR[1], 0) >> 8) & 0b01u;
-		MF2[1] = (READ16(DDR[1], 0) >> 9) & 0b01u;
-		MF1[1] = (READ16(DDR[1], 0) >> 10) & 0b01u;
-	}
-
-	void IR_reassemble()
-	{
-		WRITE16(CSR1R, 0, (PA << 5) | (DA << 7));
-		WRITE16(CSR2R, 0, BE[0] | (IT2 << 1) | (IT1 << 2));
-		WRITE16(CSR1W, 0, BE[1] | (ST << 1) | (DD << 3) | (TD << 5) | (DD2 << 8) | (DD1 << 9) | (DI1 << 15));
-		WRITE16(CSR2W, 0, (DI2 << 15));
-		WRITE16(DCR[0], 0, (DC1 << 7) | (IC1 << 8) | (CM[0] << 10) | (SM << 12) | (FD << 13) | (CF << 14) | (DE << 15));
-		WRITE16(DCR[1], 0, (DC2 << 7) | (IC2 << 8) | (CM[1] << 10));
-		WRITE16(DDR[0], 0, (FT2[0] << 7) | (FT1[0] << 8) | (MF2[0] << 9) | (MF1[0] << 10));
-		WRITE16(DDR[1], 0, (FT2[1] << 7) | (FT1[1] << 8) | (MF2[1] << 9) | (MF1[1] << 10));
+	template <size_t Path>
+	void vsr_set(uint32_t value) {
+		VSR[Path] = value & 0x003FFFFFu;
 	}
 
 	template <size_t Path>
-	uint32_t vsr_get()
-	{
-		return ((READ16(DCR[Path], 0) & 0x3F) << 16) | READ16(VSR[Path], 0);
-	}
-
-	template <size_t Path>
-	uint32_t dcp_get()
-	{
-		return ((READ16(DDR[Path], 0) & 0x3F) << 16) | READ16(DCP[Path], 0);
-	}
-
-	template <size_t Path>
-	void vsr_set(uint32_t value)
-	{
-		WRITE16(DCR[Path], 0, (READ16(DCR[Path], 0) & 0xFFC0) | ((value >> 16) & 0x3F));
-		WRITE16(VSR[Path], 0, value & 0x0000ffff);
-	}
-
-	template <size_t Path>
-	void dcp_set(uint32_t value)
-	{
-		WRITE16(DDR[Path], 0, (READ16(DDR[Path], 0) & 0xFFC0) | ((value >> 16) & 0x3F));
-		WRITE16(DCP[Path], 0, value & 0x0000ffff);
+	void dcp_set(uint32_t value) {
+		DCP[Path] = value & 0x003FFFFCu;
 	}
 
 	template <size_t Path>
@@ -137,14 +68,14 @@ class MCD212
 
 		for (int cycles = 0; cycles < MCD212_HSYNC_CYCLES * MCD212_INACTIVE_VLINES; cycles++)
 		{
-			uint32_t inst = READ32(DRAM, addr);
+			uint32_t inst = READ32(memory, addr);
 			addr += 4;
 
 			switch ((inst & 0xFF000000) >> 24)
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
-					//printf("[ICA%d] stop\n", Path+1);
+					printf("[ICA%d] stop\n", Path+1);
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -153,26 +84,26 @@ class MCD212
 
 				case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
 				case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f: // RELOAD DCP
-					dcp_set<Path>(inst & 0x003FFFFCu);
-					//printf("[ICA%d] dcr $%x\n", Path+1, inst & 0x003FFFFCu);
+					dcp_set<Path>(inst);
+					printf("[ICA%d] dcr $%x\n", Path+1, inst & 0x003FFFFCu);
 					break;
 
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
-					dcp_set<Path>(inst & 0x003FFFFCu);
-					//printf("[ICA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
+					dcp_set<Path>(inst);
+					printf("[ICA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
-					addr = (inst & 0x0007ffffu) / 2;
-					//printf("[ICA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
+					addr = inst & 0x003FFFFFu;
+					printf("[ICA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
-					vsr_set<Path>(inst & 0x003FFFFFu);
-					//printf("[ICA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
+					vsr_set<Path>(inst);
+					printf("[ICA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
 					return;
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
@@ -181,13 +112,13 @@ class MCD212
 					{
 						IT2 = 1;
 						if (!DI2)
-							m68k_set_irq(mpu, 3);
+							m68k_set_irq(&cpu->core, 3);
 					}
 					else
 					{
 						IT1 = 1;
 						if (!DI1)
-							m68k_set_irq(mpu, 3);
+							m68k_set_irq(&cpu->core, 3);
 					}
 					break;
 
@@ -212,15 +143,14 @@ class MCD212
 	{
 		for (size_t period = 0; period < (CF ? 16 : 8); period++)
 		{
-			uint32_t addr = dcp_get<Path>();
-			uint32_t inst = READ32(DRAM, addr);
-			dcp_set<Path>(addr + 4);
+			uint32_t inst = READ32(memory, DCP[Path]);
+			DCP[Path] += 4;
 
 			switch ((inst & 0xFF000000) >> 24)
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
-					//printf("[DCA%d] stop\n", Path+1);
+					printf("[DCA%d] stop\n", Path+1);
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -233,20 +163,20 @@ class MCD212
 
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
-					dcp_set<Path>(inst & 0x003FFFFCu);
-					//printf("[DCA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
+					dcp_set<Path>(inst);
+					printf("[DCA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
-					vsr_set<Path>(inst & 0x003FFFFFu);
-					//printf("[DCA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
+					vsr_set<Path>(inst);
+					printf("[DCA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
-					vsr_set<Path>(inst & 0x003FFFFFu);
-					//printf("[DCA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
+					vsr_set<Path>(inst);
+					printf("[DCA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
 					return;
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
@@ -255,13 +185,13 @@ class MCD212
 					{
 						IT2 = 1;
 						if (!DI2)
-							m68k_set_irq(mpu, 3);
+							m68k_set_irq(&cpu->core, 3);
 					}
 					else
 					{
 						IT1 = 1;
 						if (!DI1)
-							m68k_set_irq(mpu, 3);
+							m68k_set_irq(&cpu->core, 3);
 					}
 					break;
 
@@ -275,9 +205,6 @@ class MCD212
 	/** Draws a video line **/
 	void execute()
 	{
-		// Disassemble internal register values
-		IR_disassemble();
-
 		/*******************************************************/
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
 			if (linesV == 1 && DE) {
@@ -286,7 +213,7 @@ class MCD212
 			}
 		} else {
 			DA = 1;
-			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
+			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 0;
 
 			if (line == 0) {
 				video.set_mode(CF == 1 ? VideoCDI::NTSCTV : VideoCDI::PAL, CM[0], CM[1]);
@@ -295,13 +222,10 @@ class MCD212
 			}
 
 			if (DE) {
-				uint32_t vsr1 = vsr_get<0>();
-				uint32_t vsr2 = vsr_get<1>();
-
 				// render line onto bitmap
-				video.draw_line(line, DRAM, vsr1, vsr2);
-				vsr_set<0>(vsr1 + video.FG[0].width);
-				vsr_set<1>(vsr2 + video.FG[0].height);
+				video.draw_line(line, memory, VSR[0], VSR[1]);
+				VSR[0] += video.FG[0].width;
+				VSR[1] += video.FG[1].width;
 
 				if (IC1 && DC1) { DCA_execute<0>(); }
 				if (IC2 && DC2) { DCA_execute<1>(); }
@@ -324,48 +248,31 @@ class MCD212
 		}
 		/*******************************************************/
 
-		// Reassemble to internal registers
-		IR_reassemble();
-
-		printf("\n[VDSC viewer]\n");
-		printf("CSR1R %04x  DA  %d  PA  %d\n", READ16(CSR1R, 0), DA, PA);
-		printf("CSR2R %04x  IT1 %d  IT2 %d  BE %d\n", READ16(CSR2R, 0), IT1, IT2, BE[0]);
-		printf("CSR1W %04x  DI1 %d  DD1 %d  DD2 %d  TD  %d  DD  %d  ST  %d  BE  %s\n", READ16(CSR1W, 0), DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
-		printf("CSR2W %04x  DI2 %d\n", READ16(CSR2W, 0), DI2);
-		printf("DCR1  %04x  DE  %d  CF  %d  FD  %d  SM  %d  CM1 %d  IC1 %d  DC1 %d\n", READ16(DCR[0], 0), DE, CF, FD, SM, CM[0], IC1, DC1);
-		printf("DCR2  %04x  CM2 %d  IC2 %d  DC2 %d\n", READ16(DCR[1], 0), CM[1], IC2, DC2);
-		printf("DDR1  %04x  MF1 %d  MF2 %d  FT1 %d  FT2 %d\n", READ16(DDR[0], 0), MF1[0], MF2[0], FT1[0], FT2[0]);
-		printf("DDR2  %04x  MF1 %d  MF2 %d  FT1 %d  FT2 %d\n", READ16(DDR[1], 0), MF1[1], MF2[1], FT1[1], FT2[1]);
+		/*printf("\n[VDSC viewer]\n");
+		printf("CSR1R:  DA  %02x  PA  %02x\n", DA, PA);
+		printf("CSR1W:  DI1 %02x  DD1 %02x  DD2 %02x  TD  %02x  DD  %02x  ST  %02x  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
+		printf("CSR2R:  IT1 %02x  IT2 %02x  BE %02x\n", IT1, IT2, BE[0]);
+		printf("CSR2W:  DI2 %02x\n", DI2);
+		printf("DCR1:   DE  %02x  CF  %02x  FD  %02x  SM  %02x  CM1 %02x  IC1 %02x  DC1 %02x\n", DE, CF, FD, SM, CM[0], IC1, DC1);
+		printf("DCR2:   CM2 %02x  IC2 %02x  DC2 %02x\n", CM[1], IC2, DC2);
+		printf("DDR1:   MF1 %02x  MF2 %02x  FT1 %02x  FT2 %02x\n", MF1[0], MF2[0], FT1[0], FT2[0]);
+		printf("DDR2:   MF1 %02x  MF2 %02x  FT1 %02x  FT2 %02x\n", MF1[1], MF2[1], FT1[1], FT2[1]);
+		printf("\nVSR1: %06x\nVSR2: %06x\nDCP1: %06x\nDCP2: %06x\n", VSR[0], VSR[1], DCP[0], DCP[1]);*/
 	}
 
 public:
-	void init(M68kCpu *mpu, uint8_t *memory, size_t start, MiniCDIConfig *config)
+	MCD212(SCC68070 *cpu, uint8_t *dram, size_t start, MiniCDIConfig *config)
 	{
-		this->mpu = mpu;
+		this->cpu = cpu;
 		emuConfig = config;
 		ns = 0;
 
-		DRAM = memory;
-
-		CSR1R = memory + (start + 0x11);
-		CSR1W = memory + (start + 0x10);
-		DCR[0] = memory + (start + 0x12);
-		VSR[0] = memory + (start + 0x14);
-		DDR[0] = memory + (start + 0x18);
-		DCP[0] = memory + (start + 0x1A);
-
-		CSR2R = memory + (start + 0x01);
-		CSR2W = memory + (start + 0x00);
-		DCR[1] = memory + (start + 0x02);
-		VSR[1] = memory + (start + 0x04);
-		DDR[1] = memory + (start + 0x08);
-		DCP[1] = memory + (start + 0x0A);
+		memory = &dram[0];
 	}
 
 	void reset()
 	{
-		IR_disassemble();
-		// clear bits
+		// clear write bits
 		DI1 = 0; DD1 = 0; DD2 = 0; TD = 0; DD = 0; ST = 0; BE[0] = 0; BE[1] = 0;
 		DI2 = 0;
 		DE = 0; CF = 0; FD = 0; SM = 0; CM[0] = 0; IC1 = 0; DC1 = 0;
@@ -381,7 +288,6 @@ public:
 		IC2 = 1;
 		DC1 = 1;
 		DC2 = 1;
-		IR_reassemble();
 
 		frames = 0;
 		linesV = 0;
@@ -397,6 +303,104 @@ public:
 		{
 			execute();
 			this->ns -= (emuConfig->pal || !CF ? 64000 : 63560);
+		}
+	}
+
+	uint8_t read8(uint32_t addr)
+	{
+		switch (addr)
+		{
+			default:
+				return memory[addr];
+			case 0x4FFFF0:
+			case 0x4FFFF1: // CSR1R
+				return (PA << 5) | (DA << 7);
+			case 0x4FFFE0:
+			case 0x4FFFE1: // CSR2R
+				uint8_t value = BE[0] | (IT2 << 1) | (IT1 << 2);
+				BE[0] = IT2 = IT1 = 0;
+				return value;
+		}
+	}
+
+	uint8_t read16(uint32_t addr)
+	{
+		switch (addr)
+		{
+			default:
+				return READ16(memory, addr);
+		}
+	}
+
+	void write16(uint32_t addr, uint8_t value)
+	{
+		switch (addr)
+		{
+			default:
+				WRITE16(memory, addr, value);
+				break;
+			case 0x4FFFF0: // CSR1W
+				BE[1] = value & 0b0000'0000'0000'0001u;
+				ST = (value & 0b0000'0000'0000'0010u) >> 1;
+				DD = (value & 0b0000'0000'0000'1000u) >> 3;
+				TD = (value & 0b0000'0000'0010'0000u) >> 5;
+				DD2 = (value & 0b0000'0001'0000'0000u) >> 8;
+				DD1 = (value & 0b0000'0010'0000'0000u) >> 9;
+				DI1 = (value & 0b1000'0000'0000'0000u) >> 15;
+				break;
+			case 0x4FFFE0: // CSR2W
+				DI2 = (value & 0b1000'0000'0000'0000u) >> 15;
+				break;
+			case 0x4FFFF2: // DCR1
+				DC1 = (value & 0b0000'0000'1000'0000u) >> 7;
+				IC1 = (value & 0b0000'0001'0000'0000u) >> 8;
+				CM[0] = (value & 0b0000'0100'0000'0000u) >> 10;
+				SM = (value & 0b0001'0000'0000'0000u) >> 12;
+				FD = (value & 0b0010'0000'0000'0000u) >> 13;
+				CF = (value & 0b0100'0000'0000'0000u) >> 14;
+				DE = (value & 0b1000'0000'0000'0000u) >> 15;
+				/*VSR[0] &= 0x0000FFFF;
+				VSR[0] |= (value & 0x3F) << 16;*/
+				break;
+			case 0x4FFFE2: // DCR2
+				DC2 = (value & 0b0000'0000'1000'0000u) >> 7;
+				IC2 = (value & 0b0000'0001'0000'0000u) >> 8;
+				CM[1] = (value & 0b0000'0100'0000'0000u) >> 10;
+				/*VSR[1] &= 0x0000FFFF;
+				VSR[1] |= (value & 0x3F) << 16;
+				break;
+			case 0x4FFFF4: // VSR1
+				VSR[0] &= 0xFFFF0000;
+				VSR[0] |= value & 0x0000FFFF;
+				break;
+			case 0x4FFFE4: // VSR2
+				VSR[1] &= 0xFFFF0000;
+				VSR[1] |= value & 0x0000FFFF;
+				break;*/
+			case 0x4FFFF8: // DDR1
+				FT2[0] = (value & 0b0000'0000'1000'0000u) >> 7;
+				FT1[0] = (value & 0b0000'0001'0000'0000u) >> 8;
+				MF2[0] = (value & 0b0000'0010'0000'0000u) >> 9;
+				MF1[0] = (value & 0b0000'0100'0000'0000u) >> 10;
+				/*DCP[0] &= 0x0000FFFF;
+				DCP[0] |= (value & 0x3F) << 16;*/
+				break;
+			case 0x4FFFE8: // DDR2
+				FT2[1] = (value & 0b0000'0000'1000'0000u) >> 7;
+				FT1[1] = (value & 0b0000'0001'0000'0000u) >> 8;
+				MF2[1] = (value & 0b0000'0010'0000'0000u) >> 9;
+				MF1[1] = (value & 0b0000'0100'0000'0000u) >> 10;
+				/*DCP[1] &= 0x0000FFFF;
+				DCP[1] |= (value & 0x3F) << 16;
+				break;
+			case 0x4FFFFA: // DCP1
+				DCP[0] &= 0xFFFF0000;
+				DCP[0] |= value & 0x0000FFFC;
+				break;
+			case 0x4FFFEA: // DCP2
+				DCP[1] &= 0xFFFF0000;
+				DCP[1] |= value & 0x0000FFFC;
+				break;*/
 		}
 	}
 

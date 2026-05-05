@@ -2,14 +2,16 @@
 #define MINICDI_COMMON
 
 // Macros
-#define READ16(x, l)		((*(x+l) << 8) | *((x+l)+1))
-#define READ32(x, l)		((*(x+l) << 24) | (*((x+l)+1) << 16) | (*((x+l)+2) << 8) | *((x+l)+3))
-#define WRITE16(x, l, v)	*(x+l) = ((v) >> 8) & 0xFF; \
-							*((x+l)+1) = ((v) >> 0) & 0xFF;
-#define WRITE32(x, l, v)	*(x+l) = ((v) >> 24) & 0xFF; \
-							*((x+l)+1) = ((v) >> 16) & 0xFF; \
-							*((x+l)+2) = ((v) >> 8) & 0xFF; \
-							*((x+l)+3) = ((v) >> 0) & 0xFF;
+#define READ8(x, l)			(uint8_t)(x[l])
+#define READ16(x, l)		(uint16_t)((x[l] << 8) | x[l+1])
+#define READ32(x, l)		(uint32_t)((x[l] << 24) | (x[l+1] << 16) | (x[l+2] << 8) | x[l+3])
+#define WRITE8(x, l, v)		x[l] = (uint8_t)(v) & 0x00FF;
+#define WRITE16(x, l, v)	x[l] = ((uint16_t)(v) >> 8) & 0xFF; \
+							x[l+1] = (uint16_t)(v) & 0xFF;
+#define WRITE32(x, l, v)	x[l] = ((uint32_t)(v) >> 24) & 0xFF; \
+							x[l+1] = ((uint32_t)(v) >> 16) & 0xFF; \
+							x[l+2] = ((uint32_t)(v) >> 8) & 0xFF; \
+							x[l+3] = (uint32_t)(v) & 0xFF;
 
 #if defined(HW_RVL) || defined(HW_DOL)
 	#include <ogc/lwp_watchdog.h>
@@ -22,20 +24,23 @@
 #endif
 
 // Libraries
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
+#include <cstring>
 #include <fstream>
 #include <dirent.h>
 #include <malloc.h>
 #include <vector>
 
 // Cores
-#include "cdi/config.hpp"
-#include "cdi/video.hpp"
-#include "cdi/M68000.hpp"
+#include "cdi/Config.hpp"
+#include "cdi/Gfx.hpp"
+#include "cdi/SCC68070.hpp"
 #include "cdi/MC68HC.hpp"
 #include "cdi/MCD212.hpp"
 #include "cdi/OS9.hpp"
+
+#include "cdi/Players.hpp"
 
 #endif

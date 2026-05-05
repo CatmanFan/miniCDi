@@ -1,5 +1,5 @@
 # miniCDi
-A very experimental Philips CD-i 220/20 F2 emulator for Wii/3DS.
+A very barebones and experimental Philips CD-i 220/20 F2 emulator for Wii/3DS. Runs on [Rocket68](https://github.com/habedi/rocket68).
 
 ## To-do
 - [ ] CLUT7 to RGB decoder (runlength)

@@ -10,7 +10,7 @@
 #include <fstream>
 #include <dirent.h>
 
-#include "CDI220.hpp"
+#include "cdi/common.hpp"
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -81,13 +81,19 @@ static bool FAT_Init() {
 	return true;
 }
 
+#define CDI_DEBUG
+
 static void RUN_CDI()
 {
-	MiniCDIConfig config;
-	config.pal = true;
+	MiniCDIConfig config = {
+		true	/** PAL mode **/
+	};
 
-	CDI220 cdi = CDI220((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
-	// SDL screen;
+	MonoIPlayer cdi;
+	cdi.Init((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
+#ifndef CDI_DEBUG
+	SDL screen;
+#endif
 
 	while (SYS_MainLoop()) {
 		WPAD_ScanPads();
@@ -98,8 +104,11 @@ static void RUN_CDI()
 			break;
 
 		if (cdi.step()) {
+#ifdef CDI_DEBUG
 			VIDEO_WaitVSync();
-			// screen.update(cdi.get_display(), cdi.get_display_width());
+#else
+			screen.update(cdi.get_display(), cdi.get_display_width());
+#endif
 		}
 	}
 }

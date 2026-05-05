@@ -80,13 +80,13 @@ namespace OS9
 	class System
 	{
 		private:
-			M68kCpu *cpu;
+			SCC68070 *cpu;
 
 			std::vector<Module> modules; // "module directory"
 			std::vector<Process> processes;
 
 		public:
-			void init(M68kCpu *cpu, uint8_t *rom, size_t rom_size) {
+			void init(SCC68070 *cpu, uint8_t *rom, size_t rom_size) {
 				this->cpu = cpu;
 				modules.push_back(Module(rom, 0));
 
@@ -115,26 +115,26 @@ namespace OS9
 
 			void execute()
 			{
-				if (cpu == nullptr || cpu->exception_thrown == 0) return;
+				if (cpu == nullptr || cpu->core.exception_thrown == 0) return;
 
-				if (cpu->exception_thrown == 32) {
-					printf("OS9 %x\n", cpu->d_regs[0].w);
+				if (cpu->core.exception_thrown == 32) {
+					printf("OS9 %x\n", cpu->core.d_regs[0].w);
 					// stop
 					while (1) { ; }
-					switch ((enum EOs9SysCall)m68k_read_16(cpu, cpu->pc)) {
+					switch ((enum EOs9SysCall)m68k_read_16(&cpu->core, cpu->core.pc)) {
 						default:
 							break;
 
 						case F_Link:
 							{
-								OS9::ModuleType type = (OS9::ModuleType)((cpu->d_regs[0].w & 0xFF00) >> 8u);
-								uint8_t lang = (cpu->d_regs[0].w & 0x00FF);
-								uint32_t name = cpu->a_regs[0].l;
+								OS9::ModuleType type = (OS9::ModuleType)((cpu->core.d_regs[0].w & 0xFF00) >> 8u);
+								uint8_t lang = (cpu->core.d_regs[0].w & 0x00FF);
+								uint32_t name = cpu->core.a_regs[0].l;
 
 								for (size_t i = 0; i < modules.size(); i++) {
 									if (modules[i].M_Type == type && modules[i].M_Name == name && modules[i].M_Lang == lang) {
-										cpu->d_regs[0].w = (((uint8_t)(modules[i].M_Type) << 8u) | modules[i].M_Lang);
-										cpu->d_regs[1].w = ((modules[i].M_Attr << 8u) | modules[i].M_Revs);
+										cpu->core.d_regs[0].w = (((uint8_t)(modules[i].M_Type) << 8u) | modules[i].M_Lang);
+										cpu->core.d_regs[1].w = ((modules[i].M_Attr << 8u) | modules[i].M_Revs);
 										// TO-DO:
 										// a0.l = Updated past the module name.
 										// a2.l = Address of the module directory entry.

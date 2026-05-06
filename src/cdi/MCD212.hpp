@@ -75,7 +75,7 @@ class MCD212
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
-					printf("[ICA%d] stop\n", Path+1);
+					//printf("[ICA%d] stop\n", Path+1);
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -85,25 +85,25 @@ class MCD212
 				case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
 				case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f: // RELOAD DCP
 					dcp_set<Path>(inst);
-					printf("[ICA%d] dcr $%x\n", Path+1, inst & 0x003FFFFCu);
+					//printf("[ICA%d] dcr $%x\n", Path+1, inst & 0x003FFFFCu);
 					break;
 
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
 					dcp_set<Path>(inst);
-					printf("[ICA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
+					//printf("[ICA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
 					addr = inst & 0x003FFFFFu;
-					printf("[ICA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
+					//printf("[ICA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
 					vsr_set<Path>(inst);
-					printf("[ICA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
+					//printf("[ICA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
 					return;
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
@@ -150,7 +150,7 @@ class MCD212
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
-					printf("[DCA%d] stop\n", Path+1);
+					//printf("[DCA%d] stop\n", Path+1);
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -164,19 +164,19 @@ class MCD212
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
 					dcp_set<Path>(inst);
-					printf("[DCA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
+					//printf("[DCA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
 					vsr_set<Path>(inst);
-					printf("[DCA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
+					//printf("[DCA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
 					vsr_set<Path>(inst);
-					printf("[DCA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
+					//printf("[DCA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
 					return;
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
@@ -205,7 +205,6 @@ class MCD212
 	/** Draws a video line **/
 	void execute()
 	{
-		/*******************************************************/
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
 			if (linesV == 1 && DE) {
 				if (IC1) { ICA_execute<0>(); }
@@ -222,31 +221,28 @@ class MCD212
 			}
 
 			if (DE) {
-				// render line onto bitmap
-				video.draw_line(line, memory, VSR[0], VSR[1]);
-				VSR[0] += video.FG[0].width;
-				VSR[1] += video.FG[1].width;
+				for (line = 0; line < video.FG[0].height; line++)
+				{
+					// render line onto bitmap
+					video.draw_line(line, memory, VSR[0], VSR[1]);
+					VSR[0] += video.FG[0].width;
+					VSR[1] += video.FG[1].width;
 
-				if (IC1 && DC1) { DCA_execute<0>(); }
-				if (IC2 && DC2) { DCA_execute<1>(); }
+					if (IC1 && DC1) { DCA_execute<0>(); }
+					if (IC2 && DC2) { DCA_execute<1>(); }
+				}
 			}
 
 			line += SM ? 2 : 1;
 
 			if (linesV >= MCD212_VSYNC_LINES) {
-				video.draw_frame();
-
-				// printf("\x1b[%d;%dH", 11, 0);
-				// printf("VSync %lld\n", frames);
-				// printf("total lines: %d\n", line + 1);
-
 				DA = 0;
 				frames++;
 				linesV = 0;
 				line = 0;
+				video.draw_frame();
 			}
 		}
-		/*******************************************************/
 
 		/*printf("\n[VDSC viewer]\n");
 		printf("CSR1R:  DA  %02x  PA  %02x\n", DA, PA);
@@ -266,8 +262,9 @@ public:
 		this->cpu = cpu;
 		emuConfig = config;
 		ns = 0;
-
 		memory = &dram[0];
+
+		reset();
 	}
 
 	void reset()
@@ -359,48 +356,24 @@ public:
 				FD = (value & 0b0010'0000'0000'0000u) >> 13;
 				CF = (value & 0b0100'0000'0000'0000u) >> 14;
 				DE = (value & 0b1000'0000'0000'0000u) >> 15;
-				/*VSR[0] &= 0x0000FFFF;
-				VSR[0] |= (value & 0x3F) << 16;*/
 				break;
 			case 0x4FFFE2: // DCR2
 				DC2 = (value & 0b0000'0000'1000'0000u) >> 7;
 				IC2 = (value & 0b0000'0001'0000'0000u) >> 8;
 				CM[1] = (value & 0b0000'0100'0000'0000u) >> 10;
-				/*VSR[1] &= 0x0000FFFF;
-				VSR[1] |= (value & 0x3F) << 16;
 				break;
-			case 0x4FFFF4: // VSR1
-				VSR[0] &= 0xFFFF0000;
-				VSR[0] |= value & 0x0000FFFF;
-				break;
-			case 0x4FFFE4: // VSR2
-				VSR[1] &= 0xFFFF0000;
-				VSR[1] |= value & 0x0000FFFF;
-				break;*/
 			case 0x4FFFF8: // DDR1
 				FT2[0] = (value & 0b0000'0000'1000'0000u) >> 7;
 				FT1[0] = (value & 0b0000'0001'0000'0000u) >> 8;
 				MF2[0] = (value & 0b0000'0010'0000'0000u) >> 9;
 				MF1[0] = (value & 0b0000'0100'0000'0000u) >> 10;
-				/*DCP[0] &= 0x0000FFFF;
-				DCP[0] |= (value & 0x3F) << 16;*/
 				break;
 			case 0x4FFFE8: // DDR2
 				FT2[1] = (value & 0b0000'0000'1000'0000u) >> 7;
 				FT1[1] = (value & 0b0000'0001'0000'0000u) >> 8;
 				MF2[1] = (value & 0b0000'0010'0000'0000u) >> 9;
 				MF1[1] = (value & 0b0000'0100'0000'0000u) >> 10;
-				/*DCP[1] &= 0x0000FFFF;
-				DCP[1] |= (value & 0x3F) << 16;
 				break;
-			case 0x4FFFFA: // DCP1
-				DCP[0] &= 0xFFFF0000;
-				DCP[0] |= value & 0x0000FFFC;
-				break;
-			case 0x4FFFEA: // DCP2
-				DCP[1] &= 0xFFFF0000;
-				DCP[1] |= value & 0x0000FFFC;
-				break;*/
 		}
 	}
 

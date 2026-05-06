@@ -50,19 +50,10 @@ public:
 
 	virtual bool step()
 	{
-		printf("\x1b[%d;%dH", 3, 0);
-
 		ns = MY_GETTIME;
 		cpu.execute();
 		os9.execute();
 		ns = MY_GETTIME - ns;
-
-		printf("[CPU viewer]\n");
-		printf("pc: %08x\n", cpu.core.pc);
-		/*printf("d0: %08x d1: %08x d2: %08x d3: %08x\n", cpu.core.d_regs[0].l, cpu.core.d_regs[1].l, cpu.core.d_regs[2].l, cpu.core.d_regs[3].l);
-		printf("d4: %08x d5: %08x d6: %08x d7: %08x\n", cpu.core.d_regs[4].l, cpu.core.d_regs[5].l, cpu.core.d_regs[6].l, cpu.core.d_regs[7].l);
-		printf("a0: %08x a1: %08x a2: %08x a3: %08x\n", cpu.core.a_regs[0].l, cpu.core.a_regs[1].l, cpu.core.a_regs[2].l, cpu.core.a_regs[3].l);
-		printf("a4: %08x a5: %08x a6: %08x a7: %08x\n", cpu.core.a_regs[4].l, cpu.core.a_regs[5].l, cpu.core.a_regs[6].l, cpu.core.a_regs[7].l);*/
 
 		return true;
 	}

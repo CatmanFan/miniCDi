@@ -35,7 +35,7 @@
 
 // Cores
 #include "cdi/Config.hpp"
-#include "cdi/Gfx.hpp"
+#include "cdi/Vdsc.hpp"
 #include "cdi/SCC68070.hpp"
 #include "cdi/MC68HC.hpp"
 #include "cdi/MCD212.hpp"

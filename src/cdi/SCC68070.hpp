@@ -55,6 +55,7 @@ public:
 		UART.USR = 0b00000010;
 		UART.UCS = 0b00001000;
 		UART.UCR = 0b10000000;
+		UART.USR |= 0b00000100; // TX
 	}
 
 	uint8_t read8(uint32_t addr, uint8_t def)
@@ -63,7 +64,7 @@ public:
 		{
 			if ((addr & 0x00ffffff) == 0x201b)
 			{
-				if (0) {
+				if (1) {
 					UART.USR &= 0b1111'1110;
 					UART.URH = 0;
 				} else {
@@ -117,6 +118,7 @@ public:
 	void execute()
 	{
 		m68k_execute(&core, 1900);
+		// printf("[CPU] pc: %08x\n", core.pc);
 	}
 };
 

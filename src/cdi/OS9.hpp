@@ -120,7 +120,7 @@ namespace OS9
 				if (cpu->core.exception_thrown == 32) {
 					printf("OS9 %x\n", cpu->core.d_regs[0].w);
 					// stop
-					while (1) { ; }
+					/*while (1) { ; }
 					switch ((enum EOs9SysCall)m68k_read_16(&cpu->core, cpu->core.pc)) {
 						default:
 							break;
@@ -142,7 +142,7 @@ namespace OS9
 								}
 							}
 							break;
-					}
+					}*/
 				}
 			}
 	};

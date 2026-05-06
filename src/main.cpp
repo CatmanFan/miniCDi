@@ -30,9 +30,8 @@ public:
 			SDL_RenderClear(this->renderer);
 
 			// Draw screen
-			// SDL_Rect dest = {640 / 2 - (384 / 2), 480 / 2 - (280 / 2), 384, 280};
-			SDL_UpdateTexture(this->texture, NULL, display_output, width);
-			SDL_RenderCopy(this->renderer, this->texture, NULL, /*&dest*/ NULL);
+			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
+			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
 			SDL_RenderPresent(this->renderer);
 		}
 	}
@@ -45,7 +44,7 @@ public:
 
 			this->window = SDL_CreateWindow("", 0, 0, 640, 480, SDL_WINDOW_SHOWN);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED);
-			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 		}
 	}
 
@@ -81,7 +80,7 @@ static bool FAT_Init() {
 	return true;
 }
 
-#define CDI_DEBUG
+// #define CDI_DEBUG
 
 static void RUN_CDI()
 {
@@ -130,6 +129,7 @@ int main(int argc, char **argv) {
 		VIDEO_Flush();
 		VIDEO_WaitVSync();
 		if (rmode->viTVMode & VI_NON_INTERLACE) { VIDEO_WaitVSync(); }
+		printf("\x1b[%d;%dH", 1, 0);
 	}
 
 	if (!FAT_Init()) {

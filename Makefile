@@ -15,11 +15,14 @@ include $(DEVKITPPC)/wii_rules
 # SOURCES is a list of directories containing source code
 # INCLUDES is a list of directories containing extra header files
 #---------------------------------------------------------------------------------
+export MINICDI_SOURCES	:=	src/cdi src/m68k src/os9
+export MINICDI_INCLUDE	:=	src
+
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	src $(sort $(dir $(wildcard ./src/*/ ./src/*/*/)))
+SOURCES		:=	$(MINICDI_SOURCES) src/platforms/wii
 DATA		:=	
-INCLUDES	:=	$(SOURCES)
+INCLUDES	:=	$(MINICDI_INCLUDE) src/platforms/wii
 
 #---------------------------------------------------------------------------------
 # options for code generation

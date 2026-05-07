@@ -245,10 +245,10 @@ class MCD212
 		}
 
 		/*printf("\n[VDSC viewer]\n");
-		printf("CSR1R:  DA  %02x  PA  %02x\n", DA, PA);
-		printf("CSR1W:  DI1 %02x  DD1 %02x  DD2 %02x  TD  %02x  DD  %02x  ST  %02x  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
-		printf("CSR2R:  IT1 %02x  IT2 %02x  BE %02x\n", IT1, IT2, BE[0]);
-		printf("CSR2W:  DI2 %02x\n", DI2);
+		printf("CSR1R > DA  %02x  PA  %02x\n", DA, PA);
+		printf("CSR1W > DI1 %02x  DD1 %02x  DD2 %02x  TD  %02x  DD  %02x  ST  %02x  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
+		printf("CSR2R > IT1 %02x  IT2 %02x  BE  %02x\n", IT1, IT2, BE[0]);
+		printf("CSR2W > DI2 %02x\n", DI2);
 		printf("DCR1:   DE  %02x  CF  %02x  FD  %02x  SM  %02x  CM1 %02x  IC1 %02x  DC1 %02x\n", DE, CF, FD, SM, CM[0], IC1, DC1);
 		printf("DCR2:   CM2 %02x  IC2 %02x  DC2 %02x\n", CM[1], IC2, DC2);
 		printf("DDR1:   MF1 %02x  MF2 %02x  FT1 %02x  FT2 %02x\n", MF1[0], MF2[0], FT1[0], FT2[0]);
@@ -320,12 +320,18 @@ public:
 		}
 	}
 
-	uint8_t read16(uint32_t addr)
+	uint16_t read16(uint32_t addr)
 	{
 		switch (addr)
 		{
 			default:
 				return READ16(memory, addr);
+			case 0x4FFFF0: // CSR1W
+				return 0xFF00 | (PA << 5) | (DA << 7);
+			case 0x4FFFE0: // CSR2W
+				uint8_t value = BE[0] | (IT2 << 1) | (IT1 << 2);
+				BE[0] = IT2 = IT1 = 0;
+				return 0xFF00 | value;
 		}
 	}
 
@@ -389,7 +395,7 @@ public:
 
 	bool check_vsync()
 	{
-		return DA == 0;
+		return linesV == 0;
 	}
 };
 

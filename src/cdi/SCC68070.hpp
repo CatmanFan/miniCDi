@@ -118,7 +118,8 @@ public:
 	void execute()
 	{
 		m68k_execute(&core, 1900);
-		// printf("[CPU] pc: %08x\n", core.pc);
+		printf("\x1b[%d;%dH", 3, 0);
+		printf("[CPU] pc: %08x\n", (uint32_t)core.pc);
 	}
 };
 

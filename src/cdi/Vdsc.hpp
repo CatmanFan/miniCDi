@@ -230,36 +230,6 @@ public:
 				}
 			}
 		}
-
-		/*for (size_t y = 0; y < FG[0].height; y+=2) {
-			output[y*FG[0].width] = 0xffffffff;
-			output[y*FG[0].width+1] = 0xff0000ff;
-			output[y*FG[0].width+2] = 0xff8000ff;
-			output[y*FG[0].width+3] = 0xffff00ff;
-			output[y*FG[0].width+4] = 0x80ff00ff;
-			output[y*FG[0].width+5] = 0x80ff00ff;
-			output[y*FG[0].width+6] = 0x00ff00ff;
-			output[y*FG[0].width+7] = 0x00ff80ff;
-			output[y*FG[0].width+8] = 0x00ffffff;
-			output[y*FG[0].width+9] = 0x0080ffff;
-			output[y*FG[0].width+10] = 0x0000ffff;
-			output[y*FG[0].width+11] = 0x8000ffff;
-			output[y*FG[0].width+12] = 0xff00ffff;
-
-			output[y*FG[0].width+FG[0].width-1] = 0xffffffff;
-			output[y*FG[0].width+FG[0].width-2] = 0xff0000ff;
-			output[y*FG[0].width+FG[0].width-3] = 0xff8000ff;
-			output[y*FG[0].width+FG[0].width-4] = 0xffff00ff;
-			output[y*FG[0].width+FG[0].width-5] = 0x80ff00ff;
-			output[y*FG[0].width+FG[0].width-6] = 0x80ff00ff;
-			output[y*FG[0].width+FG[0].width-7] = 0x00ff00ff;
-			output[y*FG[0].width+FG[0].width-8] = 0x00ff80ff;
-			output[y*FG[0].width+FG[0].width-9] = 0x00ffffff;
-			output[y*FG[0].width+FG[0].width-10] = 0x0080ffff;
-			output[y*FG[0].width+FG[0].width-11] = 0x0000ffff;
-			output[y*FG[0].width+FG[0].width-12] = 0x8000ffff;
-			output[y*FG[0].width+FG[0].width-13] = 0xff00ffff;
-		}*/
 	}
 
 	/** Draws planes and corresponding data/parameters. **/
@@ -267,10 +237,12 @@ public:
 	void draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t y)
 	{
 		uint32_t* dest = &FG[Path].decoded[y*FG[Path].width];
+		size_t adv = 0;
 		size_t x = 0;
 
 		while (x < FG[Path].width)
 		{
+			adv++;
 			uint8_t* src = &memory[((vsr + x) & 0x0007ffff) ^ 1];
 
 			switch (Decoder.FT[Path]) {
@@ -280,36 +252,39 @@ public:
 
 				case RunLength:
 					{
+						// Determine what type it is
 						int repeat = 0;
 						if (*src & 0x80) // indicates run of multiple pixels
 						{
+							adv++;
 							repeat = *(src+1);
 							if (repeat == 1 || repeat == 0)
 								repeat = FG[Path].width - x;
 						}
 
-						/** DECODE RUNLENGTH IMAGE **/
+						// Actual decoding
 						switch (Decoder.Icm[Path])
 						{
 							default:
 								break;
-							// case CLUT4:
-								// color0 = (Decoder.ColorCLUT[(*src >> 4) & 0x0F] << 8) | 0xff;
-								// color1 = (Decoder.ColorCLUT[*src & 0x0F] << 8) | 0xff;
-								break;
+							case CLUT4:
 							case CLUT7:
-								*dest = (Decoder.ColorCLUT[*src & 0x7F] << 8) | 0xff;
-								x++;
-								break;
-							// case CLUT8:
-								// color0 = color1 = (Decoder.ColorCLUT[*src] << 8) | 0xff;
-								break;
+							case CLUT8:
+								if (Decoder.CM[Path] == Double4) {
+									*dest = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | 0xff;
+									*(dest+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | 0xff;
+									x+=2;
+								} else {
+									*dest = (Decoder.ColorCLUT[*src & (Decoder.Icm[Path] == CLUT7 ? 0x7F : 0xFF)] << 8) | 0xff;
+									x++;
+								}
 						}
 
+						// Repeat per pixel/pair
 						for (int i = 1; i < repeat; i++)
 						{
 							memcpy(dest+i, dest, sizeof(uint32_t));
-							x++;
+							x += Decoder.CM[Path] == Double4 ? 2 : 1;
 						}
 					}
 					break;

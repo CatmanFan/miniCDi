@@ -5,10 +5,20 @@ out/
 build/
 cmake-build-*/
 CMakeSettings.json
-*.dol
-*.elf
+
 *.txt
 *.docx
+
+# Binaries
+*.bin
+*.rom
+*.elf
+*.dol
+*.3dsx
+*.smdh
+*.nro
+*.rpx
+*.wuhb
 
 # MacOS
 .DS_Store

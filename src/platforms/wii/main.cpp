@@ -1,16 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <gccore.h>
-#include <wiiuse/wpad.h>
+#include <string.h>
+#include "cdi/common.hpp"
 
-#include <SDL2/SDL.h>
-#include <fat.h>
-#include <sdcard/wiisd_io.h>
-#include <string>
 #include <fstream>
 #include <dirent.h>
 
-#include "cdi/common.hpp"
+// Console-specific libraries
+#include <SDL2/SDL.h>
+#include <fat.h>
+#include <sdcard/wiisd_io.h>
+#include <gccore.h>
+#include <wiiuse/wpad.h>
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -80,8 +81,6 @@ static bool FAT_Init() {
 	return true;
 }
 
-// #define CDI_DEBUG
-
 static void RUN_CDI()
 {
 	MiniCDIConfig config = {
@@ -90,7 +89,7 @@ static void RUN_CDI()
 
 	MonoIPlayer cdi;
 	cdi.Init((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
-#ifndef CDI_DEBUG
+#ifndef MINICDI_DEBUG
 	SDL screen;
 #endif
 
@@ -102,8 +101,9 @@ static void RUN_CDI()
 		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
 			break;
 
+		// printf("\x1b[%d;%dH", 4, 0);
 		if (cdi.step()) {
-#ifdef CDI_DEBUG
+#ifdef MINICDI_DEBUG
 			VIDEO_WaitVSync();
 #else
 			screen.update(cdi.get_display(), cdi.get_display_width());
@@ -129,8 +129,9 @@ int main(int argc, char **argv) {
 		VIDEO_Flush();
 		VIDEO_WaitVSync();
 		if (rmode->viTVMode & VI_NON_INTERLACE) { VIDEO_WaitVSync(); }
-		printf("\x1b[%d;%dH", 1, 0);
 	}
+
+	printf("miniCDi - Philips CD-i 220/20 F2 experimental emulator\n");
 
 	if (!FAT_Init()) {
 		printf("failed to init FAT, exiting");
@@ -143,8 +144,6 @@ int main(int argc, char **argv) {
 		sleep(5);
 		exit(0);
 	}
-
-	printf("miniCDi - Philips CD-i 220/20 F2 experimental emulator\n");
 
 	RUN_CDI();
 

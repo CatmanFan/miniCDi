@@ -212,7 +212,7 @@ class MCD212
 			}
 		} else {
 			DA = 1;
-			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 0;
+			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
 
 			if (line == 0) {
 				video.set_mode(CF == 1 ? VideoCDI::NTSCTV : VideoCDI::PAL, CM[0], CM[1]);
@@ -245,15 +245,15 @@ class MCD212
 		}
 
 		/*printf("\n[VDSC viewer]\n");
-		printf("CSR1R > DA  %02x  PA  %02x\n", DA, PA);
-		printf("CSR1W > DI1 %02x  DD1 %02x  DD2 %02x  TD  %02x  DD  %02x  ST  %02x  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
-		printf("CSR2R > IT1 %02x  IT2 %02x  BE  %02x\n", IT1, IT2, BE[0]);
-		printf("CSR2W > DI2 %02x\n", DI2);
-		printf("DCR1:   DE  %02x  CF  %02x  FD  %02x  SM  %02x  CM1 %02x  IC1 %02x  DC1 %02x\n", DE, CF, FD, SM, CM[0], IC1, DC1);
-		printf("DCR2:   CM2 %02x  IC2 %02x  DC2 %02x\n", CM[1], IC2, DC2);
-		printf("DDR1:   MF1 %02x  MF2 %02x  FT1 %02x  FT2 %02x\n", MF1[0], MF2[0], FT1[0], FT2[0]);
-		printf("DDR2:   MF1 %02x  MF2 %02x  FT1 %02x  FT2 %02x\n", MF1[1], MF2[1], FT1[1], FT2[1]);
-		printf("\nVSR1: %06x\nVSR2: %06x\nDCP1: %06x\nDCP2: %06x\n", VSR[0], VSR[1], DCP[0], DCP[1]);*/
+		printf("CSR1R > DA  %02X  PA  %02X\n", DA, PA);
+		printf("CSR1W > DI1 %02X  DD1 %02X  DD2 %02X  TD  %02X  DD  %02X  ST  %02X  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
+		printf("CSR2R > IT1 %02X  IT2 %02X  BE  %02X\n", IT1, IT2, BE[0]);
+		printf("CSR2W > DI2 %02X\n", DI2);
+		printf("DCR1:   DE  %02X  CF  %02X  FD  %02X  SM  %02X  CM1 %02X  IC1 %02X  DC1 %02X\n", DE, CF, FD, SM, CM[0], IC1, DC1);
+		printf("DCR2:   CM2 %02X  IC2 %02X  DC2 %02X\n", CM[1], IC2, DC2);
+		printf("DDR1:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[0], MF2[0], FT1[0], FT2[0]);
+		printf("DDR2:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[1], MF2[1], FT1[1], FT2[1]);
+		printf("\nVSR1: %06X\nVSR2: %06X\nDCP1: %06X\nDCP2: %06X\n", VSR[0], VSR[1], DCP[0], DCP[1]);*/
 	}
 
 public:
@@ -261,7 +261,6 @@ public:
 	{
 		this->cpu = cpu;
 		emuConfig = config;
-		ns = 0;
 		memory = &dram[0];
 
 		reset();
@@ -269,6 +268,8 @@ public:
 
 	void reset()
 	{
+		ns = 0;
+
 		// clear write bits
 		DI1 = 0; DD1 = 0; DD2 = 0; TD = 0; DD = 0; ST = 0; BE[0] = 0; BE[1] = 0;
 		DI2 = 0;

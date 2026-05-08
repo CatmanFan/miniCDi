@@ -86,12 +86,13 @@ static void RUN_CDI()
 	MiniCDIConfig config = {
 		true	/** PAL mode **/
 	};
+	bool running = true;
 
 	MonoIPlayer cdi;
 	cdi.Init((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
-#ifndef MINICDI_DEBUG
-	SDL screen;
-#endif
+	#ifndef MINICDI_DEBUG
+		SDL screen;
+	#endif
 
 	while (SYS_MainLoop()) {
 		WPAD_ScanPads();
@@ -100,14 +101,24 @@ static void RUN_CDI()
 
 		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
 			break;
+		if (down & WPAD_BUTTON_B) {
+			running = !running;
+			printf("\x1b[%d;%dH", 2, 0);
+			if (!running)
+				printf("Paused\n");
+			if (running)
+				printf("      \n");
+		}
 
-		// printf("\x1b[%d;%dH", 4, 0);
-		if (cdi.step()) {
-#ifdef MINICDI_DEBUG
-			VIDEO_WaitVSync();
-#else
-			screen.update(cdi.get_display(), cdi.get_display_width());
-#endif
+		if (running)
+		{
+			if (cdi.step()) {
+				#ifdef MINICDI_DEBUG
+					VIDEO_WaitVSync();
+				#else
+					screen.update(cdi.get_display(), cdi.get_display_width());
+				#endif
+			}
 		}
 	}
 }

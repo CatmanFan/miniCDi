@@ -52,8 +52,10 @@ public:
 	{
 		ns = MY_GETTIME;
 		cpu.execute();
-		os9.execute();
 		ns = MY_GETTIME - ns;
+
+		os9.execute();
+		cpu.increment_time(ns);
 
 		return true;
 	}

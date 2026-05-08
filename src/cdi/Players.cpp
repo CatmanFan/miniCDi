@@ -11,7 +11,7 @@ static uint8_t MonoI_read8(M68kCpu* cpu, uint32_t addr) {
 	if (m_currentPlayer.mcd212 && (addr & 0xFFFF00) == 0x4FFF00)
 		return m_currentPlayer.mcd212->read8(addr);
 
-	else if (m_currentPlayer.scc68070 && (addr & 0x0FFFFFF0) == 0x00002010)
+	else if (m_currentPlayer.scc68070 && (addr & 0xF0000000) == 0x80000000)
 		return m_currentPlayer.scc68070->read8(addr, m_currentPlayer.memory[addr & 0x00ffffff]);
 
 	else
@@ -31,7 +31,7 @@ static uint32_t MonoI_read32(M68kCpu* cpu, uint32_t addr) {
 }
 
 static void MonoI_write8(M68kCpu* cpu, uint32_t addr, uint8_t value) {
-	if (m_currentPlayer.scc68070 && (addr & 0x0FFFFFF0) == 0x00002010)
+	if (m_currentPlayer.scc68070 && (addr & 0xF0000000) == 0x80000000)
 		m_currentPlayer.scc68070->write8(addr, value);
 
 	else
@@ -51,6 +51,10 @@ static void MonoI_write16(M68kCpu* cpu, uint32_t addr, uint16_t value) {
 static void MonoI_write32(M68kCpu* cpu, uint32_t addr, uint32_t value) {
     MonoI_write16(cpu, addr, (uint16_t)(value >> 16));
     MonoI_write16(cpu, addr + 2, (uint16_t)value);
+}
+
+static int MonoI_int_ack(M68kCpu* cpu, int level) {
+    return M68K_INT_ACK_AUTOVECTOR;
 }
 
 bool MonoIPlayer::Init(const char* bios, MiniCDIConfig *config)
@@ -81,6 +85,7 @@ bool MonoIPlayer::Init(const char* bios, MiniCDIConfig *config)
 		m68k_set_write8_callback(&this->cpu.core, MonoI_write8);
 		m68k_set_write16_callback(&this->cpu.core, MonoI_write16);
 		m68k_set_write32_callback(&this->cpu.core, MonoI_write32);
+		m68k_set_int_ack_callback(&this->cpu.core, MonoI_int_ack);
 
 		return true;
 	}

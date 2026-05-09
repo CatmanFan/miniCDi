@@ -13,8 +13,6 @@ extern "C" {
 #include "m68k/m68k.h"
 #define ROCKET68_VERSION_STR "0.2.1"
 
-#include "m68k/m68k_internal.h"
-
 #ifdef __cplusplus
 }
 #endif
@@ -258,15 +256,21 @@ public:
 		/*char text[128];
 		m68k_disasm(&core, core.pc, text, (int)sizeof(text));
 		printf("[SCC68070] %s\n", text);*/
+	}
 
+	void INT1()
+	{
+		int level = (LIR >> 4) & 0x07;
+		if (level > 0)
+			m68k_set_irq(&core, level + 57 - 24);
 	}
 
 	void increment_time(int ns)
 	{
-		// this->ns += ns;
-		// if (this->ns >= cycleTime)
+		this->ns += ns;
+		if (this->ns >= cycleTime)
 		{
-			// this->ns -= cycleTime;
+			this->ns -= cycleTime;
 
 			printf("[SCC68070] INT1N:  %d    INT2N:  %d\n", (LIR >> 4) & 0x07, LIR & 0x07);
 			printf("           PICR1:  %02X\n", PICR[0]);
@@ -279,13 +283,7 @@ public:
 				Timer.T[0] = Timer.RR;
 
 				if ((PICR[0] & 0x07) != 0)
-				{
-					m68k_exception(&core, 62);
-					core.sr &= ~0x0700;
-					core.sr |= (6 << 8);
-					core.irq_level = 0;
-					core.stopped = false;
-				}
+					INT1();
 			}
 			Timer.T[0]++;
 

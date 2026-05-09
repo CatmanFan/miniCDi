@@ -112,13 +112,13 @@ class MCD212
 					{
 						IT2 = 1;
 						if (!DI2)
-							m68k_set_irq(&cpu->core, 3);
+							cpu->INT1();
 					}
 					else
 					{
 						IT1 = 1;
 						if (!DI1)
-							m68k_set_irq(&cpu->core, 3);
+							cpu->INT1();
 					}
 					break;
 
@@ -185,13 +185,13 @@ class MCD212
 					{
 						IT2 = 1;
 						if (!DI2)
-							m68k_set_irq(&cpu->core, 3);
+							cpu->INT1();
 					}
 					else
 					{
 						IT1 = 1;
 						if (!DI1)
-							m68k_set_irq(&cpu->core, 3);
+							cpu->INT1();
 					}
 					break;
 
@@ -212,7 +212,7 @@ class MCD212
 			}
 		} else {
 			DA = 1;
-			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 0;
+			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
 
 			if (line == 0) {
 				video.set_mode(CF == 1 ? VideoCDI::NTSCTV : VideoCDI::PAL, CM[0], CM[1]);

@@ -212,7 +212,7 @@ class MCD212
 			}
 		} else {
 			DA = 1;
-			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
+			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 0;
 
 			if (line == 0) {
 				video.set_mode(CF == 1 ? VideoCDI::NTSCTV : VideoCDI::PAL, CM[0], CM[1]);

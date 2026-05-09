@@ -78,7 +78,7 @@ u32 m68k_get_ar(M68kCpu* cpu, int reg) {
     return 0;
 }
 
-static inline u32 mask_address_24(u32 address) { return address & 0x00FFFFFFu; }
+static inline u32 mask_address_24(u32 address) { return address /** & 0x00FFFFFFu **/; }
 
 static bool is_valid_address(M68kCpu* cpu, u32 address) { return address < cpu->memory_size; }
 

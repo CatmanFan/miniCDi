@@ -12,6 +12,7 @@ extern "C" {
 #include "m68k/loader.h"
 #include "m68k/m68k.h"
 #define ROCKET68_VERSION_STR "0.2.1"
+
 #include "m68k/m68k_internal.h"
 
 #ifdef __cplusplus
@@ -22,31 +23,44 @@ extern "C" {
 
 class SCC68070
 {
+	static constexpr int cycleTime = (1.0L / 15'000'000) * 96'000'000'000; // microseconds to nanoseconds
 	uint8_t* memory;
 	int ns;
 
 public:
 	M68kCpu core;
 
-	uint8_t PICR[2];
+	uint8_t LIR; // 80001001
 
 	struct
 	{
-		uint8_t UMR;
-		uint8_t USR;
-		uint8_t UCS;
-		uint8_t UCR;
-		uint8_t UTH;
-		uint8_t URH;
+		uint8_t IDR;
+		uint8_t IAR;
+		uint8_t ISR;
+		uint8_t ICR;
+		uint8_t ICCR;
+	} I2C;
+
+	struct
+	{
+		uint8_t UMR; // 80002011
+		uint8_t USR; // 80002013
+		uint8_t UCS; // 80002015
+		uint8_t UCR; // 80002017
+		uint8_t UTH; // 80002019
+		uint8_t URH; // 8000201B
 	} UART;
 
 	struct
 	{
-		uint8_t TCR;
-		uint8_t TSR;
-		uint16_t RR;
-		uint16_t T[3];
+		uint8_t TSR; // 80002020
+		uint8_t TCR; // 80002021
+		uint16_t RR; // 80002022
+		uint16_t T[3]; // 80002024
 	} Timer;
+
+	uint8_t PICR[2]; // 80002045, 80002047
+	uint8_t DMA[0x6E]; // 80004000
 
 	void init(uint8_t* ram, size_t ramSize, const char* rom, size_t romAddr)
 	{
@@ -65,113 +79,174 @@ public:
 		core.a_regs[7].l = 0x1500;
 		core.pc = 0x4004b8;
 
+		LIR = 0;
 		UART.UMR = 0b00100000;
 		UART.USR = 0b00000010;
 		UART.UCS = 0b00001000;
 		UART.UCR = 0b10000000;
 		UART.USR |= 0b00000100; // TX
-		PICR[0] = PICR[1] = 0;
 		Timer = {0};
+		PICR[0] = PICR[1] = 0;
 	}
 
-	uint8_t read8(uint32_t addr, uint8_t def)
+	uint8_t read8(uint32_t addr)
 	{
-		// if ((core.sr & M68K_SR_S) != 0)
+		if ((core.sr & M68K_SR_S) != 0)
 		{
-			if ((addr & 0x0fffffff) == 0x2013) { return UART.USR; }
-			if ((addr & 0x0fffffff) == 0x201b)
-			{
-				if (1) {
-					UART.USR &= 0b1111'1110;
-					UART.URH = 0;
-				} else {
-					UART.USR |= 0b0000'0001;
-					UART.URH = 1;
-				}
-				return UART.URH;
+			switch (addr & 0x0fffffff) {
+				case 0x1001: return LIR;
+
+				case 0x2001: return I2C.IDR;
+				case 0x2003: return I2C.IAR;
+				case 0x2005: return I2C.ISR;
+				case 0x2007: return I2C.ICR;
+				case 0x2009: return I2C.ICCR;
+
+				case 0x2013: return UART.USR;
+				case 0x201b:
+					if (1) {
+						UART.USR &= 0b1111'1110;
+						UART.URH = 0;
+					} else {
+						UART.USR |= 0b0000'0001;
+						UART.URH = 1;
+					}
+					return UART.URH;
+
+				case 0x2020: return Timer.TSR;
+				case 0x2021: return Timer.TCR;
+				case 0x2022: return (Timer.RR & 0xFF00) >> 8;
+				case 0x2023: return Timer.RR & 0x00FF;
+				case 0x2024: return (Timer.T[0] & 0xFF00) >> 8;
+				case 0x2025: return Timer.T[0] & 0x00FF;
+				case 0x2026: return (Timer.T[1] & 0xFF00) >> 8;
+				case 0x2027: return Timer.T[1] & 0x00FF;
+				case 0x2028: return (Timer.T[2] & 0xFF00) >> 8;
+				case 0x2029: return Timer.T[2] & 0x00FF;
+
+				case 0x2045: return PICR[0];
+				case 0x2047: return PICR[1];
+
+				default:
+					if ((addr & 0x0fffffff) >= 0x4000 && (addr & 0x0fffffff) <= 0x406D) {
+						return DMA[(addr & 0x0fffffff) - 0x4000];
+					}
+					break;
 			}
-
-			if ((addr & 0x0fffffff) == 0x2020) { return Timer.TSR; }
-			if ((addr & 0x0fffffff) == 0x2021) { return Timer.TCR; }
-			if ((addr & 0x0fffffff) == 0x2022) { return (Timer.RR & 0xFF00) >> 8; }
-			if ((addr & 0x0fffffff) == 0x2023) { return Timer.RR & 0x00FF; }
-			if ((addr & 0x0fffffff) == 0x2024) { return (Timer.T[0] & 0xFF00) >> 8; }
-			if ((addr & 0x0fffffff) == 0x2025) { return Timer.T[0] & 0x00FF; }
-			if ((addr & 0x0fffffff) == 0x2026) { return (Timer.T[1] & 0xFF00) >> 8; }
-			if ((addr & 0x0fffffff) == 0x2027) { return Timer.T[1] & 0x00FF; }
-			if ((addr & 0x0fffffff) == 0x2028) { return (Timer.T[2] & 0xFF00) >> 8; }
-			if ((addr & 0x0fffffff) == 0x2029) { return Timer.T[2] & 0x00FF; }
-
-			if ((addr & 0x0fffffff) == 0x2045) { return PICR[0]; }
-			if ((addr & 0x0fffffff) == 0x2047) { return PICR[1]; }
 		}
 
-		return def;
+		return 0;
 	}
 
 	void write8(uint32_t addr, uint8_t value)
 	{
-		// if ((core.sr & M68K_SR_S) != 0)
+		if ((core.sr & M68K_SR_S) != 0)
 		{
-			if ((addr & 0x0fffffff) == 0x2011)
-			{
-				UART.UMR = value;
-				return;
-			}
-			if ((addr & 0x0fffffff) == 0x2015)
-			{
-				UART.UCS = value;
-				return;
-			}
-			if ((addr & 0x0fffffff) == 0x2017)
-			{
-				UART.UCR = value;
-				if (UART.UCR & 0b0'010'0000) { UART.URH = 0; }
-				if (UART.UCR & 0b0'011'0000) { UART.UTH = 0; }
-				if (UART.UCR & 0b0'100'0000) { UART.USR &= 0b0000'1111; }
-				return;
-			}
-			if ((addr & 0x0fffffff) == 0x2019)
-			{
-				UART.USR |= 0b0000'1000;
-				UART.UTH = value;
-				return;
-			}
+			switch (addr & 0x0fffffff) {
+				case 0x1001:
+					LIR = value & 0x77;
+					// if (LIR & 0x80) LIR &= 0x8F;
+					// if (LIR & 0x08) LIR &= 0xF8;
+					break;
 
-			if ((addr & 0x0fffffff) == 0x2020) { Timer.TSR = value; return; }
-			if ((addr & 0x0fffffff) == 0x2021) { Timer.TCR = value; return; }
-			if ((addr & 0x0fffffff) == 0x2022) { Timer.RR &= 0x00FF; Timer.RR |= (value << 8); return; }
-			if ((addr & 0x0fffffff) == 0x2023) { Timer.RR &= 0xFF00; Timer.RR |= value; return; }
-			if ((addr & 0x0fffffff) == 0x2024) { Timer.T[0] &= 0x00FF; Timer.T[0] |= (value << 8); return; }
-			if ((addr & 0x0fffffff) == 0x2025) { Timer.T[0] &= 0xFF00; Timer.T[0] |= value; return; }
-			if ((addr & 0x0fffffff) == 0x2026) { Timer.T[1] &= 0x00FF; Timer.T[1] |= (value << 8); return; }
-			if ((addr & 0x0fffffff) == 0x2027) { Timer.T[1] &= 0xFF00; Timer.T[1] |= value; return; }
-			if ((addr & 0x0fffffff) == 0x2028) { Timer.T[2] &= 0x00FF; Timer.T[2] |= (value << 8); return; }
-			if ((addr & 0x0fffffff) == 0x2029) { Timer.T[2] &= 0xFF00; Timer.T[2] |= value; return; }
+				case 0x2001:
+					I2C.IDR = value;
+					break;
+				case 0x2003:
+					I2C.IAR = value;
+					break;
+				case 0x2005:
+					I2C.ISR = value;
+					break;
+				case 0x2007:
+					I2C.ICR = value;
+					break;
+				case 0x2009:
+					I2C.ICCR = value;
+					break;
 
-			if ((addr & 0x0fffffff) == 0x2045) {
-				PICR[0] = value;
-				if (PICR[0] & 0x80) { // PIR for I2C-bus
-					PICR[0] &= 0x0F;
-				}
-				if (PICR[0] & 0x08) { // PIR for Timer
-					PICR[0] &= 0xF0;
-				}
-				return;
-			}
-			if ((addr & 0x0fffffff) == 0x2047) {
-				PICR[1] = value;
-				if (PICR[1] & 0x80) { // PIR for UART receiver
-					PICR[1] &= 0x0F;
-				}
-				if (PICR[1] & 0x08) { // PIR for UART transmitter
-					PICR[1] &= 0xF0;
-				}
-				return;
+				case 0x2011:
+					UART.UMR = value;
+					break;
+				case 0x2015:
+					UART.UCS = value;
+					break;
+				case 0x2017:
+					UART.UCR = value;
+					if (UART.UCR & 0b0'010'0000)
+						UART.URH = 0;
+					if (UART.UCR & 0b0'011'0000)
+						UART.UTH = 0;
+					if (UART.UCR & 0b0'100'0000)
+						UART.USR &= 0b0000'1111;
+					break;
+				case 0x2019:
+					UART.USR |= 0b0000'1000;
+					UART.UTH = value;
+					break;
+
+				case 0x2020:
+					Timer.TSR = value;
+					break;
+				case 0x2021:
+					Timer.TCR = value;
+					break;
+				case 0x2022:
+					Timer.RR &= 0x00FF;
+					Timer.RR |= (value << 8);
+					break;
+				case 0x2023:
+					Timer.RR &= 0xFF00;
+					Timer.RR |= value;
+					break;
+				case 0x2024:
+					Timer.T[0] &= 0x00FF;
+					Timer.T[0] |= (value << 8);
+					break;
+				case 0x2025:
+					Timer.T[0] &= 0xFF00;
+					Timer.T[0] |= value;
+					break;
+				case 0x2026:
+					Timer.T[1] &= 0x00FF;
+					Timer.T[1] |= (value << 8);
+					break;
+				case 0x2027:
+					Timer.T[1] &= 0xFF00;
+					Timer.T[1] |= value;
+					break;
+				case 0x2028:
+					Timer.T[2] &= 0x00FF;
+					Timer.T[2] |= (value << 8);
+					break;
+				case 0x2029:
+					Timer.T[2] &= 0xFF00;
+					Timer.T[2] |= value;
+					break;
+
+				case 0x2045:
+					PICR[0] = value;
+					if (PICR[0] & 0x80)
+						PICR[0] &= 0x0F; // PIR for UART receiver
+					else if (PICR[0] & 0x08)
+						PICR[0] &= 0xF0; // PIR for UART transmitter
+					break;
+
+				case 0x2047:
+					PICR[1] = value;
+					if (PICR[1] & 0x80)
+						PICR[1] &= 0x0F; // PIR for UART receiver
+					else if (PICR[1] & 0x08)
+						PICR[1] &= 0xF0; // PIR for UART transmitter
+					break;
+
+				default:
+					if ((addr & 0x0fffffff) >= 0x4000 && (addr & 0x0fffffff) <= 0x406D) {
+						DMA[(addr & 0x0fffffff) - 0x4000] = value;
+					}
+					break;
 			}
 		}
-
-		memory[addr & 0x00ffffff] = value;
 	}
 
 	void execute()
@@ -188,12 +263,13 @@ public:
 
 	void increment_time(int ns)
 	{
-		this->ns += ns;
-		if (this->ns >= (1.0L / 15'000'000) * 96'000'000'000) // microseconds to nanoseconds
+		// this->ns += ns;
+		// if (this->ns >= cycleTime)
 		{
-			this->ns -= (1.0L / 15'000'000) * 96'000'000'000;
+			// this->ns -= cycleTime;
 
-			printf("[SCC68070] PICR1:  %02x\n", PICR[0]);
+			printf("[SCC68070] INT1N:  %d    INT2N:  %d\n", (LIR >> 4) & 0x07, LIR & 0x07);
+			printf("           PICR1:  %02X\n", PICR[0]);
 			printf("           TSR:    %02X   TCR:    %02X\n", Timer.TSR, Timer.TCR);
 			printf("           RR:     %04X Timer0: %04X\n", Timer.RR, Timer.T[0]);
 
@@ -204,37 +280,14 @@ public:
 
 				if ((PICR[0] & 0x07) != 0)
 				{
-					m68k_set_irq(&core, PICR[0] & 0x07);
-					// m68k_exception(&core, 56 + (PICR[0] & 0x07));
-					// core.sr &= ~0x0700;
-					// core.sr |= (core.irq_level << 8);
-					// core.irq_level = 0;
-					// core.stopped = false;
+					m68k_exception(&core, 62);
+					core.sr &= ~0x0700;
+					core.sr |= (6 << 8);
+					core.irq_level = 0;
+					core.stopped = false;
 				}
 			}
 			Timer.T[0]++;
-
-			if (Timer.TCR & 0x30)
-			{
-				if (Timer.T[1] >= 0xFFFF)
-				{
-					Timer.TSR |= 0x10; // overflow1 flag
-
-					if ((PICR[0] & 0x07) != 0)
-					{
-						m68k_set_irq(&core, PICR[0] & 0x07);
-						// m68k_exception(&core, 56 + (PICR[0] & 0x07));
-						// core.sr &= ~0x0700;
-						// core.sr |= (core.irq_level << 8);
-						// core.irq_level = 0;
-						// core.stopped = false;
-					}
-				}
-				if ((Timer.TCR & 0x30) == 0x30) // EC mode
-					Timer.TSR &= 0b1'110'110'1;
-
-				Timer.T[1]++;
-			}
 
 			if (Timer.T[0] == Timer.T[1] && (Timer.TCR & 0b00110000) == 0b00010000)
 				Timer.TSR |= 0x40; // match1 flag

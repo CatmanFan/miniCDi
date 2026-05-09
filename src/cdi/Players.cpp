@@ -8,11 +8,11 @@ static struct
 } m_currentPlayer;
 
 static uint8_t MonoI_read8(M68kCpu* cpu, uint32_t addr) {
-	if (m_currentPlayer.mcd212 && (addr & 0xFFFF00) == 0x4FFF00)
-		return m_currentPlayer.mcd212->read8(addr);
+	if (m_currentPlayer.scc68070 && (addr & 0xF0000000) == 0x80000000)
+		return m_currentPlayer.scc68070->read8(addr);
 
-	else if (m_currentPlayer.scc68070 && (addr & 0xF0000000) == 0x80000000)
-		return m_currentPlayer.scc68070->read8(addr, m_currentPlayer.memory[addr & 0x00ffffff]);
+	else if (m_currentPlayer.mcd212 && (addr & 0xFFFF00) == 0x4FFF00)
+		return m_currentPlayer.mcd212->read8(addr);
 
 	else
 		return m_currentPlayer.memory[addr & 0x00ffffff];

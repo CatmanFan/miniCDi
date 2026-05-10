@@ -245,9 +245,10 @@ class MCD212
 		}
 
 		/*printf("\n[VDSC viewer]\n");
+		printf("frame: %lld\n", frames);
 		printf("CSR1R > DA  %02X  PA  %02X\n", DA, PA);
-		printf("CSR1W > DI1 %02X  DD1 %02X  DD2 %02X  TD  %02X  DD  %02X  ST  %02X  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
 		printf("CSR2R > IT1 %02X  IT2 %02X  BE  %02X\n", IT1, IT2, BE[0]);
+		printf("CSR1W > DI1 %02X  DD1 %02X  DD2 %02X  TD  %02X  DD  %02X  ST  %02X  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
 		printf("CSR2W > DI2 %02X\n", DI2);
 		printf("DCR1:   DE  %02X  CF  %02X  FD  %02X  SM  %02X  CM1 %02X  IC1 %02X  DC1 %02X\n", DE, CF, FD, SM, CM[0], IC1, DC1);
 		printf("DCR2:   CM2 %02X  IC2 %02X  DC2 %02X\n", CM[1], IC2, DC2);
@@ -327,9 +328,9 @@ public:
 		{
 			default:
 				return READ16(memory, addr);
-			case 0x4FFFF0: // CSR1W
+			case 0x4FFFF0: // CSR1R
 				return 0xFF00 | (PA << 5) | (DA << 7);
-			case 0x4FFFE0: // CSR2W
+			case 0x4FFFE0: // CSR2R
 				uint8_t value = BE[0] | (IT2 << 1) | (IT1 << 2);
 				BE[0] = IT2 = IT1 = 0;
 				return 0xFF00 | value;

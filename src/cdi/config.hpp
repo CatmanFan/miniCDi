@@ -3,6 +3,7 @@
 
 typedef struct {
 	bool pal;
+	bool lcd;
 } MiniCDIConfig;
 
 #endif

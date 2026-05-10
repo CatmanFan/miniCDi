@@ -21,9 +21,10 @@ class SDL
 	SDL_Window* window = nullptr;
 	SDL_Renderer* renderer = nullptr;
 	SDL_Texture* texture = nullptr;
+	SDL_Texture* lcd = nullptr;
 
 public:
-	void update(void* display_output, size_t width)
+	void update(void* display_output, size_t width, void* lcd_output)
 	{
 		if (display_output) {
 			// Clear screen
@@ -33,6 +34,15 @@ public:
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
 			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
+
+			// Draw LCD if available
+			if (lcd_output)
+			{
+				SDL_UpdateTexture(this->lcd, NULL, lcd_output, 168*sizeof(uint32_t));
+				SDL_Rect dest = {640-168, 0, 168, 22};
+				SDL_RenderCopy(this->renderer, this->lcd, NULL, &dest);
+			}
+
 			SDL_RenderPresent(this->renderer);
 		}
 	}
@@ -46,6 +56,8 @@ public:
 			this->window = SDL_CreateWindow("", 0, 0, 640, 480, SDL_WINDOW_SHOWN);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED);
 			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
+
+			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 168, 22);
 		}
 	}
 
@@ -54,6 +66,10 @@ public:
 		SDL_DestroyTexture(this->texture);
 		SDL_DestroyRenderer(this->renderer);
 		SDL_DestroyWindow(this->window);
+
+		if (this->lcd)
+			SDL_DestroyTexture(this->lcd);
+
 		SDL_Quit();
 	}
 };
@@ -84,7 +100,8 @@ static bool FAT_Init() {
 static void RUN_CDI()
 {
 	MiniCDIConfig config = {
-		true	/** PAL mode **/
+		true	/** PAL mode **/,
+		false	/** show LCD **/
 	};
 	bool running = true;
 
@@ -116,7 +133,7 @@ static void RUN_CDI()
 				#ifdef MINICDI_DEBUG
 					VIDEO_WaitVSync();
 				#else
-					screen.update(cdi.get_display(), cdi.get_display_width());
+					screen.update(cdi.get_display(), cdi.get_display_width(), config.lcd ? cdi.get_lcd() : nullptr);
 				#endif
 			}
 		}

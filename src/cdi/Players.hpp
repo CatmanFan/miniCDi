@@ -90,14 +90,16 @@ private:
 
 	IKAT* slave;
 	MCD212* vpu;
+	PlayerLCD lcd;
 
 public:
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
 	inline bool step() override {
 		CDIPlayer::step();
-		slave->increment_time(ns);
 		vpu->increment_time(ns);
+		slave->increment_time(ns);
+		lcd.update(slave);
 
 		return vpu->check_vsync();
 	}
@@ -108,6 +110,10 @@ public:
 
 	inline size_t get_display_width() override {
 		return vpu->get_display_width();
+	}
+
+	inline uint32_t* get_lcd() {
+		return &lcd.display[0];
 	}
 };
 

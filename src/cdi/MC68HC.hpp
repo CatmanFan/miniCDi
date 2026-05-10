@@ -35,13 +35,7 @@ class IKAT
 		{
 			// Set Front Panel LCD
 			case 0xF0:
-				printf("[LCD] ");
-				for (int i = 0; i < 16; i++)
-				{
-					LCD[i] = *(DRW[0]+1+i);
-					printf("%02X ", LCD[i]);
-				}
-				printf("\n");
+				memcpy(&LCD[0], DRW[1]+1, 16);
 				break;
 		}
 
@@ -49,13 +43,7 @@ class IKAT
 		{
 			// Set Front Panel LCD
 			case 0xF0:
-				printf("[LCD] ");
-				for (int i = 0; i < 16; i++)
-				{
-					LCD[i] = *(DRW[1]+1+i);
-					printf("%02X ", LCD[i]);
-				}
-				printf("\n");
+				memcpy(&LCD[0], DRW[2]+1, 16);
 				break;
 
 			// Get Boot Mode
@@ -126,6 +114,11 @@ public:
 	void increment_time(int ns)
 	{
 		execute();
+	}
+
+	uint8_t *get_lcd()
+	{
+		return &LCD[0];
 	}
 };
 

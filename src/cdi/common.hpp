@@ -33,13 +33,15 @@
 #include <malloc.h>
 #include <vector>
 
-// Cores
 #include "cdi/Config.hpp"
+
+// Cores
 #include "cdi/Vdsc.hpp"
 #include "cdi/SCC68070.hpp"
-#include "cdi/MC68HC.hpp"
-#include "cdi/MCD212.hpp"
 #include "cdi/OS9.hpp"
+#include "cdi/MCD212.hpp"
+#include "cdi/MC68HC.hpp"
+#include "cdi/LCD.hpp"
 
 #include "cdi/Players.hpp"
 

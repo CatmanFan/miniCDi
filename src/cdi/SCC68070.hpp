@@ -267,10 +267,10 @@ public:
 
 	void increment_time(int ns)
 	{
-		this->ns += ns;
-		if (this->ns >= cycleTime)
-		{
-			this->ns -= cycleTime;
+		// this->ns += ns;
+		// if (this->ns >= cycleTime)
+		// {
+			// this->ns -= cycleTime;
 
 			printf("[SCC68070] INT1N:  %d    INT2N:  %d\n", (LIR >> 4) & 0x07, LIR & 0x07);
 			printf("           PICR1:  %02X\n", PICR[0]);
@@ -292,7 +292,7 @@ public:
 
 			if (Timer.T[0] == Timer.T[2] && (Timer.TCR & 0b00000011) == 0b00000001)
 				Timer.TSR |= 0x08; // match2 flag
-		}
+		// }
 	}
 };
 

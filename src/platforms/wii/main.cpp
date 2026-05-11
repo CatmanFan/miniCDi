@@ -54,7 +54,7 @@ public:
 			SDL_ShowCursor(SDL_DISABLE);
 
 			this->window = SDL_CreateWindow("", 0, 0, 640, 480, SDL_WINDOW_SHOWN);
-			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED);
+			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 
 			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 168, 22);
@@ -97,11 +97,12 @@ static bool FAT_Init() {
 	return true;
 }
 
+// #undef MINICDI_DEBUG
 static void RUN_CDI()
 {
 	MiniCDIConfig config = {
 		true	/** PAL mode **/,
-		false	/** show LCD **/
+		true	/** show LCD **/
 	};
 	bool running = true;
 
@@ -129,12 +130,14 @@ static void RUN_CDI()
 
 		if (running)
 		{
-			if (cdi.step()) {
-				#ifdef MINICDI_DEBUG
-					VIDEO_WaitVSync();
-				#else
-					screen.update(cdi.get_display(), cdi.get_display_width(), config.lcd ? cdi.get_lcd() : nullptr);
-				#endif
+			cdi.step();
+
+			if (cdi.frame_ready()) {
+			#ifdef MINICDI_DEBUG
+				VIDEO_WaitVSync();
+			#else
+				screen.update(cdi.get_display(), cdi.get_display_width(), config.lcd ? cdi.get_lcd() : nullptr);
+			#endif
 			}
 		}
 	}

@@ -115,26 +115,26 @@ namespace OS9
 
 			void execute()
 			{
-				if (cpu == nullptr || cpu->core.exception_thrown == 0) return;
+				if (cpu == nullptr || cpu->context.exception_thrown == 0) return;
 
-				if (cpu->core.exception_thrown == 32) {
-					printf("OS9 !!!!!!! %x\n", cpu->core.d_regs[0].w);
+				if (cpu->context.exception_thrown == 32) {
+					printf("OS9 !!!!!!! %x\n", cpu->context.d_regs[0].w);
 					// stop
 					assert(0);
-					/*switch ((enum EOs9SysCall)m68k_read_16(&cpu->core, cpu->core.pc)) {
+					/*switch ((enum EOs9SysCall)m68k_read_16(&cpu->context, cpu->context.pc)) {
 						default:
 							break;
 
 						case F_Link:
 							{
-								OS9::ModuleType type = (OS9::ModuleType)((cpu->core.d_regs[0].w & 0xFF00) >> 8u);
-								uint8_t lang = (cpu->core.d_regs[0].w & 0x00FF);
-								uint32_t name = cpu->core.a_regs[0].l;
+								OS9::ModuleType type = (OS9::ModuleType)((cpu->context.d_regs[0].w & 0xFF00) >> 8u);
+								uint8_t lang = (cpu->context.d_regs[0].w & 0x00FF);
+								uint32_t name = cpu->context.a_regs[0].l;
 
 								for (size_t i = 0; i < modules.size(); i++) {
 									if (modules[i].M_Type == type && modules[i].M_Name == name && modules[i].M_Lang == lang) {
-										cpu->core.d_regs[0].w = (((uint8_t)(modules[i].M_Type) << 8u) | modules[i].M_Lang);
-										cpu->core.d_regs[1].w = ((modules[i].M_Attr << 8u) | modules[i].M_Revs);
+										cpu->context.d_regs[0].w = (((uint8_t)(modules[i].M_Type) << 8u) | modules[i].M_Lang);
+										cpu->context.d_regs[1].w = ((modules[i].M_Attr << 8u) | modules[i].M_Revs);
 										// TO-DO:
 										// a0.l = Updated past the module name.
 										// a2.l = Address of the module directory entry.

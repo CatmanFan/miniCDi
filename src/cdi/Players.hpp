@@ -11,7 +11,6 @@ protected:
 
 	SCC68070 cpu;
 	OS9::System os9;
-	int ns;
 
 public:
 	MiniCDIConfig config;
@@ -30,7 +29,6 @@ public:
 		9) Starting the kernel */
 
 		this->config = *config;
-		ns = 0;
 
 		memory = (uint8_t *)memalign(32, memSize);
 		if (memory) {
@@ -48,16 +46,12 @@ public:
 		}
 	}
 
-	virtual bool step()
-	{
-		ns = MY_GETTIME;
-		cpu.execute();
-		ns = MY_GETTIME - ns;
+	virtual void step() {
+		cpu.run();
+	}
 
-		os9.execute();
-		cpu.increment_time(ns);
-
-		return true;
+	virtual bool frame_ready() {
+		return false;
 	}
 
 	virtual uint32_t* get_display() = 0;
@@ -91,17 +85,29 @@ private:
 	IKAT* slave;
 	MCD212* vpu;
 	PlayerLCD lcd;
+	int cycles;
 
 public:
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
-	inline bool step() override {
-		CDIPlayer::step();
-		vpu->increment_time(ns);
-		slave->increment_time(ns);
-		lcd.update(slave);
+	inline void step() override {
+		// printf("\x1b[%d;%dH", 4, 0);
 
-		return vpu->check_vsync();
+		cycles = cpu.run(2000);
+
+		vpu->increment(cycles);
+		cpu.increment_timer(cycles);
+		slave->increment(cycles);
+
+		// Update LCD display
+		if (slave->LCD_ready) {
+			lcd.update(slave);
+			slave->LCD_ready = false;
+		}
+	}
+
+	inline bool frame_ready() override {
+		return vpu->frame_ready();
 	}
 
 	inline uint32_t* get_display() override {

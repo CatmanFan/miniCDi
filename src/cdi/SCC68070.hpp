@@ -21,12 +21,11 @@ extern "C" {
 
 class SCC68070
 {
-	static constexpr int cycleTime = (1.0L / 15'000'000) * 96'000'000'000; // microseconds to nanoseconds
 	uint8_t* memory;
-	int ns;
+	int cycles;
 
 public:
-	M68kCpu core;
+	M68kCpu context;
 
 	uint8_t LIR; // 80001001
 
@@ -63,19 +62,17 @@ public:
 	void init(uint8_t* ram, size_t ramSize, const char* rom, size_t romAddr)
 	{
 		this->memory = &ram[0];
-		m68k_init(&core, ram, ramSize);
-		m68k_load_bin(&core, rom, romAddr);
+		m68k_init(&context, ram, ramSize);
+		m68k_load_bin(&context, rom, romAddr);
 		memcpy(ram, rom, 0x8); // contains initial SSP and PC
 		this->reset();
 	}
 
 	void reset()
 	{
-		ns = 0;
-
-		m68k_reset(&core);
-		core.a_regs[7].l = 0x1500;
-		core.pc = 0x4004b8;
+		m68k_reset(&context);
+		context.a_regs[7].l = 0x1500;
+		context.pc = 0x4004b8;
 
 		LIR = 0;
 		UART.UMR = 0b00100000;
@@ -89,7 +86,7 @@ public:
 
 	uint8_t read8(uint32_t addr)
 	{
-		if ((core.sr & M68K_SR_S) != 0)
+		if ((context.sr & M68K_SR_S) != 0)
 		{
 			switch (addr & 0x0fffffff) {
 				case 0x1001: return LIR;
@@ -138,7 +135,7 @@ public:
 
 	void write8(uint32_t addr, uint8_t value)
 	{
-		if ((core.sr & M68K_SR_S) != 0)
+		if ((context.sr & M68K_SR_S) != 0)
 		{
 			switch (addr & 0x0fffffff) {
 				case 0x1001:
@@ -247,36 +244,30 @@ public:
 		}
 	}
 
-	void execute()
-	{
-		m68k_execute(&core, 1900);
-		printf("\x1b[%d;%dH", 4, 0);
-		printf("[SCC68070] core.pc: %06X\n", (uint32_t)core.pc);
-
-		/*char text[128];
-		m68k_disasm(&core, core.pc, text, (int)sizeof(text));
-		printf("[SCC68070] %s\n", text);*/
-	}
-
 	void INT1()
 	{
 		int level = (LIR >> 4) & 0x07;
 		if (level > 0)
-			m68k_set_irq(&core, level + 57 - 24);
+			m68k_set_irq(&context, level + 57 - 24);
 	}
 
-	void increment_time(int ns)
+	int run(int cycles = 2000)
 	{
-		// this->ns += ns;
-		// if (this->ns >= cycleTime)
-		// {
-			// this->ns -= cycleTime;
+		int ran = m68k_execute(&context, cycles);
+		// printf("PC: %06X\n", (uint32_t)context.pc);
 
-			printf("[SCC68070] INT1N:  %d    INT2N:  %d\n", (LIR >> 4) & 0x07, LIR & 0x07);
-			printf("           PICR1:  %02X\n", PICR[0]);
-			printf("           TSR:    %02X   TCR:    %02X\n", Timer.TSR, Timer.TCR);
-			printf("           RR:     %04X Timer0: %04X\n", Timer.RR, Timer.T[0]);
+		/*char text[128];
+		m68k_disasm(&context, context.pc, text, (int)sizeof(text));
+		printf("[SCC68070] %s\n", text);*/
 
+		return ran;
+	}
+
+	void increment_timer(int cycles)
+	{
+		this->cycles += cycles;
+		while (this->cycles >= 96) {
+			this->cycles -= 96;
 			if (Timer.T[0] >= 0xFFFF)
 			{
 				Timer.TSR |= 0x80; // overflow0 flag
@@ -292,7 +283,13 @@ public:
 
 			if (Timer.T[0] == Timer.T[2] && (Timer.TCR & 0b00000011) == 0b00000001)
 				Timer.TSR |= 0x08; // match2 flag
-		// }
+		}
+
+		// printf("\n[CPU viewer]\n");
+		// printf("INT1N:  %d    INT2N:  %d\n", (LIR >> 4) & 0x07, LIR & 0x07);
+		// printf("PICR1:  %02X\n", PICR[0]);
+		// printf("TSR:    %02X   TCR:    %02X\n", Timer.TSR, Timer.TCR);
+		// printf("RR:     %04X Timer0: %04X\n", Timer.RR, Timer.T[0]);
 	}
 };
 

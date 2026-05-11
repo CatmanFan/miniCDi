@@ -67,7 +67,7 @@ bool MonoIPlayer::Init(const char* bios, MiniCDIConfig *config)
 		this->os9.init(&this->cpu, &this->memory[romAddr], romSize);
 
 		// Init slave processor (MC68HC)
-		this->slave = new IKAT(this->memory, this->slaveAddr, &this->config);
+		this->slave = new IKAT(this->memory, &this->config);
 
 		// Init video processor (MCD212)
 		this->vpu = new MCD212(&this->cpu, this->memory, this->vdscAddr, &this->config);
@@ -79,13 +79,13 @@ bool MonoIPlayer::Init(const char* bios, MiniCDIConfig *config)
 			.mcd212 = this->vpu,
 		};
 
-		m68k_set_read8_callback(&this->cpu.core, MonoI_read8);
-		m68k_set_read16_callback(&this->cpu.core, MonoI_read16);
-		m68k_set_read32_callback(&this->cpu.core, MonoI_read32);
-		m68k_set_write8_callback(&this->cpu.core, MonoI_write8);
-		m68k_set_write16_callback(&this->cpu.core, MonoI_write16);
-		m68k_set_write32_callback(&this->cpu.core, MonoI_write32);
-		m68k_set_int_ack_callback(&this->cpu.core, MonoI_int_ack);
+		m68k_set_read8_callback(&this->cpu.context, MonoI_read8);
+		m68k_set_read16_callback(&this->cpu.context, MonoI_read16);
+		m68k_set_read32_callback(&this->cpu.context, MonoI_read32);
+		m68k_set_write8_callback(&this->cpu.context, MonoI_write8);
+		m68k_set_write16_callback(&this->cpu.context, MonoI_write16);
+		m68k_set_write32_callback(&this->cpu.context, MonoI_write32);
+		m68k_set_int_ack_callback(&this->cpu.context, MonoI_int_ack);
 
 		return true;
 	}

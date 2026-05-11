@@ -9,8 +9,8 @@
 // MC68HC05i8
 class IKAT
 {
+	int cycles;
 	MiniCDIConfig *emuConfig;
-	int ns;
 
 	uint8_t *DRW[4]; // Data Write Register. receives command bytes for a specific channel.
 	uint8_t *DRR[4]; // Data Read Register. writes response bytes for a specific channel.
@@ -21,7 +21,39 @@ class IKAT
 
 	uint8_t LCD[16];
 
-	void execute()
+public:
+	bool LCD_ready;
+
+	IKAT(uint8_t* memory, MiniCDIConfig *config)
+	{
+		emuConfig = config;
+
+		DRW[0] = &memory[0x310001];
+		DRW[1] = &memory[0x310003];
+		DRW[2] = &memory[0x310005];
+		DRW[3] = &memory[0x310007];
+
+		DRR[0] = &memory[0x310009];
+		DRR[1] = &memory[0x31000B];
+		DRR[2] = &memory[0x31000D];
+		DRR[3] = &memory[0x31000F];
+
+		SR[0] = &memory[0x310011];
+		SR[1] = &memory[0x310013];
+		SR[2] = &memory[0x310015];
+		SR[3] = &memory[0x310017];
+
+		ISR = &memory[0x310019];
+		IMR = &memory[0x31001B];
+		MR = &memory[0x31001D];
+
+		*SR[0] = 0b00010001u;
+		*SR[1] = 0b00010001u;
+		*SR[2] = 0b00010001u;
+		*SR[3] = 0b00010001u;
+	}
+
+	void tick()
 	{
 		switch (*DRW[0])
 		{
@@ -36,6 +68,7 @@ class IKAT
 			// Set Front Panel LCD
 			case 0xF0:
 				memcpy(&LCD[0], DRW[1]+1, 16);
+				LCD_ready = true;
 				break;
 		}
 
@@ -44,6 +77,7 @@ class IKAT
 			// Set Front Panel LCD
 			case 0xF0:
 				memcpy(&LCD[0], DRW[2]+1, 16);
+				LCD_ready = true;
 				break;
 
 			// Get Boot Mode
@@ -80,40 +114,13 @@ class IKAT
 		}
 	}
 
-public:
-	IKAT(uint8_t* memory, size_t start, MiniCDIConfig *config)
+	void increment(int cycles)
 	{
-		emuConfig = config;
-		ns = 0;
-
-		DRW[0] = &memory[start + 0x01];
-		DRW[1] = &memory[start + 0x03];
-		DRW[2] = &memory[start + 0x05];
-		DRW[3] = &memory[start + 0x07];
-
-		DRR[0] = &memory[start + 0x09];
-		DRR[1] = &memory[start + 0x0B];
-		DRR[2] = &memory[start + 0x0D];
-		DRR[3] = &memory[start + 0x0F];
-
-		SR[0] = &memory[start + 0x11];
-		SR[1] = &memory[start + 0x13];
-		SR[2] = &memory[start + 0x15];
-		SR[3] = &memory[start + 0x17];
-
-		ISR = &memory[start + 0x19];
-		IMR = &memory[start + 0x1B];
-		MR = &memory[start + 0x1D];
-
-		// *SR[0] = 0b00010001u;
-		// *SR[1] = 0b00010001u;
-		// *SR[2] = 0b00010001u;
-		// *SR[3] = 0b00010001u;
-	}
-
-	void increment_time(int ns)
-	{
-		execute();
+		this->cycles += cycles;
+		while (this->cycles >= 8) {
+			this->cycles -= 8;
+			tick();
+		}
 	}
 
 	uint8_t *get_lcd()

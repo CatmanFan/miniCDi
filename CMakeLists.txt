@@ -9,7 +9,7 @@ add_executable(${PROJECT_NAME})
 dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
-option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." ON)
+option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." OFF)
 
 if (MINICDI_ENABLE_DEBUG)
   MESSAGE(STATUS "MINICDI_ENABLE_DEBUG")

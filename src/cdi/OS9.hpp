@@ -120,7 +120,7 @@ namespace OS9
 				if (cpu->context.exception_thrown == 32) {
 					printf("OS9 !!!!!!! %x\n", cpu->context.d_regs[0].w);
 					// stop
-					assert(0);
+					// assert(0);
 					/*switch ((enum EOs9SysCall)m68k_read_16(&cpu->context, cpu->context.pc)) {
 						default:
 							break;

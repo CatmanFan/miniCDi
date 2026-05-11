@@ -97,7 +97,6 @@ static bool FAT_Init() {
 	return true;
 }
 
-// #undef MINICDI_DEBUG
 static void RUN_CDI()
 {
 	MiniCDIConfig config = {

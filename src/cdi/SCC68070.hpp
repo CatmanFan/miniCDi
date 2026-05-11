@@ -248,17 +248,19 @@ public:
 	{
 		int level = (LIR >> 4) & 0x07;
 		if (level > 0)
-			m68k_set_irq(&context, level + 57 - 24);
+			m68k_set_irq(&context, level + 56 - 24);
 	}
 
 	int run(int cycles = 2000)
 	{
 		int ran = m68k_execute(&context, cycles);
-		// printf("PC: %06X\n", (uint32_t)context.pc);
 
+	#ifdef MINICDI_DEBUG
+		printf("PC: %06X\n", (uint32_t)context.pc);
 		/*char text[128];
 		m68k_disasm(&context, context.pc, text, (int)sizeof(text));
 		printf("[SCC68070] %s\n", text);*/
+	#endif
 
 		return ran;
 	}
@@ -273,8 +275,10 @@ public:
 				Timer.TSR |= 0x80; // overflow0 flag
 				Timer.T[0] = Timer.RR;
 
-				if ((PICR[0] & 0x07) != 0)
-					INT1();
+				if ((PICR[0] & 0x07) != 0) {
+					m68k_set_irq(&context, 62 - 24);
+					// INT1();
+				}
 			}
 			Timer.T[0]++;
 
@@ -285,11 +289,13 @@ public:
 				Timer.TSR |= 0x08; // match2 flag
 		}
 
+	#ifdef MINICDI_DEBUG
 		// printf("\n[CPU viewer]\n");
 		// printf("INT1N:  %d    INT2N:  %d\n", (LIR >> 4) & 0x07, LIR & 0x07);
 		// printf("PICR1:  %02X\n", PICR[0]);
 		// printf("TSR:    %02X   TCR:    %02X\n", Timer.TSR, Timer.TCR);
 		// printf("RR:     %04X Timer0: %04X\n", Timer.RR, Timer.T[0]);
+	#endif
 	}
 };
 

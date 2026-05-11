@@ -222,9 +222,8 @@ class MCD212
 
 			if (DE) {
 				// render line onto bitmap
-				video.draw_line(line, memory, VSR[0], VSR[1]);
-				VSR[0] += video.FG[0].width;
-				VSR[1] += video.FG[1].width;
+				VSR[0] += video.draw_line_to_plane<0>(memory, VSR[0], line);
+				VSR[1] += video.draw_line_to_plane<1>(memory, VSR[1], line);
 
 				if (IC1 && DC1) { DCA_execute<0>(); }
 				if (IC2 && DC2) { DCA_execute<1>(); }
@@ -271,10 +270,6 @@ public:
 		DC1 = 1;
 		DC2 = 1;
 
-		// avoid memory exception
-		DCP[0] = 0;
-		DCP[1] = 0;
-
 		frames = 0;
 		linesV = 0;
 		line = 0;
@@ -290,6 +285,7 @@ public:
 			tick();
 		}
 
+	#ifdef MINICDI_DEBUG
 		// printf("\n[VDSC viewer]\n");
 		// printf("frame: %lld\n", frames);
 		// printf("CSR1R > DA  %02X  PA  %02X\n", DA, PA);
@@ -301,6 +297,7 @@ public:
 		// printf("DDR1:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[0], MF2[0], FT1[0], FT2[0]);
 		// printf("DDR2:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[1], MF2[1], FT1[1], FT2[1]);
 		// printf("\nVSR1: %X\nVSR2: %X\nDCP1: %X\nDCP2: %X\n", VSR[0], VSR[1], DCP[0], DCP[1]);
+	#endif
 	}
 
 	uint8_t read8(uint32_t addr)

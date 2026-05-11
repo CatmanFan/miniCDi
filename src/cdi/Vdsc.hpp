@@ -11,10 +11,6 @@
 #include <cmath>
 #include <algorithm>
 
-#define YUV_GET_Y(x) ((x >> 8) & 0x0F)
-#define YUV_GET_U(x) ((x >> 12) & 0x0F)
-#define YUV_GET_V(x) ((x >> 4) & 0x0F)
-
 namespace VideoCDI
 {
 
@@ -126,15 +122,34 @@ class Video
 		enum ColorMode CM[2];
 	} Decoder;
 
-	uint32_t YUVtoRGB(uint16_t v)
+	size_t decodeDYUV(uint8_t* src, uint32_t *dest)
 	{
-		int r = std::floor((YUV_GET_Y(v)*256 + 351*(YUV_GET_V(v)-128) ) / 256 );
-		int g = std::floor(((YUV_GET_Y(v)*256)*(86*(YUV_GET_U(v)-128) + 179*(YUV_GET_V(v)-128))) / 256 );
-		int b = std::floor(( YUV_GET_Y(v)*256 + 444*(YUV_GET_U(v)-128) ) / 256);
+		int Y = *src & 0x0F;
+		int U = (*src >> 4) & 0x0F;
+		int V = (*(src+1) >> 4) & 0x0F;
 
-		return ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
+		int r = std::floor((Y*256 + 351*(V-128) ) / 256 );
+		int g = std::floor(((Y*256)*(86*(U-128) + 179*(V-128))) / 256 );
+		int b = std::floor(( Y*256 + 444*(U-128) ) / 256);
+
+		*dest = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
 				(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
 				(b > 255 ? 255 : b < 0 ? 0 : b) << 8);
+
+		return 2;
+	}
+
+	template <size_t Path>
+	size_t decodeCLUT(uint8_t* src, uint32_t *dest)
+	{
+		if (Decoder.CM[Path] == Double4) {
+			*dest = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | 0xff;
+			*(dest+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | 0xff;
+			return 2;
+		} else {
+			*dest = (Decoder.ColorCLUT[*src & (Decoder.Icm[Path] == CLUT7 ? 0x7F : 0xFF)] << 8) | 0xff;
+			return 1;
+		}
 	}
 
 public:
@@ -234,7 +249,7 @@ public:
 
 	/** Draws planes and corresponding data/parameters. **/
 	template <size_t Path>
-	void draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t y)
+	size_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t y)
 	{
 		uint32_t* dest = &FG[Path].decoded[y*FG[Path].width];
 		size_t adv = 0;
@@ -246,10 +261,28 @@ public:
 			uint8_t* src = &memory[((vsr + x) & 0x0007ffff) ^ 1];
 
 			switch (Decoder.FT[Path]) {
-				default:
-				case Off:
-					return;
+				case Bitmap:
+					switch (Decoder.Icm[Path])
+					{
+						default:
+						case Off:
+							return x;
 
+						case DYUV:
+							if (x == 0) {
+							}
+							x += decodeDYUV(src, dest);
+							break;
+
+						case CLUT4:
+						case CLUT7:
+						case CLUT8:
+							x += decodeCLUT<Path>(src, dest);
+							break;
+					}
+					break;
+
+				default:
 				case RunLength:
 					{
 						// Determine what type it is
@@ -266,18 +299,14 @@ public:
 						switch (Decoder.Icm[Path])
 						{
 							default:
-								break;
+							case Off:
+								return x;
+
 							case CLUT4:
 							case CLUT7:
 							case CLUT8:
-								if (Decoder.CM[Path] == Double4) {
-									*dest = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | 0xff;
-									*(dest+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | 0xff;
-									x+=2;
-								} else {
-									*dest = (Decoder.ColorCLUT[*src & (Decoder.Icm[Path] == CLUT7 ? 0x7F : 0xFF)] << 8) | 0xff;
-									x++;
-								}
+								x += decodeCLUT<Path>(src, dest);
+								break;
 						}
 
 						// Repeat per pixel/pair
@@ -291,11 +320,13 @@ public:
 
 				case Mosaic:
 					// to-do
-					Decoder.WeightFactor[Path] /= 2;
-					// assert(0);
-					return;
+					// Decoder.WeightFactor[Path] /= 2;
+					assert(0);
+					break;
 			}
 		}
+
+		return x;
 	}
 
 	void draw_line(size_t line, uint8_t* memory, const uint32_t vsr1, const uint32_t vsr2)
@@ -312,7 +343,10 @@ public:
 			default:
 				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) <= 0xBFu) {
 					Decoder.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u] = inst & 0x00FFFFFFu;
-					//printf("[DCA%d] color $%06x\n", pathB, Decoder.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u]);
+
+					#ifdef MINICDI_DEBUG
+					printf("[DCA%d] color $%06x\n", pathB, Decoder.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u]);
+					#endif
 				}
 				break;
 
@@ -327,11 +361,14 @@ public:
 				Decoder.FT[pathB] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
 				Decoder.MF[pathB] = (enum VideoCDI::MosaicFactor)((inst & 0b1100u) >> 2);
 				Decoder.CM[pathB] = (enum VideoCDI::ColorMode)((inst & 0b100000000u) >> 8);
-				/*printf("[DCA%d] dprm cm=%s,mf=%s,ft=%s\n", pathB, Decoder.CM[pathB] == Double4 ? "p4" : "p8",
+
+				#ifdef MINICDI_DEBUG
+				printf("[DCA%d] dprm cm=%s,mf=%s,ft=%s\n", pathB, Decoder.CM[pathB] == Double4 ? "p4" : "p8",
 																	Decoder.MF[pathB] == x16 ? "x16" : Decoder.MF[pathB] == x8 ? "x8"
 																  : Decoder.MF[pathB] == x4 ? "x4" : "x2",
 																	Decoder.FT[pathB] == Mosaic ? "m" : Decoder.FT[pathB] == RunLength ? "rl"
-																  : "bmp");*/
+																  : "bmp");
+				#endif
 				break;
 
 			case 0xC0:
@@ -340,23 +377,32 @@ public:
 				Decoder.IcmEV = (inst & 0x00080000u) >> 18;
 				Decoder.Icm[1] = (enum VideoCDI::Icm)((inst & 0b111100000000u) >> 8);
 				Decoder.Icm[0] = (enum VideoCDI::Icm)(inst & 0b1111u);
-				/*printf("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s\n", pathB,
+
+				#ifdef MINICDI_DEBUG
+				printf("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s\n", pathB,
 						  Decoder.IcmCS, Decoder.IcmNR, Decoder.IcmEV,
 						  Decoder.Icm[0] == CLUT8 ? "clut8" : Decoder.Icm[0] == CLUT7 ? "clut7"
 						: Decoder.Icm[0] == CLUT77 ? "clut7+7" : Decoder.Icm[0] == DYUV ? "dyuv"
 						: Decoder.Icm[0] == CLUT4 ? "clut4" : "off",
 						  Decoder.Icm[1] == RGB555 ? "rgb555" : Decoder.Icm[1] == DYUV ? "dyuv"
-						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");*/
+						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");
+				#endif
 				break;
 
 			case 0xC2:
 				Decoder.PlaneOrder = inst & 0x00FFFFFFu;
-				//printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
+
+				#ifdef MINICDI_DEBUG
+				printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
+				#endif
 				break;
 
 			case 0xC3:
 				Decoder.BankCLUT = inst & 0x00FFFFFFu;
-				//printf("[DCA%d] cbnk %d\n", pathB, Decoder.BankCLUT);
+
+				#ifdef MINICDI_DEBUG
+				printf("[DCA%d] cbnk %d\n", pathB, Decoder.BankCLUT);
+				#endif
 				break;
 
 			case 0xC4:

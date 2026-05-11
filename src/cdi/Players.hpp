@@ -46,14 +46,8 @@ public:
 		}
 	}
 
-	virtual void step() {
-		cpu.run();
-	}
-
-	virtual bool frame_ready() {
-		return false;
-	}
-
+	virtual void step() = 0;
+	virtual bool frame_ready() = 0;
 	virtual uint32_t* get_display() = 0;
 	virtual size_t get_display_width() = 0;
 };
@@ -91,7 +85,9 @@ public:
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
 	inline void step() override {
-		// printf("\x1b[%d;%dH", 4, 0);
+	#ifdef MINICDI_DEBUG
+		printf("\x1b[%d;%dH", 4, 0);
+	#endif
 
 		cycles = cpu.run(2000);
 

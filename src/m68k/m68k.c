@@ -7,6 +7,29 @@
 
 #include "m68k_internal.h"
 
+#define M68K_68070
+
+#ifdef M68K_68070
+	#define M68K_68070_EXCEPTIONHANDLER
+	#define M68K_68070_CYC
+	#define M68K_RM ((opcode >> 3) & 0x1)
+	#define M68K_MASK 0x00FFFFFFu
+
+	#define M68K_CYC_RESET 130
+	#define M68K_CYC_NOP 7
+	#define M68K_CYC_STOP 13
+	#define M68K_CYC_RTE (false ? 146 : 39)
+	#define M68K_CYC_ABCD (M68K_RM ? 31 : 10)
+#else
+	#define M68K_MASK 0xFFFFFFFFu
+
+	#define M68K_CYC_RESET 132
+	#define M68K_CYC_NOP 4
+	#define M68K_CYC_STOP 4
+	#define M68K_CYC_RTE 20
+	#define M68K_CYC_ABCD 6
+#endif
+
 void m68k_init(M68kCpu* cpu, u8* memory, u32 memory_size) {
     memset(cpu, 0, sizeof(M68kCpu));
     cpu->memory = memory;
@@ -78,7 +101,7 @@ u32 m68k_get_ar(M68kCpu* cpu, int reg) {
     return 0;
 }
 
-static inline u32 mask_address_24(u32 address) { return address /** & 0x00FFFFFFu **/; }
+static inline u32 mask_address_24(u32 address) { return address & M68K_MASK; }
 
 static bool is_valid_address(M68kCpu* cpu, u32 address) { return address < cpu->memory_size; }
 
@@ -647,32 +670,65 @@ void m68k_exception(M68kCpu* cpu, int vector) {
     }
     u16 old_sr = cpu->sr;
     u32 old_pc = cpu->pc;
+	#ifndef M68K_68070_EXCEPTIONHANDLER
     if (vector == 4 || vector == 8 || vector == 10 || vector == 11) {
         old_pc = cpu->ppc;
     }
+	#endif
 
     m68k_set_sr(cpu, (cpu->sr | M68K_SR_S) & ~0x8000);
 
-    if (vector == 2 || vector == 3) {
-        // 68000 bus/address errors use a 14-byte stack frame.
-        const u16 ir = cpu->fault_valid ? cpu->fault_ir : cpu->ir;
-        const u32 fault_address = cpu->fault_valid ? cpu->fault_address : 0;
-        const u16 ssw = cpu->fault_valid ? cpu->fault_ssw : 0;
+	#ifdef M68K_68070_EXCEPTIONHANDLER
+		// Mirror Musashi 68010 frame write sequence.
+		if (vector == 2 || vector == 3) {
+			// 68070 bus/address errors use a 17-byte stack frame.
+			const u16 ir = cpu->fault_valid ? cpu->fault_ir : cpu->ir;
+			const u32 fault_address = cpu->fault_valid ? cpu->fault_address : 0;
+			const u16 ssw = cpu->fault_valid ? cpu->fault_ssw : 0;
 
-        // Mirror Musashi 68000 frame write sequence.
-        m68k_push_32(cpu, old_pc);
-        m68k_push_16(cpu, old_sr);
-        m68k_push_16(cpu, ir);
-        m68k_push_32(cpu, fault_address);
-        m68k_push_16(cpu, ssw);
-    } else {
-        m68k_push_32(cpu, old_pc);
-        m68k_push_16(cpu, old_sr);
-    }
+			cpu->a_regs[7].l -= 4; // internal
+			m68k_push_16(cpu, ir); // IRC
+			m68k_push_16(cpu, ir); // IR
+			m68k_push_32(cpu, 0); // DBIN
+			m68k_push_32(cpu, fault_address); // TPF
+			m68k_push_32(cpu, 0); // TPD
+			cpu->a_regs[7].l -= 4; // internal
+			m68k_push_16(cpu, 0); // MM
+			m68k_push_16(cpu, ssw); // SSW
+			m68k_push_16(cpu, 0xF000 | ((vector & 0xFF) << 2)); // Format
+			m68k_push_32(cpu, old_pc); // PC
+			m68k_push_16(cpu, old_sr); // SR
+		} else {
+			m68k_push_16(cpu, vector & 0xFF);
+			m68k_push_32(cpu, old_pc);
+			m68k_push_16(cpu, old_sr);
+		}
+	#else
+		if (vector == 2 || vector == 3) {
+			// 68000 bus/address errors use a 14-byte stack frame.
+			const u16 ir = cpu->fault_valid ? cpu->fault_ir : cpu->ir;
+			const u32 fault_address = cpu->fault_valid ? cpu->fault_address : 0;
+			const u16 ssw = cpu->fault_valid ? cpu->fault_ssw : 0;
+
+			// Mirror Musashi 68000 frame write sequence.
+			m68k_push_32(cpu, old_pc);
+			m68k_push_16(cpu, old_sr);
+			m68k_push_16(cpu, ir);
+			m68k_push_32(cpu, fault_address);
+			m68k_push_16(cpu, ssw);
+		} else {
+			m68k_push_32(cpu, old_pc);
+			m68k_push_16(cpu, old_sr);
+		}
+	#endif
     cpu->fault_program_access = false;
     cpu->fault_valid = false;
 
+	#ifdef M68K_68070_EXCEPTIONHANDLER
+    u32 vector_addr = m68k_read_32(cpu, vector * 4) & 0x00FFFFFFu;
+	#else
     u32 vector_addr = m68k_read_32(cpu, vector * 4);
+	#endif
 
     m68k_set_pc(cpu, vector_addr);
 }
@@ -892,21 +948,21 @@ void m68k_step_ex(M68kCpu* cpu, bool check_exceptions) {
     if ((opcode & 0xF000) == 0x4000) {
         if (opcode == 0x4E70) {
             m68k_exec_reset(cpu, opcode);
-            cycles = 132;
+            cycles = M68K_CYC_RESET;
             goto done;
         }
         if (opcode == 0x4E71) {
-            cycles = 4;
+            cycles = M68K_CYC_NOP;
             goto done;
         }
         if (opcode == 0x4E72) {
             m68k_exec_stop(cpu, opcode);
-            cycles = 4;
+            cycles = M68K_CYC_STOP;
             goto done;
         }
         if (opcode == 0x4E73) {
             m68k_exec_rte(cpu, opcode);
-            cycles = 20;
+            cycles = M68K_CYC_RTE;
             goto done;
         }
         if (opcode == 0x4E75) {
@@ -1242,7 +1298,7 @@ void m68k_step_ex(M68kCpu* cpu, bool check_exceptions) {
             goto done;
         } else if (opmode == 4 && (mode == 0 || mode == 1)) {
             m68k_exec_abcd(cpu, opcode);
-            cycles = 6;
+            cycles = M68K_CYC_ABCD;
             goto done;
         } else if ((opmode == 5 && ((opcode >> 3) & 0x1F) == 0x08) ||
                    (opmode == 5 && ((opcode >> 3) & 0x1F) == 0x09) ||

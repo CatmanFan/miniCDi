@@ -147,7 +147,7 @@ class Video
 			*(dest+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | 0xff;
 			return 2;
 		} else {
-			*dest = (Decoder.ColorCLUT[*src & (Decoder.Icm[Path] == CLUT7 ? 0x7F : 0xFF)] << 8) | 0xff;
+			*dest = (Decoder.ColorCLUT[*src & (Decoder.Icm[Path] == CLUT8 ? 0xFF : 0x7F)] << 8) | 0xff;
 			return 1;
 		}
 	}
@@ -262,23 +262,32 @@ public:
 
 			switch (Decoder.FT[Path]) {
 				case Bitmap:
-					switch (Decoder.Icm[Path])
+					// Not implemented
+					if (Path == 1 && Decoder.Icm[Path] == RGB555) {
+						assert(0);
+					}
+					else if (Path == 0 && (Decoder.Icm[Path] == CLUT8 || Decoder.Icm[Path] == CLUT77)) {
+						x += decodeCLUT<Path>(src, dest);
+					}
+					else
 					{
-						default:
-						case Off:
-							return x;
+						switch (Decoder.Icm[Path])
+						{
+							default:
+							case Off:
+								return x;
 
-						case DYUV:
-							if (x == 0) {
-							}
-							x += decodeDYUV(src, dest);
-							break;
+							case DYUV:
+								if (x == 0) {
+								}
+								x += decodeDYUV(src, dest);
+								break;
 
-						case CLUT4:
-						case CLUT7:
-						case CLUT8:
-							x += decodeCLUT<Path>(src, dest);
-							break;
+							case CLUT4:
+							case CLUT7:
+								x += decodeCLUT<Path>(src, dest);
+								break;
+						}
 					}
 					break;
 
@@ -298,12 +307,14 @@ public:
 						// Actual decoding
 						switch (Decoder.Icm[Path])
 						{
+							// RGB555 and DYUV not supported
 							default:
 							case Off:
 								return x;
 
 							case CLUT4:
 							case CLUT7:
+							case CLUT77: // path 0 only
 							case CLUT8:
 								x += decodeCLUT<Path>(src, dest);
 								break;

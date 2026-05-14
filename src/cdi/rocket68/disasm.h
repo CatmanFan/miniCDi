@@ -5,7 +5,7 @@
 #ifndef M68K_DISASM_H
 #define M68K_DISASM_H
 
-#include "m68k/m68k.h"
+#include "cdi/rocket68/m68k.h"
 
 /**
  * @brief Disassemble one instruction at a program counter.

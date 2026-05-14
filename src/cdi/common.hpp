@@ -43,7 +43,7 @@
 #include "cdi/SCC68070.hpp"
 #include "cdi/OS9.hpp"
 #include "cdi/MCD212.hpp"
-#include "cdi/MC68HC.hpp"
+#include "cdi/MC6805_SLAVE.hpp"
 #include "cdi/LCD.hpp"
 
 #include "cdi/Players.hpp"

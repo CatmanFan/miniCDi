@@ -6,7 +6,7 @@
 class CDIPlayer
 {
 protected:
-	uint8_t *memory		= nullptr; // Contains full memory map
+	uint8_t *memory; // Contains full memory map
 	const int memSize	= 0x680000; // cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
 
 	SCC68070 cpu;
@@ -37,6 +37,11 @@ public:
 		}
 
 		return false;
+	}
+
+	CDIPlayer() : cpu(memory, memSize)
+	{
+		memory = nullptr;
 	}
 
 	virtual ~CDIPlayer()
@@ -76,7 +81,7 @@ private:
 	const int ciapAddr	= 0x300000;
 	const int slaveAddr	= 0x310000;
 
-	IKAT* slave;
+	SLAVE* slave;
 	MCD212* vpu;
 	PlayerLCD lcd;
 	int cycles;
@@ -89,17 +94,11 @@ public:
 		printf("\x1b[%d;%dH", 4, 0);
 	#endif
 
-		cycles = cpu.run(2000);
-
+		cycles = cpu.run();
 		vpu->increment(cycles);
-		cpu.increment_timer(cycles);
-		slave->increment(cycles);
 
 		// Update LCD display
-		if (slave->LCD_ready) {
-			lcd.update(slave);
-			slave->LCD_ready = false;
-		}
+		// lcd.update(slave);
 	}
 
 	inline bool frame_ready() override {

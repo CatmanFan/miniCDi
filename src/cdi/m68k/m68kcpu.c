@@ -123,7 +123,7 @@ const uint m68ki_shift_32_table[65] =
 /* Number of clock cycles to use for exception processing.
  * I used 4 for any vectors that are undocumented for processing times.
  */
-const uint8 m68ki_exception_cycle_table[4][256] =
+const uint8 m68ki_exception_cycle_table[5][256] =
 {
 	{ /* 000 */
 		 40, /*  0: Reset - Initial Stack Pointer                      */
@@ -393,6 +393,79 @@ const uint8 m68ki_exception_cycle_table[4][256] =
 		 20, /* 45: TRAP #13                                           */
 		 20, /* 46: TRAP #14                                           */
 		 20, /* 47: TRAP #15                                           */
+		  4, /* 48: FP Branch or Set on Unknown Condition (unemulated) */
+		  4, /* 49: FP Inexact Result                     (unemulated) */
+		  4, /* 50: FP Divide by Zero                     (unemulated) */
+		  4, /* 51: FP Underflow                          (unemulated) */
+		  4, /* 52: FP Operand Error                      (unemulated) */
+		  4, /* 53: FP Overflow                           (unemulated) */
+		  4, /* 54: FP Signaling NAN                      (unemulated) */
+		  4, /* 55: FP Unimplemented Data Type            (unemulated) */
+		  4, /* 56: MMU Configuration Error               (unemulated) */
+		  4, /* 57: MMU Illegal Operation Error           (unemulated) */
+		  4, /* 58: MMU Access Level Violation Error      (unemulated) */
+		  4, /* 59: RESERVED                                           */
+		  4, /* 60: RESERVED                                           */
+		  4, /* 61: RESERVED                                           */
+		  4, /* 62: RESERVED                                           */
+		  4, /* 63: RESERVED                                           */
+		     /* 64-255: User Defined                                   */
+		  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+		  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+		  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+		  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+		  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+		  4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
+	},
+	{ /* 070 */
+		 43, /*  0: Reset - Initial Stack Pointer                      */
+		  4, /*  1: Reset - Initial Program Counter                    */
+		158, /*  2: Bus Error                             (unemulated) */
+		158, /*  3: Address Error                         (unemulated) */
+		 55, /*  4: Illegal Instruction                                */
+		 64, /*  5: Divide by Zero                                     */
+		 64, /*  6: CHK                                                */
+		 55, /*  7: TRAPV                                              */
+		 55, /*  8: Privilege Violation                                */
+		 55, /*  9: Trace                                              */
+		 34, /* 10: 1010                                               */
+		 34, /* 11: 1111                                               */
+		  4, /* 12: RESERVED                                           */
+		  4, /* 13: Coprocessor Protocol Violation        (unemulated) */
+		  4, /* 14: Format Error                                       */
+		 65, /* 15: Uninitialized Interrupt                            */
+		  4, /* 16: RESERVED                                           */
+		  4, /* 17: RESERVED                                           */
+		  4, /* 18: RESERVED                                           */
+		  4, /* 19: RESERVED                                           */
+		  4, /* 20: RESERVED                                           */
+		  4, /* 21: RESERVED                                           */
+		  4, /* 22: RESERVED                                           */
+		  4, /* 23: RESERVED                                           */
+		 65, /* 24: Spurious Interrupt                                 */
+		 65, /* 25: Level 1 Interrupt Autovector                       */
+		 65, /* 26: Level 2 Interrupt Autovector                       */
+		 65, /* 27: Level 3 Interrupt Autovector                       */
+		 65, /* 28: Level 4 Interrupt Autovector                       */
+		 65, /* 29: Level 5 Interrupt Autovector                       */
+		 65, /* 30: Level 6 Interrupt Autovector                       */
+		 65, /* 31: Level 7 Interrupt Autovector                       */
+		 52, /* 32: TRAP #0                                            */
+		 52, /* 33: TRAP #1                                            */
+		 52, /* 34: TRAP #2                                            */
+		 52, /* 35: TRAP #3                                            */
+		 52, /* 36: TRAP #4                                            */
+		 52, /* 37: TRAP #5                                            */
+		 52, /* 38: TRAP #6                                            */
+		 52, /* 39: TRAP #7                                            */
+		 52, /* 40: TRAP #8                                            */
+		 52, /* 41: TRAP #9                                            */
+		 52, /* 42: TRAP #10                                           */
+		 52, /* 43: TRAP #11                                           */
+		 52, /* 44: TRAP #12                                           */
+		 52, /* 45: TRAP #13                                           */
+		 52, /* 46: TRAP #14                                           */
+		 52, /* 47: TRAP #15                                           */
 		  4, /* 48: FP Branch or Set on Unknown Condition (unemulated) */
 		  4, /* 49: FP Inexact Result                     (unemulated) */
 		  4, /* 50: FP Divide by Zero                     (unemulated) */
@@ -711,9 +784,24 @@ void m68k_set_cpu_type(unsigned int cpu_type)
 			CYC_RESET        = 132;
 			return;
 		case M68K_CPU_TYPE_SCC68070:
-			m68k_set_cpu_type(M68K_CPU_TYPE_68010);
+			/*m68k_set_cpu_type(M68K_CPU_TYPE_68010);
 			CPU_ADDRESS_MASK = 0xffffffff;
 			CPU_TYPE         = CPU_TYPE_SCC070;
+			CYC_EXCEPTION    = m68ki_exception_cycle_table[4];*/
+			CPU_TYPE         = CPU_TYPE_SCC070;
+			CPU_ADDRESS_MASK = 0xffffffff;
+			CPU_SR_MASK      = 0xa71f; /* T1 -- S  -- -- I2 I1 I0 -- -- -- X  N  Z  V  C  */
+			CYC_INSTRUCTION  = m68ki_cycles[4];
+			CYC_EXCEPTION    = m68ki_exception_cycle_table[4];
+			CYC_BCC_NOTAKE_B = 0;
+			CYC_BCC_NOTAKE_W = 0;
+			CYC_DBCC_F_NOEXP = 3;
+			CYC_DBCC_F_EXP   = 3;
+			CYC_SCC_R_TRUE   = 0;
+			CYC_MOVEM_W      = 7;
+			CYC_MOVEM_L      = 11;
+			CYC_SHIFT        = 3;
+			CYC_RESET        = 154;
 			return;
 		case M68K_CPU_TYPE_68010:
 			CPU_TYPE         = CPU_TYPE_010;

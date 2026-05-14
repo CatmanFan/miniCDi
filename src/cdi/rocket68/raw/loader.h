@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 
-#include "m68k/m68k.h"
+#include "cdi/rocket68/raw/m68k.h"
 
 /**
  * @brief Load Motorola S-record data into CPU memory.

@@ -44,7 +44,7 @@ public:
 		memset(display, 0, sizeof(display));
 	}
 
-	void update(IKAT *slave)
+	void update(SLAVE *slave)
 	{
 		if (slave)
 		{

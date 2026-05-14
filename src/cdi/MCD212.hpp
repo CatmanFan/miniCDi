@@ -15,11 +15,11 @@
 
 class MCD212
 {
+	MiniCDIConfig* emuConfig;
+	SCC68070 *cpu;
 	uint8_t* memory;
 
 	int cycles;
-	SCC68070 *cpu;
-	MiniCDIConfig* emuConfig;
 	VideoCDI::Video video;
 
 	size_t linesV, line;
@@ -212,7 +212,7 @@ class MCD212
 			}
 		} else {
 			DA = 1;
-			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 0;
+			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
 
 			if (line == 0) {
 				video.set_mode(CF == 1 ? VideoCDI::NTSCTV : VideoCDI::PAL, CM[0], CM[1]);
@@ -242,24 +242,21 @@ class MCD212
 	}
 
 public:
-	MCD212(SCC68070 *cpu, uint8_t *dram, size_t start, MiniCDIConfig *config)
+	MCD212(SCC68070 *cpu, uint8_t *memory, size_t start, MiniCDIConfig *config)
+	: emuConfig(config), cpu(cpu), memory(memory), cycles(0)
 	{
-		this->cpu = cpu;
-		emuConfig = config;
-		memory = &dram[0];
-
 		reset();
 	}
 
 	void reset()
 	{
 		// clear write bits
-		DI1 = 0; DD1 = 0; DD2 = 0; TD = 0; DD = 0; ST = 0; BE[0] = 0; BE[1] = 0;
+		DI1 = DD1 = DD2 = TD = DD = ST = BE[0] = BE[1] = 0;
 		DI2 = 0;
-		DE = 0; CF = 0; FD = 0; SM = 0; CM[0] = 0; IC1 = 0; DC1 = 0;
-		CM[1] = 0; IC2 = 0; DC2 = 0;
-		MF1[0] = 0; MF2[0] = 0; FT1[0] = 0; FT2[0] = 0;
-		MF1[1] = 0; MF2[1] = 0; FT1[1] = 0; FT2[1] = 0;
+		DE = CF = FD = SM = CM[0] = IC1 = DC1 = 0;
+		CM[1] = IC2 = DC2 = 0;
+		MF1[0] = MF2[0] = FT1[0] = FT2[0] = 0;
+		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
 
 		// initialization
 		CF = FD = emuConfig->pal ? 0 : 1;
@@ -269,6 +266,10 @@ public:
 		IC2 = 1;
 		DC1 = 1;
 		DC2 = 1;
+
+		// /!\ AVOID CRASH /!\ //
+		IT1 = 0;
+		DCP[0] = 0;
 
 		frames = 0;
 		linesV = 0;
@@ -281,22 +282,22 @@ public:
 	{
 		this->cycles += cycles;
 		while (this->cycles >= 1920) {
-			this->cycles -= 1920;
 			tick();
+			this->cycles -= 1920;
 		}
 
 	#ifdef MINICDI_DEBUG
-		// printf("\n[VDSC viewer]\n");
-		// printf("frame: %lld\n", frames);
-		// printf("CSR1R > DA  %02X  PA  %02X\n", DA, PA);
-		// printf("CSR2R > IT1 %02X  IT2 %02X  BE  %02X\n", IT1, IT2, BE[0]);
-		// printf("CSR1W > DI1 %02X  DD1 %02X  DD2 %02X  TD  %02X  DD  %02X  ST  %02X  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
-		// printf("CSR2W > DI2 %02X\n", DI2);
-		// printf("DCR1:   DE  %02X  CF  %02X  FD  %02X  SM  %02X  CM1 %02X  IC1 %02X  DC1 %02X\n", DE, CF, FD, SM, CM[0], IC1, DC1);
-		// printf("DCR2:   CM2 %02X  IC2 %02X  DC2 %02X\n", CM[1], IC2, DC2);
-		// printf("DDR1:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[0], MF2[0], FT1[0], FT2[0]);
-		// printf("DDR2:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[1], MF2[1], FT1[1], FT2[1]);
-		// printf("\nVSR1: %X\nVSR2: %X\nDCP1: %X\nDCP2: %X\n", VSR[0], VSR[1], DCP[0], DCP[1]);
+		/*printf("\n[VDSC viewer]\n");
+		printf("frame: %lld, linesV: %d, line: %d\n", frames, linesV, line);
+		printf("CSR1R > DA  %02X  PA  %02X\n", DA, PA);
+		printf("CSR2R > IT1 %02X  IT2 %02X  BE  %02X\n", IT1, IT2, BE[0]);
+		printf("CSR1W > DI1 %02X  DD1 %02X  DD2 %02X  TD  %02X  DD  %02X  ST  %02X  BE  %s\n", DI1, DD1, DD2, TD, DD, ST, BE[1] ? "on " : "off");
+		printf("CSR2W > DI2 %02X\n", DI2);
+		printf("DCR1:   DE  %02X  CF  %02X  FD  %02X  SM  %02X  CM1 %02X  IC1 %02X  DC1 %02X\n", DE, CF, FD, SM, CM[0], IC1, DC1);
+		printf("DCR2:   CM2 %02X  IC2 %02X  DC2 %02X\n", CM[1], IC2, DC2);
+		printf("DDR1:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[0], MF2[0], FT1[0], FT2[0]);
+		printf("DDR2:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[1], MF2[1], FT1[1], FT2[1]);
+		printf("\nVSR1: %X\nVSR2: %X\nDCP1: %X\nDCP2: %X\n", VSR[0], VSR[1], DCP[0], DCP[1]);*/
 	#endif
 	}
 

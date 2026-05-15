@@ -10,7 +10,7 @@ static struct
 
 #ifdef MINICDI_MUSASHI
 	#define MINICDI_MEMADDRESS address
-	#include "cdi/m68k/m68kcpu.h"
+	#include "cdi/Musashi/m68kcpu.h"
 
 	unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_memory_8(address); }
 	unsigned int  m68k_read_disassembler_16(unsigned int address) { return m68k_read_memory_16(address); }

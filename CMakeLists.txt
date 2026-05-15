@@ -10,7 +10,7 @@ dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
 option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." ON)
-option(MINICDI_USE_MUSASHI "Use Musashi instead of Rocket68 for M68K core." OFF)
+option(MINICDI_USE_MUSASHI "Use Musashi instead of Rocket68 for M68K core." ON)
 
 if (MINICDI_ENABLE_DEBUG)
   MESSAGE(STATUS "MINICDI_ENABLE_DEBUG")
@@ -32,16 +32,20 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 
 if (MINICDI_USE_MUSASHI)
-target_include_directories(${PROJECT_NAME} PRIVATE src/cdi/m68k)
+target_include_directories(${PROJECT_NAME} PRIVATE src/cdi/Musashi)
 target_sources(${PROJECT_NAME} PRIVATE
-    src/cdi/m68k/m68k.h
-    src/cdi/m68k/m68kconf.h
-    src/cdi/m68k/m68kcpu.c
-    src/cdi/m68k/m68kcpu.h
-    src/cdi/m68k/m68kdasm.c
-    src/cdi/m68k/m68kfpu.c
-    src/cdi/m68k/m68kops.c
-    src/cdi/m68k/m68kops.h
+    src/cdi/Musashi/m68k.h
+    src/cdi/Musashi/m68kconf.h
+    src/cdi/Musashi/m68kcpu.c
+    src/cdi/Musashi/m68kcpu.h
+    src/cdi/Musashi/m68kdasm.c
+    src/cdi/Musashi/m68kfpu.c
+    src/cdi/Musashi/m68kmmu.h
+    src/cdi/Musashi/m68kops.c
+    src/cdi/Musashi/m68kops.h
+	src/cdi/Musashi/softfloat/softfloat.c
+	src/cdi/Musashi/softfloat/softfloat.h
+	src/cdi/Musashi/softfloat/softfloat-macros
 )
 else()
 target_sources(${PROJECT_NAME} PRIVATE
@@ -61,6 +65,7 @@ endif()
 if (NINTENDO_3DS)
 	# Libraries
     target_link_libraries(${PROJECT_NAME} -lcitro2d -lcitro3d)
+	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
     target_sources(${PROJECT_NAME} PRIVATE src/platforms/3ds/main.cpp)
 

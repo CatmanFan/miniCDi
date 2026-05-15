@@ -35,7 +35,7 @@
 
 #include "cdi/Config.hpp"
 #ifdef MINICDI_MUSASHI
-	#include "cdi/m68k/m68k.h"
+	#include "cdi/Musashi/m68k.h"
 #endif
 
 // Cores

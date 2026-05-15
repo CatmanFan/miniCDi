@@ -245,12 +245,27 @@ public:
 		}
 
 	#ifdef MINICDI_DEBUG
-			printf("PC: %08X SR: %08X\n",
+			printf("PC: %08X SR: %s%s %s%s%s%s%s\n",
 		#ifdef MINICDI_MUSASHI
-			m68k_get_reg(NULL, M68K_REG_PC), m68k_get_reg(NULL, M68K_REG_SR));
+			m68k_get_reg(NULL, M68K_REG_PC),
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 15) & 0x01 ? "T" : " ",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 13) & 0x01 ? "S" : " ",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 4) & 0x01 ? "X" : " ",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 3) & 0x01 ? "N" : " ",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 2) & 0x01 ? "Z" : " ",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 1) & 0x01 ? "V" : " ",
+			m68k_get_reg(NULL, M68K_REG_SR) & 0x01 ? "C" : " "
 		#else
-			(uint32_t)context.pc, (uint32_t)context.sr);
+			(uint32_t)context.pc,
+			(context.sr >> 15) & 0x01 ? "T" : " ",
+			(context.sr >> 13) & 0x01 ? "S" : " ",
+			(context.sr >> 4) & 0x01 ? "X" : " ",
+			(context.sr >> 3) & 0x01 ? "N" : " ",
+			(context.sr >> 2) & 0x01 ? "Z" : " ",
+			(context.sr >> 1) & 0x01 ? "V" : " ",
+			context.sr & 0x01 ? "C" : " "
 		#endif
+			);
 
 			for (int i = 0; i < 8; i++)
 				printf("D%d: %08X A%d: %08X\n",

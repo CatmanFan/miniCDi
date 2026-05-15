@@ -105,8 +105,10 @@ static void RUN_CDI()
 	};
 	bool running = true;
 
+	config.log = fopen((devicePrefix + "apps/miniCDi/log.txt").c_str(), "wt");
+
 	MonoIPlayer cdi;
-	cdi.Init((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), &config);
+	cdi.Init((devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str(), &config);
 	#ifndef MINICDI_DEBUG
 		SDL screen;
 	#endif
@@ -140,6 +142,9 @@ static void RUN_CDI()
 			}
 		}
 	}
+
+	if (config.log)
+		fclose(config.log);
 }
 
 int main(int argc, char **argv) {
@@ -169,8 +174,8 @@ int main(int argc, char **argv) {
 		exit(0);
 	}
 
-	if (access((devicePrefix + "apps/CDIEmu/cdi220b.rom").c_str(), F_OK) != 0) {
-		printf("BIOS not found, exiting");
+	if (access((devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str(), F_OK) != 0) {
+		printf("BIOS not found at %s, exiting", (devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str());
 		sleep(5);
 		exit(0);
 	}

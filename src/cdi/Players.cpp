@@ -25,14 +25,13 @@ static struct
 		if (m_currentPlayer.scc68070 && (MINICDI_MEMADDRESS & 0xF0000000) == 0x80000000)
 			return m_currentPlayer.scc68070->read8(MINICDI_MEMADDRESS);
 
-		else if (m_currentPlayer.slave && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x310000)
+		if (m_currentPlayer.slave && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x310000)
 			return m_currentPlayer.slave->read8(MINICDI_MEMADDRESS);
 
-		else if (m_currentPlayer.mcd212 && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x4FFF00)
+		if (m_currentPlayer.mcd212 && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x4FFF00)
 			return m_currentPlayer.mcd212->read8(MINICDI_MEMADDRESS);
 
-		else
-			return m_currentPlayer.memory[MINICDI_MEMADDRESS & 0x00ffffff];
+		return m_currentPlayer.memory[MINICDI_MEMADDRESS & 0x00ffffff];
 	}
 
 #ifdef MINICDI_MUSASHI
@@ -43,11 +42,10 @@ static struct
 		if (m_currentPlayer.mcd212 && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x4FFF00)
 			return m_currentPlayer.mcd212->read16(MINICDI_MEMADDRESS);
 
-		else
 #ifdef MINICDI_MUSASHI
-			return (uint16_t)((m68k_read_memory_8(MINICDI_MEMADDRESS) << 8) | m68k_read_memory_8(MINICDI_MEMADDRESS+1));
+		return (uint16_t)((m68k_read_memory_8(MINICDI_MEMADDRESS) << 8) | m68k_read_memory_8(MINICDI_MEMADDRESS+1));
 #else
-			return (uint16_t)((MonoI_read8(cpu, MINICDI_MEMADDRESS) << 8) | MonoI_read8(cpu, MINICDI_MEMADDRESS+1));
+		return (uint16_t)((MonoI_read8(cpu, MINICDI_MEMADDRESS) << 8) | MonoI_read8(cpu, MINICDI_MEMADDRESS+1));
 #endif
 	}
 
@@ -65,14 +63,17 @@ static struct
 #else
 	static void MonoI_write8(M68kCpu* cpu, uint32_t addr, uint8_t value) {
 #endif
-		if (m_currentPlayer.scc68070 && (MINICDI_MEMADDRESS & 0xF0000000) == 0x80000000)
+		if (m_currentPlayer.scc68070 && (MINICDI_MEMADDRESS & 0xF0000000) == 0x80000000) {
 			m_currentPlayer.scc68070->write8(MINICDI_MEMADDRESS, value);
+			return;
+		}
 
-		else if (m_currentPlayer.slave && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x310000)
+		if (m_currentPlayer.slave && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x310000) {
 			m_currentPlayer.slave->write8(MINICDI_MEMADDRESS, value);
+			return;
+		}
 
-		else
-			m_currentPlayer.memory[MINICDI_MEMADDRESS & 0x00ffffff] = value;
+		m_currentPlayer.memory[MINICDI_MEMADDRESS & 0x00ffffff] = value;
 	}
 
 #ifdef MINICDI_MUSASHI
@@ -80,18 +81,18 @@ static struct
 #else
 	static void MonoI_write16(M68kCpu* cpu, uint32_t addr, uint16_t value) {
 #endif
-		if (m_currentPlayer.mcd212 && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x4FFF00)
+		if (m_currentPlayer.mcd212 && (MINICDI_MEMADDRESS & 0xFFFF00) == 0x4FFF00) {
 			m_currentPlayer.mcd212->write16(MINICDI_MEMADDRESS, value);
-
-		else {
-#ifdef MINICDI_MUSASHI
-			m68k_write_memory_8(MINICDI_MEMADDRESS, (uint8_t)(value >> 8));
-			m68k_write_memory_8(MINICDI_MEMADDRESS + 1, (uint8_t)value);
-#else
-			MonoI_write8(cpu, addr, (uint8_t)(value >> 8));
-			MonoI_write8(cpu, addr + 1, (uint8_t)value);
-#endif
+			return;
 		}
+
+#ifdef MINICDI_MUSASHI
+		m68k_write_memory_8(MINICDI_MEMADDRESS, (uint8_t)(value >> 8));
+		m68k_write_memory_8(MINICDI_MEMADDRESS + 1, (uint8_t)value);
+#else
+		MonoI_write8(cpu, addr, (uint8_t)(value >> 8));
+		MonoI_write8(cpu, addr + 1, (uint8_t)value);
+#endif
 	}
 
 #ifdef MINICDI_MUSASHI
@@ -104,19 +105,15 @@ static struct
 		MonoI_write16(cpu, addr, (uint16_t)(value >> 16));
 		MonoI_write16(cpu, addr + 2, (uint16_t)value);
 	}
-
-	static int MonoI_int_ack(M68kCpu* cpu, int level) {
-		return M68K_INT_ACK_AUTOVECTOR;
-	}
 #endif
 
 bool MonoIPlayer::Init(const char* bios, MiniCDIConfig *config)
 {
 	if (CDIPlayer::Init(bios, config)) {
-		this->cpu = SCC68070(this->memory, this->memSize);
+		this->cpu = SCC68070(this->memory, this->memSize, config);
 		this->cpu.set_bios(bios, this->romAddr);
-		this->slave = new SLAVE(this->memory, &this->config);
-		this->vpu = new MCD212(&this->cpu, this->memory, this->vdscAddr, &this->config);
+		this->slave = new SLAVE(this->memory, config);
+		this->vpu = new MCD212(&this->cpu, this->memory, this->vdscAddr, config);
 
 		m_currentPlayer =
 		{
@@ -128,15 +125,14 @@ bool MonoIPlayer::Init(const char* bios, MiniCDIConfig *config)
 
 		this->cpu.reset();
 
-#ifndef MINICDI_MUSASHI
+		#ifndef MINICDI_MUSASHI
 		m68k_set_read8_callback(&this->cpu.context, MonoI_read8);
 		m68k_set_read16_callback(&this->cpu.context, MonoI_read16);
 		m68k_set_read32_callback(&this->cpu.context, MonoI_read32);
 		m68k_set_write8_callback(&this->cpu.context, MonoI_write8);
 		m68k_set_write16_callback(&this->cpu.context, MonoI_write16);
 		m68k_set_write32_callback(&this->cpu.context, MonoI_write32);
-		// m68k_set_int_ack_callback(&this->cpu->context, MonoI_int_ack);
-#endif
+		#endif
 
 		return true;
 	}

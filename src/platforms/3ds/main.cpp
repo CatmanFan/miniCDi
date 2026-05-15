@@ -28,8 +28,11 @@ int main(int argc, char* argv[])
 	}
 
 	MiniCDIConfig config = {
-		true	/** PAL mode **/
+		true	/** PAL mode **/,
+		false	/** show LCD **/
 	};
+
+	// config.log = fopen("miniCDi_log.txt", "wt");
 
 	MonoIPlayer cdi;
 	cdi.Init("romfs:/cdi220b.rom", &config);
@@ -44,7 +47,9 @@ int main(int argc, char* argv[])
 			break; // break in order to return to hbmenu
 
 		printf("\x1b[%d;%dH", 4, 0);
-		if (cdi.step())
+
+		cdi.step();
+		if (cdi.frame_ready())
 		{
 			C3D_Tex fb;
 			C3D_TexInit(&fb, cdi.get_display_width(), 280, GPU_RGBA8);
@@ -67,6 +72,9 @@ int main(int argc, char* argv[])
 			C3D_TexDelete(&fb);
 		}
 	}
+
+	// if (config.log)
+		// fclose(config.log);
 
 	C2D_Fini();
 	C3D_Fini();

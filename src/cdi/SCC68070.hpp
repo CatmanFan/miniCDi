@@ -22,18 +22,34 @@
 
 class SCC68070
 {
+	MiniCDIConfig *emuConfig;
 	uint8_t* memory;
-	int cycles;
 
 	// On-chip peripherals
 	uint8_t LIR;
+	uint8_t PICR[2];
+
+	/** UART **/
+	uint8_t UMR; // Mode Register
+	uint8_t USR; // Status Register
+	uint8_t UCS; // Clock Select Register
+	uint8_t UCR; // Command Register
+	uint8_t UTH; // Transmit Holding Register
+	uint8_t URH; // Receive Holding Register
+
+	/** Timer **/
+	uint8_t TSR;
+	uint8_t TCR;
+	uint16_t RR;
+	uint16_t T[3];
 
 public:
 #ifndef MINICDI_MUSASHI
 	M68kCpu context;
 #endif
 
-	SCC68070(uint8_t* memory, size_t mem_size) : memory(memory), cycles(0)
+	SCC68070(uint8_t* memory, size_t mem_size, MiniCDIConfig *config)
+	: emuConfig(config), memory(memory)
 	{
 	#ifdef MINICDI_MUSASHI
 		m68k_init();
@@ -59,23 +75,8 @@ public:
 	{
 	#ifdef MINICDI_MUSASHI
 		m68k_pulse_reset();
-
-		m68k_set_reg(M68K_REG_D0, 0xffffffff);
-		m68k_set_reg(M68K_REG_D1, 0xffffffff);
-		m68k_set_reg(M68K_REG_D2, 0xffffffff);
-		m68k_set_reg(M68K_REG_D3, 0xffffffff);
-		m68k_set_reg(M68K_REG_D4, 0xffffffff);
-		m68k_set_reg(M68K_REG_D5, 0xffffffff);
-		m68k_set_reg(M68K_REG_D6, 0xffffffff);
-		m68k_set_reg(M68K_REG_D7, 0xffffffff);
-
-		m68k_set_reg(M68K_REG_A0, 0xffffffff);
-		m68k_set_reg(M68K_REG_A1, 0xffffffff);
-		m68k_set_reg(M68K_REG_A2, 0xffffffff);
-		m68k_set_reg(M68K_REG_A3, 0xffffffff);
-		m68k_set_reg(M68K_REG_A4, 0xffffffff);
-		m68k_set_reg(M68K_REG_A5, 0xffffffff);
-		m68k_set_reg(M68K_REG_A6, 0xffffffff);
+		for (int i = 0; i < 15; i++)
+			m68k_set_reg((m68k_register_t)i, 0xffffffff);
 	#else
 		m68k_reset(&context);
 		for (int i = 0; i < 7; i++)
@@ -83,56 +84,64 @@ public:
 		for (int i = 0; i < 8; i++)
 			context.d_regs[i].l = 0xffffffff;
 	#endif
+
+		UMR = 0x20; // unused bit
+		USR = 0b0000'0110; // TX ready and unused bit
+		UCS = 0x08; // unused bit
+		UCR = 0x80; // unused bit
+		UTH = URH = 0;
+
+		PICR[0] = PICR[1] = 0;
+	}
+
+	void interrupt(size_t ch, int level = 0)
+	{
+		if (level <= 0 || level > 7) {
+			int level_lir = (ch == 1 ? LIR : (LIR >> 4)) & 0x07;
+			int level_timer = PICR[0] & 0x07;
+			int level_uart_rx = PICR[1] & 0x70;
+			int level_uart_tx = PICR[1] & 0x07;
+			level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx});
+		}
+
+		if (level > 0) {
+		#ifdef MINICDI_MUSASHI
+			m68k_set_irq(level + 56);
+		#else
+			m68k_set_irq(&context, level + 56 - 24);
+		#endif
+		}
 	}
 
 	uint8_t read8(uint32_t addr)
 	{
-	#ifdef MINICDI_MUSASHI
-		if ((m68k_get_reg(NULL, M68K_REG_SR) & 0x2000) != 0)
-	#else
-		if ((context.sr & M68K_SR_S) != 0)
-	#endif
+		switch (addr)
 		{
-			switch (addr & 0x0fffffff) {
-				case 0x1001: return LIR;
+			case 0x80001001: return LIR & 0x77;
 
-				/*case 0x2001: return I2C.IDR;
-				case 0x2003: return I2C.IAR;
-				case 0x2005: return I2C.ISR;
-				case 0x2007: return I2C.ICR;
-				case 0x2009: return I2C.ICCR;
+			/** UART **/
+			case 0x80002011: return UMR | 0x20;
+			case 0x80002013: USR |= (1<<1); return USR | 0x08;
+			case 0x80002015: return UCS | 0x08;
+			case 0x80002017: return UCR | 0x80;
+			case 0x80002019: return UTH;
+			case 0x8000201B: if (URH) USR |= 0x01; else USR &= ~(0x01); return URH;
 
-				case 0x2013: return UART.USR;
-				case 0x201b:
-					if (1) {
-						UART.USR &= 0b1111'1110; // RX
-						UART.URH = 1;
-					} else {
-						UART.USR |= 0b0000'0001; // RX
-						UART.URH = 0;
-					}
-					return UART.URH;
+			/** Timer **/
+			case 0x80002020: return TSR;
+			case 0x80002021: return TCR;
+			case 0x80002022: return (RR >> 8) & 0x00FF;
+			case 0x80002023: return RR & 0x00FF;
+			case 0x80002024: return (T[0] >> 8) & 0x00FF;
+			case 0x80002025: return T[0] & 0x00FF;
+			case 0x80002026: return (T[1] >> 8) & 0x00FF;
+			case 0x80002027: return T[1] & 0x00FF;
+			case 0x80002028: return (T[2] >> 8) & 0x00FF;
+			case 0x80002029: return T[2] & 0x00FF;
 
-				case 0x2020: return Timer.TSR;
-				case 0x2021: return Timer.TCR;
-				case 0x2022: return (Timer.RR & 0xFF00) >> 8;
-				case 0x2023: return Timer.RR & 0x00FF;
-				case 0x2024: return (Timer.T[0] & 0xFF00) >> 8;
-				case 0x2025: return Timer.T[0] & 0x00FF;
-				case 0x2026: return (Timer.T[1] & 0xFF00) >> 8;
-				case 0x2027: return Timer.T[1] & 0x00FF;
-				case 0x2028: return (Timer.T[2] & 0xFF00) >> 8;
-				case 0x2029: return Timer.T[2] & 0x00FF;
-
-				case 0x2045: return PICR[0];
-				case 0x2047: return PICR[1];
-
-				default:
-					if ((addr & 0x0fffffff) >= 0x4000 && (addr & 0x0fffffff) <= 0x406D) {
-						return DMA[(addr & 0x0fffffff) - 0x4000];
-					}
-					break;*/
-			}
+			/** PICR **/
+			case 0x80002045: return PICR[0] & 0x77;
+			case 0x80002047: return PICR[1] & 0x77;
 		}
 
 		return 0;
@@ -140,224 +149,124 @@ public:
 
 	void write8(uint32_t addr, uint8_t value)
 	{
-	#ifdef MINICDI_MUSASHI
-		if ((m68k_get_reg(NULL, M68K_REG_SR) & 0x2000) != 0)
-	#else
-		if ((context.sr & M68K_SR_S) != 0)
-	#endif
+		switch (addr)
 		{
-			switch (addr & 0x0fffffff) {
-				case 0x1001:
-					LIR = value & 0x77;
-					break;
+			/** LIR **/
+			case 0x80001001:
+				if ((value & 0x88) && (LIR & 0x88)) LIR &= 0x77;
+				else if ((value & 0x80) && (LIR & 0x80)) LIR &= 0x7F;
+				else if ((value & 0x08) && (LIR & 0x08)) LIR &= 0xF7;
+				LIR = (LIR & 0x88) | (value & 0x77);
+				break;
 
-				/*case 0x2001:
-					I2C.IDR = value;
-					break;
-				case 0x2003:
-					I2C.IAR = value;
-					break;
-				case 0x2005:
-					I2C.ISR = value;
-					break;
-				case 0x2007:
-					I2C.ICR = value;
-					break;
-				case 0x2009:
-					I2C.ICCR = value;
-					break;
+			/** UART **/
+			case 0x80002011: UMR = value; break;
+			case 0x80002013: USR = value; break;
+			case 0x80002015: UCS = value; break;
+			case 0x80002017: UCR = value;
+				if (UCR & 0x0'011'0000) { UTH = 0; USR |= 0x08; } // reset transmitter
+				else if (UCR & 0x0'010'0000) URH = 0; // reset receiver
+				else if (UCR & 0x0'100'0000) USR &= 0x0F; // reset error status
+				break;
+			case 0x80002019: UTH = value; USR &= ~(0x08); break;
+			case 0x8000201B: URH = value; break;
 
-				case 0x2011:
-					UART.UMR = value;
-					break;
-				case 0x2015:
-					UART.UCS = value;
-					break;
-				case 0x2017:
-					UART.UCR = value;
-					if (UART.UCR & 0b0'011'0000)		UART.UTH = 0; // reset transmitter
-					else if (UART.UCR & 0b0'010'0000)	UART.URH = 0; // reset receiver
-					else if (UART.UCR & 0b0'100'0000)	UART.USR &= 0b0000'1111; // reset errors
-					break;
-				case 0x2019:
-					UART.UTH = value;
-					UART.USR &= ~(0b0000'1000); // is not empty
-					break;
+			/** Timer **/
+			case 0x80002020: TSR = value; break;
+			case 0x80002021: TCR = value; break;
+			case 0x80002022: RR &= 0x00FF; RR |= (value << 8); break;
+			case 0x80002023: RR &= 0xFF00; RR |= value; break;
+			case 0x80002024: T[0] &= 0x00FF; T[0] |= (value << 8); break;
+			case 0x80002025: T[0] &= 0xFF00; T[0] |= value; break;
+			case 0x80002026: T[1] &= 0x00FF; T[1] |= (value << 8); break;
+			case 0x80002027: T[1] &= 0xFF00; T[1] |= value; break;
+			case 0x80002028: T[2] &= 0x00FF; T[2] |= (value << 8); break;
+			case 0x80002029: T[2] &= 0xFF00; T[2] |= value; break;
 
-				case 0x2020:
-					Timer.TSR = value;
-					break;
-				case 0x2021:
-					Timer.TCR = value;
-					break;
-				case 0x2022:
-					Timer.RR &= 0x00FF;
-					Timer.RR |= (value << 8);
-					break;
-				case 0x2023:
-					Timer.RR &= 0xFF00;
-					Timer.RR |= value;
-					break;
-				case 0x2024:
-					Timer.T[0] &= 0x00FF;
-					Timer.T[0] |= (value << 8);
-					break;
-				case 0x2025:
-					Timer.T[0] &= 0xFF00;
-					Timer.T[0] |= value;
-					break;
-				case 0x2026:
-					Timer.T[1] &= 0x00FF;
-					Timer.T[1] |= (value << 8);
-					break;
-				case 0x2027:
-					Timer.T[1] &= 0xFF00;
-					Timer.T[1] |= value;
-					break;
-				case 0x2028:
-					Timer.T[2] &= 0x00FF;
-					Timer.T[2] |= (value << 8);
-					break;
-				case 0x2029:
-					Timer.T[2] &= 0xFF00;
-					Timer.T[2] |= value;
-					break;
+			/** PICR **/
+			case 0x80002045: PICR[0] = value;
+				if (PICR[0] & 0x80) PICR[0] &= 0x7F;
+				if (PICR[0] & 0x08) PICR[0] &= 0xF7;
+				break;
+			case 0x80002047: PICR[1] = value;
+				if (PICR[1] & 0x80) PICR[1] &= 0x7F;
+				if (PICR[1] & 0x08) PICR[1] &= 0xF7;
+				break;
+		}
+	}
 
-				case 0x2045:
-					PICR[0] = value;
-					if (PICR[0] & 0x80)		 PICR[0] &= 0x0F; // PIR for UART receiver
-					else if (PICR[0] & 0x08) PICR[0] &= 0xF0; // PIR for UART transmitter
-					break;
+	int run(int cycles = 2000)
+	{
+		int ran = 0;
 
-				case 0x2047:
-					PICR[1] = value;
-					if (PICR[1] & 0x80)		 PICR[1] &= 0x0F; // PIR for UART receiver
-					else if (PICR[1] & 0x08) PICR[1] &= 0xF0; // PIR for UART transmitter
-					break;
-
-				default:
-					if ((addr & 0x0fffffff) >= 0x4000 && (addr & 0x0fffffff) <= 0x406D) {
-						DMA[(addr & 0x0fffffff) - 0x4000] = value;
+		for (ran = 0; ran < cycles;) {
+			if (emuConfig && emuConfig->log != 0) {
+				uint32_t pcLog;
+			#ifdef MINICDI_MUSASHI
+				pcLog = m68k_get_reg(NULL, M68K_REG_PC);
+				ran += m68k_execute(500);
+			#else
+				pcLog = context.pc;
+				ran += m68k_execute(&context, 500);
+			#endif
+				#ifdef MINICDI_MUSASHI
+					if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
+						char text[192];
+						m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
+						fprintf(emuConfig->log, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+						// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 					}
-					break;*/
+				#else
+					if (pcLog != context.pc) {
+						char text[128];
+						m68k_disasm(&context, context.pc, text, (int)sizeof(text));
+						fprintf(emuConfig->log, "[CPU][$%08X] %s\n", (uint32_t)context.pc, text);
+						// printf("\n$%08X: %s                            \n", context.pc, text);
+					}
+				#endif
+			} else {
+			#ifdef MINICDI_MUSASHI
+				ran += m68k_execute(cycles);
+			#else
+				ran += m68k_execute(&context, cycles);
+			#endif
 			}
 		}
-	}
 
-	void INT1()
-	{
-		int level = (LIR >> 4) & 0x07;
-		if (level > 0) {
-		#ifdef MINICDI_MUSASHI
-			m68k_set_irq(level + 56);
-		#else
-			m68k_set_irq(&context, level + 56 - 24);
-		#endif
+		for (int i = 0; i < ran; i+=96)
+		{
+			if (T[0] == 0xFFFF)
+			{
+				TSR |= 0x80; // OV in T0
+				T[0] = RR;
+				interrupt(0);
+			}
+			T[0]++;
 		}
-	}
-
-	void INT2()
-	{
-		int level = LIR & 0x07;
-		if (level > 0) {
-		#ifdef MINICDI_MUSASHI
-			m68k_set_irq(level + 56);
-		#else
-			m68k_set_irq(&context, level + 56 - 24);
-		#endif
-		}
-	}
-
-	int run(int cycles = 2400)
-	{
-	#ifdef MINICDI_MUSASHI
-		int ran = m68k_execute(cycles);
-	#else
-		int ran = m68k_execute(&context, cycles);
-	#endif
 
 	#ifdef MINICDI_DEBUG
+			printf("PC: %08X SR: %08X\n",
 		#ifdef MINICDI_MUSASHI
-			printf("PC: %08X SR: %08X\n", m68k_get_reg(NULL, M68K_REG_PC), m68k_get_reg(NULL, M68K_REG_SR));
-
-			for (int i = 0; i < 8; i++) {
-				printf("D%d: %08X ", i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_D0 + i)));
-				if (i == 3 || i == 7)
-					printf("\n");
-			}
-
-			for (int i = 0; i < 8; i++) {
-				printf("A%d: %08X ", i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
-				if (i == 3 || i == 7)
-					printf("\n");
-			}
-
-			char text[192];
-			m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-			printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
+			m68k_get_reg(NULL, M68K_REG_PC), m68k_get_reg(NULL, M68K_REG_SR));
 		#else
-			printf("PC: %06X SR: %06X\n", context.pc, context.sr);
-
-			for (int i = 0; i < 8; i++) {
-				printf("D%d: %08X ", i, context.d_regs[i].l);
-				if (i == 3 || i == 7)
-					printf("\n");
-			}
-
-			for (int i = 0; i < 8; i++) {
-				printf("A%d: %08X ", i, context.a_regs[i].l);
-				if (i == 3 || i == 7)
-					printf("\n");
-			}
-
-			char text[128];
-			m68k_disasm(&context, context.pc, text, (int)sizeof(text));
-			printf("\n$%08X: %s                            \n", context.pc, text);
+			(uint32_t)context.pc, (uint32_t)context.sr);
 		#endif
+
+			for (int i = 0; i < 8; i++)
+				printf("D%d: %08X A%d: %08X\n",
+			#ifdef MINICDI_MUSASHI
+				i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_D0 + i)),
+				i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
+			#else
+				i, (uint32_t)context.d_regs[i].l,
+				i, (uint32_t)context.a_regs[i].l);
+			#endif
+
+		printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X T0: %04X\n", UCR, URH, USR, LIR, T[0]);
 	#endif
 
 		return ran;
 	}
-
-	/*void increment_timer(int cycles)
-	{
-		this->cycles += cycles;
-		while (this->cycles >= 96) {
-			this->cycles -= 96;
-			if (Timer.T[0] >= 0xFFFF)
-			{
-				Timer.TSR |= 0x80; // overflow0 flag
-				Timer.T[0] = Timer.RR;
-
-				if ((PICR[0] & 0x07) != 0) {
-					#ifdef MINICDI_MUSASHI
-						m68k_set_irq(62);
-					#else
-						m68k_set_irq(&context, 62 - 24);
-					#endif
-					// INT1();
-				}
-			}
-			Timer.T[0]++;
-
-			if (Timer.T[0] == Timer.T[1] && (Timer.TCR & 0b00110000) == 0b00010000)
-				Timer.TSR |= 0x40; // match1 flag
-
-			if (Timer.T[0] == Timer.T[2] && (Timer.TCR & 0b00000011) == 0b00000001)
-				Timer.TSR |= 0x08; // match2 flag
-		}
-
-	#ifdef MINICDI_DEBUG
-		// printf("\n[CPU viewer]\n");
-		// printf("UART >  UMR: %02X  USR: %02X  UCS: %02X  UCR: %02X  UTH: %02X  URH: %02X\n", UART.UMR, UART.USR, UART.UCS, UART.UCR, UART.UTH, UART.URH);
-		// printf("Timer > TSR: %02X  TCR: %02X\n", Timer.TSR, Timer.TCR);
-		// printf("        RR:  %04X\n", Timer.RR);
-		// printf("        T0:  %04X\n", Timer.T[0]);
-
-		// printf("INT1N:  %d    INT2N:  %d\n", (LIR >> 4) & 0x07, LIR & 0x07);
-		// printf("PICR1:  %02X\n", PICR[0]);
-	#endif
-	}*/
 };
 
 #endif

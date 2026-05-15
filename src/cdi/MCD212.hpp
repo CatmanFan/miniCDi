@@ -54,11 +54,21 @@ class MCD212
 	template <size_t Path>
 	void vsr_set(uint32_t value) {
 		VSR[Path] = value & 0x003FFFFFu;
+
+		if (VSR[Path]) {
+			if (Path == 1) IC2 = 1;
+			else IC1 = 1;
+		}
 	}
 
 	template <size_t Path>
 	void dcp_set(uint32_t value) {
 		DCP[Path] = value & 0x003FFFFCu;
+
+		if (DCP[Path]) {
+			if (Path == 1) DC2 = 1;
+			else DC1 = 1;
+		}
 	}
 
 	template <size_t Path>
@@ -108,17 +118,12 @@ class MCD212
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
-					if (Path)
-					{
+					if (Path == 1) {
 						IT2 = 1;
-						if (!DI2)
-							cpu->INT1();
-					}
-					else
-					{
+						if (!DI2) cpu->interrupt(1);
+					} else {
 						IT1 = 1;
-						if (!DI1)
-							cpu->INT1();
+						if (!DI1) cpu->interrupt(0);
 					}
 					break;
 
@@ -181,17 +186,12 @@ class MCD212
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
-					if (Path == 1)
-					{
+					if (Path == 1) {
 						IT2 = 1;
-						if (!DI2)
-							cpu->INT1();
-					}
-					else
-					{
+						if (!DI2) cpu->interrupt(1);
+					} else {
 						IT1 = 1;
-						if (!DI1)
-							cpu->INT1();
+						if (!DI1) cpu->interrupt(0);
 					}
 					break;
 
@@ -233,6 +233,7 @@ class MCD212
 
 			if (linesV >= MCD212_VSYNC_LINES) {
 				DA = 0;
+				IC1 = IC2 = DC1 = DC2 = 0;
 				frames++;
 				linesV = 0;
 				line = 0;
@@ -262,14 +263,14 @@ public:
 		CF = FD = emuConfig->pal ? 0 : 1;
 		SM = /* to-do: interlace */ 0;
 		DE = 1;
-		IC1 = 1;
-		IC2 = 1;
-		DC1 = 1;
-		DC2 = 1;
+		// IC1 = 1;
+		// IC2 = 1;
+		// DC1 = 1;
+		// DC2 = 1;
 
 		// /!\ AVOID CRASH /!\ //
-		IT1 = 0;
-		DCP[0] = 0;
+		// IT1 = 0;
+		// DCP[0] = 0;
 
 		frames = 0;
 		linesV = 0;
@@ -333,7 +334,7 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint8_t value)
+	void write16(uint32_t addr, uint16_t value)
 	{
 		switch (addr)
 		{

@@ -875,7 +875,7 @@ void m68k_step_ex(M68kCpu* cpu, bool check_exceptions) {
 
         if (top4 == 0x0C) {
             m68k_exec_cmpi(cpu, opcode);
-            cycles = 8;
+            cycles = /*8*/ ((opcode >> 6) & 0x3) == 2 ? 18 : 14;
             goto done;
         }
 

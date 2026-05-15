@@ -3,7 +3,7 @@
 
 #include "cdi/common.hpp"
 
-// SLAVE as implemented in CD-i Mono-I board.
+// HLE implementation of SLAVE as found in CD-i Mono-I board.
 class SLAVE
 {
 	MiniCDIConfig *emuConfig;
@@ -27,42 +27,10 @@ class SLAVE
 
 	uint8_t LCD[16];
 
-	/*void interrupt(int ch)
-	{
-		switch (ch)
-		{
-			case 0:
-				ISR |= 0b00000010u;
-				if (IMR & 0b00000010u)
-					cpu->INT2();
-				break;
-			case 1:
-				ISR |= 0b00001000u;
-				if (IMR & 0b00001000u)
-					cpu->INT2();
-				break;
-			case 2:
-				ISR |= 0b00100000u;
-				if (IMR & 0b00100000u)
-					cpu->INT2();
-				break;
-			case 3:
-				ISR |= 0b10000000u;
-				if (IMR & 0b10000000u)
-					cpu->INT2();
-				break;
-		}
-	}*/
-
 public:
 	SLAVE(uint8_t* memory, MiniCDIConfig *config)
 	: emuConfig(config), memory(memory)
 	{
-		/*// Mirror cdiemu emulation, set REMTY to 1 and TEMTY to always 1.
-		Ch[0].SR = 0b00010001u;
-		Ch[1].SR = 0b00010001u;
-		Ch[2].SR = 0b00010001u;
-		Ch[3].SR = 0b00010001u;*/
 	}
 
 	uint8_t read8(uint32_t addr)

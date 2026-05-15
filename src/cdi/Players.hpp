@@ -39,7 +39,7 @@ public:
 		return false;
 	}
 
-	CDIPlayer() : cpu(memory, memSize)
+	CDIPlayer() : cpu(memory, memSize, nullptr)
 	{
 		memory = nullptr;
 	}

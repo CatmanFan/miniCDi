@@ -251,6 +251,8 @@ public:
 	template <size_t Path>
 	size_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t y)
 	{
+		if (vsr == 0 || !memory) return 0;
+
 		uint32_t* dest = &FG[Path].decoded[y*FG[Path].width];
 		size_t adv = 0;
 		size_t x = 0;
@@ -374,11 +376,11 @@ public:
 				Decoder.CM[pathB] = (enum VideoCDI::ColorMode)((inst & 0b100000000u) >> 8);
 
 				#ifdef MINICDI_DEBUG
-				printf("[DCA%d] dprm cm=%s,mf=%s,ft=%s\n", pathB, Decoder.CM[pathB] == Double4 ? "p4" : "p8",
+				/*printf("[DCA%d] dprm cm=%s,mf=%s,ft=%s\n", pathB, Decoder.CM[pathB] == Double4 ? "p4" : "p8",
 																	Decoder.MF[pathB] == x16 ? "x16" : Decoder.MF[pathB] == x8 ? "x8"
 																  : Decoder.MF[pathB] == x4 ? "x4" : "x2",
 																	Decoder.FT[pathB] == Mosaic ? "m" : Decoder.FT[pathB] == RunLength ? "rl"
-																  : "bmp");
+																  : "bmp");*/
 				#endif
 				break;
 
@@ -390,13 +392,13 @@ public:
 				Decoder.Icm[0] = (enum VideoCDI::Icm)(inst & 0b1111u);
 
 				#ifdef MINICDI_DEBUG
-				printf("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s\n", pathB,
+				/*printf("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s\n", pathB,
 						  Decoder.IcmCS, Decoder.IcmNR, Decoder.IcmEV,
 						  Decoder.Icm[0] == CLUT8 ? "clut8" : Decoder.Icm[0] == CLUT7 ? "clut7"
 						: Decoder.Icm[0] == CLUT77 ? "clut7+7" : Decoder.Icm[0] == DYUV ? "dyuv"
 						: Decoder.Icm[0] == CLUT4 ? "clut4" : "off",
 						  Decoder.Icm[1] == RGB555 ? "rgb555" : Decoder.Icm[1] == DYUV ? "dyuv"
-						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");
+						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");*/
 				#endif
 				break;
 
@@ -404,7 +406,7 @@ public:
 				Decoder.PlaneOrder = inst & 0x00FFFFFFu;
 
 				#ifdef MINICDI_DEBUG
-				printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
+				// printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
 				#endif
 				break;
 
@@ -412,7 +414,7 @@ public:
 				Decoder.BankCLUT = inst & 0x00FFFFFFu;
 
 				#ifdef MINICDI_DEBUG
-				printf("[DCA%d] cbnk %d\n", pathB, Decoder.BankCLUT);
+				// printf("[DCA%d] cbnk %d\n", pathB, Decoder.BankCLUT);
 				#endif
 				break;
 

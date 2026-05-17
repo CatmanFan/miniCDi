@@ -9,9 +9,12 @@
 // Console-specific libraries
 #include <SDL2/SDL.h>
 #include <fat.h>
-#include <sdcard/wiisd_io.h>
 #include <gccore.h>
+
+#ifdef HW_RVL
+#include <sdcard/wiisd_io.h>
 #include <wiiuse/wpad.h>
+#endif
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
@@ -101,11 +104,11 @@ static void RUN_CDI()
 {
 	MiniCDIConfig config = {
 		true	/** PAL mode **/,
-		true	/** show LCD **/
+		false	/** show LCD **/
 	};
 	bool running = true;
 
-	config.log = fopen((devicePrefix + "apps/miniCDi/log.txt").c_str(), "wt");
+	// config.log = fopen((devicePrefix + "apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoIPlayer cdi;
 	cdi.Init((devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str(), &config);
@@ -114,13 +117,25 @@ static void RUN_CDI()
 	#endif
 
 	while (SYS_MainLoop()) {
+	#ifdef HW_RVL
 		WPAD_ScanPads();
 		uint32_t down = WPAD_ButtonsDown(0);
 		// uint32_t held = WPAD_ButtonsHeld(0);
 
 		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
 			break;
+
 		if (down & WPAD_BUTTON_B) {
+	#else
+		PAD_ScanPads();
+		uint32_t down = PAD_ButtonsDown(0);
+		// uint32_t held = PAD_ButtonsHeld(0);
+
+		if (down & PAD_BUTTON_Z)
+			break;
+
+		if (down & PAD_BUTTON_B) {
+	#endif
 			running = !running;
 			printf("\x1b[%d;%dH", 2, 0);
 			if (!running)
@@ -143,14 +158,18 @@ static void RUN_CDI()
 		}
 	}
 
-	if (config.log)
-		fclose(config.log);
+	// if (config.log)
+		// fclose(config.log);
 }
 
 int main(int argc, char **argv) {
 
 	// Init controllers
+	#ifdef HW_RVL
 	WPAD_Init();
+	#else
+	PAD_Init();
+	#endif
 
 	{
 		// Init console gfx
@@ -168,17 +187,23 @@ int main(int argc, char **argv) {
 
 	printf("miniCDi - Philips CD-i 220/20 F2 experimental emulator\n");
 
-	if (!FAT_Init()) {
-		printf("failed to init FAT, exiting");
-		sleep(5);
-		exit(0);
-	}
+	#ifdef HW_RVL
+		if (!FAT_Init()) {
+			printf("failed to init FAT, exiting");
+			sleep(5);
+			exit(0);
+		}
 
-	if (access((devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str(), F_OK) != 0) {
-		printf("BIOS not found at %s, exiting", (devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str());
+		if (access((devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str(), F_OK) != 0) {
+			printf("BIOS not found at %s, exiting", (devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str());
+			sleep(5);
+			exit(0);
+		}
+	#else
+		printf("GameCube support not fully implemented, exiting");
 		sleep(5);
 		exit(0);
-	}
+	#endif
 
 	RUN_CDI();
 

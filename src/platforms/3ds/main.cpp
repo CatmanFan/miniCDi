@@ -7,6 +7,62 @@
 #include <3ds.h>
 #include <citro2d.h>
 
+class EmulatorWindow
+{
+	C2D_Image img;
+	C3D_Tex tex;
+	Tex3DS_SubTexture subtex;
+	int width, height;
+
+public:
+	/*!
+	 * @brief Creates a renderer with the specified width and height dimensions.
+	 */
+	EmulatorWindow(int width, int height)
+	{
+		this->width = width;
+		this->height = height;
+
+		/*int memW = 1, memH = 1;
+		while (memW < width) memW *= 2;
+		while (memH < height) memH *= 2;
+
+		if (C3D_TexInitVRAM(&this->tex, memW, memH, GPU_RGBA8)) {
+			C3D_TexSetFilter(&this->tex, GPU_LINEAR, GPU_NEAREST);
+			this->subtex = (Tex3DS_SubTexture){ .width = this->width, .height = this->height,
+												.left = 0, .top = 1, .right = 1, .bottom = 0 };
+			this->img = (C2D_Image){&this->tex, &this->subtex};
+		}*/
+	}
+
+	~EmulatorWindow()
+	{
+		// C3D_TexDelete(&this->tex);
+		// this->subtex = (Tex3DS_SubTexture){0};
+	}
+
+	void Draw(uint32_t* display_output)
+	{
+		if (display_output) {
+			// C3D_TexUpload(&this->tex, display_output);
+			// C2D_DrawImageAt(this->img, 0, 0, 0.5f, NULL, /*this->width / 320.0f, this->height / 280.0f*/ 1,1);
+
+			int display_index = 0;
+			for(int y = 0; y < this->height; y++) {
+				for(int x = 0; x < this->width; x++) {
+					display_index = (x + (y * this->height));
+					if(display_output[display_index]) {
+						C2D_DrawRectSolid(x, y, 0, 1, 1, C2D_Color32((display_output[display_index] & 0xFF000000) >> 24,
+																	 (display_output[display_index] & 0x00FF0000) >> 16,
+																	 (display_output[display_index] & 0x0000FF00) >> 8,
+																	 0xFF));
+					}
+				}
+			}
+		}
+	}
+};
+
 int main(int argc, char* argv[])
 {
 	gfxInitDefault();
@@ -34,6 +90,7 @@ int main(int argc, char* argv[])
 
 	// config.log = fopen("miniCDi_log.txt", "wt");
 
+	EmulatorWindow cdiScreen(768,280);
 	MonoIPlayer cdi;
 	cdi.Init("romfs:/cdi220b.rom", &config);
 
@@ -49,25 +106,13 @@ int main(int argc, char* argv[])
 		cdi.step();
 		if (cdi.frame_ready())
 		{
-			C3D_Tex fb;
-			C3D_TexInit(&fb, cdi.get_display_width(), 280, GPU_RGBA8);
-			C3D_TexUpload(&fb, &cdi.get_display()[0]);
-			C3D_TexSetFilter(&fb, GPU_LINEAR, GPU_NEAREST);
-			C3D_TexBind(0, &fb);
-
-			Tex3DS_SubTexture fb_subtex = (Tex3DS_SubTexture)
-											{ .width = fb.width, .height = fb.height, .left = 0, .top = 1, .right = 1, .bottom = 0 };
-			C2D_Image fb_img = (C2D_Image){&fb, &fb_subtex};
-
-
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			C2D_TargetClear(top, C2D_Color32(0x00, 0x00, 0x00, 0xFF));
 			C2D_SceneBegin(top);
 
-			C2D_DrawImageAt(fb_img, 0, 0, 0.5f, NULL, fb.width * fb.width / 320.0f, 240.0f/280.0f);
+			cdiScreen.Draw(cdi.get_display());
 
 			C3D_FrameEnd(0);
-			C3D_TexDelete(&fb);
 		}
 	}
 

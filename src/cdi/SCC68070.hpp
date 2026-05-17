@@ -23,6 +23,8 @@ class SCC68070
 	uint8_t TCR;
 	uint16_t RR;
 	uint16_t T[3];
+
+	/** DMA **/
 	struct {
 		uint8_t CSR;
 		uint8_t CER;
@@ -38,6 +40,13 @@ class SCC68070
 
 		uint8_t CPR;
 	} DMA[2];
+
+	/** I²C **/
+	uint8_t IDR;
+	uint8_t IAR;
+	uint8_t ISR;
+	uint8_t ICR;
+	uint8_t ICCR;
 
 public:
 	uint8_t fc; // used for FC/address space callback
@@ -102,12 +111,19 @@ public:
 			case 0x80001001: return LIR & 0x77;
 
 			/** UART **/
-			case 0x80002011: return UMR | 0x20;
+			case 0x80002011: return UMR;
 			case 0x80002013: USR |= (1<<1); return USR | 0x08;
 			case 0x80002015: return UCS | 0x08;
 			case 0x80002017: return UCR | 0x80;
 			case 0x80002019: return UTH;
 			case 0x8000201B: if (URH) USR |= 0x01; else USR &= ~(0x01); return URH;
+
+			/** I²C **/
+			case 0x80002001: return IDR;
+			case 0x80002003: return IAR;
+			case 0x80002005: return ISR;
+			case 0x80002007: return ICR;
+			case 0x80002009: return ICCR;
 
 			/** Timer **/
 			case 0x80002020: return TSR;
@@ -177,8 +193,15 @@ public:
 				LIR = (LIR & 0x88) | (value & 0x77);
 				break;
 
+			/** I²C **/
+			case 0x80002001: IDR = value; break;
+			case 0x80002003: IAR = value; break;
+			case 0x80002005: ISR = value; break;
+			case 0x80002007: ICR = value; break;
+			case 0x80002009: ICCR = value; break;
+
 			/** UART **/
-			case 0x80002011: UMR = value; break;
+			case 0x80002011: UMR = value | 0x20; break;
 			case 0x80002013: USR = value; break;
 			case 0x80002015: UCS = value; break;
 			case 0x80002017: UCR = value;
@@ -261,28 +284,28 @@ public:
 		}
 	}
 
-	int run(int cycles = 2048)
+	int run(int cycles = 2000)
 	{
 		int ran = 0;
 
 		#ifdef MINICDI_DEBUG
-			for (ran = 0; ran < cycles;) {
-				if (emuConfig && emuConfig->log != 0) {
-					uint32_t pcLog;
-					pcLog = m68k_get_reg(NULL, M68K_REG_PC);
-					ran += m68k_execute(500);
-					if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
-						char text[192];
-						m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-						fprintf(emuConfig->log, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
-						// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
-					}
-				} else {
-					ran += m68k_execute(cycles);
+		for (ran = 0; ran < cycles;) {
+			if (emuConfig && emuConfig->log != 0) {
+				uint32_t pcLog;
+				pcLog = m68k_get_reg(NULL, M68K_REG_PC);
+				ran += m68k_execute(500);
+				if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
+					char text[192];
+					m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
+					fprintf(emuConfig->log, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+					// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 				}
+			} else {
+				ran += m68k_execute(cycles);
 			}
+		}
 		#else
-			ran += m68k_execute(cycles);
+		ran += m68k_execute(cycles);
 		#endif
 
 		for (int i = 0; i < ran; i+=96)
@@ -315,7 +338,7 @@ public:
 			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_D0 + i)),
 			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
 
-		printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X T0: %04X\n", UCR, URH, USR, LIR, T[0]);
+		printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X\n", UCR, URH, USR, LIR);
 		#endif
 
 		return ran;

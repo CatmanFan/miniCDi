@@ -157,6 +157,7 @@ public:
 
 	Video()
 	{
+		output.resize(768 * 280, 0x000000ff); // Max available resolution
 	}
 
 	~Video()
@@ -187,11 +188,8 @@ public:
 		FG[1].width = FG[0].width = type == NTSCMonitor ? 720 : 768;
 		FG[1].height = FG[0].height = (type == PAL ? 280 : 240) * (vRes ? 2 : 1);
 
-		if (output.size() != FG[0].width * FG[0].height) {
-			FG[0].decoded.resize(FG[0].width * FG[0].height, 0);
-			FG[1].decoded.resize(FG[1].width * FG[1].height, 0);
-			output.resize(FG[0].width * FG[0].height, 0x000000ff);
-		}
+		FG[0].decoded.resize(FG[0].width * FG[0].height, 0);
+		FG[1].decoded.resize(FG[1].width * FG[1].height, 0);
 	}
 
 	void draw_frame()
@@ -251,8 +249,6 @@ public:
 	template <size_t Path>
 	size_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t y)
 	{
-		if (vsr == 0 || !memory) return 0;
-
 		uint32_t* dest = &FG[Path].decoded[y*FG[Path].width];
 		size_t adv = 0;
 		size_t x = 0;

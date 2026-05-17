@@ -90,7 +90,7 @@
  * If off, all read requests from the CPU will be redirected to m68k_read_xx()
  */
 #ifndef M68K_SEPARATE_READS
-#define M68K_SEPARATE_READS         M68K_OPT_OFF
+#define M68K_SEPARATE_READS         M68K_OPT_ON
 #endif
 
 /* If ON, the CPU will call m68k_write_32_pd() when it executes move.l with a
@@ -99,7 +99,7 @@
  * word to [address+2], and then write the low word to [address].
  */
 #ifndef M68K_SIMULATE_PD_WRITES
-#define M68K_SIMULATE_PD_WRITES     M68K_OPT_OFF
+#define M68K_SIMULATE_PD_WRITES     M68K_OPT_ON
 #endif
 
 /* If ON, CPU will call the interrupt acknowledge callback when it services an
@@ -222,7 +222,7 @@
 
 /* If ON, the CPU will emulate the 4-byte prefetch queue of a real 68000 */
 #ifndef M68K_EMULATE_PREFETCH
-#define M68K_EMULATE_PREFETCH       M68K_OPT_OFF
+#define M68K_EMULATE_PREFETCH       M68K_OPT_ON
 #endif
 
 
@@ -231,7 +231,7 @@
  * NOTE: This is only emulated properly for 68000 mode.
  */
 #ifndef M68K_EMULATE_ADDRESS_ERROR
-#define M68K_EMULATE_ADDRESS_ERROR  M68K_OPT_OFF
+#define M68K_EMULATE_ADDRESS_ERROR  M68K_OPT_ON
 #endif
 
 
@@ -266,7 +266,7 @@
  * operations.
 */
 #ifndef M68K_USE_64_BIT
-#define M68K_USE_64_BIT             M68K_OPT_ON
+#define M68K_USE_64_BIT             M68K_OPT_OFF
 #endif
 
 

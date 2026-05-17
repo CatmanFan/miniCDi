@@ -10,15 +10,10 @@ dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
 option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." ON)
-option(MINICDI_USE_MUSASHI "Use Musashi instead of Rocket68 for M68K core." ON)
 
 if (MINICDI_ENABLE_DEBUG)
   MESSAGE(STATUS "MINICDI_ENABLE_DEBUG")
   target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG)
-endif()
-if (MINICDI_USE_MUSASHI)
-  MESSAGE(STATUS "MINICDI_USE_MUSASHI")
-  target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_MUSASHI)
 endif()
 
 set (APP_AUTHOR "Mr. Lechkar / CatmanFan")
@@ -26,14 +21,11 @@ set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 
 # Core source files
 # -------------------------------------------
-target_include_directories(${PROJECT_NAME} PRIVATE src)
+target_include_directories(${PROJECT_NAME} PRIVATE src src/cdi/Musashi)
 target_sources(${PROJECT_NAME} PRIVATE
     src/cdi/Players.cpp
-)
 
-if (MINICDI_USE_MUSASHI)
-target_include_directories(${PROJECT_NAME} PRIVATE src/cdi/Musashi)
-target_sources(${PROJECT_NAME} PRIVATE
+	# Musashi core
     src/cdi/Musashi/m68k.h
     src/cdi/Musashi/m68kconf.h
     src/cdi/Musashi/m68kcpu.c
@@ -47,18 +39,6 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/Musashi/softfloat/softfloat.h
 	src/cdi/Musashi/softfloat/softfloat-macros
 )
-else()
-target_sources(${PROJECT_NAME} PRIVATE
-    src/cdi/rocket68/raw/disasm.c
-    src/cdi/rocket68/raw/loader.c
-    src/cdi/rocket68/raw/m68k.c
-    src/cdi/rocket68/raw/ops_arith.c
-    src/cdi/rocket68/raw/ops_bit.c
-    src/cdi/rocket68/raw/ops_control.c
-    src/cdi/rocket68/raw/ops_logic.c
-    src/cdi/rocket68/raw/ops_move.c
-)
-endif()
 
 # Console specific
 # -------------------------------------------

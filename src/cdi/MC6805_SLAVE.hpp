@@ -54,7 +54,7 @@ public:
 				}
 
 				#ifdef MINICDI_DEBUG
-					// printf("[SLAVE] %sDR => %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
+				//printf("[SLAVE] %sDR => %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 				#endif
 				return Ch[c].DR;
 		}
@@ -73,7 +73,7 @@ public:
 				size_t c = (addr - Addr_ADR) / 2;
 				Ch[c].In.push_back(value);
 				#ifdef MINICDI_DEBUG
-					// printf("[SLAVE] %sDR <= %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
+				//printf("[SLAVE] %sDR <= %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 				#endif
 
 				switch (c)

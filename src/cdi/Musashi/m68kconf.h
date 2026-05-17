@@ -69,19 +69,19 @@
 #endif
 
 #ifndef M68K_EMULATE_EC020
-#define M68K_EMULATE_EC020          M68K_OPT_ON
+#define M68K_EMULATE_EC020          M68K_OPT_OFF
 #endif
 
 #ifndef M68K_EMULATE_020
-#define M68K_EMULATE_020            M68K_OPT_ON
+#define M68K_EMULATE_020            M68K_OPT_OFF
 #endif
 
 #ifndef M68K_EMULATE_030
-#define M68K_EMULATE_030            M68K_OPT_ON
+#define M68K_EMULATE_030            M68K_OPT_OFF
 #endif
 
 #ifndef M68K_EMULATE_040
-#define M68K_EMULATE_040            M68K_OPT_ON
+#define M68K_EMULATE_040            M68K_OPT_OFF
 #endif
 
 
@@ -125,7 +125,7 @@
 /* If ON, the CPU will monitor the trace flags and take trace exceptions
  */
 #ifndef M68K_EMULATE_TRACE
-#define M68K_EMULATE_TRACE          M68K_OPT_OFF
+#define M68K_EMULATE_TRACE          M68K_OPT_ON
 #endif
 
 
@@ -197,8 +197,8 @@
  * to read/write data from different address spaces)
  */
 #ifndef M68K_EMULATE_FC
-#define M68K_EMULATE_FC             M68K_OPT_OFF
-#define M68K_SET_FC_CALLBACK(A)     your_set_fc_handler_function(A)
+#define M68K_EMULATE_FC             M68K_OPT_SPECIFY_HANDLER
+#define M68K_SET_FC_CALLBACK(A)     scc68070_set_fc(A)
 #endif
 
 /* If ON, CPU will call the pc changed callback when it changes the PC by a
@@ -252,7 +252,7 @@
  * if it's useful.
  */
 #ifndef M68K_EMULATE_PMMU
-#define M68K_EMULATE_PMMU           M68K_OPT_ON
+#define M68K_EMULATE_PMMU           M68K_OPT_OFF
 #endif
 
 /* ----------------------------- COMPATIBILITY ---------------------------- */

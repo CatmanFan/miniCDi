@@ -1,25 +1,6 @@
 #ifndef MINICDI_SCC68070
 #define MINICDI_SCC68070
 
-#ifndef MINICDI_MUSASHI
-	/*****************************/
-	/** Wrapper for M68000 core **/
-	/*****************************/
-	#ifdef __cplusplus
-	extern "C" {
-	#endif
-
-	#include "cdi/rocket68/raw/disasm.h"
-	#include "cdi/rocket68/raw/loader.h"
-	#include "cdi/rocket68/raw/m68k.h"
-	#define ROCKET68_VERSION_STR "0.2.1"
-
-	#ifdef __cplusplus
-	}
-	#endif
-	/*****************************/
-#endif
-
 class SCC68070
 {
 	MiniCDIConfig *emuConfig;
@@ -42,21 +23,30 @@ class SCC68070
 	uint8_t TCR;
 	uint16_t RR;
 	uint16_t T[3];
+	struct {
+		uint8_t CSR;
+		uint8_t CER;
+
+		uint8_t DCR;
+		uint8_t OCR;
+		uint8_t SCR;
+		uint8_t CCR;
+
+		uint16_t MTC;
+		uint32_t MAC;
+		uint32_t DAC;
+
+		uint8_t CPR;
+	} DMA[2];
 
 public:
-#ifndef MINICDI_MUSASHI
-	M68kCpu context;
-#endif
+	uint8_t fc; // used for FC/address space callback
 
 	SCC68070(uint8_t* memory, size_t mem_size, MiniCDIConfig *config)
 	: emuConfig(config), memory(memory)
 	{
-	#ifdef MINICDI_MUSASHI
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-	#else
-		m68k_init(&context, memory, mem_size);
-	#endif
 	}
 
 	void set_bios(const char* romPath, size_t romAddr)
@@ -73,17 +63,9 @@ public:
 
 	void reset()
 	{
-	#ifdef MINICDI_MUSASHI
 		m68k_pulse_reset();
-		for (int i = 0; i < 15; i++)
-			m68k_set_reg((m68k_register_t)i, 0xffffffff);
-	#else
-		m68k_reset(&context);
-		for (int i = 0; i < 7; i++)
-			context.a_regs[i].l = 0xffffffff;
-		for (int i = 0; i < 8; i++)
-			context.d_regs[i].l = 0xffffffff;
-	#endif
+		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
+		fc = 0;
 
 		UMR = 0x20; // unused bit
 		USR = 0b0000'0110; // TX ready and unused bit
@@ -105,11 +87,11 @@ public:
 		}
 
 		if (level > 0) {
-		#ifdef MINICDI_MUSASHI
+			#ifdef MINICDI_DEBUG
+			printf("[SCC68070] INT%dN lvl %d\n", ch, level);
+			#endif
+
 			m68k_set_irq(level + 56);
-		#else
-			m68k_set_irq(&context, level + 56 - 24);
-		#endif
 		}
 	}
 
@@ -142,9 +124,45 @@ public:
 			/** PICR **/
 			case 0x80002045: return PICR[0] & 0x77;
 			case 0x80002047: return PICR[1] & 0x77;
+
+			/** DMA (ch1) **/
+			case 0x80004000: return DMA[0].CSR;
+			case 0x80004001: return DMA[0].CER;
+			case 0x80004004: return DMA[0].DCR;
+			case 0x80004005: return DMA[0].OCR;
+			case 0x80004006: return DMA[0].SCR;
+			case 0x80004007: return DMA[0].CCR;
+			case 0x8000400a: return (DMA[0].MTC >> 8) & 0x00FF;
+			case 0x8000400b: return DMA[0].MTC & 0x00FF;
+			case 0x8000400c: return (DMA[0].MAC >> 24) & 0x000000FF;
+			case 0x8000400d: return (DMA[0].MAC >> 16) & 0x000000FF;
+			case 0x8000400e: return (DMA[0].MAC >> 8) & 0x000000FF;
+			case 0x8000400f: return DMA[0].MAC & 0x000000FF;
+			case 0x80004014: return (DMA[0].DAC >> 24) & 0x000000FF;
+			case 0x80004015: return (DMA[0].DAC >> 16) & 0x000000FF;
+			case 0x80004016: return (DMA[0].DAC >> 8) & 0x000000FF;
+			case 0x80004017: return DMA[0].DAC & 0x000000FF;
+
+			/** DMA (ch2) **/
+			case 0x80004040: return DMA[1].CSR;
+			case 0x80004041: return DMA[1].CER;
+			case 0x80004044: return DMA[1].DCR;
+			case 0x80004045: return DMA[1].OCR;
+			case 0x80004046: return DMA[1].SCR;
+			case 0x80004047: return DMA[1].CCR;
+			case 0x8000404a: return (DMA[1].MTC >> 8) & 0x00FF;
+			case 0x8000404b: return DMA[1].MTC & 0x00FF;
+			case 0x8000404c: return (DMA[1].MAC >> 24) & 0x000000FF;
+			case 0x8000404d: return (DMA[1].MAC >> 16) & 0x000000FF;
+			case 0x8000404e: return (DMA[1].MAC >> 8) & 0x000000FF;
+			case 0x8000404f: return DMA[1].MAC & 0x000000FF;
+			case 0x80004054: return (DMA[1].DAC >> 24) & 0x000000FF;
+			case 0x80004055: return (DMA[1].DAC >> 16) & 0x000000FF;
+			case 0x80004056: return (DMA[1].DAC >> 8) & 0x000000FF;
+			case 0x80004057: return DMA[1].DAC & 0x000000FF;
 		}
 
-		return 0;
+		return memory[addr & 0x00FFFFFF];
 	}
 
 	void write8(uint32_t addr, uint8_t value)
@@ -164,9 +182,21 @@ public:
 			case 0x80002013: USR = value; break;
 			case 0x80002015: UCS = value; break;
 			case 0x80002017: UCR = value;
-				if (UCR & 0x0'011'0000) { UTH = 0; USR |= 0x08; } // reset transmitter
-				else if (UCR & 0x0'010'0000) URH = 0; // reset receiver
-				else if (UCR & 0x0'100'0000) USR &= 0x0F; // reset error status
+				switch (UCR & 0x70)
+				{
+					case 0x20: // reset receiver
+						URH = 0;
+						//printf("[UART] UCR %02X (reset URH)\n", value);
+						break;
+					case 0x30: // reset transmitter
+						UTH = 0; USR |= 0x08;
+						//printf("[UART] UCR %02X (reset UTH)\n", value);
+						break;
+					case 0x40: // reset error status
+						USR &= 0x0F;
+						//printf("[UART] UCR %02X (reset error)\n", value);
+						break;
+				}
 				break;
 			case 0x80002019: UTH = value; USR &= ~(0x08); break;
 			case 0x8000201B: URH = value; break;
@@ -192,46 +222,68 @@ public:
 				if (PICR[1] & 0x80) PICR[1] &= 0x7F;
 				if (PICR[1] & 0x08) PICR[1] &= 0xF7;
 				break;
+
+			/** DMA (ch1) **/
+			case 0x80004000: DMA[0].CSR = value; break;
+			case 0x80004001: DMA[0].CER = value; break; // cannot be written per datasheet
+			case 0x80004004: DMA[0].DCR = value; break;
+			case 0x80004005: DMA[0].OCR = value; break;
+			case 0x80004006: DMA[0].SCR = value; break;
+			case 0x80004007: DMA[0].CCR = value; break;
+			case 0x8000400a: DMA[0].MTC &= 0x00FF; DMA[0].MTC |= (value << 8); break;
+			case 0x8000400b: DMA[0].MTC &= 0xFF00; DMA[0].MTC |= value; break;
+			case 0x8000400c: DMA[0].MAC &= 0x00FFFFFF; DMA[0].MAC |= (value << 24); break;
+			case 0x8000400d: DMA[0].MAC &= 0xFF00FFFF; DMA[0].MAC |= (value << 16); break;
+			case 0x8000400e: DMA[0].MAC &= 0xFFFF00FF; DMA[0].MAC |= (value << 8); break;
+			case 0x8000400f: DMA[0].MAC &= 0xFFFFFF00; DMA[0].MAC |= value; break;
+			case 0x80004014: DMA[0].DAC &= 0x00FFFFFF; DMA[0].DAC |= (value << 24); break;
+			case 0x80004015: DMA[0].DAC &= 0xFF00FFFF; DMA[0].DAC |= (value << 16); break;
+			case 0x80004016: DMA[0].DAC &= 0xFFFF00FF; DMA[0].DAC |= (value << 8); break;
+			case 0x80004017: DMA[0].DAC &= 0xFFFFFF00; DMA[0].DAC |= value; break;
+
+			/** DMA (ch2) **/
+			case 0x80004040: DMA[1].CSR = value; break;
+			case 0x80004041: DMA[1].CER = value; break; // cannot be written per datasheet
+			case 0x80004044: DMA[1].DCR = value; break;
+			case 0x80004045: DMA[1].OCR = value; break;
+			case 0x80004046: DMA[1].SCR = value; break;
+			case 0x80004047: DMA[1].CCR = value; break;
+			case 0x8000404a: DMA[1].MTC &= 0x00FF; DMA[1].MTC |= (value << 8); break;
+			case 0x8000404b: DMA[1].MTC &= 0xFF00; DMA[1].MTC |= value; break;
+			case 0x8000404c: DMA[1].MAC &= 0x00FFFFFF; DMA[1].MAC |= (value << 24); break;
+			case 0x8000404d: DMA[1].MAC &= 0xFF00FFFF; DMA[1].MAC |= (value << 16); break;
+			case 0x8000404e: DMA[1].MAC &= 0xFFFF00FF; DMA[1].MAC |= (value << 8); break;
+			case 0x8000404f: DMA[1].MAC &= 0xFFFFFF00; DMA[1].MAC |= value; break;
+			case 0x80004054: DMA[1].DAC &= 0x00FFFFFF; DMA[1].DAC |= (value << 24); break;
+			case 0x80004055: DMA[1].DAC &= 0xFF00FFFF; DMA[1].DAC |= (value << 16); break;
+			case 0x80004056: DMA[1].DAC &= 0xFFFF00FF; DMA[1].DAC |= (value << 8); break;
+			case 0x80004057: DMA[1].DAC &= 0xFFFFFF00; DMA[1].DAC |= value; break;
 		}
 	}
 
-	int run(int cycles = 2000)
+	int run(int cycles = 2048)
 	{
 		int ran = 0;
 
-		for (ran = 0; ran < cycles;) {
-			if (emuConfig && emuConfig->log != 0) {
-				uint32_t pcLog;
-			#ifdef MINICDI_MUSASHI
-				pcLog = m68k_get_reg(NULL, M68K_REG_PC);
-				ran += m68k_execute(500);
-			#else
-				pcLog = context.pc;
-				ran += m68k_execute(&context, 500);
-			#endif
-				#ifdef MINICDI_MUSASHI
+		#ifdef MINICDI_DEBUG
+			for (ran = 0; ran < cycles;) {
+				if (emuConfig && emuConfig->log != 0) {
+					uint32_t pcLog;
+					pcLog = m68k_get_reg(NULL, M68K_REG_PC);
+					ran += m68k_execute(500);
 					if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
 						char text[192];
 						m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
 						fprintf(emuConfig->log, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
 						// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 					}
-				#else
-					if (pcLog != context.pc) {
-						char text[128];
-						m68k_disasm(&context, context.pc, text, (int)sizeof(text));
-						fprintf(emuConfig->log, "[CPU][$%08X] %s\n", (uint32_t)context.pc, text);
-						// printf("\n$%08X: %s                            \n", context.pc, text);
-					}
-				#endif
-			} else {
-			#ifdef MINICDI_MUSASHI
-				ran += m68k_execute(cycles);
-			#else
-				ran += m68k_execute(&context, cycles);
-			#endif
+				} else {
+					ran += m68k_execute(cycles);
+				}
 			}
-		}
+		#else
+			ran += m68k_execute(cycles);
+		#endif
 
 		for (int i = 0; i < ran; i+=96)
 		{
@@ -244,9 +296,9 @@ public:
 			T[0]++;
 		}
 
-	#ifdef MINICDI_DEBUG
-			printf("PC: %08X SR: %s%s %s%s%s%s%s\n",
-		#ifdef MINICDI_MUSASHI
+		#ifdef MINICDI_DEBUG
+		printf("\x1b[%d;%dH", 4, 0);
+		printf("PC: %08X SR: %s%s %s%s%s%s%s FC: %d\n",
 			m68k_get_reg(NULL, M68K_REG_PC),
 			(m68k_get_reg(NULL, M68K_REG_SR) >> 15) & 0x01 ? "T" : " ",
 			(m68k_get_reg(NULL, M68K_REG_SR) >> 13) & 0x01 ? "S" : " ",
@@ -254,31 +306,17 @@ public:
 			(m68k_get_reg(NULL, M68K_REG_SR) >> 3) & 0x01 ? "N" : " ",
 			(m68k_get_reg(NULL, M68K_REG_SR) >> 2) & 0x01 ? "Z" : " ",
 			(m68k_get_reg(NULL, M68K_REG_SR) >> 1) & 0x01 ? "V" : " ",
-			m68k_get_reg(NULL, M68K_REG_SR) & 0x01 ? "C" : " "
-		#else
-			(uint32_t)context.pc,
-			(context.sr >> 15) & 0x01 ? "T" : " ",
-			(context.sr >> 13) & 0x01 ? "S" : " ",
-			(context.sr >> 4) & 0x01 ? "X" : " ",
-			(context.sr >> 3) & 0x01 ? "N" : " ",
-			(context.sr >> 2) & 0x01 ? "Z" : " ",
-			(context.sr >> 1) & 0x01 ? "V" : " ",
-			context.sr & 0x01 ? "C" : " "
-		#endif
-			);
+			m68k_get_reg(NULL, M68K_REG_SR) & 0x01 ? "C" : " ",
+			fc
+		);
 
-			for (int i = 0; i < 8; i++)
-				printf("D%d: %08X A%d: %08X\n",
-			#ifdef MINICDI_MUSASHI
-				i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_D0 + i)),
-				i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
-			#else
-				i, (uint32_t)context.d_regs[i].l,
-				i, (uint32_t)context.a_regs[i].l);
-			#endif
+		for (int i = 0; i < 8; i++)
+			printf("D%d: %08X A%d: %08X\n",
+			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_D0 + i)),
+			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
 
 		printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X T0: %04X\n", UCR, URH, USR, LIR, T[0]);
-	#endif
+		#endif
 
 		return ran;
 	}

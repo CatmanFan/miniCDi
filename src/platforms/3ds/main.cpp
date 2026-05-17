@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 		false	/** show LCD **/
 	};
 
-	config.log = fopen("miniCDi_log.txt", "wt");
+	// config.log = fopen("miniCDi_log.txt", "wt");
 
 	MonoIPlayer cdi;
 	cdi.Init("romfs:/cdi220b.rom", &config);
@@ -45,8 +45,6 @@ int main(int argc, char* argv[])
 		u32 kDown = hidKeysDown();
 		if (kDown & KEY_ZR)
 			break; // break in order to return to hbmenu
-
-		printf("\x1b[%d;%dH", 4, 0);
 
 		cdi.step();
 		if (cdi.frame_ready())
@@ -73,8 +71,8 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	if (config.log)
-		fclose(config.log);
+	// if (config.log)
+		// fclose(config.log);
 
 	C2D_Fini();
 	C3D_Fini();

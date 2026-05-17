@@ -34,9 +34,7 @@
 #include <vector>
 
 #include "cdi/Config.hpp"
-#ifdef MINICDI_MUSASHI
-	#include "cdi/Musashi/m68k.h"
-#endif
+#include "cdi/Musashi/m68k.h"
 
 // Cores
 #include "cdi/Vdsc.hpp"

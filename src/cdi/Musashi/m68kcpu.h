@@ -580,6 +580,7 @@ typedef uint32 uint64;
 #if M68K_EMULATE_FC
 	#if M68K_EMULATE_FC == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_set_fc(A) M68K_SET_FC_CALLBACK(A)
+		extern void m68ki_set_fc(unsigned int new_fc);
 	#else
 		#define m68ki_set_fc(A) CALLBACK_SET_FC(A)
 	#endif

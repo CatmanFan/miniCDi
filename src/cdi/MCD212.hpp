@@ -212,7 +212,7 @@ class MCD212
 			}
 		} else {
 			DA = 1;
-			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
+			PA = /*SM ? (*/frames % 2 == 0 ? 0 : 1/*) : 1*/;
 
 			if (line == 0) {
 				video.set_mode(CF == 1 ? VideoCDI::NTSCTV : VideoCDI::PAL, CM[0], CM[1]);
@@ -262,7 +262,7 @@ public:
 		// initialization
 		CF = FD = emuConfig->pal ? 0 : 1;
 		SM = /* to-do: interlace */ 0;
-		DE = 1;
+		// DE = 1;
 		// IC1 = 1;
 		// IC2 = 1;
 		// DC1 = 1;
@@ -287,7 +287,7 @@ public:
 			this->cycles -= 1920;
 		}
 
-	#ifdef MINICDI_DEBUG
+		#ifdef MINICDI_DEBUG
 		/*printf("\n[VDSC viewer]\n");
 		printf("frame: %lld, linesV: %d, line: %d\n", frames, linesV, line);
 		printf("CSR1R > DA  %02X  PA  %02X\n", DA, PA);
@@ -299,7 +299,7 @@ public:
 		printf("DDR1:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[0], MF2[0], FT1[0], FT2[0]);
 		printf("DDR2:   MF1 %02X  MF2 %02X  FT1 %02X  FT2 %02X\n", MF1[1], MF2[1], FT1[1], FT2[1]);
 		printf("\nVSR1: %X\nVSR2: %X\nDCP1: %X\nDCP2: %X\n", VSR[0], VSR[1], DCP[0], DCP[1]);*/
-	#endif
+		#endif
 	}
 
 	uint8_t read8(uint32_t addr)

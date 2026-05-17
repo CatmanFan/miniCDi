@@ -90,10 +90,6 @@ public:
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
 	inline void step() override {
-	#ifdef MINICDI_DEBUG
-		printf("\x1b[%d;%dH", 4, 0);
-	#endif
-
 		cycles = cpu.run();
 		vpu->increment(cycles);
 

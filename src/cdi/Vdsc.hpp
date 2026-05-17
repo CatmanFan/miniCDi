@@ -406,7 +406,7 @@ public:
 				Decoder.PlaneOrder = inst & 0x00FFFFFFu;
 
 				#ifdef MINICDI_DEBUG
-				// printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
+				printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
 				#endif
 				break;
 
@@ -414,7 +414,7 @@ public:
 				Decoder.BankCLUT = inst & 0x00FFFFFFu;
 
 				#ifdef MINICDI_DEBUG
-				// printf("[DCA%d] cbnk %d\n", pathB, Decoder.BankCLUT);
+				//printf("[DCA%d] cbnk %d\n", pathB, Decoder.BankCLUT);
 				#endif
 				break;
 

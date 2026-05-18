@@ -20,7 +20,7 @@ class MCD212
 	uint8_t* memory;
 
 	int cycles;
-	VideoCDI::Video video;
+	VideoCDI::Video vdsc;
 
 	size_t linesV, line;
 	uint64_t frames;
@@ -131,11 +131,11 @@ class MCD212
 					MF2[Path] = (inst & 0x04) >> 2;
 					FT1[Path] = (inst & 0x02) >> 1;
 					FT2[Path] = inst & 0x01;
-					video.set_register<Path>(inst);
+					vdsc.set_register<Path>(inst);
 					break;
 
 				default:
-					video.set_register<Path>(inst);
+					vdsc.set_register<Path>(inst);
 					break;
 			}
 		}
@@ -197,14 +197,47 @@ class MCD212
 					break;
 
 				default:
-					video.set_register<Path>(inst);
+					vdsc.set_register<Path>(inst);
 					break;
 			}
 		}
 	}
 
 public:
-	/** Draws a video line **/
+	MCD212(SCC68070 *cpu, uint8_t *memory, size_t start, MiniCDIConfig *config)
+	: emuConfig(config), cpu(cpu), memory(memory), cycles(0)
+	{
+		reset();
+	}
+
+	/**
+	 * @brief  Resets the chip.
+	 */
+	void reset()
+	{
+		// clear write bits
+		DI[0] = DD1 = DD2 = TD = DD = ST = BE[0] = BE[1] = 0;
+		DI[1] = 0;
+		DE = CF = FD = SM = CM[0] = IC[0] = DC[0] = 0;
+		CM[1] = IC[1] = DC[1] = 0;
+		MF1[0] = MF2[0] = FT1[0] = FT2[0] = 0;
+		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
+
+		// initialization
+		CF = FD = 0; // Hardcoded
+		SM = /* to-do: interlace */ 0;
+
+		frame_ready = false;
+		frames = 0;
+		linesV = 0;
+		line = 0;
+
+		vdsc.reset();
+	}
+
+	/**
+	 * @brief  Draws a video line.
+	 */
 	void tick()
 	{
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
@@ -217,17 +250,21 @@ public:
 			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
 
 			if (line == 0) {
-				video.set_mode(CF == 1 ? VideoCDI::NTSCTV : VideoCDI::PAL, CM[0], CM[1]);
+				vdsc.set_mode(VideoCDI::PAL, CM[0], CM[1]); // Hardcoded
 				if (frames % 2 == 0 && SM)
 					line = 1;
 			}
 
 			if (DE) {
+				#ifdef MINICDI_FRAMESKIP
 				if (frames % 12 == 0) {
+				#endif
 					// render line onto bitmap
-					VSR[0] = video.draw_line_to_plane<0>(memory, VSR[0], line);
-					VSR[1] = video.draw_line_to_plane<1>(memory, VSR[1], line);
+					VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
+					// VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+				#ifdef MINICDI_FRAMESKIP
 				}
+				#endif
 
 				if (DC[0] && IC[0]) DCA_execute<0>();
 				if (DC[1] && IC[1]) DCA_execute<1>();
@@ -241,49 +278,12 @@ public:
 				line = 0;
 
 				frames++;
+				#ifdef MINICDI_FRAMESKIP
 				frame_ready = frames % 12 == 0;
-				if (frame_ready) video.draw_frame();
-			}
-		}
-	}
-
-	MCD212(SCC68070 *cpu, uint8_t *memory, size_t start, MiniCDIConfig *config)
-	: emuConfig(config), cpu(cpu), memory(memory), cycles(0)
-	{
-		reset();
-	}
-
-	void reset()
-	{
-		// clear write bits
-		DI[0] = DD1 = DD2 = TD = DD = ST = BE[0] = BE[1] = 0;
-		DI[1] = 0;
-		DE = CF = FD = SM = CM[0] = IC[0] = DC[0] = 0;
-		CM[1] = IC[1] = DC[1] = 0;
-		MF1[0] = MF2[0] = FT1[0] = FT2[0] = 0;
-		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
-
-		// initialization
-		CF = FD = emuConfig->pal ? 0 : 1;
-		SM = /* to-do: interlace */ 0;
-
-		frame_ready = false;
-		frames = 0;
-		linesV = 0;
-		line = 0;
-
-		video.reset();
-	}
-
-	void increment(int cycles)
-	{
-		this->cycles += cycles;
-		while (this->cycles >= 1920) {
-			tick();
-			this->cycles -= 1920;
-			if (linesV == 0) {
-				this->cycles = 0;
-				break;
+				if (frame_ready) vdsc.draw_frame();
+				#else
+				frame_ready = true; vdsc.draw_frame();
+				#endif
 			}
 		}
 
@@ -384,12 +384,12 @@ public:
 
 	uint32_t* get_display()
 	{
-		return video.get_display();
+		return vdsc.get_display();
 	}
 
 	size_t get_display_width()
 	{
-		return video.get_display_width();
+		return vdsc.get_display_width();
 	}
 
 	bool is_frame_ready()

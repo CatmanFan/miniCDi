@@ -94,7 +94,7 @@ public:
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
 	inline void step() override {
-		// Timer normally ticks at 96 cycles, line polling at 960 ?
+		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		for (cycles = 0; cycles < 10; cycles++) {
 			cpu.run(96);
 			cpu.tick_timer();

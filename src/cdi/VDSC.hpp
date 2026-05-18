@@ -16,12 +16,13 @@ namespace VideoCDI
 
 enum Icm
 {
+	// All coding methods are usable in standard-res except for CLUT4.
 	Off = 0x00,
 	CLUT8 = 0x01, // plane A only
 	CLUT7 = 0x03,
 	CLUT77 = 0x04,
 	DYUV = 0x05,
-	CLUT4 = 0x0B, // double res only
+	CLUT4 = 0x0B, // double-res only
 	RGB555 = 0x01, // plane B only
 };
 
@@ -85,7 +86,7 @@ enum ColorMode
 class Plane
 {
 public:
-	size_t width, height;
+	int width, height;
 	bool doubleRes;
 	std::vector<uint32_t> decoded;
 };
@@ -96,12 +97,12 @@ class Video
 
 	struct
 	{
-		/* 80 */ uint32_t ColorCLUT[4][64]; // A CLUT is a color lookup table holding a number of colors in RGB888.
+		/* 80 */ uint32_t ColorCLUT[256]; // A CLUT is a color lookup table holding a number of colors in RGB888.
 		/* C0 */ enum Icm Icm[2];
 				 uint8_t IcmCS, IcmNR, IcmEV;
 		/* C1 */ enum Tcr Transparency;
 		/* C2 */ uint8_t PlaneOrder;
-		/* C3 */ uint8_t BankCLUT[2];
+		/* C3 */ uint8_t BankCLUT;
 		/* C4 */ uint8_t TransparentCol[2];
 		/** reserved (C6) **/
 		/* C7 */ uint8_t MaskCol[2];
@@ -122,7 +123,7 @@ class Video
 		enum ColorMode CM[2];
 	} Decoder;
 
-	size_t decodeDYUV(uint8_t* src, uint32_t *dst)
+	uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 	{
 		int Y = *src & 0x0F;
 		int U = (*src >> 4) & 0x0F;
@@ -139,8 +140,16 @@ class Video
 		return 1;
 	}
 
+	/**
+	 * @brief  Decodes CLUT to an RGB pixel.
+	 * 
+	 * @param  src:  pointer to the VSR buffer
+	 * @param  dst:  pointer to the uint32_t pixel
+	 * 
+	 * @return The number of RGB pixels incremented
+	 */
 	template <size_t Path>
-	size_t decodeCLUT(uint8_t* src, uint32_t *dst)
+	uint32_t decodeCLUT(uint8_t* src, uint32_t *dst)
 	{
 		switch (Decoder.Icm[Path]) {
 			default:
@@ -148,26 +157,28 @@ class Video
 
 			case CLUT7:
 			case CLUT77:
-				*dst = (Decoder.ColorCLUT[Decoder.BankCLUT[Path]][*src & 0x7F] << 8) | 0xff;
+				*dst = (Decoder.ColorCLUT[*src & 0x7F] << 8) | 0xff;
+				if (!FG[Path].doubleRes) { *(dst+1) = *dst; return 2; }
 				return 1;
 
 			case CLUT8:
-				*dst = (Decoder.ColorCLUT[Decoder.BankCLUT[Path]][*src] << 8) | 0xff;
+				*dst = (Decoder.ColorCLUT[*src] << 8) | 0xff;
+				if (!FG[Path].doubleRes) { *(dst+1) = *dst; return 2; }
 				return 1;
 
 			case CLUT4:
-				*dst = (Decoder.ColorCLUT[Decoder.BankCLUT[Path]][(*src & 0x70) >> 4] << 8) | 0xff;
-				*(dst+1) = (Decoder.ColorCLUT[Decoder.BankCLUT[Path]][*src & 0x07] << 8) | 0xff;
+				*dst = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | 0xff;
+				*(dst+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | 0xff;
 				return 2;
 		}
 	}
 
 public:
-	Plane cursor, FG[2];
+	uint8_t cursor[16*16];
+	Plane FG[2];
 
 	Video()
 	{
-		cursor.decoded.resize(16 * 16, 0);
 	}
 
 	~Video()
@@ -179,14 +190,14 @@ public:
 		return &output[0];
 	}
 
-	size_t get_display_width()
+	int get_display_width()
 	{
 		return FG[0].width;
 	}
 
 	void reset()
 	{
-		cursor.width = cursor.height = 16;
+		memset(cursor, 0, sizeof(cursor));
 		Decoder = {0};
 	}
 
@@ -195,19 +206,23 @@ public:
 		FG[0].doubleRes = hRes1;
 		FG[1].doubleRes = hRes2;
 
-		FG[1].width = FG[0].width = (type == NTSCMonitor ? 360 : 384) * (FG[0].doubleRes ? 2 : 1);
+		FG[1].width = FG[0].width = (type == NTSCMonitor ? 720 : 768);
 		FG[1].height = FG[0].height = (type == PAL ? 280 : 240) * (vRes ? 2 : 1);
 
 		FG[0].decoded.resize(FG[0].width * FG[0].height, 0);
 		FG[1].decoded.resize(FG[1].width * FG[1].height, 0);
-		output.resize(FG[0].width * FG[0].height, 0x000000ff); // Max available resolution
 	}
 
+	/**
+	 * @brief  Mixes all planes to the framebuffer.
+	 */
 	void draw_frame()
 	{
-		for (size_t y = 0; y < FG[0].height; y++) {
-			for (size_t x = 0; x < FG[0].width; x++) {
-				int outputPixel = (y*FG[0].width)+x;
+		output.assign(FG[0].width * FG[0].height, 0x000000ff);
+
+		for (int y = 0; y < FG[0].height; y++) {
+			for (int x = 0; x < FG[0].width; x++) {
+				int outputPixel = y*FG[0].width + x + FG[0].width*(FG[0].height == 480 ? 40 : FG[0].height == 240 ? 20 : 0);
 
 				// Backdrop should just be a single solid color, cursor is handled by byte pattern so they can be drawn directly in this function.
 				float wfA = /*(float)Decoder.WeightFactor[0] / 64.0f*/ 62.0/64.0;
@@ -221,9 +236,9 @@ public:
 				uint8_t gB = (FG[1].decoded[(y*FG[0].width)+x] & 0x00ff0000) >> 16;
 				uint8_t bB = (FG[1].decoded[(y*FG[0].width)+x] & 0x0000ff00) >> 8;
 
-				uint8_t rAB = std::clamp((int)((float)rA * wfA) + (int)((float)rB * wfB) + 16, 0, 255);
-				uint8_t gAB = std::clamp((int)((float)gA * wfA) + (int)((float)gB * wfB) + 16, 0, 255);
-				uint8_t bAB = std::clamp((int)((float)bA * wfA) + (int)((float)bB * wfB) + 16, 0, 255);
+				uint8_t rAB = std::clamp((int)((float)rA * wfA) + (int)((float)rB * wfB), 0, 239);
+				uint8_t gAB = std::clamp((int)((float)gA * wfA) + (int)((float)gB * wfB), 0, 239);
+				uint8_t bAB = std::clamp((int)((float)bA * wfA) + (int)((float)bB * wfB), 0, 239);
 
 				if (rAB == 0 && gAB == 0 && bAB == 0) {
 					// Transparent, draw backdrop.
@@ -242,12 +257,15 @@ public:
 
 					output[outputPixel] = bgColor;
 				} else {
-					output[outputPixel] = (rAB << 24) | (gAB << 16) | (bAB << 8) | 0xff;
+					output[outputPixel] = (std::clamp(rAB + 16, 16, 239) << 24)
+										| (std::clamp(gAB + 16, 16, 239) << 16)
+										| (std::clamp(bAB + 16, 16, 239) << 8)
+										| 0xff;
 				}
 
 				if (x >= Decoder.CursorPosition[0] && x < Decoder.CursorPosition[0]+16u
 				 && y >= Decoder.CursorPosition[1] && y < Decoder.CursorPosition[1]+16u
-				 && cursor.decoded[(y-Decoder.CursorPosition[1])*16u + (x-Decoder.CursorPosition[0])] != 0
+				 && cursor[(y-Decoder.CursorPosition[1])*16u + (x-Decoder.CursorPosition[0])] != 0
 				 && Decoder.CursorEnable)
 				{
 					switch (Decoder.CursorColor & 0x07) {
@@ -265,26 +283,26 @@ public:
 		}
 	}
 
-	/** Draws planes and corresponding data/parameters. **/
+	/**
+	 * @brief  Draws a VSR line to a plane.
+	 * 
+	 * @param  vsr:  memory index for the start of the VSR
+	 * @param  y:    the line
+	 * 
+	 * @return The incremented VSR
+	 */
 	template <size_t Path>
-	uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t y)
+	uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 	{
-		#ifdef MINICDI_DEBUG
-		if (y >= 238)
-			printf("[VDSC] drawing line %d to plane %d\n", y, Path);
-		#endif
-
-		size_t x = 0;
-
 		if (Decoder.Icm[Path] == Off) {
-			memset(&FG[Path].decoded[(y*FG[Path].width)], 0, FG[Path].width * sizeof(uint32_t));
+			// memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));
 			return 0;
 		}
 
-		while (x < FG[Path].width)
+		for (int x = 0; x < FG[Path].width;)
 		{
 			uint8_t* src = &memory[(++vsr & 0x0007ffff) ^ 1];
-			uint32_t* dst = &FG[Path].decoded[(y*FG[Path].width)+x];
+			uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
 
 			switch (Decoder.FT[Path]) {
 				default:
@@ -301,27 +319,32 @@ public:
 						switch (Decoder.Icm[Path])
 						{
 							default:
+							case CLUT4:
+								exit(0);
 								break;
 
-							/*case DYUV:
-								decodeDYUV(src, dst);
-								x++;
-								break;*/
+							case DYUV:
+								x += decodeDYUV(src, dst);
+								break;
 
-							case CLUT4:
 							case CLUT7:
 							case CLUT77: // plane A only
 							case CLUT8: // plane A only
 								if (Decoder.FT[Path] == RunLength) {
-									size_t length = 1;
-									if (*src & 0x80) { length = *(src+1); ++vsr; }
-									if (length == 0) { length = FG[Path].width; }
+									int length = 1;
+									if (*src & 0x80) {
+										length = *(src+1);
+										++vsr;
 
-									size_t i = x;
-									while (i-x < length) {
-										i += decodeCLUT<Path>(src, dst+(i-x));
+										if (length == 0)
+											length = FG[Path].width - x;
+										else if (!FG[Path].doubleRes)
+											length *= 2;
 									}
-									x = i;
+									for (int r = 0; r < length;) {
+										r += decodeCLUT<Path>(src, dst+r);
+									}
+									x += length;
 								} else {
 									x += decodeCLUT<Path>(src, dst);
 								}
@@ -341,13 +364,6 @@ public:
 		return vsr;
 	}
 
-	void draw_line(size_t line, uint8_t* memory, const uint32_t vsr1, const uint32_t vsr2)
-	{
-		// Planes 1 and 2
-		draw_line_to_plane<0>(memory, vsr1, line);
-		draw_line_to_plane<1>(memory, vsr2, line);
-	}
-
 	template <size_t Path>
 	void set_register(uint32_t inst)
 	{
@@ -355,10 +371,11 @@ public:
 		{
 			default:
 				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) < 0xC0u) {
-					Decoder.ColorCLUT[Decoder.BankCLUT[Path]][((inst & 0xFF000000u) >> 24) - 0x80u] = inst & 0x00FFFFFFu;
+					int index = ((inst & 0xFF000000u) >> 24) + (Decoder.BankCLUT * 64) - 0x80u;
+					Decoder.ColorCLUT[index] = inst & 0x00FFFFFFu;
 
 					#ifdef MINICDI_DEBUG
-					//printf("[DCA%d] color $%06x\n", Path, Decoder.ColorCLUT[Decoder.BankCLUT[Path]][((inst & 0xFF000000u) >> 24) - 0x80u]);
+					//printf("[DCA%d] color $%06x\n", Path, Decoder.ColorCLUT[index]);
 					#endif
 				}
 				break;
@@ -411,10 +428,10 @@ public:
 				break;
 
 			case 0xC3:
-				Decoder.BankCLUT[Path] = Path ? 0x02u | (inst & 0x01u) : inst & 0x03u;
+				Decoder.BankCLUT = inst & 0x0Fu;
 
 				#ifdef MINICDI_DEBUG
-				//printf("[DCA%d] cbnk %d\n", Path, Decoder.BankCLUT[Path]);
+				//printf("[DCA%d] cbnk %d\n", Path, Decoder.BankCLUT);
 				#endif
 				break;
 
@@ -434,7 +451,7 @@ public:
 				break;
 
 			case 0xCD: // channel 1
-				Decoder.CursorPosition[0] = (inst & 0x00000FFFu) / (!FG[0].doubleRes ? 2 : 1); // double-resolution
+				Decoder.CursorPosition[0] = inst & 0x00000FFFu; // double-resolution
 				Decoder.CursorPosition[1] = (inst >> 12) & 0x00000FFFu;
 				//printf("[DCA%d] cpos x=%d,y=%d\n", Path, Decoder.CursorPosition[0], Decoder.CursorPosition[1]);
 				break;
@@ -451,8 +468,8 @@ public:
 			case 0xCF: // channel 1
 				Decoder.CursorPatternX = inst & 0x0000FFFFu;
 				Decoder.CursorPatternY = (inst >> 16) & 0x0Fu;
-				for (size_t x = 0; x < 16; x++) {
-					cursor.decoded[(Decoder.CursorPatternY*16)+x] = (Decoder.CursorPatternX >> (15-x) & 0x01) != 0;
+				for (uint8_t x = 0; x < 16; x++) {
+					cursor[(Decoder.CursorPatternY*16)+x] = (Decoder.CursorPatternX >> (15-x) & 0x01) != 0 ? 0xFF : 0x00;
 				}
 				break;
 

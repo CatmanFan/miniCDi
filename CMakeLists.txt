@@ -11,6 +11,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE -g -Ofast -Wall)
 
 option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." OFF)
 option(MINICDI_ENABLE_DEBUG_CPU "Debug CPU information (PC, SR, FC, D*, A*)." OFF)
+option(MINICDI_ENABLE_FRAMESKIP "Enable frameskip hack" ON)
 
 if (MINICDI_ENABLE_DEBUG)
 	MESSAGE(STATUS "MINICDI_ENABLE_DEBUG")
@@ -18,6 +19,10 @@ if (MINICDI_ENABLE_DEBUG)
 	if (MINICDI_ENABLE_DEBUG_CPU)
 	  target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG_CPU)
 	endif()
+endif()
+if (MINICDI_ENABLE_FRAMESKIP)
+	MESSAGE(STATUS "MINICDI_ENABLE_FRAMESKIP")
+  target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_FRAMESKIP)
 endif()
 
 set (APP_AUTHOR "Mr. Lechkar / CatmanFan")

@@ -251,7 +251,7 @@ public:
 
 							/** Video Mode **/
 							case 0xF6:
-								Ch[2].Out = { 0xF6, (uint8_t)(emuConfig->pal ? 0x02 : 0x01) };
+								Ch[2].Out = { 0xF6, (uint8_t)(emuConfig->pal == true ? 0x01 : 0x02) };
 								Ch[c].SR &= ~(0b00010000u);
 								cpu->interrupt(c);
 

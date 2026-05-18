@@ -55,6 +55,10 @@ public:
 	virtual bool frame_ready() = 0;
 	virtual uint32_t* get_display() = 0;
 	virtual size_t get_display_width() = 0;
+
+	virtual void set_pointer_x(int x, bool increment) = 0;
+	virtual void set_pointer_y(int y, bool increment) = 0;
+	virtual void set_pointer_button(int b, bool value) = 0;
 };
 
 /** ******* Mono I memory map *******
@@ -90,7 +94,7 @@ public:
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
 	inline void step() override {
-		cycles = cpu.run();
+		cycles = cpu.run(1924);
 		vpu->increment(cycles);
 
 		// Update LCD display
@@ -98,7 +102,7 @@ public:
 	}
 
 	inline bool frame_ready() override {
-		return vpu->frame_ready();
+		return vpu->is_frame_ready();
 	}
 
 	inline uint32_t* get_display() override {
@@ -112,6 +116,10 @@ public:
 	inline uint32_t* get_lcd() {
 		return &lcd.display[0];
 	}
+
+	virtual void set_pointer_x(int x, bool increment) { slave->set_pointer_x(x, increment); }
+	virtual void set_pointer_y(int y, bool increment) { slave->set_pointer_y(y, increment); }
+	virtual void set_pointer_button(int b, bool value) { slave->set_pointer_button(b, value); }
 };
 
 #endif

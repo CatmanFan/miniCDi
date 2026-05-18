@@ -37,29 +37,27 @@ class PlayerLCD
 	};
 
 public:
-	uint32_t display[168*22];
+	uint32_t display[(20*7)*22];
 
 	PlayerLCD()
 	{
-		memset(display, 0, sizeof(display));
+		memset(display, 0x000000FF, sizeof(display));
 	}
 
 	void update(SLAVE *slave)
 	{
 		if (slave)
 		{
-			memset(display, 0, sizeof(display));
 			for (int y = 0; y < 22; y++)
 			{
-				uint32_t *scanline = &display[y*168];
+				uint32_t *scanline = &display[y*(20*7)];
 
 				for (int lcd = 0; lcd < 8; lcd++)
 				{
-					uint16_t data = (slave->get_lcd()[lcd*2] << 8) |
-									slave->get_lcd()[lcd*2 + 1];
+					uint16_t data = (slave->get_lcd()[lcd*2] << 8) | slave->get_lcd()[lcd*2 + 1];
 					for (int x = 0; x < 20; x++)
 					{
-						scanline[(7 - lcd)*24 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
+						scanline[(7-lcd)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
 					}
 				}
 			}

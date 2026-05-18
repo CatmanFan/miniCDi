@@ -24,6 +24,7 @@ class MCD212
 
 	size_t linesV, line;
 	uint64_t frames;
+	bool frame_ready;
 
 	// internal registers
 	uint32_t VSR[2];
@@ -130,11 +131,11 @@ class MCD212
 					MF2[Path] = (inst & 0x04) >> 2;
 					FT1[Path] = (inst & 0x02) >> 1;
 					FT2[Path] = inst & 0x01;
-					video.process(inst, Path);
+					video.set_register<Path>(inst);
 					break;
 
 				default:
-					video.process(inst, Path);
+					video.set_register<Path>(inst);
 					break;
 			}
 		}
@@ -196,7 +197,7 @@ class MCD212
 					break;
 
 				default:
-					video.process(inst, Path);
+					video.set_register<Path>(inst);
 					break;
 			}
 		}
@@ -221,9 +222,11 @@ class MCD212
 			}
 
 			if (DE) {
-				// render line onto bitmap
-				VSR[0] += video.draw_line_to_plane<0>(memory, VSR[0], line);
-				VSR[1] += video.draw_line_to_plane<1>(memory, VSR[1], line);
+				if (frames % 12 == 0) {
+					// render line onto bitmap
+					VSR[0] = video.draw_line_to_plane<0>(memory, VSR[0], line);
+					VSR[1] = video.draw_line_to_plane<1>(memory, VSR[1], line);
+				}
 
 				if (DC[0] && IC[0]) DCA_execute<0>();
 				if (DC[1] && IC[1]) DCA_execute<1>();
@@ -233,10 +236,12 @@ class MCD212
 
 			if (linesV >= MCD212_VSYNC_LINES) {
 				DA = 0;
-				frames++;
 				linesV = 0;
 				line = 0;
-				video.draw_frame();
+
+				frames++;
+				frame_ready = frames % 12 == 0;
+				if (frame_ready) video.draw_frame();
 			}
 		}
 	}
@@ -262,6 +267,7 @@ public:
 		CF = FD = emuConfig->pal ? 0 : 1;
 		SM = /* to-do: interlace */ 0;
 
+		frame_ready = false;
 		frames = 0;
 		linesV = 0;
 		line = 0;
@@ -275,7 +281,10 @@ public:
 		while (this->cycles >= 1920) {
 			tick();
 			this->cycles -= 1920;
-			if (linesV == 0) break;
+			if (linesV == 0) {
+				this->cycles = 0;
+				break;
+			}
 		}
 
 		#ifdef MINICDI_DEBUG
@@ -383,9 +392,10 @@ public:
 		return video.get_display_width();
 	}
 
-	bool frame_ready()
+	bool is_frame_ready()
 	{
-		return linesV == 0;
+		if (frame_ready) { frame_ready = false; return true; }
+		return false;
 	}
 };
 

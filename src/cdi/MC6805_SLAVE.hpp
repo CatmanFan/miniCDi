@@ -19,6 +19,14 @@ class SLAVE
 		size_t InSize;
 	} Ch[4];
 
+	struct
+	{
+		bool Active;
+		int X;
+		int Y;
+		bool Button[2];
+	} Pointer;
+
 	enum {
 		Addr_ADR = 0x310001, // 0x200000 on Mini-MMC, Maxi-MMC, 0x310000 on Mono-I and Mono-II
 		Addr_BDR = 0x310003,
@@ -37,6 +45,21 @@ public:
 		Ch[1].InSize = 0;
 		Ch[2].InSize = 0;
 		Ch[3].InSize = 0;
+	}
+
+	void set_pointer_x(int value, bool increment)
+	{
+		;
+	}
+
+	void set_pointer_y(int value, bool increment)
+	{
+		;
+	}
+
+	void set_pointer_button(int button, bool value)
+	{
+		;
 	}
 
 	uint8_t read8(uint32_t addr)
@@ -66,7 +89,7 @@ public:
 		}
 	}
 
-	void write8(uint32_t addr, uint8_t value)
+	void write8(uint32_t addr, uint8_t value, SCC68070* cpu)
 	{
 		switch (addr)
 		{
@@ -89,11 +112,13 @@ public:
 						switch (value)
 						{
 							default:
-								if (value >= 0xC0 && Ch[c].In.size() == 1) {
+								if (!Pointer.Active) {
+									Ch[c].In.clear();
+								} else if (value >= 0xC0) {
 									Ch[c].InSize = 3;
-								} else if (Ch[c].InSize > 0) {
-									if (Ch[c].In.size() == 3) {
-										// TO-DO
+									if (Ch[c].In.size() >= Ch[c].InSize) {
+										Pointer.X = ((Ch[c].In[1] & 0x70) << 3) | (Ch[c].In[2] & 0x7F);
+										Pointer.Y = ((Ch[c].In[0] & 0x3F) << 4) | (Ch[c].In[1] & 0x0F);
 										Ch[c].In.clear();
 										Ch[c].InSize = 0;
 									}
@@ -102,9 +127,14 @@ public:
 
 							/** Enable Pointer Input **/
 							case 0x83:
-								Ch[c].Out = { 0x83, 0x00, 0x00, 0x00, 0x00, 0x00 /* dummy */, 0x30, 0x00, 0x00, 0x00 };
-								// Ch[c].SR &= ~(0b00010000u);
-								// interrupt(c);
+								Ch[c].Out = { 0x83, (uint8_t)((Pointer.Button[1] << 5) | (Pointer.Button[0] << 4) | (Pointer.Active << 3)
+														   | ((Pointer.X & 0b111'0000000) >> 7)),
+													(uint8_t)(Pointer.X & 0b000'1111111),
+													(uint8_t)((Pointer.Y & 0b111'0000000) >> 7),
+													(uint8_t)(Pointer.Y & 0b000'1111111) };
+								Ch[c].SR &= ~(0b00010000u);
+								cpu->interrupt(c);
+								Pointer.Active = true;
 
 								#ifdef MINICDI_DEBUG
 								printf("[SLAVE] enable pointer input\n");
@@ -114,6 +144,7 @@ public:
 
 							/** Disable Pointer Input **/
 							case 0x84:
+								Pointer.Active = false;
 								Ch[c].In.clear();
 								break;
 						}
@@ -173,8 +204,8 @@ public:
 							/** Disc Status **/
 							case 0xB0:
 								Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // use response data from MAME
-								// Ch[c].SR &= ~(0b00010000u);
-								// interrupt(c);
+								Ch[c].SR &= ~(0b00010000u);
+								cpu->interrupt(c);
 
 								#ifdef MINICDI_DEBUG
 								printf("[SLAVE] received disc status\n");
@@ -185,8 +216,8 @@ public:
 							/** SLAVE rev **/
 							case 0xF0:
 								Ch[2].Out = { 0xF0, 0x32 }; // use response data from MAME
-								// Ch[c].SR &= ~(0b00010000u);
-								// interrupt(c);
+								Ch[c].SR &= ~(0b00010000u);
+								cpu->interrupt(c);
 
 								#ifdef MINICDI_DEBUG
 								printf("[SLAVE] received SLAVE revision\n");
@@ -197,8 +228,8 @@ public:
 							/** Pointer Type **/
 							case 0xF3:
 								Ch[2].Out = { 0xF3, 0x01 }; // use response data from MAME
-								// Ch[c].SR &= ~(0b00010000u);
-								// interrupt(c);
+								Ch[c].SR &= ~(0b00010000u);
+								cpu->interrupt(c);
 
 								#ifdef MINICDI_DEBUG
 								printf("[SLAVE] received pointer type\n");
@@ -208,9 +239,9 @@ public:
 
 							/** Test Plug Status (enables service menu) **/
 							case 0xF4:
-								Ch[2].Out = { 0xF4, 0x00 }; // use response data from MAME
-								// Ch[c].SR &= ~(0b00010000u);
-								// interrupt(c);
+								Ch[2].Out = { 0xF4, 0x01 }; // use response data from MAME
+								Ch[c].SR &= ~(0b00010000u);
+								cpu->interrupt(c);
 
 								#ifdef MINICDI_DEBUG
 								printf("[SLAVE] received test plug status\n");
@@ -221,8 +252,8 @@ public:
 							/** Video Mode **/
 							case 0xF6:
 								Ch[2].Out = { 0xF6, (uint8_t)(emuConfig->pal ? 0x02 : 0x01) };
-								// Ch[c].SR &= ~(0b00010000u);
-								// interrupt(c);
+								Ch[c].SR &= ~(0b00010000u);
+								cpu->interrupt(c);
 
 								#ifdef MINICDI_DEBUG
 								printf("[SLAVE] received video mode\n");

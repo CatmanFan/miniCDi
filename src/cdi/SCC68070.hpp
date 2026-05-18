@@ -282,16 +282,16 @@ public:
 		}
 	}
 
-	int run(int cycles = 2048)
+	int run(int cycles = 2000)
 	{
 		int ran = 0;
 
+		while (ran < cycles) {
 		#ifdef MINICDI_DEBUG_CPU
-		for (ran = 0; ran < cycles;) {
 			if (emuConfig && emuConfig->log != 0) {
 				uint32_t pcLog;
 				pcLog = m68k_get_reg(NULL, M68K_REG_PC);
-				ran += m68k_execute(500);
+				ran += m68k_execute(96);
 				if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
 					char text[192];
 					m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
@@ -299,15 +299,13 @@ public:
 					// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 				}
 			} else {
-				ran += m68k_execute(cycles);
+				ran += m68k_execute(96);
 			}
-		}
 		#else
-		ran += m68k_execute(cycles);
+			ran += m68k_execute(96);
 		#endif
 
-		for (int i = 0; i < ran; i+=96)
-		{
+			// Tick timer
 			if (T[0] == 0xFFFF)
 			{
 				TSR |= 0x80; // OV in T0

@@ -72,9 +72,14 @@ if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} -laesnd -lfat)
 
-    target_sources(${PROJECT_NAME} PRIVATE src/platforms/wii/main.cpp)
+    target_sources(${PROJECT_NAME} PRIVATE src/platforms/ogc/main.cpp)
 
     ogc_create_dol(${PROJECT_NAME})
+
+	if (NINTENDO_WII)
+		string(TIMESTAMP PROJECT_BUILDDATE "%Y%m%d000000")
+		configure_file(res/wii/meta.xml.in res/wii/meta.xml @ONLY)
+	endif()
 endif()
 
 # if (NINTENDO_WIIU)

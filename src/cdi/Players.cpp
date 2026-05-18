@@ -54,7 +54,7 @@ void m68k_write_memory_8(unsigned int address, unsigned int value) {
 	if (m_player.scc68070 && (address & 0xC0000000) == 0x80000000 && FLAG_S) {
 		m_player.scc68070->write8(address, value);
 	} else if (m_player.slave && (address & 0x00FFFF00) == 0x00310000) {
-		m_player.slave->write8(address, value);
+		m_player.slave->write8(address, value, m_player.scc68070);
 	} else {
 		m_player.memory[address & 0x00ffffff] = value;
 	}

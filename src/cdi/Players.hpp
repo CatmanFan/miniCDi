@@ -94,7 +94,7 @@ public:
 		vpu->increment(cycles);
 
 		// Update LCD display
-		// lcd.update(slave);
+		lcd.update(slave);
 	}
 
 	inline bool frame_ready() override {

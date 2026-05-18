@@ -85,22 +85,20 @@ public:
 		PICR[0] = PICR[1] = 0;
 	}
 
-	void interrupt(size_t ch, int level = 0)
+	void interrupt(size_t ch)
 	{
-		if (level <= 0 || level > 7) {
-			int level_lir = (ch == 1 ? LIR : (LIR >> 4)) & 0x07;
-			int level_timer = PICR[0] & 0x07;
-			int level_uart_rx = PICR[1] & 0x70;
-			int level_uart_tx = PICR[1] & 0x07;
-			level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx});
-		}
+		int level_lir = (ch == 1 ? LIR : (LIR >> 4)) & 0x07;
+		int level_timer = PICR[0] & 0x07;
+		int level_uart_rx = (PICR[1] & 0x70) >> 4;
+		int level_uart_tx = PICR[1] & 0x07;
+		int level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx});
 
 		if (level > 0) {
 			#ifdef MINICDI_DEBUG
-			printf("[SCC68070] INT%dN lvl %d\n", ch, level);
+			//printf("[SCC68070] INT%dN lvl %d\n", ch, level);
 			#endif
 
-			m68k_set_irq(level + 56);
+			m68k_set_irq(level + 32);
 		}
 	}
 
@@ -284,11 +282,11 @@ public:
 		}
 	}
 
-	int run(int cycles = 2000)
+	int run(int cycles = 2048)
 	{
 		int ran = 0;
 
-		#ifdef MINICDI_DEBUG
+		#ifdef MINICDI_DEBUG_CPU
 		for (ran = 0; ran < cycles;) {
 			if (emuConfig && emuConfig->log != 0) {
 				uint32_t pcLog;
@@ -319,7 +317,7 @@ public:
 			T[0]++;
 		}
 
-		#ifdef MINICDI_DEBUG
+		#ifdef MINICDI_DEBUG_CPU
 		printf("\x1b[%d;%dH", 4, 0);
 		printf("PC: %08X SR: %s%s %s%s%s%s%s FC: %d\n",
 			m68k_get_reg(NULL, M68K_REG_PC),

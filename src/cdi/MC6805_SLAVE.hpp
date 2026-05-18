@@ -16,6 +16,7 @@ class SLAVE
 
 		std::vector<uint8_t> In;
 		std::vector<uint8_t> Out;
+		size_t InSize;
 	} Ch[4];
 
 	enum {
@@ -31,6 +32,11 @@ public:
 	SLAVE(uint8_t* memory, MiniCDIConfig *config)
 	: emuConfig(config), memory(memory)
 	{
+		memset(&LCD[0], 0, 16);
+		Ch[0].InSize = 0;
+		Ch[1].InSize = 0;
+		Ch[2].InSize = 0;
+		Ch[3].InSize = 0;
 	}
 
 	uint8_t read8(uint32_t addr)
@@ -54,7 +60,7 @@ public:
 				}
 
 				#ifdef MINICDI_DEBUG
-				//printf("[SLAVE] %sDR => %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
+				printf("[SLAVE] %sDR => %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 				#endif
 				return Ch[c].DR;
 		}
@@ -73,43 +79,167 @@ public:
 				size_t c = (addr - Addr_ADR) / 2;
 				Ch[c].In.push_back(value);
 				#ifdef MINICDI_DEBUG
-				//printf("[SLAVE] %sDR <= %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
+				printf("[SLAVE] %sDR <= %02X\n", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 				#endif
 
 				switch (c)
 				{
+					/** ADR **/
+					case 0:
+						switch (value)
+						{
+							default:
+								if (value >= 0xC0 && Ch[c].In.size() == 1) {
+									Ch[c].InSize = 3;
+								} else if (Ch[c].InSize > 0) {
+									if (Ch[c].In.size() == 3) {
+										// TO-DO
+										Ch[c].In.clear();
+										Ch[c].InSize = 0;
+									}
+								}
+								break;
+
+							/** Enable Pointer Input **/
+							case 0x83:
+								Ch[c].Out = { 0x83, 0x00, 0x00, 0x00, 0x00, 0x00 /* dummy */, 0x30, 0x00, 0x00, 0x00 };
+								// Ch[c].SR &= ~(0b00010000u);
+								// interrupt(c);
+
+								#ifdef MINICDI_DEBUG
+								printf("[SLAVE] enable pointer input\n");
+								#endif
+								Ch[c].In.clear();
+								break;
+
+							/** Disable Pointer Input **/
+							case 0x84:
+								Ch[c].In.clear();
+								break;
+						}
+						break;
+
+					/** BDR **/
 					case 1:
 						switch (value)
 						{
 							default:
-								Ch[c].In.clear();
+								switch (Ch[c].InSize) {
+									case 16:
+									case 17:
+										LCD[Ch[c].In.size() - (Ch[c].InSize == 16 ? 1 : 2)] = value;
+										if (Ch[c].In.size() >= Ch[c].InSize) {
+											Ch[c].In.clear();
+											Ch[c].InSize = 0;
+
+											#ifdef MINICDI_DEBUG
+											printf("[SLAVE] set LCD: ");
+											for (int i = 0; i < 16; i++) printf("%02X ", LCD[i]);
+											printf("\n");
+											#endif
+										}
+										break;
+								}
 								break;
 
 							/** Set Front Panel LCD **/
 							case 0xF0:
-								if (Ch[c].In.size() >= 17)
-								{
-									for (int i = 0; i < 16; i++)
-										LCD[i] = Ch[c].In[1+i];
-
-									Ch[c].In.clear();
+								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
+									Ch[c].InSize = 17;
 								}
 								break;
 						}
 						break;
 
+					/** CDR **/
+					case 2:
+						switch (value)
+						{
+							/** Set Front Panel LCD **/
+							case 0xF0:
+								Ch[1].InSize = 16; // redirects LCD display input to BDR
+								Ch[c].In.clear();
+								break;
+						}
+						break;
+
+					/** DDR **/
 					case 3:
 						switch (value)
 						{
+							default:
+								break;
+
+							/** Disc Status **/
+							case 0xB0:
+								Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // use response data from MAME
+								// Ch[c].SR &= ~(0b00010000u);
+								// interrupt(c);
+
+								#ifdef MINICDI_DEBUG
+								printf("[SLAVE] received disc status\n");
+								#endif
+								Ch[c].In.clear();
+								break;
+
+							/** SLAVE rev **/
+							case 0xF0:
+								Ch[2].Out = { 0xF0, 0x32 }; // use response data from MAME
+								// Ch[c].SR &= ~(0b00010000u);
+								// interrupt(c);
+
+								#ifdef MINICDI_DEBUG
+								printf("[SLAVE] received SLAVE revision\n");
+								#endif
+								Ch[c].In.clear();
+								break;
+
+							/** Pointer Type **/
+							case 0xF3:
+								Ch[2].Out = { 0xF3, 0x01 }; // use response data from MAME
+								// Ch[c].SR &= ~(0b00010000u);
+								// interrupt(c);
+
+								#ifdef MINICDI_DEBUG
+								printf("[SLAVE] received pointer type\n");
+								#endif
+								Ch[c].In.clear();
+								break;
+
+							/** Test Plug Status (enables service menu) **/
+							case 0xF4:
+								Ch[2].Out = { 0xF4, 0x00 }; // use response data from MAME
+								// Ch[c].SR &= ~(0b00010000u);
+								// interrupt(c);
+
+								#ifdef MINICDI_DEBUG
+								printf("[SLAVE] received test plug status\n");
+								#endif
+								Ch[c].In.clear();
+								break;
+
 							/** Video Mode **/
 							case 0xF6:
 								Ch[2].Out = { 0xF6, (uint8_t)(emuConfig->pal ? 0x02 : 0x01) };
 								// Ch[c].SR &= ~(0b00010000u);
 								// interrupt(c);
+
+								#ifdef MINICDI_DEBUG
+								printf("[SLAVE] received video mode\n");
+								#endif
+								Ch[c].In.clear();
+								break;
+
+							/** Enable X-Bus **/
+							case 0xFA:
+								Ch[c].In.clear();
 								break;
 						}
 						break;
 				}
+
+				if (Ch[c].InSize == 0)
+					Ch[c].In.clear();
 				break;
 		}
 	}

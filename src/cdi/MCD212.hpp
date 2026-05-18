@@ -54,13 +54,13 @@ class MCD212
 	template <size_t Path>
 	void vsr_set(uint32_t value) {
 		VSR[Path] = value & 0x003FFFFFu;
-		// if (VSR[Path]) IC[Path] = 1;
+		if (VSR[Path]) IC[Path] = 1;
 	}
 
 	template <size_t Path>
 	void dcp_set(uint32_t value) {
 		DCP[Path] = value & 0x003FFFFCu;
-		// if (DCP[Path]) DC[Path] = 1;
+		if (DCP[Path]) DC[Path] = 1;
 	}
 
 	template <size_t Path>
@@ -77,7 +77,9 @@ class MCD212
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
+					#ifdef MINICDI_DEBUG
 					//printf("[ICA%d] stop\n", Path+1);
+					#endif
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -86,26 +88,34 @@ class MCD212
 
 				case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
 				case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f: // RELOAD DCP
-					dcp_set<Path>(inst);
+					#ifdef MINICDI_DEBUG
 					//printf("[ICA%d] dcr $%x\n", Path+1, inst & 0x003FFFFCu);
+					#endif
+					dcp_set<Path>(inst);
 					break;
 
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
-					dcp_set<Path>(inst);
+					#ifdef MINICDI_DEBUG
 					//printf("[ICA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
+					#endif
+					dcp_set<Path>(inst);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
-					addr = inst & 0x003FFFFFu;
+					#ifdef MINICDI_DEBUG
 					//printf("[ICA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
+					#endif
+					addr = inst & 0x003FFFFFu;
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
-					vsr_set<Path>(inst);
+					#ifdef MINICDI_DEBUG
 					//printf("[ICA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
+					#endif
+					vsr_set<Path>(inst);
 					return;
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
@@ -142,7 +152,9 @@ class MCD212
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
+					#ifdef MINICDI_DEBUG
 					//printf("[DCA%d] stop\n", Path+1);
+					#endif
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -155,20 +167,26 @@ class MCD212
 
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
-					dcp_set<Path>(inst);
+					#ifdef MINICDI_DEBUG
 					//printf("[DCA%d] dcr_stop $%x\n", Path+1, inst & 0x003FFFFCu);
+					#endif
+					dcp_set<Path>(inst);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
-					vsr_set<Path>(inst);
+					#ifdef MINICDI_DEBUG
 					//printf("[DCA%d] vcr $%x\n", Path+1, inst & 0x003FFFFFu);
+					#endif
+					vsr_set<Path>(inst);
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
-					vsr_set<Path>(inst);
+					#ifdef MINICDI_DEBUG
 					//printf("[DCA%d] vcr_stop $%x\n", Path+1, inst & 0x003FFFFFu);
+					#endif
+					vsr_set<Path>(inst);
 					return;
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
@@ -189,8 +207,8 @@ class MCD212
 	{
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
 			if (linesV == 1 && DE) {
-				/*if (IC[0]) ICA_execute<0>();
-				if (IC[1]) ICA_execute<1>()*/;
+				if (IC[0]) ICA_execute<0>();
+				if (IC[1]) ICA_execute<1>();
 			}
 		} else {
 			DA = 1;
@@ -204,11 +222,11 @@ class MCD212
 
 			if (DE) {
 				// render line onto bitmap
-				/*VSR[0] += video.draw_line_to_plane<0>(memory, VSR[0], line);
+				VSR[0] += video.draw_line_to_plane<0>(memory, VSR[0], line);
 				VSR[1] += video.draw_line_to_plane<1>(memory, VSR[1], line);
 
 				if (DC[0] && IC[0]) DCA_execute<0>();
-				if (DC[1] && IC[1]) DCA_execute<1>();*/
+				if (DC[1] && IC[1]) DCA_execute<1>();
 			}
 
 			line += SM ? 2 : 1;
@@ -243,9 +261,6 @@ public:
 		// initialization
 		CF = FD = emuConfig->pal ? 0 : 1;
 		SM = /* to-do: interlace */ 0;
-		DE = 1;
-		IC[0] = IC[1] = 1;
-		DC[0] = DC[1] = 1;
 
 		frames = 0;
 		linesV = 0;
@@ -260,6 +275,7 @@ public:
 		while (this->cycles >= 1920) {
 			tick();
 			this->cycles -= 1920;
+			if (linesV == 0) break;
 		}
 
 		#ifdef MINICDI_DEBUG

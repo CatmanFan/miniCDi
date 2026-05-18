@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 
 	// config.log = fopen("miniCDi_log.txt", "wt");
 
-	EmulatorWindow cdiScreen(768,280);
+	EmulatorWindow cdiScreen(384,280);
 	MonoIPlayer cdi;
 	cdi.Init("romfs:/cdi220b.rom", &config);
 

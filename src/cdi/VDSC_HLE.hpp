@@ -109,7 +109,7 @@ class Video
 		/* CA */ uint8_t ColorDYUV[2]; // starting color
 		/** reserved (CC) **/
 		/* CD */ uint16_t CursorPosition[2];
-		/* CE */ uint8_t CursorEnable, CursorBlink, CursorColor;
+		/* CE */ uint8_t CursorEnable, CursorBlink, CursorOnTime, CursorOffTime, CursorColor, CursorRes;
 		/* CF */ uint16_t CursorPatternX;
 				 uint8_t CursorPatternY;
 		/* D0 */ uint8_t RegionControl[8];
@@ -122,7 +122,7 @@ class Video
 		enum ColorMode CM[2];
 	} Decoder;
 
-	size_t decodeDYUV(uint8_t* src, uint32_t *dest)
+	void decodeDYUV(uint8_t* src, uint32_t *dest)
 	{
 		int Y = *src & 0x0F;
 		int U = (*src >> 4) & 0x0F;
@@ -135,20 +135,16 @@ class Video
 		*dest = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
 				(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
 				(b > 255 ? 255 : b < 0 ? 0 : b) << 8);
-
-		return 2;
 	}
 
 	template <size_t Path>
-	size_t decodeCLUT(uint8_t* src, uint32_t *dest)
+	void decodeCLUT(uint8_t* src, uint32_t *dest)
 	{
 		if (Decoder.CM[Path] == Double4) {
 			*dest = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | 0xff;
 			*(dest+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | 0xff;
-			return 2;
 		} else {
 			*dest = (Decoder.ColorCLUT[*src & (Decoder.Icm[Path] == CLUT8 ? 0xFF : 0x7F)] << 8) | 0xff;
-			return 1;
 		}
 	}
 
@@ -158,6 +154,7 @@ public:
 	Video()
 	{
 		output.resize(768 * 280, 0x000000ff); // Max available resolution
+		cursor.decoded.resize(16 * 16, 0);
 	}
 
 	~Video()
@@ -196,50 +193,49 @@ public:
 	{
 		for (size_t y = 0; y < FG[0].height; y++) {
 			for (size_t x = 0; x < FG[0].width; x++) {
+				int outputPixel = (y*FG[0].width)+x;
+
 				// Backdrop should just be a single solid color, cursor is handled by byte pattern so they can be drawn directly in this function.
-				float wfA =/*(float)Decoder.WeightFactor[0] / 64.0f*/ 62.0/64.0;
+				float wfA = /*(float)Decoder.WeightFactor[0] / 64.0f*/ 62.0/64.0;
 				float wfB = /*(float)Decoder.WeightFactor[1] / 64.0f*/ 0;
 
-				uint8_t rA = (FG[0].decoded[x+y*FG[0].width] & 0xff000000) >> 24;
-				uint8_t gA = (FG[0].decoded[x+y*FG[0].width] & 0x00ff0000) >> 16;
-				uint8_t bA = (FG[0].decoded[x+y*FG[0].width] & 0x0000ff00) >> 8;
+				uint8_t rA = (FG[0].decoded[(y*FG[0].width)+x] & 0xff000000) >> 24;
+				uint8_t gA = (FG[0].decoded[(y*FG[0].width)+x] & 0x00ff0000) >> 16;
+				uint8_t bA = (FG[0].decoded[(y*FG[0].width)+x] & 0x0000ff00) >> 8;
 
-				uint8_t rB = (FG[1].decoded[x+y*FG[0].width] & 0xff000000) >> 24;
-				uint8_t gB = (FG[1].decoded[x+y*FG[0].width] & 0x00ff0000) >> 16;
-				uint8_t bB = (FG[1].decoded[x+y*FG[0].width] & 0x0000ff00) >> 8;
+				uint8_t rB = (FG[1].decoded[(y*FG[0].width)+x] & 0xff000000) >> 24;
+				uint8_t gB = (FG[1].decoded[(y*FG[0].width)+x] & 0x00ff0000) >> 16;
+				uint8_t bB = (FG[1].decoded[(y*FG[0].width)+x] & 0x0000ff00) >> 8;
 
 				uint8_t rAB = std::clamp((int)((float)rA * wfA) + (int)((float)rB * wfB) + 16, 0, 255);
 				uint8_t gAB = std::clamp((int)((float)gA * wfA) + (int)((float)gB * wfB) + 16, 0, 255);
 				uint8_t bAB = std::clamp((int)((float)bA * wfA) + (int)((float)bB * wfB) + 16, 0, 255);
 
-				output[x+y*FG[0].width] = (rAB << 24) | (gAB << 16) | (bAB << 8) | 0xff;
+				if (rAB == 0 && gAB == 0 && bAB == 0) {
+					// Transparent, draw backdrop.
+					uint32_t bgColor;
 
-				/*// Transparent, draw backdrop.
+					switch (Decoder.BackdropColor & 0x07) {
+						default: bgColor = 0x000000ff; break;
+						case 0x01: bgColor = Decoder.BackdropColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
+						case 0x02: bgColor = Decoder.BackdropColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
+						case 0x03: bgColor = Decoder.BackdropColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
+						case 0x04: bgColor = Decoder.BackdropColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
+						case 0x05: bgColor = Decoder.BackdropColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
+						case 0x06: bgColor = Decoder.BackdropColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
+						case 0x07: bgColor = Decoder.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
+					}
+
+					output[outputPixel] = bgColor;
+				} else {
+					output[outputPixel] = (rAB << 24) | (gAB << 16) | (bAB << 8) | 0xff;
+				}
+
+				if (x >= Decoder.CursorPosition[0] && x <= Decoder.CursorPosition[0]+16u
+				 && y >= Decoder.CursorPosition[1] && y <= Decoder.CursorPosition[1]+16u
+				 && cursor.decoded[(y-Decoder.CursorPosition[1])*16u + (x-Decoder.CursorPosition[0])] != 0)
 				{
-					uint32_t bgColor = 0x000000ff;
-
-					if (Decoder.BackdropColor & 0b1001)
-						bgColor |= 0x0000ff00;
-					else if (Decoder.BackdropColor & 0b0001)
-						bgColor |= 0x00008000;
-
-					if (Decoder.BackdropColor & 0b1010)
-						bgColor |= 0x00ff0000;
-					else if (Decoder.BackdropColor & 0b0010)
-						bgColor |= 0x00800000;
-
-					if (Decoder.BackdropColor & 0b1100)
-						bgColor |= 0xff000000;
-					else if (Decoder.BackdropColor & 0b0100)
-						bgColor |= 0x80000000;
-
-					output[(x+y*FG[0].width] = bgColor;
-				}*/
-
-				if (x >= Decoder.CursorPosition[0] && y >= Decoder.CursorPosition[1]
-				 && x < Decoder.CursorPosition[0] + 16u && y < Decoder.CursorPosition[1] + 16u)
-				{
-					;
+					output[outputPixel] = cursor.decoded[(y-Decoder.CursorPosition[1])*16u + (x-Decoder.CursorPosition[0])];
 				}
 			}
 		}
@@ -249,80 +245,74 @@ public:
 	template <size_t Path>
 	size_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, size_t y)
 	{
-		uint32_t* dest = &FG[Path].decoded[y*FG[Path].width];
-		size_t adv = 0;
-		size_t x = 0;
+		size_t pixels = 0;
+		size_t bytes = 0;
 
-		while (x < FG[Path].width)
+		if (Decoder.Icm[Path] == Off) {
+			for (pixels = 0; pixels < FG[Path].width; pixels++)
+				FG[Path].decoded[(y*FG[Path].width)+pixels] = 0;
+			return 0;
+		}
+
+		while (pixels < FG[Path].width)
 		{
-			adv++;
-			uint8_t* src = &memory[((vsr + x) & 0x0007ffff) ^ 1];
+			uint8_t* src = &memory[((vsr + bytes) & 0x0007ffff) ^ 1];
 
 			switch (Decoder.FT[Path]) {
+				default:
+					assert(0);
+
 				case Bitmap:
+				case RunLength:
 					// Not implemented
-					if (Path == 1 && Decoder.Icm[Path] == RGB555) {
+					/*if (Path == 1 && Decoder.Icm[Path] == RGB555) {
 						assert(0);
 					}
 					else if (Path == 0 && (Decoder.Icm[Path] == CLUT8 || Decoder.Icm[Path] == CLUT77)) {
-						x += decodeCLUT<Path>(src, dest);
+						bytes++;
+						for (int i = 0; i < (FG[0].doubleRes ? 1 : 2); i++) {
+							decodeCLUT<Path>(src, &FG[Path].decoded[(y*FG[Path].width)+pixels]);
+							pixels++;
+						}
 					}
-					else
+					else*/
 					{
 						switch (Decoder.Icm[Path])
 						{
 							default:
-							case Off:
-								return x;
+								break;
 
-							case DYUV:
-								if (x == 0) {
+							/*case DYUV:
+								bytes+=2;
+								for (int i = 0; i < (FG[0].doubleRes ? 1 : 2); i++) {
+									decodeDYUV(src, &FG[Path].decoded[(y*FG[Path].width)+pixels]);
+									pixels++;
 								}
-								x += decodeDYUV(src, dest);
 								break;
 
-							case CLUT4:
+							case CLUT4:*/
 							case CLUT7:
-								x += decodeCLUT<Path>(src, dest);
+								bytes++;
+								for (int i = 0; i < (FG[0].doubleRes ? 1 : 2); i++) {
+									decodeCLUT<Path>(src, &FG[Path].decoded[(y*FG[Path].width)+pixels]);
+									pixels += Decoder.Icm[Path] == CLUT4 ? 2 : 1;
+								}
+
+								if (*src & 0x80 && Decoder.FT[Path] == RunLength) // indicates run of multiple pixels
+								{
+									int repeat = *(src+1);
+									bytes++;
+									if (repeat == 1 || repeat == 0)
+										repeat = FG[Path].width - pixels;
+
+									// Repeat per pixel/pair
+									while (repeat > 0)
+									{
+										memcpy(&FG[Path].decoded[(y*FG[Path].width)+FG[Path].width - repeat], &FG[Path].decoded[(y*FG[Path].width)], 1);
+										repeat -= Decoder.CM[Path] == Double4 ? 2 : 1;
+									}
+								}
 								break;
-						}
-					}
-					break;
-
-				default:
-				case RunLength:
-					{
-						// Determine what type it is
-						int repeat = 0;
-						if (*src & 0x80) // indicates run of multiple pixels
-						{
-							adv++;
-							repeat = *(src+1);
-							if (repeat == 1 || repeat == 0)
-								repeat = FG[Path].width - x;
-						}
-
-						// Actual decoding
-						switch (Decoder.Icm[Path])
-						{
-							// RGB555 and DYUV not supported
-							default:
-							case Off:
-								return x;
-
-							case CLUT4:
-							case CLUT7:
-							case CLUT77: // path 0 only
-							case CLUT8:
-								x += decodeCLUT<Path>(src, dest);
-								break;
-						}
-
-						// Repeat per pixel/pair
-						for (int i = 1; i < repeat; i++)
-						{
-							memcpy(dest+i, dest, sizeof(uint32_t));
-							x += Decoder.CM[Path] == Double4 ? 2 : 1;
 						}
 					}
 					break;
@@ -335,7 +325,7 @@ public:
 			}
 		}
 
-		return x;
+		return bytes;
 	}
 
 	void draw_line(size_t line, uint8_t* memory, const uint32_t vsr1, const uint32_t vsr2)
@@ -350,7 +340,7 @@ public:
 		switch ((inst & 0xFF000000u) >> 24)
 		{
 			default:
-				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) <= 0xBFu) {
+				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) < 0xC0u) {
 					Decoder.ColorCLUT[((inst & 0xFF000000u) >> 24) - 0x80u] = inst & 0x00FFFFFFu;
 
 					#ifdef MINICDI_DEBUG
@@ -402,7 +392,7 @@ public:
 				Decoder.PlaneOrder = inst & 0x00FFFFFFu;
 
 				#ifdef MINICDI_DEBUG
-				printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
+				//printf("[DCA%d] po %s\n", pathB, Decoder.PlaneOrder ? "b,a" : "a,b");
 				#endif
 				break;
 
@@ -437,30 +427,33 @@ public:
 
 			case 0xCE: // channel 1
 				Decoder.CursorColor = inst & 0x000000FFu;
-				Decoder.CursorBlink = (inst >> 22) & 0b01u;
-				Decoder.CursorEnable = (inst >> 23) & 0b01u;
+				Decoder.CursorRes = (inst >> 15) & 0x01u;
+				Decoder.CursorOffTime = (inst >> 16) & 0x07u;
+				Decoder.CursorOnTime = (inst >> 19) & 0x07u;
+				Decoder.CursorBlink = (inst >> 22) & 0x01u;
+				Decoder.CursorEnable = (inst >> 23) & 0x01u;
 				break;
 
 			case 0xCF: // channel 1
 				Decoder.CursorPatternX = inst & 0x0000FFFFu;
 				Decoder.CursorPatternY = (inst >> 16) & 0x0Fu;
-				for (size_t x = 0; x < 16; x++) {
-					cursor.decoded[(Decoder.CursorPatternY*x)+x] = (Decoder.CursorPatternX >> (16-x)) == 0 ? 0 :
-						Decoder.CursorColor & 0b0001 ? 0x000080ff :
-						Decoder.CursorColor & 0b0010 ? 0x008000ff :
-						Decoder.CursorColor & 0b0011 ? 0x008080ff :
-						Decoder.CursorColor & 0b0100 ? 0x800000ff :
-						Decoder.CursorColor & 0b0101 ? 0x800080ff :
-						Decoder.CursorColor & 0b0110 ? 0x808000ff :
-						Decoder.CursorColor & 0b0111 ? 0x808080ff :
-						Decoder.CursorColor & 0b1001 ? 0x0000ffff :
-						Decoder.CursorColor & 0b1010 ? 0x00ff00ff :
-						Decoder.CursorColor & 0b1011 ? 0x00ffffff :
-						Decoder.CursorColor & 0b1100 ? 0xff0000ff :
-						Decoder.CursorColor & 0b1101 ? 0xff00ffff :
-						Decoder.CursorColor & 0b1110 ? 0xffff00ff :
-						Decoder.CursorColor & 0b1111 ? 0xffffffff :
-						0x000000ff;
+				for (size_t y = 0; y < 16; y++) {
+					for (size_t x = 0; x < 16; x++) {
+						if (Decoder.CursorPatternX >> (15-x)) {
+							switch (Decoder.CursorColor & 0x07) {
+								default: cursor.decoded[(y*16)+x] = 0x000000ff; break;
+								case 0x01: cursor.decoded[(y*16)+x] = Decoder.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
+								case 0x02: cursor.decoded[(y*16)+x] = Decoder.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
+								case 0x03: cursor.decoded[(y*16)+x] = Decoder.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
+								case 0x04: cursor.decoded[(y*16)+x] = Decoder.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
+								case 0x05: cursor.decoded[(y*16)+x] = Decoder.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
+								case 0x06: cursor.decoded[(y*16)+x] = Decoder.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
+								case 0x07: cursor.decoded[(y*16)+x] = Decoder.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
+							}
+						} else {
+							cursor.decoded[(y*16)+x] = 0x00000000;
+						}
+					}
 				}
 				break;
 

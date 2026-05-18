@@ -104,7 +104,7 @@ static void RUN_CDI()
 {
 	MiniCDIConfig config = {
 		true	/** PAL mode **/,
-		false	/** show LCD **/
+		true	/** show LCD **/
 	};
 	bool running = true;
 

@@ -1,10 +1,8 @@
 # miniCDi
-A very barebones and experimental Philips CD-i emulator for the Wii and 3DS.
+An experimental Philips CD-i emulator for the Wii and 3DS.
 The current goal is for the emulator to display the player shell when provided with a CD-i 220 F2 system ROM.
 
 ## To-Do
-- [X] SLAVE (Mono-I)
-- [ ] UART (SCC68070)
 - [ ] ICA/DCA processing (MCD212)
 
 ## Building

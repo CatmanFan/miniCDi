@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<app version="1">
+	<name>miniCDi</name>
+	<coder>Mr. Lechkar</coder>
+	<version>@PROJECT_VERSION@</version>
+	<release_date>@PROJECT_BUILDDATE@</release_date>
+	<short_description>Philips CD-i emulator</short_description>
+	<long_description>An experimental Philips CD-i emulator.
+
+In order for it to run you must provide a copy of the system ROM (currently only supports CD-i 220/20, labelled "cdi220b") in apps/miniCDi/rom/*.rom. No disc or sound support has been implemented.
+
+Special credits to Stovent, CD-i Fan and Slamy for their assistance on this project. The source code was partially based off of Stovent's implementations of the relevant components in CeDImu, as well as CD-i Fan's cdichips documentation of several components including the MCD212, SCC68070 (UART) and SLAVE. The emulator uses Musashi 4.10 as a core for the 68070 processor.
+</long_description>
+</app>

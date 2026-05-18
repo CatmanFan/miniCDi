@@ -37,7 +37,7 @@
 #include "cdi/Musashi/m68k.h"
 
 // Cores
-#include "cdi/Vdsc.hpp"
+#include "cdi/VDSC_HLE.hpp"
 #include "cdi/SCC68070.hpp"
 #include "cdi/OS9.hpp"
 #include "cdi/MCD212.hpp"

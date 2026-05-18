@@ -282,38 +282,38 @@ public:
 		}
 	}
 
-	int run(int cycles = 2000)
+	void tick_timer()
+	{
+		if (T[0] == 0xFFFF)
+		{
+			TSR |= 0x80; // OV in T0
+			T[0] = RR;
+			interrupt(0);
+		}
+		T[0]++;
+	}
+
+	int run(int cycles)
 	{
 		int ran = 0;
 
-		while (ran < cycles) {
 		#ifdef MINICDI_DEBUG_CPU
-			if (emuConfig && emuConfig->log != 0) {
-				uint32_t pcLog;
-				pcLog = m68k_get_reg(NULL, M68K_REG_PC);
-				ran += m68k_execute(96);
-				if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
-					char text[192];
-					m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-					fprintf(emuConfig->log, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
-					// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
-				}
-			} else {
-				ran += m68k_execute(96);
+		if (emuConfig && emuConfig->log != 0) {
+			uint32_t pcLog;
+			pcLog = m68k_get_reg(NULL, M68K_REG_PC);
+			ran += m68k_execute(cycles);
+			if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
+				char text[192];
+				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
+				fprintf(emuConfig->log, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+				// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 			}
-		#else
-			ran += m68k_execute(96);
-		#endif
-
-			// Tick timer
-			if (T[0] == 0xFFFF)
-			{
-				TSR |= 0x80; // OV in T0
-				T[0] = RR;
-				interrupt(0);
-			}
-			T[0]++;
+		} else {
+			ran += m68k_execute(cycles);
 		}
+		#else
+		ran += m68k_execute(cycles);
+		#endif
 
 		#ifdef MINICDI_DEBUG_CPU
 		printf("\x1b[%d;%dH", 4, 0);

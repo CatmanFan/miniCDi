@@ -94,8 +94,12 @@ public:
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
 	inline void step() override {
-		cycles = cpu.run(1924);
-		vpu->increment(cycles);
+		// Timer normally ticks at 96 cycles, line polling at 960 ?
+		for (cycles = 0; cycles < 10; cycles++) {
+			cpu.run(96);
+			cpu.tick_timer();
+		}
+		vpu->tick();
 
 		// Update LCD display
 		lcd.update(slave);

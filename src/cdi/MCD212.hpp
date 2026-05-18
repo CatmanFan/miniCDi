@@ -203,6 +203,7 @@ class MCD212
 		}
 	}
 
+public:
 	/** Draws a video line **/
 	void tick()
 	{
@@ -246,7 +247,6 @@ class MCD212
 		}
 	}
 
-public:
 	MCD212(SCC68070 *cpu, uint8_t *memory, size_t start, MiniCDIConfig *config)
 	: emuConfig(config), cpu(cpu), memory(memory), cycles(0)
 	{

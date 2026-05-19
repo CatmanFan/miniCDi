@@ -33,7 +33,9 @@
 #include <malloc.h>
 #include <vector>
 
-#include "cdi/Config.hpp"
+#include "../Config.hpp"
+#include "../Log.hpp"
+
 #include "cdi/Musashi/m68k.h"
 
 // Cores
@@ -42,8 +44,12 @@
 #include "cdi/OS9.hpp"
 #include "cdi/MCD212.hpp"
 #include "cdi/MC6805_SLAVE.hpp"
+#include "cdi/MC6805_IKAT.hpp"
 #include "cdi/LCD.hpp"
 
-#include "cdi/Players.hpp"
+// Boards
+#include "cdi/boards/common.hpp"
+#include "cdi/boards/MonoI.hpp"
+#include "cdi/boards/MonoIV.hpp"
 
 #endif

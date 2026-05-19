@@ -66,12 +66,10 @@ public:
 
 	~SDL()
 	{
-		SDL_DestroyTexture(this->texture);
-		SDL_DestroyRenderer(this->renderer);
-		SDL_DestroyWindow(this->window);
-
-		if (this->lcd)
-			SDL_DestroyTexture(this->lcd);
+		if (this->texture) SDL_DestroyTexture(this->texture);
+		if (this->lcd) SDL_DestroyTexture(this->lcd);
+		if (this->renderer) SDL_DestroyRenderer(this->renderer);
+		if (this->window) SDL_DestroyWindow(this->window);
 
 		SDL_Quit();
 	}
@@ -100,18 +98,24 @@ static bool FAT_Init() {
 	return true;
 }
 
-static void RUN_CDI()
+static void RUN_CDI(const std::string &biosName)
 {
+	if (access((devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
+		printf("BIOS not found at %s, exiting", (devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str());
+		sleep(5);
+		exit(0);
+	}
+
 	MiniCDIConfig config = {
 		true	/** PAL mode **/,
-		true	/** show LCD **/
+		false	/** show LCD **/
 	};
 	bool running = true;
 
 	// config.log = fopen((devicePrefix + "apps/miniCDi/log.txt").c_str(), "wt");
 
-	MonoIPlayer cdi;
-	cdi.Init((devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str(), &config);
+	MonoIV cdi;
+	cdi.Init((devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str(), &config);
 	#ifndef MINICDI_DEBUG
 		SDL screen;
 	#endif
@@ -154,9 +158,9 @@ static void RUN_CDI()
 			do { cdi.step(); } while (!cdi.frame_ready());
 
 			#ifdef MINICDI_DEBUG
-				VIDEO_WaitVSync();
+			VIDEO_WaitVSync();
 			#else
-				screen.update(cdi.get_display(), cdi.get_display_width(), cdi.get_lcd());
+			screen.update(cdi.get_display(), cdi.get_display_width(), config.lcd ? cdi.get_lcd() : nullptr);
 			#endif
 		}
 	}
@@ -196,19 +200,13 @@ int main(int argc, char **argv) {
 			sleep(5);
 			exit(0);
 		}
-
-		if (access((devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str(), F_OK) != 0) {
-			printf("BIOS not found at %s, exiting", (devicePrefix + "apps/miniCDi/rom/cdi220b.rom").c_str());
-			sleep(5);
-			exit(0);
-		}
 	#else
 		printf("GameCube support not fully implemented, exiting");
 		sleep(5);
 		exit(0);
 	#endif
 
-	RUN_CDI();
+	RUN_CDI("cdi490a");
 
 	VIDEO_SetBlack(true);
 	return 0;

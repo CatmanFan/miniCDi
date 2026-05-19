@@ -32,7 +32,7 @@ set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 # -------------------------------------------
 target_include_directories(${PROJECT_NAME} PRIVATE src src/cdi/Musashi)
 target_sources(${PROJECT_NAME} PRIVATE
-	src/cdi/Players.cpp
+	src/cdi/common.cpp
 
 	# Musashi core
 	src/cdi/Musashi/m68k.h
@@ -87,24 +87,24 @@ if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 	endif()
 endif()
 
-# if (NINTENDO_WIIU)
-	## Libraries
-	# find_package(SDL2 REQUIRED)
-	# include_directories(${SDL2_INCLUDE_DIRS})
-	# target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} -lwut)
+if (NINTENDO_WIIU)
+	# Libraries
+	find_package(SDL2 REQUIRED)
+	include_directories(${SDL2_INCLUDE_DIRS})
+	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
 
-	# target_sources(${PROJECT_NAME} PRIVATE src/platforms/wiiu/main.cpp)
+	target_sources(${PROJECT_NAME} PRIVATE src/platforms/wiiu/main.cpp)
 
-	# wut_create_rpx(${PROJECT_NAME})
-	# wut_create_wuhb(${PROJECT_NAME}
-		# NAME "${PROJECT_NAME} v${PROJECT_VERSION}"
-		# AUTHOR "${APP_AUTHOR}"
+	wut_create_rpx(${PROJECT_NAME})
+	wut_create_wuhb(${PROJECT_NAME}
+		NAME "${PROJECT_NAME} v${PROJECT_VERSION}"
+		AUTHOR "${APP_AUTHOR}"
 
-		# ICON res/wiiu/iconTex.png
-		# TVSPLASH res/wiiu/bootTvTex.png
-		# DRCSPLASH res/wiiu/bootDrcTex.png
-	# )
-# endif()
+		ICON res/wiiu/iconTex.png
+		TVSPLASH res/wiiu/bootTvTex.png
+		DRCSPLASH res/wiiu/bootDrcTex.png
+	)
+endif()
 
 # if (NINTENDO_SWITCH)
 	# target_sources(${PROJECT_NAME} PRIVATE src/platforms/nx/main.cpp)

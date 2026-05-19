@@ -46,23 +46,30 @@ public:
 
 	SDL()
 	{
-		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == 0) {
+			atexit(SDL_Quit);
 
-		this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
-		this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
-		this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
+			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+			if (this->window == NULL) goto failed;
+			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_PRESENTVSYNC);
+			if (this->renderer == NULL) goto failed;
+			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
+			if (this->texture == NULL) goto failed;
+			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
+			return;
+		}
 
-		this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
+		failed:
+		OSScreenPutFontEx(SCREEN_TV, 0, 3, "SDL init failed");
+		OSScreenPutFontEx(SCREEN_DRC, 0, 3, "SDL init failed");
 	}
 
 	~SDL()
 	{
-		SDL_DestroyTexture(this->texture);
-		SDL_DestroyRenderer(this->renderer);
-		SDL_DestroyWindow(this->window);
-
-		if (this->lcd)
-			SDL_DestroyTexture(this->lcd);
+		if (this->texture) SDL_DestroyTexture(this->texture);
+		if (this->lcd) SDL_DestroyTexture(this->lcd);
+		if (this->renderer) SDL_DestroyRenderer(this->renderer);
+		if (this->window) SDL_DestroyWindow(this->window);
 
 		SDL_Quit();
 	}
@@ -95,7 +102,7 @@ static void RUN_CDI()
 		true	/** show LCD **/
 	};
 
-	MonoIPlayer cdi;
+	MonoI cdi;
 	cdi.Init((devicePrefix + BIOS_PATH).c_str(), &config);
 	SDL screen;
 

@@ -122,6 +122,21 @@ class Video
 		enum ColorMode CM[2];
 	} Decoder;
 
+	template <size_t Path>
+	uint8_t getAlpha(uint8_t vsr)
+	{
+		switch (Decoder.Transparency)
+		{
+			default:
+				exit(0);
+				return 0xFF;
+			case TcrNever:
+				return 0xFF;
+			case TcrAlways:
+				return 0x00;
+		}
+	}
+
 	uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 	{
 		int Y = *src & 0x0F;
@@ -134,7 +149,8 @@ class Video
 
 		*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
 				(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
-				(b > 255 ? 255 : b < 0 ? 0 : b) << 8);
+				(b > 255 ? 255 : b < 0 ? 0 : b) << 8 |
+				0xff);
 
 		return 1;
 	}
@@ -156,16 +172,16 @@ class Video
 
 			case CLUT7:
 			case CLUT77:
-				*dst = (Decoder.ColorCLUT[*src & 0x7F] << 8) | 0xff;
+				*dst = (Decoder.ColorCLUT[*src & 0x7F] << 8) | getAlpha<Path>(*src);
 				return 1;
 
 			case CLUT8:
-				*dst = (Decoder.ColorCLUT[*src] << 8) | 0xff;
+				*dst = (Decoder.ColorCLUT[*src] << 8) | getAlpha<Path>(*src);
 				return 1;
 
 			case CLUT4:
-				*dst = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | 0xff;
-				*(dst+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | 0xff;
+				*dst = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | getAlpha<Path>(*src);
+				*(dst+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | getAlpha<Path>(*src);
 				return 2;
 		}
 	}
@@ -219,22 +235,20 @@ public:
 				int outputPixel = (y*FG[0].width) + x;
 
 				// Backdrop should just be a single solid color, cursor is handled by byte pattern so they can be drawn directly in this function.
-				float wfA = (float)Decoder.WeightFactor[0] / 32.0f;
-				float wfB = (float)Decoder.WeightFactor[1] / 32.0f;
+				float wfA = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 1 : 0] / 32.0f;
+				float wfB = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 0 : 1] / 32.0f;
 
-				uint8_t rA = (FG[0].decoded[(y*FG[0].width)+x] & 0xff000000) >> 24;
-				uint8_t gA = (FG[0].decoded[(y*FG[0].width)+x] & 0x00ff0000) >> 16;
-				uint8_t bA = (FG[0].decoded[(y*FG[0].width)+x] & 0x0000ff00) >> 8;
+				float rA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0xff000000) >> 24;
+				float gA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x00ff0000) >> 16;
+				float bA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x0000ff00) >> 8;
+				float aA = FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x000000ff;
 
-				uint8_t rB = (FG[1].decoded[(y*FG[0].width)+x] & 0xff000000) >> 24;
-				uint8_t gB = (FG[1].decoded[(y*FG[0].width)+x] & 0x00ff0000) >> 16;
-				uint8_t bB = (FG[1].decoded[(y*FG[0].width)+x] & 0x0000ff00) >> 8;
+				float rB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0xff000000) >> 24;
+				float gB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x00ff0000) >> 16;
+				float bB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x0000ff00) >> 8;
+				float aB = FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x000000ff;
 
-				uint8_t rAB = std::clamp((int)((float)rA * wfA) + (int)((float)rB * wfB), 0, 239);
-				uint8_t gAB = std::clamp((int)((float)gA * wfA) + (int)((float)gB * wfB), 0, 239);
-				uint8_t bAB = std::clamp((int)((float)bA * wfA) + (int)((float)bB * wfB), 0, 239);
-
-				if (rAB == 0 && gAB == 0 && bAB == 0) {
+				if (!rA && !gA && !bA && !rB && !gB && !bB) {
 					// Transparent, draw backdrop.
 					uint32_t bgColor;
 
@@ -251,10 +265,12 @@ public:
 
 					output[outputPixel] = bgColor;
 				} else {
-					output[outputPixel] = (std::clamp(rAB + 16, 16, 239) << 24)
-										| (std::clamp(gAB + 16, 16, 239) << 16)
-										| (std::clamp(bAB + 16, 16, 239) << 8)
-										| 0xff;
+					uint8_t rAB = std::clamp((int)(rA * wfA) + (int)(rB * wfB) + 16, 0, 255);
+					uint8_t gAB = std::clamp((int)(gA * wfA) + (int)(gB * wfB) + 16, 0, 255);
+					uint8_t bAB = std::clamp((int)(bA * wfA) + (int)(bB * wfB) + 16, 0, 255);
+					// uint8_t aAB = std::clamp((int)(aA * wfA) + (int)(aB * wfB), 0, 255);
+
+					output[outputPixel] = (rAB << 24) | (gAB << 16) | (bAB << 8) | 0xFF;
 				}
 
 				if (x >= Decoder.CursorPosition[0] && x < Decoder.CursorPosition[0]+16
@@ -296,6 +312,7 @@ public:
 		for (int x = 0; x < FG[Path].width;)
 		{
 			uint8_t* src = &memory[++vsr];
+			uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
 
 			switch (Decoder.FT[Path]) {
 				default:
@@ -309,14 +326,14 @@ public:
 								break;
 
 							case DYUV:
-								x += decodeDYUV(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
+								x += decodeDYUV(src, dst);
 								break;
 
 							case CLUT4:
 							case CLUT7:
 							case CLUT77: // plane A only
 							case CLUT8: // plane A only
-								x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
+								x += decodeCLUT<Path>(src, dst);
 								break;
 						}
 					}
@@ -342,7 +359,7 @@ public:
 								}
 							} else {
 								for (int i = 0; i < length;) {
-									i += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x+i]);
+									i += decodeCLUT<Path>(src, dst+i);
 								}
 								x += length;
 							}
@@ -370,10 +387,7 @@ public:
 				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) < 0xC0u) {
 					int index = ((inst & 0xFF000000u) >> 24) + (Decoder.BankCLUT * 64) - 0x80u;
 					Decoder.ColorCLUT[index] = inst & 0x00FFFFFFu;
-
-					#ifdef MINICDI_DEBUG
-					//printf("[DCA%d] color $%06x\n", Path, Decoder.ColorCLUT[index]);
-					#endif
+					MiniCDI::Log("[DCA%d] color $%06x", Path, Decoder.ColorCLUT[index]);
 				}
 				break;
 
@@ -388,14 +402,11 @@ public:
 				Decoder.FT[Path] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
 				Decoder.MF[Path] = (enum VideoCDI::MosaicFactor)((inst & 0b1100u) >> 2);
 				Decoder.CM[Path] = (enum VideoCDI::ColorMode)((inst & 0b100000000u) >> 8);
-
-				#ifdef MINICDI_DEBUG
-				/*printf("[DCA%d] dprm cm=%s,mf=%s,ft=%s\n", Path, Decoder.CM[Path] == Double4 ? "p4" : "p8",
-																	Decoder.MF[Path] == x16 ? "x16" : Decoder.MF[Path] == x8 ? "x8"
-																  : Decoder.MF[Path] == x4 ? "x4" : "x2",
-																	Decoder.FT[Path] == Mosaic ? "m" : Decoder.FT[Path] == RunLength ? "rl"
-																  : "bmp");*/
-				#endif
+				MiniCDI::Log("[DCA%d] dprm cm=%s,mf=%s,ft=%s", Path, Decoder.CM[Path] == Double4 ? "p4" : "p8",
+																Decoder.MF[Path] == x16 ? "x16" : Decoder.MF[Path] == x8 ? "x8"
+															  : Decoder.MF[Path] == x4 ? "x4" : "x2",
+																Decoder.FT[Path] == Mosaic ? "m" : Decoder.FT[Path] == RunLength ? "rl"
+															  : "bmp");
 				break;
 
 			case 0xC0:
@@ -404,32 +415,23 @@ public:
 				Decoder.IcmEV = (inst & 0x00080000u) >> 18;
 				Decoder.Icm[1] = (enum VideoCDI::Icm)((inst & 0b111100000000u) >> 8);
 				Decoder.Icm[0] = (enum VideoCDI::Icm)(inst & 0b1111u);
-
-				#ifdef MINICDI_DEBUG
-				/*printf("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s\n", Path,
+				MiniCDI::Log("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s", Path,
 						  Decoder.IcmCS, Decoder.IcmNR, Decoder.IcmEV,
 						  Decoder.Icm[0] == CLUT8 ? "clut8" : Decoder.Icm[0] == CLUT7 ? "clut7"
 						: Decoder.Icm[0] == CLUT77 ? "clut7+7" : Decoder.Icm[0] == DYUV ? "dyuv"
 						: Decoder.Icm[0] == CLUT4 ? "clut4" : "off",
 						  Decoder.Icm[1] == RGB555 ? "rgb555" : Decoder.Icm[1] == DYUV ? "dyuv"
-						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");*/
-				#endif
+						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");
 				break;
 
 			case 0xC2:
 				Decoder.PlaneOrder = inst & 0x00FFFFFFu;
-
-				#ifdef MINICDI_DEBUG
-				//printf("[DCA%d] po %s\n", Path, Decoder.PlaneOrder ? "b,a" : "a,b");
-				#endif
+				MiniCDI::Log("[DCA%d] po %s", Path, Decoder.PlaneOrder ? "b,a" : "a,b");
 				break;
 
 			case 0xC3:
 				Decoder.BankCLUT = inst & 0x0Fu;
-
-				#ifdef MINICDI_DEBUG
-				//printf("[DCA%d] cbnk %d\n", Path, Decoder.BankCLUT);
-				#endif
+				MiniCDI::Log("[DCA%d] cbnk %d", Path, Decoder.BankCLUT);
 				break;
 
 			case 0xC4:
@@ -450,7 +452,7 @@ public:
 			case 0xCD: // channel 1
 				Decoder.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
 				Decoder.CursorPosition[1] = (inst >> 12) & 0x00000FFFu;
-				//printf("[DCA%d] cpos x=%d,y=%d\n", Path, Decoder.CursorPosition[0], Decoder.CursorPosition[1]);
+				MiniCDI::Log("[DCA%d] cpos x=%d,y=%d", Path, Decoder.CursorPosition[0], Decoder.CursorPosition[1]);
 				break;
 
 			case 0xCE: // channel 1

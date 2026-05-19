@@ -66,6 +66,14 @@ public:
 		 (std::istreambuf_iterator<char>()));
 		romStream.close();
 
+		if (rom[4] != 0x00) { // byteswap
+			for (size_t i = 0; i < rom.size(); i+=2) {
+				uint8_t byte = rom[i];
+				rom[i] = rom[i+1];
+				rom[i+1] = byte;
+			}
+		}
+
 		memcpy(&memory[0], &rom[0], 0x8); // contains initial SSP and PC
 		memcpy(&memory[romAddr], &rom[0], 512*1024*sizeof(char));
 	}
@@ -94,9 +102,7 @@ public:
 		int level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx});
 
 		if (level > 0) {
-			#ifdef MINICDI_DEBUG
-			//printf("[SCC68070] INT%dN lvl %d\n", ch, level);
-			#endif
+			MiniCDI::Log("[SCC68070] INT%dN lvl %d", ch, level);
 
 			m68k_set_irq(level + 32);
 		}
@@ -207,15 +213,15 @@ public:
 				{
 					case 0x20: // reset receiver
 						URH = 0;
-						//printf("[UART] UCR %02X (reset URH)\n", value);
+						MiniCDI::Log("[UART] UCR %02X (reset URH)", value);
 						break;
 					case 0x30: // reset transmitter
 						UTH = 0; USR |= 0x08;
-						//printf("[UART] UCR %02X (reset UTH)\n", value);
+						MiniCDI::Log("[UART] UCR %02X (reset UTH)", value);
 						break;
 					case 0x40: // reset error status
 						USR &= 0x0F;
-						//printf("[UART] UCR %02X (reset error)\n", value);
+						MiniCDI::Log("[UART] UCR %02X (reset error)", value);
 						break;
 				}
 				break;

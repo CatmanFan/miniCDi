@@ -56,9 +56,9 @@ public:
 			atexit(SDL_Quit);
 			SDL_ShowCursor(SDL_DISABLE);
 
-			this->window = SDL_CreateWindow("", 0, 0, 640, 480, SDL_WINDOW_SHOWN);
+			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
+			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 384, 280);
 
 			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
 		}
@@ -143,6 +143,11 @@ static void RUN_CDI()
 			if (running)
 				printf("      \n");
 		}
+
+		if (down & WPAD_BUTTON_1)
+			config.lines++;
+		if (down & WPAD_BUTTON_2)
+			config.lines--;
 
 		if (running)
 		{

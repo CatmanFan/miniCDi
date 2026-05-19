@@ -42,7 +42,7 @@ class MCD212
 			CF,			/** (Crystal Frequency)	0 = PAL (28MHz); 1 = NTSC (30MHz) **/
 			FD,			/** (Frame Duration)	0 = 50fps; 1 = 60fps **/
 			SM,			/** (Scan Mode)			0 = non-interlaced; 1 = interlaced **/
-			CM[2],		/** (Color Mode)		0 = 8bpp & CLK/4; 1 = 4bpp & CLK/2 **/
+			CM[2],		/** (Color Mode)		0 = 8bpp & CLK/4 pixel output; 1 = 4bpp & CLK/2 pixel output **/
 			IC[2],		/** (ICA) 0 = corresponding ICA off, 1 = corresponding ICA on **/
 			DC[2],		/** (DCA) 0 = corresponding DCA off, 1 = corresponding DCA on **/
 			IT[2],		/** (Interrupt) **/
@@ -250,7 +250,7 @@ public:
 			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
 
 			if (line == 0) {
-				vdsc.set_mode(VideoCDI::PAL, CM[0], CM[1]); // Hardcoded
+				vdsc.set_mode(VideoCDI::PAL, CM[0]); // Hardcoded
 				if (frames % 2 == 0 && SM)
 					line = 1;
 			}
@@ -261,7 +261,7 @@ public:
 				#endif
 					// render line onto bitmap
 					VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
-					// VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+					VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
 				#ifdef MINICDI_FRAMESKIP
 				}
 				#endif

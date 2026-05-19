@@ -4,6 +4,7 @@
 typedef struct {
 	bool pal;
 	bool lcd;
+	int lines = 384;
 	FILE* log;
 } MiniCDIConfig;
 

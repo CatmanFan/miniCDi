@@ -239,7 +239,7 @@ public:
 
 							/** Test Plug Status (enables service menu) **/
 							case 0xF4:
-								Ch[2].Out = { 0xF4, 0x01 }; // use response data from MAME
+								Ch[2].Out = { 0xF4, 0x00 }; // use response data from MAME
 								Ch[c].SR &= ~(0b00010000u);
 								cpu->interrupt(c);
 

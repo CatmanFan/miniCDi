@@ -87,7 +87,6 @@ class Plane
 {
 public:
 	int width, height;
-	bool doubleRes;
 	std::vector<uint32_t> decoded;
 };
 
@@ -158,12 +157,10 @@ class Video
 			case CLUT7:
 			case CLUT77:
 				*dst = (Decoder.ColorCLUT[*src & 0x7F] << 8) | 0xff;
-				if (!FG[Path].doubleRes) { *(dst+1) = *dst; return 2; }
 				return 1;
 
 			case CLUT8:
 				*dst = (Decoder.ColorCLUT[*src] << 8) | 0xff;
-				if (!FG[Path].doubleRes) { *(dst+1) = *dst; return 2; }
 				return 1;
 
 			case CLUT4:
@@ -201,12 +198,9 @@ public:
 		Decoder = {0};
 	}
 
-	void set_mode(enum Type type, bool hRes1, bool hRes2, bool vRes = false)
+	void set_mode(enum Type type, bool hRes = false, bool vRes = false)
 	{
-		FG[0].doubleRes = hRes1;
-		FG[1].doubleRes = hRes2;
-
-		FG[1].width = FG[0].width = (type == NTSCMonitor ? 720 : 768);
+		FG[1].width = FG[0].width = (type == NTSCMonitor ? 360 : 384) * (hRes || vRes ? 2 : 1);
 		FG[1].height = FG[0].height = (type == PAL ? 280 : 240) * (vRes ? 2 : 1);
 
 		FG[0].decoded.resize(FG[0].width * FG[0].height, 0);
@@ -222,11 +216,11 @@ public:
 
 		for (int y = 0; y < FG[0].height; y++) {
 			for (int x = 0; x < FG[0].width; x++) {
-				int outputPixel = y*FG[0].width + x + FG[0].width*(FG[0].height == 480 ? 40 : FG[0].height == 240 ? 20 : 0);
+				int outputPixel = (y*FG[0].width) + x;
 
 				// Backdrop should just be a single solid color, cursor is handled by byte pattern so they can be drawn directly in this function.
-				float wfA = /*(float)Decoder.WeightFactor[0] / 64.0f*/ 62.0/64.0;
-				float wfB = /*(float)Decoder.WeightFactor[1] / 64.0f*/ 0;
+				float wfA = (float)Decoder.WeightFactor[0] / 32.0f;
+				float wfB = (float)Decoder.WeightFactor[1] / 32.0f;
 
 				uint8_t rA = (FG[0].decoded[(y*FG[0].width)+x] & 0xff000000) >> 24;
 				uint8_t gA = (FG[0].decoded[(y*FG[0].width)+x] & 0x00ff0000) >> 16;
@@ -263,9 +257,9 @@ public:
 										| 0xff;
 				}
 
-				if (x >= Decoder.CursorPosition[0] && x < Decoder.CursorPosition[0]+16u
-				 && y >= Decoder.CursorPosition[1] && y < Decoder.CursorPosition[1]+16u
-				 && cursor[(y-Decoder.CursorPosition[1])*16u + (x-Decoder.CursorPosition[0])] != 0
+				if (x >= Decoder.CursorPosition[0] && x < Decoder.CursorPosition[0]+16
+				 && y >= Decoder.CursorPosition[1] && y < Decoder.CursorPosition[1]+16
+				 && cursor[(y-Decoder.CursorPosition[1])*16 + (x-Decoder.CursorPosition[0])] != 0
 				 && Decoder.CursorEnable)
 				{
 					switch (Decoder.CursorColor & 0x07) {
@@ -295,61 +289,64 @@ public:
 	uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 	{
 		if (Decoder.Icm[Path] == Off) {
-			// memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));
+			memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));
 			return 0;
 		}
 
 		for (int x = 0; x < FG[Path].width;)
 		{
-			uint8_t* src = &memory[(++vsr & 0x0007ffff) ^ 1];
-			uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
+			uint8_t* src = &memory[++vsr];
 
 			switch (Decoder.FT[Path]) {
 				default:
-					assert(0);
-
 				case Bitmap:
-				case RunLength:
-					// Not implemented
 					if (Path == 1 && Decoder.Icm[Path] == RGB555) {
-						assert(0);
-					}
-					else
-					{
+						assert(0); // Not implemented
+					} else {
 						switch (Decoder.Icm[Path])
 						{
 							default:
-							case CLUT4:
-								exit(0);
 								break;
 
 							case DYUV:
-								x += decodeDYUV(src, dst);
+								x += decodeDYUV(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
 								break;
 
+							case CLUT4:
 							case CLUT7:
 							case CLUT77: // plane A only
 							case CLUT8: // plane A only
-								if (Decoder.FT[Path] == RunLength) {
-									int length = 1;
-									if (*src & 0x80) {
-										length = *(src+1);
-										++vsr;
-
-										if (length == 0)
-											length = FG[Path].width - x;
-										else if (!FG[Path].doubleRes)
-											length *= 2;
-									}
-									for (int r = 0; r < length;) {
-										r += decodeCLUT<Path>(src, dst+r);
-									}
-									x += length;
-								} else {
-									x += decodeCLUT<Path>(src, dst);
-								}
+								x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
 								break;
 						}
+					}
+					break;
+
+				case RunLength:
+					switch (Decoder.Icm[Path])
+					{
+						default:
+							break;
+
+						case CLUT4:
+						case CLUT7:
+							int length = 1;
+							if (*src & 0x80) {
+								length = *(src+1);
+								++vsr;
+							}
+
+							if (length == 0) {
+								while (x < FG[Path].width) {
+									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
+								}
+							} else {
+								for (int i = 0; i < length;) {
+									i += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x+i]);
+								}
+								x += length;
+							}
+							break;
 					}
 					break;
 
@@ -451,7 +448,7 @@ public:
 				break;
 
 			case 0xCD: // channel 1
-				Decoder.CursorPosition[0] = inst & 0x00000FFFu; // double-resolution
+				Decoder.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
 				Decoder.CursorPosition[1] = (inst >> 12) & 0x00000FFFu;
 				//printf("[DCA%d] cpos x=%d,y=%d\n", Path, Decoder.CursorPosition[0], Decoder.CursorPosition[1]);
 				break;

@@ -99,7 +99,7 @@ class Video
 		/* 80 */ uint32_t ColorCLUT[256]; // A CLUT is a color lookup table holding a number of colors in RGB888.
 		/* C0 */ enum Icm Icm[2];
 				 uint8_t IcmCS, IcmNR, IcmEV;
-		/* C1 */ enum Tcr Transparency;
+		/* C1 */ enum Tcr Transparency[2]; uint8_t Mixing;
 		/* C2 */ uint8_t PlaneOrder;
 		/* C3 */ uint8_t BankCLUT;
 		/* C4 */ uint8_t TransparentCol[2];
@@ -125,10 +125,10 @@ class Video
 	template <size_t Path>
 	uint8_t getAlpha(uint8_t vsr)
 	{
-		switch (Decoder.Transparency)
+		switch (Decoder.Transparency[Path])
 		{
 			default:
-				exit(0);
+				assert(0);
 				return 0xFF;
 			case TcrNever:
 				return 0xFF;
@@ -228,27 +228,41 @@ public:
 	 */
 	void draw_frame()
 	{
-		output.assign(FG[0].width * FG[0].height, 0x000000ff);
+		output.assign(FG[0].width * FG[0].height, 0x00000000);
 
 		for (int y = 0; y < FG[0].height; y++) {
 			for (int x = 0; x < FG[0].width; x++) {
 				int outputPixel = (y*FG[0].width) + x;
 
-				// Backdrop should just be a single solid color, cursor is handled by byte pattern so they can be drawn directly in this function.
-				float wfA = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 1 : 0] / 32.0f;
-				float wfB = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 0 : 1] / 32.0f;
+				uint8_t rA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0xff000000) >> 24;
+				uint8_t gA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x00ff0000) >> 16;
+				uint8_t bA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x0000ff00) >> 8;
+				uint8_t aA = FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x000000ff;
 
-				float rA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0xff000000) >> 24;
-				float gA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x00ff0000) >> 16;
-				float bA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x0000ff00) >> 8;
-				float aA = FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x000000ff;
+				uint8_t rB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0xff000000) >> 24;
+				uint8_t gB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x00ff0000) >> 16;
+				uint8_t bB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x0000ff00) >> 8;
+				uint8_t aB = FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x000000ff;
 
-				float rB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0xff000000) >> 24;
-				float gB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x00ff0000) >> 16;
-				float bB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x0000ff00) >> 8;
-				float aB = FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x000000ff;
+				bool hasA = (rA & 0xFC) || (gA & 0xFC) || (gA & 0xFC);
+				bool hasB = (rB & 0xFC) || (gB & 0xFC) || (gB & 0xFC);
 
-				if (!rA && !gA && !bA && !rB && !gB && !bB) {
+				// Mixing technique
+				if (hasA && hasB && Decoder.Mixing) {
+					float wfA = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 1 : 0] / 32.0f;
+					float wfB = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 0 : 1] / 32.0f;
+
+					/** Green Book 5.9 **/
+					uint8_t r = std::clamp((int)(wfA * ((float)rA - 16)) + (int)(wfB * ((float)rB - 16)) + 16, 0, 255);
+					uint8_t g = std::clamp((int)(wfA * ((float)gA - 16)) + (int)(wfB * ((float)gB - 16)) + 16, 0, 255);
+					uint8_t b = std::clamp((int)(wfA * ((float)bA - 16)) + (int)(wfB * ((float)bB - 16)) + 16, 0, 255);
+					uint8_t a = std::clamp((int)(wfA * ((float)aA - 16)) + (int)(wfB * ((float)aB - 16)) + 16, 0, 255);
+
+					output[outputPixel] = (r << 24) | (g << 16) | (b << 8) | a;
+				}
+
+				// Overlay technique
+				else {
 					// Transparent, draw backdrop.
 					uint32_t bgColor;
 
@@ -264,13 +278,14 @@ public:
 					}
 
 					output[outputPixel] = bgColor;
-				} else {
-					uint8_t rAB = std::clamp((int)(rA * wfA) + (int)(rB * wfB) + 16, 0, 255);
-					uint8_t gAB = std::clamp((int)(gA * wfA) + (int)(gB * wfB) + 16, 0, 255);
-					uint8_t bAB = std::clamp((int)(bA * wfA) + (int)(bB * wfB) + 16, 0, 255);
-					// uint8_t aAB = std::clamp((int)(aA * wfA) + (int)(aB * wfB), 0, 255);
 
-					output[outputPixel] = (rAB << 24) | (gAB << 16) | (bAB << 8) | 0xFF;
+					if (hasA && aA > 0) {
+						output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | aA;
+					}
+
+					if (hasB && aB > 0) {
+						output[outputPixel] = (rB << 24) | (gB << 16) | (bB << 8) | aB;
+					}
 				}
 
 				if (x >= Decoder.CursorPosition[0] && x < Decoder.CursorPosition[0]+16
@@ -386,7 +401,7 @@ public:
 			default:
 				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) < 0xC0u) {
 					int index = ((inst & 0xFF000000u) >> 24) + (Decoder.BankCLUT * 64) - 0x80u;
-					Decoder.ColorCLUT[index] = inst & 0x00FFFFFFu;
+					Decoder.ColorCLUT[index] = inst & 0x00FCFCFCu;
 					MiniCDI::Log("[DCA%d] color $%06x", Path, Decoder.ColorCLUT[index]);
 				}
 				break;
@@ -424,8 +439,14 @@ public:
 						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");
 				break;
 
+			case 0xC1:
+				Decoder.Transparency[0] = (enum VideoCDI::Tcr)(inst & 0x0Fu);
+				Decoder.Transparency[1] = (enum VideoCDI::Tcr)((inst & 0x0Fu) >> 8);
+				Decoder.Mixing = (inst & 0x00800000u) >> 23;
+				break;
+
 			case 0xC2:
-				Decoder.PlaneOrder = inst & 0x00FFFFFFu;
+				Decoder.PlaneOrder = inst & 0x0Fu;
 				MiniCDI::Log("[DCA%d] po %s", Path, Decoder.PlaneOrder ? "b,a" : "a,b");
 				break;
 

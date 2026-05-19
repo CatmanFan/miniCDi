@@ -114,6 +114,7 @@ static void RUN_CDI(const std::string &biosName)
 
 	// config.log = fopen((devicePrefix + "apps/miniCDi/log.txt").c_str(), "wt");
 
+	// MonoI cdi;
 	MonoIV cdi;
 	cdi.Init((devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str(), &config);
 	#ifndef MINICDI_DEBUG
@@ -206,6 +207,7 @@ int main(int argc, char **argv) {
 		exit(0);
 	#endif
 
+	// RUN_CDI("cdi220b");
 	RUN_CDI("cdi490a");
 
 	VIDEO_SetBlack(true);

@@ -31,18 +31,19 @@ public:
 	{
 		if (display_output) {
 			// Clear screen
-			SDL_SetRenderDrawColor(this->renderer, 64, 64, 64, 255);
+			SDL_SetRenderDrawColor(this->renderer, 10, 11, 12, 255);
 			SDL_RenderClear(this->renderer);
 
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
-			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
+			SDL_Rect dest = {0, 0, 384, 280};
+			SDL_RenderCopy(this->renderer, this->texture, NULL, &dest);
 
 			// Draw LCD if available
 			if (lcd_output)
 			{
 				SDL_UpdateTexture(this->lcd, NULL, lcd_output, (20*7)*sizeof(uint32_t));
-				SDL_Rect dest = {640-(20*7), 480-22, (20*7), 22};
+				dest = {640-(20*7), 480-22, (20*7), 22};
 				SDL_RenderCopy(this->renderer, this->lcd, NULL, &dest);
 			}
 
@@ -59,15 +60,14 @@ public:
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 384, 280);
-
 			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
 		}
 	}
 
 	~SDL()
 	{
-		if (this->texture) SDL_DestroyTexture(this->texture);
 		if (this->lcd) SDL_DestroyTexture(this->lcd);
+		if (this->texture) SDL_DestroyTexture(this->texture);
 		if (this->renderer) SDL_DestroyRenderer(this->renderer);
 		if (this->window) SDL_DestroyWindow(this->window);
 
@@ -108,7 +108,7 @@ static void RUN_CDI(const std::string &biosName)
 
 	MiniCDIConfig config = {
 		true	/** PAL mode **/,
-		false	/** show LCD **/
+		true	/** show LCD **/
 	};
 	bool running = true;
 
@@ -116,9 +116,10 @@ static void RUN_CDI(const std::string &biosName)
 
 	// MonoI cdi;
 	MonoIV cdi;
+
 	cdi.Init((devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str(), &config);
 	#ifndef MINICDI_DEBUG
-		SDL screen;
+	SDL screen;
 	#endif
 
 	while (SYS_MainLoop()) {
@@ -129,6 +130,9 @@ static void RUN_CDI(const std::string &biosName)
 
 		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
 			break;
+
+		if (down & WPAD_BUTTON_PLUS)
+			cdi.reset();
 
 		if (down & WPAD_BUTTON_B) {
 	#else
@@ -149,19 +153,18 @@ static void RUN_CDI(const std::string &biosName)
 				printf("      \n");
 		}
 
-		if (down & WPAD_BUTTON_1)
-			config.lines++;
-		if (down & WPAD_BUTTON_2)
-			config.lines--;
-
 		if (running)
 		{
-			do { cdi.step(); } while (!cdi.frame_ready());
+			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode.
+			#ifdef MINICDI_FRAMESKIP
+			cdi.do_frame(false);
+			#endif
+			cdi.do_frame(true);
 
 			#ifdef MINICDI_DEBUG
 			VIDEO_WaitVSync();
 			#else
-			screen.update(cdi.get_display(), cdi.get_display_width(), config.lcd ? cdi.get_lcd() : nullptr);
+			screen.update(cdi.get_display(), cdi.get_display_width(), cdi.get_lcd());
 			#endif
 		}
 	}
@@ -193,7 +196,7 @@ int main(int argc, char **argv) {
 		if (rmode->viTVMode & VI_NON_INTERLACE) { VIDEO_WaitVSync(); }
 	}
 
-	printf("miniCDi - Philips CD-i 220/20 F2 experimental emulator\n");
+	printf("miniCDi - Philips CD-i emulator\n");
 
 	#ifdef HW_RVL
 		if (!FAT_Init()) {
@@ -207,6 +210,7 @@ int main(int argc, char **argv) {
 		exit(0);
 	#endif
 
+	printf("Loading\n");
 	// RUN_CDI("cdi220b");
 	RUN_CDI("cdi490a");
 

@@ -32,20 +32,28 @@
 #include <dirent.h>
 #include <malloc.h>
 #include <vector>
+#include <cassert>
+#include <cmath>
+#include <algorithm>
 
+// Main namespace defs
 #include "../Config.hpp"
 #include "../Log.hpp"
 
+// 68K processor
 #include "cdi/Musashi/m68k.h"
-
-// Cores
-#include "cdi/VDSC.hpp"
 #include "cdi/SCC68070.hpp"
 #include "cdi/OS9.hpp"
+
+// Other cores
+#include "cdi/VDSC.hpp"
 #include "cdi/MCD212.hpp"
 #include "cdi/MC6805_SLAVE.hpp"
 #include "cdi/MC6805_IKAT.hpp"
-#include "cdi/LCD.hpp"
+#include "cdi/MCD221_CIAP.hpp"
+
+// Other namespace defs
+#include "../LCD.hpp"
 
 // Boards
 #include "cdi/boards/common.hpp"

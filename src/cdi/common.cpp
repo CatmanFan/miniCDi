@@ -7,9 +7,11 @@ namespace MiniCDI
 	{
 		uint8_t* memory;
 		SCC68070* scc68070;
+		MCD212* mcd212;
 		SLAVE* slave;
 		IKAT* ikat;
-		MCD212* mcd212;
+		// CDIC* cdic;
+		CIAP* ciap;
 	} Player;
 }
 
@@ -59,7 +61,7 @@ void m68k_write_memory_8(unsigned int address, unsigned int value) {
 	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000 && FLAG_S) {
 		MiniCDI::Player.scc68070->write8(address, value);
 	} else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000) {
-		MiniCDI::Player.slave->write8(address, value, MiniCDI::Player.scc68070);
+		MiniCDI::Player.slave->write8(address, value);
 	} else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000) {
 		MiniCDI::Player.ikat->write8(address, value);
 	} else {
@@ -87,19 +89,20 @@ bool MonoI::Init(const char* bios, MiniCDIConfig *config)
 {
 	if (CDi::Init(bios, config)) {
 		this->cpu = SCC68070(this->memory, this->memSize, config);
-		this->cpu.set_bios(bios, this->romAddr);
-		this->slave = new SLAVE(this->memory, this->slaveAddr, config);
 		this->vpu = new MCD212(&this->cpu, this->memory, this->vdscAddr, config);
+		this->slave = new SLAVE(this->memory, this->slaveAddr, config);
 
 		MiniCDI::Player =
 		{
 			.memory = this->memory,
 			.scc68070 = &this->cpu,
-			.slave = this->slave,
 			.mcd212 = this->vpu,
+			.slave = this->slave,
 		};
 
+		this->cpu.load_rom(bios, this->romAddr);
 		this->cpu.reset();
+		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 
 		return true;
 	}
@@ -111,19 +114,22 @@ bool MonoIV::Init(const char* bios, MiniCDIConfig *config)
 {
 	if (CDi::Init(bios, config)) {
 		this->cpu = SCC68070(this->memory, this->memSize, config);
-		this->cpu.set_bios(bios, this->romAddr);
-		this->ikat = new IKAT(this->memory, this->ikatAddr, config);
 		this->vpu = new MCD212(&this->cpu, this->memory, this->vdscAddr, config);
+		this->ikat = new IKAT(this->memory, config);
+		this->ciap = new CIAP(this->memory, config);
 
 		MiniCDI::Player =
 		{
 			.memory = this->memory,
 			.scc68070 = &this->cpu,
-			.ikat = this->ikat,
 			.mcd212 = this->vpu,
+			.ikat = this->ikat,
+			.ciap = this->ciap
 		};
 
+		this->cpu.load_rom(bios, this->romAddr);
 		this->cpu.reset();
+		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 
 		return true;
 	}

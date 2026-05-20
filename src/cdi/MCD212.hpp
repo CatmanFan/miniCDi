@@ -7,8 +7,6 @@
   well as the specifications of the Green Book.
  *****/
 
-#include "cdi/common.hpp"
-
 #define MCD212_VSYNC_LINES		(FD ? 262 : 312)
 #define MCD212_HSYNC_CYCLES		(CF ? 120 : 112)
 #define MCD212_INACTIVE_VLINES	(FD ? 262 - 240 : ST ? 312 - 240 : 312 - 280)
@@ -20,11 +18,10 @@ class MCD212
 	uint8_t* memory;
 
 	int cycles;
-	VideoCDI::Video vdsc;
+	VDSC::Decoder vdsc;
 
 	size_t linesV, line;
-	uint64_t frames;
-	bool frame_ready;
+	bool interlace;
 
 	// internal registers
 	uint32_t VSR[2];
@@ -206,11 +203,10 @@ public:
 		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
 
 		// initialization
-		CF = FD = 0; // Hardcoded
+		CF = FD = 1; // Hardcoded
 		SM = /* to-do: interlace */ 0;
 
-		frame_ready = false;
-		frames = 0;
+		interlace = false;
 		linesV = 0;
 		line = 0;
 
@@ -220,54 +216,52 @@ public:
 	/**
 	 * @brief  Draws a video line.
 	 */
-	void tick()
+	bool tick(bool skip_draw = false)
 	{
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
 			if (linesV == 1 && DE) {
 				if (IC[0]) ICA_execute<0>();
 				if (IC[1]) ICA_execute<1>();
 			}
-		} else {
-			DA = 1;
-			PA = SM ? (frames % 2 == 0 ? 0 : 1) : 1;
-
-			if (line == 0) {
-				vdsc.set_mode(VideoCDI::PAL, CM[0]); // Hardcoded
-				if (frames % 2 == 0 && SM)
-					line = 1;
-			}
-
-			if (DE) {
-				#ifdef MINICDI_FRAMESKIP
-				if (frames % 12 == 0) {
-				#endif
-					// render line onto bitmap
-					VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
-					VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
-				#ifdef MINICDI_FRAMESKIP
-				}
-				#endif
-
-				if (DC[0] && IC[0]) DCA_execute<0>();
-				if (DC[1] && IC[1]) DCA_execute<1>();
-			}
-
-			line += SM ? 2 : 1;
-
-			if (linesV >= MCD212_VSYNC_LINES) {
-				DA = 0;
-				linesV = 0;
-				line = 0;
-
-				frames++;
-				#ifdef MINICDI_FRAMESKIP
-				frame_ready = frames % 12 == 0;
-				if (frame_ready) vdsc.draw_frame();
-				#else
-				frame_ready = true; vdsc.draw_frame();
-				#endif
-			}
+			return false;
 		}
+
+		DA = 1;
+		PA = SM ? (interlace ? 0 : 1) : 1;
+
+		if (line == 0) {
+			vdsc.set_mode(VDSC::PAL, CM[0]); // Hardcoded
+			if (interlace && SM)
+				line = 1;
+		}
+
+		if (DE) {
+			if (!skip_draw) {
+				// render line onto bitmap
+				VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
+				VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+			}
+
+			if (DC[0] && IC[0]) DCA_execute<0>();
+			if (DC[1] && IC[1]) DCA_execute<1>();
+		}
+
+		line += SM ? 2 : 1;
+
+		if (linesV >= MCD212_VSYNC_LINES) {
+			DA = 0;
+			linesV = 0;
+			line = 0;
+			interlace = SM ? !interlace : false;
+
+			if (!skip_draw) {
+				vdsc.draw_frame();
+			}
+
+			return true;
+		}
+
+		return false;
 	}
 
 	uint8_t read8(uint32_t addr)
@@ -358,12 +352,6 @@ public:
 	size_t get_display_width()
 	{
 		return vdsc.get_display_width();
-	}
-
-	bool is_frame_ready()
-	{
-		if (frame_ready) { frame_ready = false; return true; }
-		return false;
 	}
 };
 

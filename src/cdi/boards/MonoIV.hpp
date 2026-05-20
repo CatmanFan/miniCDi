@@ -24,26 +24,34 @@ private:
 	const int ciapAddr	= 0x300000;
 	const int ikatAddr	= 0x310000;
 
+	CIAP* ciap;
 	IKAT* ikat;
 	MCD212* vpu;
 	PlayerLCD lcd;
-	int cycles;
 
 public:
 	MonoIV() : CDi() {}
 
 	bool Init(const char* bios, MiniCDIConfig *config) override;
 
-	inline void step() override {
+	inline void do_frame(bool draw = true) override {
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
-		for (cycles = 0; cycles < 10; cycles++) {
-			cpu.run(96);
-			cpu.tick_timer();
+		while (1)
+		{
+			for (uint8_t cycles = 0; cycles < 10; cycles++) {
+				cpu.run(96);
+				cpu.tick_timer();
+			}
+			if (vpu->tick(!draw)) return;
 		}
-		vpu->tick();
 	}
 
-	inline bool frame_ready() override { return vpu->is_frame_ready(); }
+	inline void reset() override {
+		cpu.reset();
+		ikat->reset();
+		vpu->reset();
+	}
+
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }
 

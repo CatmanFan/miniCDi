@@ -99,7 +99,7 @@ static void RUN_CDI()
 {
 	MiniCDIConfig config = {
 		true	/** PAL mode **/,
-		true	/** show LCD **/
+		false	/** show LCD **/
 	};
 
 	MonoI cdi;
@@ -140,7 +140,10 @@ int main(int argc, char **argv) {
 	devicePrefix = mounted ? "fs:/vol/external01/" : "/vol/external01/";
 	if (access((devicePrefix + BIOS_PATH).c_str(), F_OK) == 0) {
 		PrintToScreen(0,1, "Loading", true);
+
+		OSScreenShutdown();
 		RUN_CDI();
+		OSScreenInit();
 
 		if (mounted) { WHBUnmountSdCard(); }
 		goto exit;
@@ -154,7 +157,6 @@ int main(int argc, char **argv) {
 	if (tvBuffer) free(tvBuffer);
 	if (drcBuffer) free(drcBuffer);
 
-	OSScreenShutdown();
 	WHBProcShutdown();
 
 	WHBLogPrintf("[miniCDi] The End");

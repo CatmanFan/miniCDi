@@ -48,6 +48,8 @@ class SCC68070
 	uint8_t ICR;
 	uint8_t ICCR;
 
+	uint32_t romPC, romSP;
+
 public:
 	uint8_t fc; // used for FC/address space callback
 
@@ -58,7 +60,7 @@ public:
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
 	}
 
-	void set_bios(const char* romPath, size_t romAddr)
+	void load_rom(const char* romPath, size_t romAddr)
 	{
 		std::ifstream romStream(romPath);
 		std::vector<char> rom(
@@ -76,13 +78,16 @@ public:
 
 		memcpy(&memory[0], &rom[0], 0x8); // contains initial SSP and PC
 		memcpy(&memory[romAddr], &rom[0], 512*1024*sizeof(char));
+		romSP = READ32(memory, 0);
+		romPC = READ32(memory, 4);
 	}
 
 	void reset()
 	{
-		m68k_pulse_reset();
-		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 		fc = 0;
+		m68k_pulse_reset();
+		m68k_set_reg(M68K_REG_SP, romSP);
+		m68k_set_reg(M68K_REG_PC, romPC);
 
 		UMR = 0x20; // unused bit
 		USR = 0b0000'0110; // TX ready and unused bit
@@ -91,6 +96,9 @@ public:
 		UTH = URH = 0;
 
 		PICR[0] = PICR[1] = 0;
+		TSR = TCR = RR = T[0] = T[1] = T[2] = 0;
+		DMA[0].CSR = DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
+		// IDR = IAR = ISR = ICR = ICCR = 0;
 	}
 
 	void interrupt(size_t ch)

@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # -------------------------------------------
 add_executable(${PROJECT_NAME})
 dkp_target_generate_symbol_list(${PROJECT_NAME})
-target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -g -Ofast -Wall)
 
 option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." OFF)
 option(MINICDI_ENABLE_DEBUG_CPU "Debug CPU information (PC, SR, FC, D*, A*)." OFF)

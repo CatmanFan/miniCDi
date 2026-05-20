@@ -1,8 +1,6 @@
 #ifndef MINICDI_MC6805_SLAVE
 #define MINICDI_MC6805_SLAVE
 
-#include "cdi/common.hpp"
-
 // HLE implementation of SLAVE as found in MiniMMC & Mono-I.
 class SLAVE
 {
@@ -30,6 +28,15 @@ class SLAVE
 
 	uint8_t LCD[16];
 
+	void send_pointer_msg()
+	{
+		Ch[0].Out = { 0x83, (uint8_t)((Pointer.Button[1] << 5) | (Pointer.Button[0] << 4) | (Pointer.Active << 3)
+								   | ((Pointer.X & 0b111'0000000) >> 7)),
+							(uint8_t)(Pointer.X & 0b000'1111111),
+							(uint8_t)((Pointer.Y & 0b111'0000000) >> 7),
+							(uint8_t)(Pointer.Y & 0b000'1111111) };
+	}
+
 public:
 	SLAVE(uint8_t* memory, uint32_t start, MiniCDIConfig *config)
 	: emuConfig(config), memory(memory)
@@ -38,7 +45,11 @@ public:
 		addresses[1] = start + 0x03; // BDR
 		addresses[2] = start + 0x05; // CDR
 		addresses[3] = start + 0x07; // DDR
+		reset();
+	}
 
+	void reset()
+	{
 		memset(&LCD[0], 0, 16);
 		Ch[0].InSize = 0;
 		Ch[1].InSize = 0;
@@ -82,7 +93,7 @@ public:
 		return memory[addr];
 	}
 
-	void write8(uint32_t addr, uint8_t value, SCC68070* cpu)
+	void write8(uint32_t addr, uint8_t value)
 	{
 		if (addr == addresses[0] || addr == addresses[1] || addr == addresses[2] || addr == addresses[3])
 		{
@@ -112,20 +123,15 @@ public:
 
 						/** Enable Pointer Input **/
 						case 0x83:
-							Ch[c].Out = { 0x83, (uint8_t)((Pointer.Button[1] << 5) | (Pointer.Button[0] << 4) | (Pointer.Active << 3)
-													   | ((Pointer.X & 0b111'0000000) >> 7)),
-												(uint8_t)(Pointer.X & 0b000'1111111),
-												(uint8_t)((Pointer.Y & 0b111'0000000) >> 7),
-												(uint8_t)(Pointer.Y & 0b000'1111111) };
-							cpu->interrupt(c);
-							Pointer.Active = true;
-
 							MiniCDI::Log("[SLAVE] enable pointer input");
+							Pointer.Active = true;
+							send_pointer_msg();
 							Ch[c].In.clear();
 							break;
 
 						/** Disable Pointer Input **/
 						case 0x84:
+							MiniCDI::Log("[SLAVE] disable pointer input");
 							Pointer.Active = false;
 							Ch[c].In.clear();
 							break;
@@ -142,10 +148,9 @@ public:
 								case 17:
 									LCD[Ch[c].In.size() - (Ch[c].InSize == 16 ? 1 : 2)] = value;
 									if (Ch[c].In.size() >= Ch[c].InSize) {
+										MiniCDI::Log("[SLAVE] set LCD");
 										Ch[c].In.clear();
 										Ch[c].InSize = 0;
-
-										MiniCDI::Log("[SLAVE] set LCD: ");
 									}
 									break;
 							}
@@ -181,51 +186,45 @@ public:
 
 						/** Disc Status **/
 						case 0xB0:
+							MiniCDI::Log("[SLAVE] get disc status");
 							Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // use response data from MAME
-							cpu->interrupt(c);
-
-							MiniCDI::Log("[SLAVE] received disc status");
 							Ch[c].In.clear();
 							break;
 
 						/** SLAVE rev **/
 						case 0xF0:
+							MiniCDI::Log("[SLAVE] get SLAVE revision");
 							Ch[2].Out = { 0xF0, 0x32 }; // use response data from MAME
-							cpu->interrupt(c);
-
-							MiniCDI::Log("[SLAVE] received SLAVE revision");
 							Ch[c].In.clear();
 							break;
 
 						/** Pointer Type **/
 						case 0xF3:
+							MiniCDI::Log("[SLAVE] get pointer type");
 							Ch[2].Out = { 0xF3, 0x01 }; // use response data from MAME
-							cpu->interrupt(c);
-
-							MiniCDI::Log("[SLAVE] received pointer type");
 							Ch[c].In.clear();
 							break;
 
 						/** Boot Mode **/
 						case 0xF4:
+							MiniCDI::Log("[SLAVE] get test plug status");
 							Ch[2].Out = { 0xF4, 0x00 }; // use response data from MAME
-							cpu->interrupt(c);
-
-							MiniCDI::Log("[SLAVE] received test plug status");
 							Ch[c].In.clear();
 							break;
 
 						/** Video Mode **/
 						case 0xF6:
-							Ch[2].Out = { 0xF6, (uint8_t)(emuConfig->pal == true ? 0x01 : 0x02) };
-							cpu->interrupt(c);
-
-							MiniCDI::Log("[SLAVE] received video mode");
+							MiniCDI::Log("[SLAVE] get video mode");
+							{
+								Ch[2].Out = { 0xF6, 0x02 };
+							}
 							Ch[c].In.clear();
 							break;
 
 						/** Enable X-Bus **/
 						case 0xFA:
+							MiniCDI::Log("[SLAVE] enable X-Bus");
+							// TO-DO
 							Ch[c].In.clear();
 							break;
 					}

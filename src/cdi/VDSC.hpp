@@ -7,11 +7,7 @@
   MAME CD-i driver by Ryan Holtz and Vincent Halver (licensed under BSD-3-Clause).
  *****/
 
-#include <cassert>
-#include <cmath>
-#include <algorithm>
-
-namespace VideoCDI
+namespace VDSC
 {
 
 enum Icm
@@ -90,7 +86,7 @@ public:
 	std::vector<uint32_t> decoded;
 };
 
-class Video
+class Decoder
 {
 	std::vector<uint32_t> output;
 
@@ -120,12 +116,12 @@ class Video
 		enum MosaicFactor MF[2];
 		enum FileType FT[2];
 		enum ColorMode CM[2];
-	} Decoder;
+	} reg;
 
 	template <size_t Path>
 	uint8_t getAlpha(uint8_t vsr)
 	{
-		switch (Decoder.Transparency[Path])
+		switch (reg.Transparency[Path])
 		{
 			default:
 				assert(0);
@@ -166,22 +162,22 @@ class Video
 	template <size_t Path>
 	uint32_t decodeCLUT(uint8_t* src, uint32_t *dst)
 	{
-		switch (Decoder.Icm[Path]) {
+		switch (reg.Icm[Path]) {
 			default:
 				return 0;
 
 			case CLUT7:
 			case CLUT77:
-				*dst = (Decoder.ColorCLUT[*src & 0x7F] << 8) | getAlpha<Path>(*src);
+				*dst = (reg.ColorCLUT[*src & 0x7F] << 8) | getAlpha<Path>(*src);
 				return 1;
 
 			case CLUT8:
-				*dst = (Decoder.ColorCLUT[*src] << 8) | getAlpha<Path>(*src);
+				*dst = (reg.ColorCLUT[*src] << 8) | getAlpha<Path>(*src);
 				return 1;
 
 			case CLUT4:
-				*dst = (Decoder.ColorCLUT[(*src & 0x70) >> 4] << 8) | getAlpha<Path>(*src);
-				*(dst+1) = (Decoder.ColorCLUT[*src & 0x07] << 8) | getAlpha<Path>(*src);
+				*dst = (reg.ColorCLUT[(*src & 0x70) >> 4] << 8) | getAlpha<Path>(*src);
+				*(dst+1) = (reg.ColorCLUT[*src & 0x07] << 8) | getAlpha<Path>(*src);
 				return 2;
 		}
 	}
@@ -190,11 +186,11 @@ public:
 	uint8_t cursor[16*16];
 	Plane FG[2];
 
-	Video()
+	Decoder()
 	{
 	}
 
-	~Video()
+	~Decoder()
 	{
 	}
 
@@ -211,7 +207,7 @@ public:
 	void reset()
 	{
 		memset(cursor, 0, sizeof(cursor));
-		Decoder = {0};
+		reg = {0};
 	}
 
 	void set_mode(enum Type type, bool hRes = false, bool vRes = false)
@@ -234,23 +230,23 @@ public:
 			for (int x = 0; x < FG[0].width; x++) {
 				int outputPixel = (y*FG[0].width) + x;
 
-				uint8_t rA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0xff000000) >> 24;
-				uint8_t gA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x00ff0000) >> 16;
-				uint8_t bA = (FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x0000ff00) >> 8;
-				uint8_t aA = FG[Decoder.PlaneOrder ? 1 : 0].decoded[(y*FG[Decoder.PlaneOrder ? 1 : 0].width)+x] & 0x000000ff;
+				uint8_t rA = (FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0xff000000) >> 24;
+				uint8_t gA = (FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0x00ff0000) >> 16;
+				uint8_t bA = (FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0x0000ff00) >> 8;
+				uint8_t aA = FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0x000000ff;
 
-				uint8_t rB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0xff000000) >> 24;
-				uint8_t gB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x00ff0000) >> 16;
-				uint8_t bB = (FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x0000ff00) >> 8;
-				uint8_t aB = FG[Decoder.PlaneOrder ? 0 : 1].decoded[(y*FG[Decoder.PlaneOrder ? 0 : 1].width)+x] & 0x000000ff;
+				uint8_t rB = (FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0xff000000) >> 24;
+				uint8_t gB = (FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0x00ff0000) >> 16;
+				uint8_t bB = (FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0x0000ff00) >> 8;
+				uint8_t aB = FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0x000000ff;
 
 				bool hasA = (rA & 0xFC) || (gA & 0xFC) || (gA & 0xFC);
 				bool hasB = (rB & 0xFC) || (gB & 0xFC) || (gB & 0xFC);
 
 				// Mixing technique
-				if (hasA && hasB && Decoder.Mixing) {
-					float wfA = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 1 : 0] / 32.0f;
-					float wfB = (float)Decoder.WeightFactor[Decoder.PlaneOrder ? 0 : 1] / 32.0f;
+				if (hasA && hasB && reg.Mixing) {
+					float wfA = (float)reg.WeightFactor[reg.PlaneOrder ? 1 : 0] / 32.0f;
+					float wfB = (float)reg.WeightFactor[reg.PlaneOrder ? 0 : 1] / 32.0f;
 
 					/** Green Book 5.9 **/
 					uint8_t r = std::clamp((int)(wfA * ((float)rA - 16)) + (int)(wfB * ((float)rB - 16)) + 16, 0, 255);
@@ -264,20 +260,16 @@ public:
 				// Overlay technique
 				else {
 					// Transparent, draw backdrop.
-					uint32_t bgColor;
-
-					switch (Decoder.BackdropColor & 0x07) {
-						default: bgColor = 0x000000ff; break;
-						case 0x01: bgColor = Decoder.BackdropColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
-						case 0x02: bgColor = Decoder.BackdropColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
-						case 0x03: bgColor = Decoder.BackdropColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
-						case 0x04: bgColor = Decoder.BackdropColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
-						case 0x05: bgColor = Decoder.BackdropColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
-						case 0x06: bgColor = Decoder.BackdropColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
-						case 0x07: bgColor = Decoder.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
+					switch (reg.BackdropColor & 0x07) {
+						default: output[outputPixel] = 0x000000ff; break;
+						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
+						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
+						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
+						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
+						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
+						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
+						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
 					}
-
-					output[outputPixel] = bgColor;
 
 					if (hasA && aA > 0) {
 						output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | aA;
@@ -288,20 +280,20 @@ public:
 					}
 				}
 
-				if (x >= Decoder.CursorPosition[0] && x < Decoder.CursorPosition[0]+16
-				 && y >= Decoder.CursorPosition[1] && y < Decoder.CursorPosition[1]+16
-				 && cursor[(y-Decoder.CursorPosition[1])*16 + (x-Decoder.CursorPosition[0])] != 0
-				 && Decoder.CursorEnable)
+				if (x >= reg.CursorPosition[0] && x < reg.CursorPosition[0]+16
+				 && y >= reg.CursorPosition[1] && y < reg.CursorPosition[1]+16
+				 && cursor[(y-reg.CursorPosition[1])*16 + (x-reg.CursorPosition[0])] != 0
+				 && reg.CursorEnable)
 				{
-					switch (Decoder.CursorColor & 0x07) {
-						default: output[outputPixel] = 0x000000ff; break;
-						case 0x01: output[outputPixel] = Decoder.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
-						case 0x02: output[outputPixel] = Decoder.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
-						case 0x03: output[outputPixel] = Decoder.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
-						case 0x04: output[outputPixel] = Decoder.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
-						case 0x05: output[outputPixel] = Decoder.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
-						case 0x06: output[outputPixel] = Decoder.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
-						case 0x07: output[outputPixel] = Decoder.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
+					switch (reg.CursorColor & 0x07) {
+						default: output[outputPixel] = 0x000000ff; continue;
+						case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; continue;
+						case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; continue;
+						case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; continue;
+						case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; continue;
+						case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; continue;
+						case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; continue;
+						case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; continue;
 					}
 				}
 			}
@@ -319,7 +311,7 @@ public:
 	template <size_t Path>
 	uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 	{
-		if (Decoder.Icm[Path] == Off) {
+		if (reg.Icm[Path] == Off) {
 			memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));
 			return 0;
 		}
@@ -329,36 +321,38 @@ public:
 			uint8_t* src = &memory[++vsr];
 			uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
 
-			switch (Decoder.FT[Path]) {
+			switch (reg.FT[Path]) {
 				default:
 				case Bitmap:
-					if (Path == 1 && Decoder.Icm[Path] == RGB555) {
+					if (Path == 1 && reg.Icm[Path] == RGB555) {
 						assert(0); // Not implemented
 					} else {
-						switch (Decoder.Icm[Path])
+						switch (reg.Icm[Path])
 						{
 							default:
-								break;
+								assert(0);
+								continue;
 
 							case DYUV:
 								x += decodeDYUV(src, dst);
-								break;
+								continue;
 
 							case CLUT4:
 							case CLUT7:
 							case CLUT77: // plane A only
 							case CLUT8: // plane A only
 								x += decodeCLUT<Path>(src, dst);
-								break;
+								continue;
 						}
 					}
 					break;
 
 				case RunLength:
-					switch (Decoder.Icm[Path])
+					switch (reg.Icm[Path])
 					{
 						default:
-							break;
+							assert(0);
+							continue;
 
 						case CLUT4:
 						case CLUT7:
@@ -378,15 +372,15 @@ public:
 								}
 								x += length;
 							}
-							break;
+							continue;
 					}
 					break;
 
 				case Mosaic:
 					// to-do
-					// Decoder.WeightFactor[Path] /= 2;
+					// reg.WeightFactor[Path] /= 2;
 					assert(0);
-					break;
+					continue;
 			}
 		}
 
@@ -400,9 +394,9 @@ public:
 		{
 			default:
 				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) < 0xC0u) {
-					int index = ((inst & 0xFF000000u) >> 24) + (Decoder.BankCLUT * 64) - 0x80u;
-					Decoder.ColorCLUT[index] = inst & 0x00FCFCFCu;
-					MiniCDI::Log("[DCA%d] color $%06x", Path, Decoder.ColorCLUT[index]);
+					int index = ((inst & 0xFF000000u) >> 24) + (reg.BankCLUT * 64) - 0x80u;
+					reg.ColorCLUT[index] = inst & 0x00FCFCFCu;
+					MiniCDI::Log("[DCA%d] color $%06x", Path, reg.ColorCLUT[index]);
 				}
 				break;
 
@@ -414,92 +408,92 @@ public:
 			case 0x7d:
 			case 0x7e:
 			case 0x7f:
-				Decoder.FT[Path] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
-				Decoder.MF[Path] = (enum VideoCDI::MosaicFactor)((inst & 0b1100u) >> 2);
-				Decoder.CM[Path] = (enum VideoCDI::ColorMode)((inst & 0b100000000u) >> 8);
-				MiniCDI::Log("[DCA%d] dprm cm=%s,mf=%s,ft=%s", Path, Decoder.CM[Path] == Double4 ? "p4" : "p8",
-																Decoder.MF[Path] == x16 ? "x16" : Decoder.MF[Path] == x8 ? "x8"
-															  : Decoder.MF[Path] == x4 ? "x4" : "x2",
-																Decoder.FT[Path] == Mosaic ? "m" : Decoder.FT[Path] == RunLength ? "rl"
+				reg.FT[Path] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
+				reg.MF[Path] = (enum MosaicFactor)((inst & 0b1100u) >> 2);
+				reg.CM[Path] = (enum ColorMode)((inst & 0b100000000u) >> 8);
+				MiniCDI::Log("[DCA%d] dprm cm=%s,mf=%s,ft=%s", Path, reg.CM[Path] == Double4 ? "p4" : "p8",
+																reg.MF[Path] == x16 ? "x16" : reg.MF[Path] == x8 ? "x8"
+															  : reg.MF[Path] == x4 ? "x4" : "x2",
+																reg.FT[Path] == Mosaic ? "m" : reg.FT[Path] == RunLength ? "rl"
 															  : "bmp");
 				break;
 
 			case 0xC0:
-				Decoder.IcmCS = (inst & 0x00400000u) >> 22;
-				Decoder.IcmNR = (inst & 0x00100000u) >> 19;
-				Decoder.IcmEV = (inst & 0x00080000u) >> 18;
-				Decoder.Icm[1] = (enum VideoCDI::Icm)((inst & 0b111100000000u) >> 8);
-				Decoder.Icm[0] = (enum VideoCDI::Icm)(inst & 0b1111u);
+				reg.IcmCS = (inst & 0x00400000u) >> 22;
+				reg.IcmNR = (inst & 0x00100000u) >> 19;
+				reg.IcmEV = (inst & 0x00080000u) >> 18;
+				reg.Icm[1] = (enum Icm)((inst & 0b111100000000u) >> 8);
+				reg.Icm[0] = (enum Icm)(inst & 0b1111u);
 				MiniCDI::Log("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s", Path,
-						  Decoder.IcmCS, Decoder.IcmNR, Decoder.IcmEV,
-						  Decoder.Icm[0] == CLUT8 ? "clut8" : Decoder.Icm[0] == CLUT7 ? "clut7"
-						: Decoder.Icm[0] == CLUT77 ? "clut7+7" : Decoder.Icm[0] == DYUV ? "dyuv"
-						: Decoder.Icm[0] == CLUT4 ? "clut4" : "off",
-						  Decoder.Icm[1] == RGB555 ? "rgb555" : Decoder.Icm[1] == DYUV ? "dyuv"
-						: Decoder.Icm[1] == CLUT4 ? "clut4" : "off");
+						  reg.IcmCS, reg.IcmNR, reg.IcmEV,
+						  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
+						: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
+						: reg.Icm[0] == CLUT4 ? "clut4" : "off",
+						  reg.Icm[1] == RGB555 ? "rgb555" : reg.Icm[1] == DYUV ? "dyuv"
+						: reg.Icm[1] == CLUT4 ? "clut4" : "off");
 				break;
 
 			case 0xC1:
-				Decoder.Transparency[0] = (enum VideoCDI::Tcr)(inst & 0x0Fu);
-				Decoder.Transparency[1] = (enum VideoCDI::Tcr)((inst & 0x0Fu) >> 8);
-				Decoder.Mixing = (inst & 0x00800000u) >> 23;
+				reg.Transparency[0] = (enum Tcr)(inst & 0x0Fu);
+				reg.Transparency[1] = (enum Tcr)((inst & 0x0Fu) >> 8);
+				reg.Mixing = (inst & 0x00800000u) >> 23;
 				break;
 
 			case 0xC2:
-				Decoder.PlaneOrder = inst & 0x0Fu;
-				MiniCDI::Log("[DCA%d] po %s", Path, Decoder.PlaneOrder ? "b,a" : "a,b");
+				reg.PlaneOrder = inst & 0x0Fu;
+				MiniCDI::Log("[DCA%d] po %s", Path, reg.PlaneOrder ? "b,a" : "a,b");
 				break;
 
 			case 0xC3:
-				Decoder.BankCLUT = inst & 0x0Fu;
-				MiniCDI::Log("[DCA%d] cbnk %d", Path, Decoder.BankCLUT);
+				reg.BankCLUT = inst & 0x0Fu;
+				MiniCDI::Log("[DCA%d] cbnk %d", Path, reg.BankCLUT);
 				break;
 
 			case 0xC4:
 			case 0xC6:
-				Decoder.TransparentCol[Path] = inst & 0x00FFFFFFu;
+				reg.TransparentCol[Path] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xC7:
 			case 0xC9:
-				Decoder.MaskCol[Path] = inst & 0x00FFFFFFu;
+				reg.MaskCol[Path] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xCA:
 			case 0xCB:
-				Decoder.ColorDYUV[Path] = inst & 0x00FFFFFFu;
+				reg.ColorDYUV[Path] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xCD: // channel 1
-				Decoder.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
-				Decoder.CursorPosition[1] = (inst >> 12) & 0x00000FFFu;
-				MiniCDI::Log("[DCA%d] cpos x=%d,y=%d", Path, Decoder.CursorPosition[0], Decoder.CursorPosition[1]);
+				reg.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
+				reg.CursorPosition[1] = (inst >> 12) & 0x00000FFFu;
+				MiniCDI::Log("[DCA%d] cpos x=%d,y=%d", Path, reg.CursorPosition[0], reg.CursorPosition[1]);
 				break;
 
 			case 0xCE: // channel 1
-				Decoder.CursorColor = inst & 0x000000FFu;
-				Decoder.CursorRes = (inst >> 15) & 0x01u;
-				Decoder.CursorOffTime = (inst >> 16) & 0x07u;
-				Decoder.CursorOnTime = (inst >> 19) & 0x07u;
-				Decoder.CursorBlink = (inst >> 22) & 0x01u;
-				Decoder.CursorEnable = (inst >> 23) & 0x01u;
+				reg.CursorColor = inst & 0x000000FFu;
+				reg.CursorRes = (inst >> 15) & 0x01u;
+				reg.CursorOffTime = (inst >> 16) & 0x07u;
+				reg.CursorOnTime = (inst >> 19) & 0x07u;
+				reg.CursorBlink = (inst >> 22) & 0x01u;
+				reg.CursorEnable = (inst >> 23) & 0x01u;
 				break;
 
 			case 0xCF: // channel 1
-				Decoder.CursorPatternX = inst & 0x0000FFFFu;
-				Decoder.CursorPatternY = (inst >> 16) & 0x0Fu;
+				reg.CursorPatternX = inst & 0x0000FFFFu;
+				reg.CursorPatternY = (inst >> 16) & 0x0Fu;
 				for (uint8_t x = 0; x < 16; x++) {
-					cursor[(Decoder.CursorPatternY*16)+x] = (Decoder.CursorPatternX >> (15-x) & 0x01) != 0 ? 0xFF : 0x00;
+					cursor[(reg.CursorPatternY*16)+x] = (reg.CursorPatternX >> (15-x) & 0x01) != 0 ? 0xFF : 0x00;
 				}
 				break;
 
 			case 0xD8: // channel 1
-				Decoder.BackdropColor = inst & 0x00FFFFFFu;
+				reg.BackdropColor = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xDB:
 			case 0xDC:
-				Decoder.WeightFactor[Path] = inst & 0x0000001Fu;
+				reg.WeightFactor[Path] = inst & 0x0000001Fu;
 				break;
 		}
 	}

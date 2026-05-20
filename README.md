@@ -4,6 +4,9 @@ An experimental Philips CD-i emulator for the Wii and 3DS. Currently only suppor
 ## To-Do
 - [ ] Plane mixing/transparency emulation (VDSC)
 - [ ] Pointer Devices
+- [ ] CIAP (Mono-IV)
+- [ ] CDIC (Mono-I)
+- [ ] Proper reset sequence
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS).

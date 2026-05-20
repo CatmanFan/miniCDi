@@ -46,9 +46,12 @@ public:
 		}
 	}
 
-	inline virtual void step() { ; }
+	/**
+	 * @brief  Runs until VSync signal on video driver (i.e. a frame).
+	 */
+	inline virtual void do_frame(bool draw = true) { ; }
+	inline virtual void reset() { ; }
 
-	inline virtual bool frame_ready() { return false; }
 	inline virtual uint32_t* get_display() { return nullptr; }
 	inline virtual size_t get_display_width() { return 0; }
 

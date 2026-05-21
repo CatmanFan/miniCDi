@@ -36,14 +36,24 @@ public:
 
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
+			#ifdef MINICDI_NATIVERES
 			SDL_Rect dest = {0, 0, 384, 280};
 			SDL_RenderCopy(this->renderer, this->texture, NULL, &dest);
+			#else
+			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
+			#endif
 
 			// Draw LCD if available
-			if (lcd_output)
+			if (lcd_output != NULL)
 			{
 				SDL_UpdateTexture(this->lcd, NULL, lcd_output, (20*7)*sizeof(uint32_t));
-				dest = {640-(20*7), 480-22, (20*7), 22};
+				#ifdef MINICDI_NATIVERES
+				dest = {
+				#else
+				SDL_Rect dest = {
+				#endif
+					640-(20*7), 480-22, (20*7), 22
+				};
 				SDL_RenderCopy(this->renderer, this->lcd, NULL, &dest);
 			}
 
@@ -75,22 +85,27 @@ public:
 	}
 };
 
-static std::string devicePrefix;
+static std::string appPath;
 static bool FAT_Init() {
 	if (!fatInitDefault()) {
 		return false;
 	}
 
+	#ifdef HW_RVL
 	if (fatMountSimple("sd", &__io_wiisd))
-		devicePrefix = "sd:/";
+		appPath = "sd:/apps/miniCDi/";
 	else if (fatMountSimple("usb", &__io_usbstorage))
-		devicePrefix = "usb:/";
+		appPath = "usb:/apps/miniCDi/";
 	else {
 		return false;
 	}
+	#else // HW_DOL
+	appPath = "/miniCDi/";
+	#endif
 
-	DIR *pdir = opendir(devicePrefix.c_str());
+	DIR *pdir = opendir(appPath.c_str());
 	if (!pdir) {
+		printf("error: miniCDi path does not exist in %s\n", appPath.c_str());
 		return false;
 	}
 	closedir(pdir);
@@ -100,24 +115,24 @@ static bool FAT_Init() {
 
 static void RUN_CDI(const std::string &biosName)
 {
-	if (access((devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
-		printf("BIOS not found at %s, exiting", (devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str());
+	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
+		printf("BIOS not found at %s, exiting", (appPath + "rom/" + biosName + ".rom").c_str());
 		sleep(5);
 		exit(0);
 	}
 
-	MiniCDIConfig config = {
-		true	/** PAL mode **/,
-		true	/** show LCD **/
-	};
-	bool running = true;
+	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::ShowLCD = false;
 
-	// config.log = fopen((devicePrefix + "apps/miniCDi/log.txt").c_str(), "wt");
+	bool paused = false;
+
+	// config.log = fopen((appPath + "log.txt").c_str(), "wt");
 
 	// MonoI cdi;
 	MonoIV cdi;
 
-	cdi.Init((devicePrefix + "apps/miniCDi/rom/" + biosName + ".rom").c_str(), &config);
+	cdi.Init((appPath + "rom/" + biosName + ".rom").c_str());
+
 	#ifndef MINICDI_DEBUG
 	SDL screen;
 	#endif
@@ -135,7 +150,7 @@ static void RUN_CDI(const std::string &biosName)
 			cdi.reset();
 
 		if (down & WPAD_BUTTON_B) {
-	#else
+	#else // HW_DOL
 		PAD_ScanPads();
 		uint32_t down = PAD_ButtonsDown(0);
 		// uint32_t held = PAD_ButtonsHeld(0);
@@ -145,26 +160,26 @@ static void RUN_CDI(const std::string &biosName)
 
 		if (down & PAD_BUTTON_B) {
 	#endif
-			running = !running;
-			printf("\x1b[%d;%dH", 2, 0);
-			if (!running)
-				printf("Paused\n");
-			if (running)
-				printf("      \n");
+			paused = !paused;
 		}
 
-		if (running)
+		if (!paused)
 		{
-			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode.
+			#ifdef MINICDI_DEBUG
+			cdi.do_frame();
+			#else
+			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode (likely because emulated machine is configured to use 60Hz?).
 			#ifdef MINICDI_FRAMESKIP
+			cdi.do_frame(false);
 			cdi.do_frame(false);
 			#endif
 			cdi.do_frame(true);
+			#endif
 
 			#ifdef MINICDI_DEBUG
 			VIDEO_WaitVSync();
 			#else
-			screen.update(cdi.get_display(), cdi.get_display_width(), cdi.get_lcd());
+			screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : NULL);
 			#endif
 		}
 	}
@@ -178,7 +193,7 @@ int main(int argc, char **argv) {
 	// Init controllers
 	#ifdef HW_RVL
 	WPAD_Init();
-	#else
+	#else // HW_DOL
 	PAD_Init();
 	#endif
 
@@ -198,17 +213,11 @@ int main(int argc, char **argv) {
 
 	printf("miniCDi - Philips CD-i emulator\n");
 
-	#ifdef HW_RVL
-		if (!FAT_Init()) {
-			printf("failed to init FAT, exiting");
-			sleep(5);
-			exit(0);
-		}
-	#else
-		printf("GameCube support not fully implemented, exiting");
+	if (!FAT_Init()) {
+		printf("failed to init FAT, exiting");
 		sleep(5);
 		exit(0);
-	#endif
+	}
 
 	printf("Loading\n");
 	// RUN_CDI("cdi220b");

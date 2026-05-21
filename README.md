@@ -5,7 +5,7 @@ An experimental Philips CD-i emulator for the Wii and 3DS. Currently only suppor
 - [ ] Plane mixing/transparency emulation (VDSC)
 - [ ] Pointer Devices
 - [ ] CIAP (Mono-IV)
-- [ ] CDIC (Mono-I)
+# - [ ] CDIC (Mono-I)
 - [ ] Proper reset sequence
 
 ## Building

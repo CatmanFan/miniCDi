@@ -4,7 +4,6 @@
 // HLE implementation of SLAVE as found in MiniMMC & Mono-I.
 class SLAVE
 {
-	MiniCDIConfig *emuConfig;
 	uint8_t* memory;
 
 	struct
@@ -38,8 +37,7 @@ class SLAVE
 	}
 
 public:
-	SLAVE(uint8_t* memory, uint32_t start, MiniCDIConfig *config)
-	: emuConfig(config), memory(memory)
+	SLAVE(uint8_t* memory, uint32_t start) : memory(memory)
 	{
 		addresses[0] = start + 0x01; // ADR
 		addresses[1] = start + 0x03; // BDR

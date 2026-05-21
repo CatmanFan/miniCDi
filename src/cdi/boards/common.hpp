@@ -7,13 +7,8 @@ protected:
 	uint8_t *memory; // Contains full memory map
 	const int memSize	= 0x680000; // cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
 
-	SCC68070 cpu;
-	OS9::System os9;
-
 public:
-	MiniCDIConfig config;
-
-	virtual bool Init(const char* bios, MiniCDIConfig *config)
+	virtual bool Init(const char* bios)
 	{
 		/** Order of initialization:
 		1) Initialising slave processor
@@ -26,8 +21,6 @@ public:
 		8) Executing RAM/ROM search
 		9) Starting the kernel */
 
-		this->config = *config;
-
 		memory = (uint8_t *)memalign(32, memSize);
 		if (memory) {
 			memset(memory, 0, memSize);
@@ -37,7 +30,7 @@ public:
 		return false;
 	}
 
-	CDi() : memory(nullptr), cpu(memory, memSize, nullptr) {}
+	CDi() : memory(nullptr) {}
 
 	virtual ~CDi()
 	{

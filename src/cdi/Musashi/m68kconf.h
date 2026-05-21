@@ -90,7 +90,7 @@
  * If off, all read requests from the CPU will be redirected to m68k_read_xx()
  */
 #ifndef M68K_SEPARATE_READS
-#define M68K_SEPARATE_READS         M68K_OPT_ON
+#define M68K_SEPARATE_READS         M68K_OPT_OFF
 #endif
 
 /* If ON, the CPU will call m68k_write_32_pd() when it executes move.l with a
@@ -99,7 +99,7 @@
  * word to [address+2], and then write the low word to [address].
  */
 #ifndef M68K_SIMULATE_PD_WRITES
-#define M68K_SIMULATE_PD_WRITES     M68K_OPT_ON
+#define M68K_SIMULATE_PD_WRITES     M68K_OPT_OFF
 #endif
 
 /* If ON, CPU will call the interrupt acknowledge callback when it services an

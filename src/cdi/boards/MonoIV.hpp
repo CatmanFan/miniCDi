@@ -24,15 +24,16 @@ private:
 	const int ciapAddr	= 0x300000;
 	const int ikatAddr	= 0x310000;
 
+	SCC68070 cpu;
 	CIAP* ciap;
 	IKAT* ikat;
 	MCD212* vpu;
 	PlayerLCD lcd;
 
 public:
-	MonoIV() : CDi() {}
+	MonoIV() : CDi(), cpu(memory) {}
 
-	bool Init(const char* bios, MiniCDIConfig *config) override;
+	bool Init(const char* bios) override;
 
 	inline void do_frame(bool draw = true) override {
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify

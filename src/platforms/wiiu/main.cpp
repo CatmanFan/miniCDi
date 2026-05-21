@@ -97,13 +97,11 @@ static std::string devicePrefix;
 
 static void RUN_CDI()
 {
-	MiniCDIConfig config = {
-		true	/** PAL mode **/,
-		false	/** show LCD **/
-	};
+	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::ShowLCD = false;
 
 	MonoI cdi;
-	cdi.Init((devicePrefix + BIOS_PATH).c_str(), &config);
+	cdi.Init((devicePrefix + BIOS_PATH).c_str());
 	SDL screen;
 
 	while (WHBProcIsRunning()) {

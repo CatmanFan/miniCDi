@@ -1,11 +1,14 @@
 #ifndef MINICDI_CONFIG
 #define MINICDI_CONFIG
 
-typedef struct {
-	bool pal;
-	bool lcd;
-	int lines = 384;
-	FILE* log;
-} MiniCDIConfig;
+namespace MiniCDI
+{
+	namespace Config
+	{
+		inline static bool PAL = true;
+		inline static bool ShowLCD = true;
+		// inline static FILE* LogFile = nullptr;
+	}
+}
 
 #endif

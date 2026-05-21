@@ -8,6 +8,7 @@ namespace MiniCDI
 	static void Log(const char* txt, ...)
 	{
 		#ifdef MINICDI_DEBUG
+		#ifndef MINICDI_DEBUG_CPU
 		va_list arg1, arg2;
 
 		va_start(arg1, txt);
@@ -30,6 +31,7 @@ namespace MiniCDI
 		#endif
 
 		delete[] szBuff;
+		#endif
 		#endif
 	}
 }

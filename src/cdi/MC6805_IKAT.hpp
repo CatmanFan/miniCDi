@@ -4,7 +4,6 @@
 // HLE implementation of IKAT as found in Mono-III & Mono-IV.
 class IKAT
 {
-	MiniCDIConfig *emuConfig;
 	uint8_t* memory;
 
 	struct
@@ -51,8 +50,7 @@ class IKAT
 	uint8_t LCD[16];
 
 public:
-	IKAT(uint8_t* memory, MiniCDIConfig *config)
-	: emuConfig(config), memory(memory)
+	IKAT(uint8_t* memory) : memory(memory)
 	{
 		reset();
 	}
@@ -180,7 +178,7 @@ public:
 							/** Video Mode **/
 							case 0xF6:
 								MiniCDI::Log("[IKAT] report video mode");
-								Ch[c].Out = { 0xA5, 0xF6, (uint8_t)(emuConfig->pal ? 0x02 : 0x01), 0xFF };
+								Ch[c].Out = { 0xA5, 0xF6, 0x02, 0xFF };
 								Ch[c].In.clear();
 								break;
 						}

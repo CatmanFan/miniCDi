@@ -19,12 +19,6 @@ unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_
 unsigned int  m68k_read_disassembler_16(unsigned int address) { return m68k_read_memory_16(address); }
 unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read_memory_32(address); }
 
-unsigned int  m68k_read_immediate_16(unsigned int address) { return m68k_read_memory_16(address); }
-unsigned int  m68k_read_immediate_32(unsigned int address) { return m68k_read_memory_32(address); }
-unsigned int  m68k_read_pcrelative_8(unsigned int address) { return m68k_read_memory_8(address); }
-unsigned int  m68k_read_pcrelative_16(unsigned int address) { return m68k_read_memory_16(address); }
-unsigned int  m68k_read_pcrelative_32(unsigned int address) { return m68k_read_memory_32(address); }
-
 void scc68070_set_fc(unsigned int new_fc) {
 	if (MiniCDI::Player.scc68070) {
 		MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | ((CPU_PREF_ADDR & 0xC0000000) >> 24);
@@ -48,6 +42,8 @@ unsigned int  m68k_read_memory_8(unsigned int address) {
 unsigned int  m68k_read_memory_16(unsigned int address) {
 	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) {
 		return MiniCDI::Player.mcd212->read16(address);
+	} else if (MiniCDI::Player.ciap && (address & 0x00FF0000) == 0x00300000) {
+		return MiniCDI::Player.ciap->read16(address);
 	} else {
 		return (uint16_t)((m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1));
 	}
@@ -72,6 +68,8 @@ void m68k_write_memory_8(unsigned int address, unsigned int value) {
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
 	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) {
 		MiniCDI::Player.mcd212->write16(address, value);
+	} else if (MiniCDI::Player.ciap && (address & 0x00FF0000) == 0x00300000) {
+		return MiniCDI::Player.ciap->write16(address, value, MiniCDI::Player.scc68070);
 	} else {
 		m68k_write_memory_8(address, (uint8_t)(value >> 8));
 		m68k_write_memory_8(address + 1, (uint8_t)value);
@@ -85,12 +83,12 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
 
 /** @brief Contains initialization functions for boards. **/
 
-bool MonoI::Init(const char* bios, MiniCDIConfig *config)
+bool MonoI::Init(const char* bios)
 {
-	if (CDi::Init(bios, config)) {
-		this->cpu = SCC68070(this->memory, this->memSize, config);
-		this->vpu = new MCD212(&this->cpu, this->memory, this->vdscAddr, config);
-		this->slave = new SLAVE(this->memory, this->slaveAddr, config);
+	if (CDi::Init(bios)) {
+		this->cpu = SCC68070(this->memory);
+		this->vpu = new MCD212(&this->cpu, this->memory);
+		this->slave = new SLAVE(this->memory, this->slaveAddr);
 
 		MiniCDI::Player =
 		{
@@ -110,13 +108,13 @@ bool MonoI::Init(const char* bios, MiniCDIConfig *config)
 	return false;
 }
 
-bool MonoIV::Init(const char* bios, MiniCDIConfig *config)
+bool MonoIV::Init(const char* bios)
 {
-	if (CDi::Init(bios, config)) {
-		this->cpu = SCC68070(this->memory, this->memSize, config);
-		this->vpu = new MCD212(&this->cpu, this->memory, this->vdscAddr, config);
-		this->ikat = new IKAT(this->memory, config);
-		this->ciap = new CIAP(this->memory, config);
+	if (CDi::Init(bios)) {
+		this->cpu = SCC68070(this->memory);
+		this->vpu = new MCD212(&this->cpu, this->memory);
+		this->ikat = new IKAT(this->memory);
+		this->ciap = new CIAP(this->memory);
 
 		MiniCDI::Player =
 		{

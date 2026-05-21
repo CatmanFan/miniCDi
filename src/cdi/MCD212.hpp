@@ -13,7 +13,6 @@
 
 class MCD212
 {
-	MiniCDIConfig* emuConfig;
 	SCC68070 *cpu;
 	uint8_t* memory;
 
@@ -75,7 +74,7 @@ class MCD212
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
-					MiniCDI::Log("[ICA%d] stop", Path+1);
+					//MiniCDI::Log("[ICA%d] stop", Path+1);
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -84,25 +83,25 @@ class MCD212
 
 				case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
 				case 0x28: case 0x29: case 0x2a: case 0x2b: case 0x2c: case 0x2d: case 0x2e: case 0x2f: // RELOAD DCP
-					MiniCDI::Log("[ICA%d] dcr $%x", Path+1, inst & 0x003FFFFCu);
+					//MiniCDI::Log("[ICA%d] dcr $%x", Path+1, inst & 0x003FFFFCu);
 					dcp_set<Path>(inst);
 					break;
 
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
-					MiniCDI::Log("[ICA%d] dcr_stop $%x", Path+1, inst & 0x003FFFFCu);
+					//MiniCDI::Log("[ICA%d] dcr_stop $%x", Path+1, inst & 0x003FFFFCu);
 					dcp_set<Path>(inst);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
-					MiniCDI::Log("[ICA%d] vcr $%x", Path+1, inst & 0x003FFFFFu);
+					//MiniCDI::Log("[ICA%d] vcr $%x", Path+1, inst & 0x003FFFFFu);
 					addr = inst & 0x003FFFFFu;
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
-					MiniCDI::Log("[ICA%d] vcr_stop $%x", Path+1, inst & 0x003FFFFFu);
+					//MiniCDI::Log("[ICA%d] vcr_stop $%x", Path+1, inst & 0x003FFFFFu);
 					vsr_set<Path>(inst);
 					return;
 
@@ -140,7 +139,7 @@ class MCD212
 			{
 				case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07:
 				case 0x08: case 0x09: case 0x0a: case 0x0b: case 0x0c: case 0x0d: case 0x0e: case 0x0f: // STOP
-					MiniCDI::Log("[DCA%d] stop", Path+1);
+					//MiniCDI::Log("[DCA%d] stop", Path+1);
 					return;
 
 				case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
@@ -153,19 +152,19 @@ class MCD212
 
 				case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
 				case 0x38: case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x3f: // RELOAD DCP + STOP
-					MiniCDI::Log("[DCA%d] dcr_stop $%x", Path+1, inst & 0x003FFFFCu);
+					//MiniCDI::Log("[DCA%d] dcr_stop $%x", Path+1, inst & 0x003FFFFCu);
 					dcp_set<Path>(inst);
 					return;
 
 				case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
 				case 0x48: case 0x49: case 0x4a: case 0x4b: case 0x4c: case 0x4d: case 0x4e: case 0x4f: // RELOAD VCR
-					MiniCDI::Log("[DCA%d] vcr $%x", Path+1, inst & 0x003FFFFFu);
+					//MiniCDI::Log("[DCA%d] vcr $%x", Path+1, inst & 0x003FFFFFu);
 					vsr_set<Path>(inst);
 					break;
 
 				case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x56: case 0x57:
 				case 0x58: case 0x59: case 0x5a: case 0x5b: case 0x5c: case 0x5d: case 0x5e: case 0x5f: // RELOAD VCR + STOP
-					MiniCDI::Log("[DCA%d] vcr_stop $%x", Path+1, inst & 0x003FFFFFu);
+					//MiniCDI::Log("[DCA%d] vcr_stop $%x", Path+1, inst & 0x003FFFFFu);
 					vsr_set<Path>(inst);
 					return;
 
@@ -183,8 +182,9 @@ class MCD212
 	}
 
 public:
-	MCD212(SCC68070 *cpu, uint8_t *memory, size_t start, MiniCDIConfig *config)
-	: emuConfig(config), cpu(cpu), memory(memory), cycles(0)
+	MCD212() {}
+
+	MCD212(SCC68070 *cpu, uint8_t *memory) : cpu(cpu), memory(memory), cycles(0)
 	{
 		reset();
 	}

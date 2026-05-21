@@ -3,7 +3,6 @@
 
 class SCC68070
 {
-	MiniCDIConfig *emuConfig;
 	uint8_t* memory;
 
 	// On-chip peripherals
@@ -53,11 +52,8 @@ class SCC68070
 public:
 	uint8_t fc; // used for FC/address space callback
 
-	SCC68070(uint8_t* memory, size_t mem_size, MiniCDIConfig *config)
-	: emuConfig(config), memory(memory)
+	SCC68070(uint8_t* memory) : memory(memory)
 	{
-		m68k_init();
-		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
 	}
 
 	void load_rom(const char* romPath, size_t romAddr)
@@ -85,6 +81,9 @@ public:
 	void reset()
 	{
 		fc = 0;
+
+		m68k_init();
+		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
 		m68k_pulse_reset();
 		m68k_set_reg(M68K_REG_SP, romSP);
 		m68k_set_reg(M68K_REG_PC, romPC);
@@ -300,6 +299,7 @@ public:
 	{
 		if (T[0] == 0xFFFF)
 		{
+			MiniCDI::Log("[Timer] T0 overflow");
 			TSR |= 0x80; // OV in T0
 			T[0] = RR;
 			interrupt(0);
@@ -312,14 +312,14 @@ public:
 		int ran = 0;
 
 		#ifdef MINICDI_DEBUG_CPU
-		if (emuConfig && emuConfig->log != 0) {
+		if (MiniCDI::Config::LogFile != 0) {
 			uint32_t pcLog;
 			pcLog = m68k_get_reg(NULL, M68K_REG_PC);
 			ran += m68k_execute(cycles);
 			if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
 				char text[192];
 				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-				fprintf(emuConfig->log, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+				fprintf(MiniCDI::Config::LogFile, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
 				// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 			}
 		} else {

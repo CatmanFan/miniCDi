@@ -40,17 +40,17 @@
 #include "../Config.hpp"
 #include "../Log.hpp"
 
-// 68K processor
+// Cores
 #include "cdi/Musashi/m68k.h"
 #include "cdi/SCC68070.hpp"
-#include "cdi/OS9.hpp"
-
-// Other cores
 #include "cdi/VDSC.hpp"
 #include "cdi/MCD212.hpp"
 #include "cdi/MC6805_SLAVE.hpp"
 #include "cdi/MC6805_IKAT.hpp"
+#include "cdi/IMS66490_CDIC.hpp"
 #include "cdi/MCD221_CIAP.hpp"
+#include "cdi/CDDrive.hpp"
+#include "cdi/PointingDevice.hpp"
 
 // Other namespace defs
 #include "../LCD.hpp"

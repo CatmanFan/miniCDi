@@ -46,6 +46,7 @@ public:
 
 	uint16_t read16(uint32_t addr)
 	{
+		MiniCDI::Log("[CIAP] read");
 		switch (addr)
 		{
 			default:
@@ -82,6 +83,7 @@ public:
 
 	void write16(uint32_t addr, uint16_t value, SCC68070* cpu)
 	{
+		MiniCDI::Log("[CIAP] read");
 		switch (addr)
 		{
 			default:
@@ -90,7 +92,8 @@ public:
 				} else if (addr >= 0x300900 && addr <= 0x3011FE) {
 					ADPCM[1][addr - 0x300900] = value;
 				} else {
-					memory[addr] = value;
+					memory[addr] = (value >> 8) & 0xFF;
+					memory[addr+1] = value & 0xFF;
 				}
 				break;
 

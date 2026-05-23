@@ -44,20 +44,42 @@ public:
 		memset(display, 0x000000FF, sizeof(display));
 	}
 
-	void update(SLAVE *slave)
+	void update_SLAVE(SLAVE *slave)
 	{
+		memset(display, 0x000000FF, sizeof(display));
 		if (slave)
 		{
 			for (int y = 0; y < 22; y++)
 			{
 				uint32_t *scanline = &display[y*(20*7)];
 
-				for (int lcd = 0; lcd < 8; lcd++)
+				for (int glyph = 0; glyph < 8; glyph++)
 				{
-					uint16_t data = (slave->get_lcd()[lcd*2] << 8) | slave->get_lcd()[lcd*2 + 1];
+					uint16_t data = (slave->LCD[glyph*2] << 8) | slave->LCD[glyph*2 + 1];
 					for (int x = 0; x < 20; x++)
 					{
-						scanline[(7-lcd)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
+						scanline[(7-glyph)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
+					}
+				}
+			}
+		}
+	}
+
+	void update_IKAT(IKAT *ikat)
+	{
+		memset(display, 0x000000FF, sizeof(display));
+		if (ikat)
+		{
+			for (int y = 0; y < 22; y++)
+			{
+				uint32_t *scanline = &display[y*(20*7)];
+
+				for (int glyph = 2; glyph < 8; glyph++)
+				{
+					uint16_t data = ikat->LCD[glyph-2];
+					for (int x = 0; x < 20; x++)
+					{
+						scanline[(7-glyph)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
 					}
 				}
 			}

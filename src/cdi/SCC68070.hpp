@@ -51,6 +51,7 @@ class SCC68070
 
 public:
 	uint8_t fc; // used for FC/address space callback
+	friend class PointingDevice;
 
 	SCC68070(uint8_t* memory) : memory(memory)
 	{
@@ -109,7 +110,7 @@ public:
 		int level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx});
 
 		if (level > 0) {
-			MiniCDI::Log("[SCC68070] INT%dN lvl %d", ch, level);
+			//MiniCDI::Log("[SCC68070] INT%dN lvl %d", ch, level);
 
 			m68k_set_irq(level + 32);
 		}
@@ -299,7 +300,7 @@ public:
 	{
 		if (T[0] == 0xFFFF)
 		{
-			MiniCDI::Log("[Timer] T0 overflow");
+			//MiniCDI::Log("[Timer] T0 overflow");
 			TSR |= 0x80; // OV in T0
 			T[0] = RR;
 			interrupt(0);

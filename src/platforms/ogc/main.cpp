@@ -122,14 +122,14 @@ static void RUN_CDI(const std::string &biosName)
 	}
 
 	MiniCDI::Config::PAL = true;
-	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::ShowLCD = true;
 
 	bool paused = false;
 
 	// config.log = fopen((appPath + "log.txt").c_str(), "wt");
 
-	// MonoI cdi;
-	MonoIV cdi;
+	MonoI cdi;
+	// MonoIV cdi;
 
 	cdi.Init((appPath + "rom/" + biosName + ".rom").c_str());
 
@@ -141,7 +141,7 @@ static void RUN_CDI(const std::string &biosName)
 	#ifdef HW_RVL
 		WPAD_ScanPads();
 		uint32_t down = WPAD_ButtonsDown(0);
-		// uint32_t held = WPAD_ButtonsHeld(0);
+		uint32_t held = WPAD_ButtonsHeld(0);
 
 		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
 			break;
@@ -149,7 +149,14 @@ static void RUN_CDI(const std::string &biosName)
 		if (down & WPAD_BUTTON_PLUS)
 			cdi.reset();
 
-		if (down & WPAD_BUTTON_B) {
+		cdi.pd.set_button(PointingDevice::Left, held & WPAD_BUTTON_UP);
+		cdi.pd.set_button(PointingDevice::Right, held & WPAD_BUTTON_DOWN);
+		cdi.pd.set_button(PointingDevice::Down, held & WPAD_BUTTON_LEFT);
+		cdi.pd.set_button(PointingDevice::Up, held & WPAD_BUTTON_RIGHT);
+		cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
+		cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
+
+		// if (down & WPAD_BUTTON_B) {
 	#else // HW_DOL
 		PAD_ScanPads();
 		uint32_t down = PAD_ButtonsDown(0);
@@ -158,23 +165,19 @@ static void RUN_CDI(const std::string &biosName)
 		if (down & PAD_BUTTON_Z)
 			break;
 
-		if (down & PAD_BUTTON_B) {
+		// if (down & PAD_BUTTON_B) {
 	#endif
-			paused = !paused;
-		}
+			// paused = !paused;
+		// }
 
 		if (!paused)
 		{
-			#ifdef MINICDI_DEBUG
-			cdi.do_frame();
-			#else
 			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode (likely because emulated machine is configured to use 60Hz?).
 			#ifdef MINICDI_FRAMESKIP
 			cdi.do_frame(false);
 			cdi.do_frame(false);
 			#endif
 			cdi.do_frame(true);
-			#endif
 
 			#ifdef MINICDI_DEBUG
 			VIDEO_WaitVSync();
@@ -220,8 +223,8 @@ int main(int argc, char **argv) {
 	}
 
 	printf("Loading\n");
-	// RUN_CDI("cdi220b");
-	RUN_CDI("cdi490a");
+	RUN_CDI("cdi220b");
+	// RUN_CDI("cdi490a");
 
 	VIDEO_SetBlack(true);
 	return 0;

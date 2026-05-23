@@ -7,7 +7,13 @@ protected:
 	uint8_t *memory; // Contains full memory map
 	const int memSize	= 0x680000; // cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
 
+	// ONLY the chips shared in common by supported boards (MMC and Mono)
+	SCC68070 cpu;
+
 public:
+	PointingDevice pd;
+	CDDrive drive;
+
 	virtual bool Init(const char* bios)
 	{
 		/** Order of initialization:
@@ -30,7 +36,7 @@ public:
 		return false;
 	}
 
-	CDi() : memory(nullptr) {}
+	CDi() : memory(nullptr), cpu(memory) {}
 
 	virtual ~CDi()
 	{
@@ -49,10 +55,6 @@ public:
 	inline virtual size_t get_display_width() { return 0; }
 
 	inline virtual uint32_t* get_lcd() { return nullptr; }
-
-	inline virtual void set_pointer_x(int x, bool increment) { ; }
-	inline virtual void set_pointer_y(int y, bool increment) { ; }
-	inline virtual void set_pointer_button(int b, bool value) { ; }
 };
 
 #endif

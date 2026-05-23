@@ -1,28 +1,23 @@
 #ifndef MINICDI_MC6805_IKAT
 #define MINICDI_MC6805_IKAT
 
+#include <deque>
+
 // HLE implementation of IKAT as found in Mono-III & Mono-IV.
 class IKAT
 {
 	uint8_t* memory;
+	SCC68070* cpu;
 
 	struct
 	{
 		uint8_t DR; // Data Register
 		uint8_t SR; // Status Register. for channel Status
 
-		std::vector<uint8_t> In;
-		std::vector<uint8_t> Out;
+		std::deque<uint8_t> In;
+		std::deque<uint8_t> Out;
 		size_t InSize;
 	} Ch[4];
-
-	struct
-	{
-		bool Active;
-		int X;
-		int Y;
-		bool Button[2];
-	} Pointer;
 
 	uint8_t ISR;
 	uint8_t IMR;
@@ -50,7 +45,10 @@ class IKAT
 	uint8_t LCD[16];
 
 public:
-	IKAT(uint8_t* memory) : memory(memory)
+	friend class PlayerLCD;
+	friend class PointingDevice;
+
+	IKAT(SCC68070* cpu) : cpu(cpu)
 	{
 		reset();
 	}
@@ -64,22 +62,7 @@ public:
 		Ch[3].InSize = 0;
 	}
 
-	void set_pointer_x(int value, bool increment)
-	{
-		;
-	}
-
-	void set_pointer_y(int value, bool increment)
-	{
-		;
-	}
-
-	void set_pointer_button(int button, bool value)
-	{
-		;
-	}
-
-	uint8_t read8(uint32_t addr, SCC68070* cpu)
+	uint8_t read8(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -98,20 +81,25 @@ public:
 					{
 						Ch[c].SR &= ~(0x10); // REMTY OFF
 						Ch[c].DR = Ch[c].Out[0];
-						Ch[c].Out.erase(Ch[c].Out.begin());
+						Ch[c].Out.pop_front();
 
 						// set corresponding Rx bit
-						uint8_t INT = 1 << (c+4);
+						uint8_t INT = c == 3 ? 0b10000000
+									: c == 2 ? 0b00100000
+									: c == 1 ? 0b00001000
+									: 0b00000010;
 						ISR |= INT;
-						if (IMR & INT) {
-							cpu->interrupt(0);
+						if ((IMR & INT) && cpu) {
+							MiniCDI::Log("[IKAT] sending interrupt via %d", c);
+							cpu->interrupt(1);
 						}
-					} else {
+					}
+					else {
 						Ch[c].SR |= 0x10; // REMTY ON
 						Ch[c].DR = 0xFF;
 					}
 
-					MiniCDI::Log("[IKAT] %sDRR %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
+					MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;
 				}
 				break;
@@ -129,15 +117,15 @@ public:
 				break;
 
 			case Address::Isr:
-				MiniCDI::Log("[IKAT] ISR %02X", ISR);
+				// MiniCDI::Log("[IKAT] ISR %02X", ISR);
 				return ISR;
 
 			case Address::Imr:
-				MiniCDI::Log("[IKAT] IMR %02X", IMR);
+				// MiniCDI::Log("[IKAT] IMR %02X", IMR);
 				return IMR;
 
 			case Address::Mr:
-				MiniCDI::Log("[IKAT] MR %02X", MR);
+				// MiniCDI::Log("[IKAT] MR %02X", MR);
 				return MR;
 		}
 	}
@@ -153,31 +141,62 @@ public:
 			{
 				size_t c = (addr - Address::ADRW) / 2;
 				Ch[c].In.push_back(value);
-				MiniCDI::Log("[IKAT] %sDRW %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
+				MiniCDI::Log("[IKAT] %sDR <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 
 				switch (c)
 				{
+					/** ADR **/
+					case 0:
+						switch (value)
+						{
+							/** Set Front Panel LCD **/
+							case 0x9A:
+								Ch[1].InSize = 6; // redirects LCD display input to BDR
+								Ch[c].In.clear();
+								break;
+						}
+						break;
+
+					/** BDR **/
+					case 1:
+						switch (value)
+						{
+							default:
+								switch (Ch[c].InSize) {
+									case 6:
+										LCD[Ch[c].In.size() - 1] = value;
+										if (Ch[c].In.size() >= Ch[c].InSize) {
+											MiniCDI::Log("[IKAT] $9A : set LCD");
+											Ch[c].In.clear();
+											Ch[c].InSize = 0;
+										}
+										break;
+								}
+								break;
+						}
+						break;
+
 					/** CDR **/
 					case 2:
 						switch (value)
 						{
 							/** Pointing Device **/
 							case 0xF3:
-								MiniCDI::Log("[IKAT] report pointing device type");
-								Ch[c].Out = { 0xA5, 0xF3, 'T', 'T' }; // hardcoded
+								MiniCDI::Log("[IKAT] $F3 : report pointing device type");
+								Ch[c].Out = { 0xA5, 0xF3, 'K', 'M' }; // imitate cdiemu
 								Ch[c].In.clear();
 								break;
 
 							/** Boot Mode **/
 							case 0xF4:
-								MiniCDI::Log("[IKAT] report boot status");
+								MiniCDI::Log("[IKAT] $F4 : report boot status");
 								Ch[c].Out = { 0xA5, 0xF4, 0x01 };
 								Ch[c].In.clear();
 								break;
 
 							/** Video Mode **/
 							case 0xF6:
-								MiniCDI::Log("[IKAT] report video mode");
+								MiniCDI::Log("[IKAT] $F6 : report video mode");
 								Ch[c].Out = { 0xA5, 0xF6, 0x02, 0xFF };
 								Ch[c].In.clear();
 								break;
@@ -194,12 +213,12 @@ public:
 										if (Ch[c].In.size() >= Ch[c].InSize) {
 											switch (Ch[c].In[0]) {
 												case 0xE0:
-													MiniCDI::Log("[SLAVE] start CDDA");
+													MiniCDI::Log("[SLAVE] $E0 : start CDDA");
 													// TO-DO
 													break;
 
 												case 0xE1:
-													MiniCDI::Log("[SLAVE] start READ");
+													MiniCDI::Log("[SLAVE] $E1 : start READ");
 													// TO-DO
 													break;
 											}
@@ -212,28 +231,28 @@ public:
 
 							/** Disc Status **/
 							case 0xB0:
-								MiniCDI::Log("[IKAT] report disc status");
+								MiniCDI::Log("[IKAT] $B0 : report disc status");
 								Ch[c].Out = { 0xB0, 0x02, 0x10 }; // imitate cdiemu
 								Ch[c].In.clear();
 								break;
 
 							/** Disc Base **/
 							case 0xB1:
-								MiniCDI::Log("[IKAT] report disc base");
+								MiniCDI::Log("[IKAT] $B1 : report disc base");
 								Ch[c].Out = { 0xB1, 0x00, 0x02, 0x00 }; // imitate cdiemu
 								Ch[c].In.clear();
 								break;
 
 							/** Disc Select **/
 							case 0xB2:
-								MiniCDI::Log("[IKAT] report disc select");
+								MiniCDI::Log("[IKAT] $B2 : report disc select");
 								Ch[c].Out = { 0xB2, 0x20, 0x00, 0x10 }; // imitate cdiemu
 								Ch[c].In.clear();
 								break;
 
 							/** Start TOC lead-in read **/
 							case 0xC0:
-								MiniCDI::Log("[IKAT] start TOC");
+								MiniCDI::Log("[IKAT] $C0 : start TOC");
 								// TO-DO
 								Ch[c].In.clear();
 								break;
@@ -258,17 +277,12 @@ public:
 				if (Ch[c].InSize == 0)
 					Ch[c].In.clear();
 			}
-			break;
+			return;
 
-			case Address::Isr: ISR = value; break;
-			case Address::Imr: IMR = value; break;
-			case Address::Mr: MR = value; break;
+			case Address::Isr: MiniCDI::Log("[IKAT] ISR %02X", value); ISR = value; return;
+			case Address::Imr: MiniCDI::Log("[IKAT] IMR %02X", value); IMR = value; return;
+			case Address::Mr: MiniCDI::Log("[IKAT] MR %02X", value); MR = value; return;
 		}
-	}
-
-	uint8_t *get_lcd()
-	{
-		return &LCD[0];
 	}
 };
 

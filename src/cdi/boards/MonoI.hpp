@@ -15,22 +15,13 @@
 class MonoI : public CDi
 {
 private:
-	const int ramBank1	= 0x000000;
-	const int ramBank2	= 0x200000;
-	const int romAddr	= 0x400000;
-	const int romSize	= 0x0FFBFF;
-
-	const int vdscAddr	= 0x4FFFE0;
-	const int ciapAddr	= 0x300000;
-	const int slaveAddr	= 0x310000;
-
-	SCC68070 cpu;
+	CDIC* cdic;
 	SLAVE* slave;
 	MCD212* vpu;
 	PlayerLCD lcd;
 
 public:
-	MonoI() : CDi(), cpu(memory) {}
+	MonoI() : CDi() {}
 
 	bool Init(const char* bios) override;
 
@@ -46,7 +37,8 @@ public:
 		}
 
 		// Update LCD display
-		lcd.update(slave);
+		lcd.update_SLAVE(slave);
+		pd.send();
 	}
 
 	inline void reset() override {
@@ -59,10 +51,6 @@ public:
 	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
 	inline uint32_t* get_lcd() override { return &lcd.display[0]; }
-
-	inline void set_pointer_x(int x, bool increment) override { slave->set_pointer_x(x, increment); }
-	inline void set_pointer_y(int y, bool increment) override { slave->set_pointer_y(y, increment); }
-	inline void set_pointer_button(int b, bool value) override { slave->set_pointer_button(b, value); }
 };
 
 #endif

@@ -511,11 +511,11 @@ public:
 	template <size_t Path>
 	void set_register(uint32_t inst)
 	{
-		switch ((inst & 0xFF000000u) >> 24)
+		switch (inst >> 24 & 0xFF)
 		{
 			default:
-				if (((inst & 0xFF000000u) >> 24) >= 0x80u && ((inst & 0xFF000000u) >> 24) < 0xC0u) {
-					uint8_t index = ((inst & 0xFF000000u) >> 24) + (reg.BankCLUT * 0x40) - 0x80u;
+				if ((inst >> 24 & 0xFF) >= 0x80u && (inst >> 24 & 0xFF) < 0xC0u) {
+					uint8_t index = (inst >> 24 & 0xFF) + (reg.BankCLUT * 0x40) - 0x80u;
 					reg.ColorCLUT[index] = inst & 0x00FCFCFCu;
 					//MiniCDI::Log("[DCA%d] color $%06x", Path, reg.ColorCLUT[index]);
 				}
@@ -617,7 +617,7 @@ public:
 			case 0xD6:
 			case 0xD7:
 				{
-					uint8_t cIndex = ((inst & 0xFF000000u) >> 24) - 0xD0;
+					uint8_t cIndex = (inst >> 24 & 0xFF) - 0xD0;
 					uint8_t mIndex = reg.MatteCount > 0 ? cIndex >= 4 ? 1 : 0 : (inst & 0x00010000u) >> 16;
 
 					if (!Matte[mIndex].opcode.size()) {

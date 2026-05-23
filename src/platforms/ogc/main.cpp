@@ -128,8 +128,8 @@ static void RUN_CDI(const std::string &biosName)
 
 	// config.log = fopen((appPath + "log.txt").c_str(), "wt");
 
-	MonoI cdi;
-	// MonoIV cdi;
+	// MonoI cdi;
+	MonoIV cdi;
 
 	cdi.Init((appPath + "rom/" + biosName + ".rom").c_str());
 
@@ -223,8 +223,8 @@ int main(int argc, char **argv) {
 	}
 
 	printf("Loading\n");
-	RUN_CDI("cdi220b");
-	// RUN_CDI("cdi490a");
+	// RUN_CDI("cdi220b");
+	RUN_CDI("cdi490a");
 
 	VIDEO_SetBlack(true);
 	return 0;

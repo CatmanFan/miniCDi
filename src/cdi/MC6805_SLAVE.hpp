@@ -104,13 +104,13 @@ public:
 
 						/** Enable Pointer Input **/
 						case 0x83:
-							MiniCDI::Log("[SLAVE] enable pointer input");
+							MiniCDI::Log("[SLAVE] enable pointer input (0x%02X)", value);
 							pointer_used = true;
 							break;
 
 						/** Disable Pointer Input **/
 						case 0x84:
-							MiniCDI::Log("[SLAVE] disable pointer input");
+							MiniCDI::Log("[SLAVE] disable pointer input (0x%02X)", value);
 							pointer_used = false;
 							break;
 					}
@@ -126,7 +126,6 @@ public:
 								case 17:
 									LCD[Ch[c].In.size() - (Ch[c].InSize == 16 ? 1 : 2)] = value;
 									if (Ch[c].In.size() >= Ch[c].InSize) {
-										MiniCDI::Log("[SLAVE] set LCD");
 										Ch[c].In.clear();
 										Ch[c].InSize = 0;
 									}
@@ -137,6 +136,7 @@ public:
 						/** Set Front Panel LCD **/
 						case 0xF0:
 							if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
+								MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
 								Ch[c].InSize = 17;
 							}
 							break;
@@ -149,6 +149,7 @@ public:
 					{
 						/** Set Front Panel LCD **/
 						case 0xF0:
+							MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
 							Ch[1].InSize = 16; // redirects LCD display input to BDR
 							break;
 					}
@@ -163,32 +164,32 @@ public:
 
 						/** Disc Status **/
 						case 0xB0:
-							MiniCDI::Log("[SLAVE] get disc status");
+							MiniCDI::Log("[SLAVE] get disc status (0x%02X)", value);
 							Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // use response data from MAME
 							break;
 
 						/** SLAVE rev **/
 						case 0xF0:
-							MiniCDI::Log("[SLAVE] get SLAVE revision");
+							MiniCDI::Log("[SLAVE] get SLAVE revision (0x%02X)", value);
 							Ch[2].Out = { 0xF0, 0x32 }; // use response data from MAME
 							break;
 
 						/** Pointer Type **/
 						case 0xF3:
-							MiniCDI::Log("[SLAVE] get pointer type");
+							MiniCDI::Log("[SLAVE] get pointer type (0x%02X)", value);
 							Ch[2].Out = { 0xF3, 0x01 };
 							/** cdifan: 1 => CL="c"; 2 => CL="d"; 3 => CL="b"; 4 => CL="a"; 5 => CL="c" + /kb1 **/
 							break;
 
 						/** Boot Mode **/
 						case 0xF4:
-							MiniCDI::Log("[SLAVE] get test plug status");
+							MiniCDI::Log("[SLAVE] get test plug status (0x%02X)", value);
 							Ch[2].Out = { 0xF4, 0x01 };
 							break;
 
 						/** Video Mode **/
 						case 0xF6:
-							MiniCDI::Log("[SLAVE] get video mode");
+							MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
 							{
 								Ch[2].Out = { 0xF6, 0x02 };
 							}
@@ -196,13 +197,13 @@ public:
 
 						/** Enable Polling **/
 						case 0xF7:
-							MiniCDI::Log("[SLAVE] enable polling data");
+							MiniCDI::Log("[SLAVE] enable polling data (0x%02X)", value);
 							polling = true;
 							break;
 
 						/** Enable X-Bus **/
 						case 0xFA:
-							MiniCDI::Log("[SLAVE] enable X-Bus");
+							MiniCDI::Log("[SLAVE] enable X-Bus (0x%02X)", value);
 							// TO-DO
 							break;
 					}

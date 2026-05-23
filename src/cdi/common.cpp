@@ -21,7 +21,7 @@ unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read
 
 void scc68070_set_fc(unsigned int new_fc) {
 	if (MiniCDI::Player.scc68070) {
-		MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | ((CPU_PREF_ADDR & 0xC0000000) >> 24);
+		MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
 	}
 }
 

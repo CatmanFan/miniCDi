@@ -40,15 +40,17 @@
 #include "../Config.hpp"
 #include "../Log.hpp"
 
-// Cores
+// 68K processor
 #include "cdi/Musashi/m68k.h"
-#include "cdi/SCC68070.hpp"
+#include "cdi/chips/SCC68070.hpp"
+
+// Other cores
 #include "cdi/VDSC.hpp"
-#include "cdi/MCD212.hpp"
-#include "cdi/MC6805_SLAVE.hpp"
-#include "cdi/MC6805_IKAT.hpp"
-#include "cdi/IMS66490_CDIC.hpp"
-#include "cdi/MCD221_CIAP.hpp"
+#include "cdi/chips/MCD212.hpp"
+#include "cdi/chips/MC6805_SLAVE.hpp"
+#include "cdi/chips/MC6805_IKAT.hpp"
+#include "cdi/chips/IMS66490_CDIC.hpp"
+#include "cdi/chips/MCD221_CIAP.hpp"
 #include "cdi/CDDrive.hpp"
 #include "cdi/PointingDevice.hpp"
 

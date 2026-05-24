@@ -110,7 +110,7 @@ class Decoder
 		/* D0 */ /*** see below ***/
 		/* D8 */ uint8_t BackdropColor;
 		/* D9 */ uint32_t MosaicPixel[2];
-		/* DB */ uint32_t WeightFactor[2];
+		/* DB */ uint8_t ICF[2];
 
 		enum MosaicFactor MF[2];
 		enum FileType FT[2];
@@ -119,11 +119,14 @@ class Decoder
 
 	struct
 	{
+		// Registers
 		std::vector<uint8_t> active;
 		std::vector<uint8_t> opcode;
 		std::vector<uint16_t> X;
-		std::vector<uint8_t> WF;
+		std::vector<uint8_t> ICF;
 		std::vector<uint8_t> flag;
+
+		// Current index
 		size_t p;
 
 		void reset()
@@ -131,62 +134,61 @@ class Decoder
 			active.assign(8, 0);
 			opcode.assign(8, 0);
 			X.assign(8, 0);
-			WF.assign(8, 0);
+			ICF.assign(8, 0);
 			flag.assign(8, 0);
 			p = 0;
 		}
-	} Matte[2];
-	bool MatteFlag[2];
+	} Matte;
+	bool MF[2];
 
-	template <size_t mIndex>
 	void matteCheck(int x)
 	{
-		if (Matte[mIndex].X[Matte[mIndex].p] != x) return;
+		if (Matte.X[Matte.p] != x) return;
 
-		switch (Matte[mIndex].opcode[Matte[mIndex].p]) {
+		switch (Matte.opcode[Matte.p]) {
 			default:
 			case 0x0: // end of matte control
-				Matte[mIndex].p = 0;
+				Matte.p = 0;
 				//MiniCDI::Log("[VDSC] matte end");
 				return;
 			case 0x4: // change weight of pA
-				reg.WeightFactor[0] = Matte[mIndex].WF[Matte[mIndex].p];
-				MiniCDI::Log("[VDSC] matte changed WF for planeA: %d", reg.WeightFactor[0]);
+				reg.ICF[0] = Matte.ICF[Matte.p];
+				MiniCDI::Log("[VDSC] matte changed ICF for planeA: %.02f", reg.ICF[0]);
 				break;
 			case 0x6: // change weight of pB
-				reg.WeightFactor[1] = Matte[mIndex].WF[Matte[mIndex].p];
-				MiniCDI::Log("[VDSC] matte changed WF for planeB: %d", reg.WeightFactor[0]);
+				reg.ICF[1] = Matte.ICF[Matte.p];
+				MiniCDI::Log("[VDSC] matte changed ICF for planeB: %.02f", reg.ICF[0]);
 				break;
 			case 0x8: // reset
-				MatteFlag[Matte[mIndex].flag[Matte[mIndex].p]] = 0;
-				MiniCDI::Log("[VDSC] matte flag %d unset", Matte[mIndex].flag[Matte[mIndex].p]);
+				MF[Matte.flag[Matte.p]] = 0;
+				MiniCDI::Log("[VDSC] matte flag %d unset", Matte.flag[Matte.p]);
 				break;
 			case 0x9: // set
-				MatteFlag[Matte[mIndex].flag[Matte[mIndex].p]] = 1;
-				MiniCDI::Log("[VDSC] matte flag %d set", Matte[mIndex].flag[Matte[mIndex].p]);
+				MF[Matte.flag[Matte.p]] = 1;
+				MiniCDI::Log("[VDSC] matte flag %d set", Matte.flag[Matte.p]);
 				break;
 			case 0xC: // reset & change weight of pA
-				MatteFlag[Matte[mIndex].flag[Matte[mIndex].p]] = 0;
-				reg.WeightFactor[0] = Matte[mIndex].WF[Matte[mIndex].p];
-				MiniCDI::Log("[VDSC] matte flag %d unset + WF for planeA: %d", Matte[mIndex].flag[Matte[mIndex].p], reg.WeightFactor[0]);
+				MF[Matte.flag[Matte.p]] = 0;
+				reg.ICF[0] = Matte.ICF[Matte.p];
+				MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeA: %.02f", Matte.flag[Matte.p], reg.ICF[0]);
 				break;
 			case 0xD: // set & change weight of pA
-				MatteFlag[Matte[mIndex].flag[Matte[mIndex].p]] = 1;
-				reg.WeightFactor[0] = Matte[mIndex].WF[Matte[mIndex].p];
-				MiniCDI::Log("[VDSC] matte flag %d set + WF for planeA: %d", Matte[mIndex].flag[Matte[mIndex].p], reg.WeightFactor[0]);
+				MF[Matte.flag[Matte.p]] = 1;
+				reg.ICF[0] = Matte.ICF[Matte.p];
+				MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeA: %.02f", Matte.flag[Matte.p], reg.ICF[0]);
 				break;
 			case 0xE: // reset & change weight of pB
-				MatteFlag[Matte[mIndex].flag[Matte[mIndex].p]] = 0;
-				reg.WeightFactor[1] = Matte[mIndex].WF[Matte[mIndex].p];
-				MiniCDI::Log("[VDSC] matte flag %d unset + WF for planeB: %d", Matte[mIndex].flag[Matte[mIndex].p], reg.WeightFactor[1]);
+				MF[Matte.flag[Matte.p]] = 0;
+				reg.ICF[1] = Matte.ICF[Matte.p];
+				MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeB: %.02f", Matte.flag[Matte.p], reg.ICF[1]);
 				break;
 			case 0xF: // set & change weight of pB
-				MatteFlag[Matte[mIndex].flag[Matte[mIndex].p]] = 1;
-				reg.WeightFactor[1] = Matte[mIndex].WF[Matte[mIndex].p];
-				MiniCDI::Log("[VDSC] matte flag %d set + WF for planeB: %d", Matte[mIndex].flag[Matte[mIndex].p], reg.WeightFactor[1]);
+				MF[Matte.flag[Matte.p]] = 1;
+				reg.ICF[1] = Matte.ICF[Matte.p];
+				MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeB: %.02f", Matte.flag[Matte.p], reg.ICF[1]);
 				break;
 		}
-		if (Matte[mIndex].p < Matte[mIndex].opcode.size()) Matte[mIndex].p++;
+		if (Matte.p < Matte.opcode.size()) Matte.p++;
 	}
 
 	template <size_t Path>
@@ -204,13 +206,13 @@ class Decoder
 			case TcrIfTB:
 				return rgb & 0xFF000000;
 			case TcrIfMF0:
-				return !MatteFlag[0];
+				return !MF[0];
 			case TcrIfMF1:
-				return !MatteFlag[1];
+				return !MF[1];
 			case TcrIfCK_MF0:
-				return (rgb & 0x00FCFCFC) == reg.TransparentCol[Path] || (rgb & 0x00FCFCFC) == reg.MaskCol[Path] || !MatteFlag[0];
+				return (rgb & 0x00FCFCFC) == reg.TransparentCol[Path] || (rgb & 0x00FCFCFC) == reg.MaskCol[Path] || !MF[0];
 			case TcrIfCK_MF1:
-				return (rgb & 0x00FCFCFC) == reg.TransparentCol[Path] || (rgb & 0x00FCFCFC) == reg.MaskCol[Path] || !MatteFlag[1];
+				return (rgb & 0x00FCFCFC) == reg.TransparentCol[Path] || (rgb & 0x00FCFCFC) == reg.MaskCol[Path] || !MF[1];
 			case TcrNever:
 				return false;
 			case TcrIfNotCK:
@@ -218,13 +220,13 @@ class Decoder
 			case TcrIfNotTB:
 				return rgb != 0xFF000000;
 			case TcrIfNotMF0:
-				return MatteFlag[0];
+				return MF[0];
 			case TcrIfNotMF1:
-				return MatteFlag[1];
+				return MF[1];
 			case TcrIfNotCK_MF0:
-				return (rgb & 0x00FCFCFC) != reg.TransparentCol[Path] && (rgb & 0x00FCFCFC) != reg.MaskCol[Path] && MatteFlag[0];
+				return (rgb & 0x00FCFCFC) != reg.TransparentCol[Path] && (rgb & 0x00FCFCFC) != reg.MaskCol[Path] && MF[0];
 			case TcrIfNotCK_MF1:
-				return (rgb & 0x00FCFCFC) != reg.TransparentCol[Path] && (rgb & 0x00FCFCFC) != reg.MaskCol[Path] && MatteFlag[1];
+				return (rgb & 0x00FCFCFC) != reg.TransparentCol[Path] && (rgb & 0x00FCFCFC) != reg.MaskCol[Path] && MF[1];
 		}
 	}
 
@@ -270,7 +272,7 @@ class Decoder
 	 * @return The number of RGB pixels incremented
 	 */
 	template <size_t Path>
-	uint32_t decodeCLUT(uint8_t* src, uint32_t *dst, int x)
+	uint32_t decodeCLUT(uint8_t* src, uint32_t *dst)
 	{
 		uint8_t index = 0;
 		switch (reg.Icm[Path]) {
@@ -280,7 +282,7 @@ class Decoder
 
 			case CLUT7:
 			case CLUT77:
-				index = *src & 0x7F;
+				index = Path ? ((*src & 0x7F) > 127 ? 255 : (*src & 0x7F) + 128) : *src & 0x7F;
 				*dst = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
 				return 1;
 
@@ -290,9 +292,10 @@ class Decoder
 				return 1;
 
 			case CLUT4:
-				index = (*src & 0x70) >> 4;
+				index = Path ? (((*src & 0x70) >> 4) > 127 ? 255 : ((*src & 0x70) >> 4) + 128) : (*src & 0x70) >> 4;
 				*dst = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
-				index = *src & 0x07;
+
+				index = Path ? ((*src & 0x07) > 127 ? 255 : (*src & 0x07) + 128) : *src & 0x07;
 				*(dst+1) = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
 				return 2;
 		}
@@ -342,34 +345,33 @@ public:
 	{
 		output.assign(FG[0].width * FG[0].height, 0);
 
+		#define PLANEA FG[reg.PlaneOrder && !reg.Mixing ? 1 : 0]
+		#define PLANEB FG[reg.PlaneOrder && !reg.Mixing ? 0 : 1]
+		#define GET_R(V) ((V) >> 24 & 0xFF)
+		#define GET_G(V) ((V) >> 16 & 0xFF)
+		#define GET_B(V) ((V) >> 8 & 0xFF)
+		#define GET_A(V) ((V) & 0xFF)
+
+		/** Green Book 5.9 **/
+		#define WF_MIX(V1, V2) std::clamp((int)(((V1-16.0f) * reg.ICF[0]/64.0f) + ((V2-16.0f) * reg.ICF[1]/64.0f) + 16.0f), 0, 255)
+
 		for (int y = 0; y < FG[0].height; y++) {
 			for (int x = 0; x < FG[0].width; x++) {
 				int outputPixel = (y*FG[0].width) + x;
 
-				uint8_t rA = (FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0xff000000) >> 24;
-				uint8_t gA = (FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0x00ff0000) >> 16;
-				uint8_t bA = (FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0x0000ff00) >> 8;
-				uint8_t aA = FG[reg.PlaneOrder ? 1 : 0].decoded[(y*FG[reg.PlaneOrder ? 1 : 0].width)+x] & 0x000000ff;
+				uint8_t rA = GET_R(PLANEA.decoded[(y*PLANEA.width)+x]),
+						gA = GET_G(PLANEA.decoded[(y*PLANEA.width)+x]),
+						bA = GET_B(PLANEA.decoded[(y*PLANEA.width)+x]),
+						aA = GET_A(PLANEA.decoded[(y*PLANEA.width)+x]),
 
-				uint8_t rB = (FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0xff000000) >> 24;
-				uint8_t gB = (FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0x00ff0000) >> 16;
-				uint8_t bB = (FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0x0000ff00) >> 8;
-				uint8_t aB = FG[reg.PlaneOrder ? 0 : 1].decoded[(y*FG[reg.PlaneOrder ? 0 : 1].width)+x] & 0x000000ff;
-
-				bool hasA = (rA & 0xFC) || (gA & 0xFC) || (gA & 0xFC);
-				bool hasB = (rB & 0xFC) || (gB & 0xFC) || (gB & 0xFC);
+						rB = GET_R(PLANEB.decoded[(y*PLANEB.width)+x]),
+						gB = GET_G(PLANEB.decoded[(y*PLANEB.width)+x]),
+						bB = GET_B(PLANEB.decoded[(y*PLANEB.width)+x]),
+						aB = GET_A(PLANEB.decoded[(y*PLANEB.width)+x]);
 
 				// Mixing technique
-				if (hasA && hasB) {
-					float wfA = (float)(reg.WeightFactor[reg.PlaneOrder ? 1 : 0] & 0xFF) / 64.0f;
-					float wfB = (float)(reg.WeightFactor[reg.PlaneOrder ? 0 : 1] & 0xFF) / 64.0f;
-
-					/** Green Book 5.9 **/
-					uint8_t r = std::clamp((int)(wfA * ((float)rA - 16)) + (int)(wfB * ((float)rB - 16)) + 16, 0, 255);
-					uint8_t g = std::clamp((int)(wfA * ((float)gA - 16)) + (int)(wfB * ((float)gB - 16)) + 16, 0, 255);
-					uint8_t b = std::clamp((int)(wfA * ((float)bA - 16)) + (int)(wfB * ((float)bB - 16)) + 16, 0, 255);
-
-					output[outputPixel] = (r << 24) | (g << 16) | (b << 8) | 0xFF;
+				if ((rA || gA || bA) && (rB || gB || bB) && reg.Mixing) {
+					output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | 0xFF;
 				}
 
 				// Overlay technique
@@ -386,11 +388,11 @@ public:
 						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
 					}
 
-					if (hasA && aA > 0) {
+					if ((rA || gA || bA) && aA) {
 						output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | 0xFF;
 					}
 
-					if (hasB && aB > 0) {
+					if ((rB || gB || bB) && aB) {
 						output[outputPixel] = (rB << 24) | (gB << 16) | (bB << 8) | 0xFF;
 					}
 				}
@@ -413,6 +415,14 @@ public:
 				}
 			}
 		}
+
+		#undef PLANEA
+		#undef PLANEB
+		#undef GET_R
+		#undef GET_G
+		#undef GET_B
+		#undef GET_A
+		#undef WF_MIX
 	}
 
 	/**
@@ -433,8 +443,7 @@ public:
 
 		for (int x = 0; x < FG[Path].width;)
 		{
-			matteCheck<0>(FG[Path].width > 400 ? x*2 : x);
-			matteCheck<1>(FG[Path].width > 400 ? x*2 : x);
+			matteCheck(FG[Path].width > 400 ? x*2 : x);
 
 			uint8_t* src = &memory[++vsr];
 			uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
@@ -460,7 +469,7 @@ public:
 							case CLUT7:
 							case CLUT77:
 							case CLUT8:
-								x += decodeCLUT<Path>(src, dst, x);
+								x += decodeCLUT<Path>(src, dst);
 								continue;
 						}
 					}
@@ -469,9 +478,6 @@ public:
 					switch (reg.Icm[Path])
 					{
 						default:
-							assert(0);
-							continue;
-
 						case CLUT4:
 						case CLUT7:
 							int length = 1;
@@ -482,11 +488,11 @@ public:
 
 							if (length == 0) {
 								while (x < FG[Path].width) {
-									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x], x);
+									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
 								}
 							} else {
 								for (int i = 0; i < length;) {
-									i += decodeCLUT<Path>(src, dst+i, x);
+									i += decodeCLUT<Path>(src, dst+i);
 								}
 								x += length;
 							}
@@ -495,15 +501,15 @@ public:
 
 				case Mosaic:
 					// to-do
-					// reg.WeightFactor[Path] /= 2;
+					// reg.ICF[Path] /= 2;
 					assert(0);
 					continue;
 			}
 		}
 
 		// reset matte flag for plane
-		Matte[0].reset();
-		Matte[1].reset();
+		Matte.reset();
+		MF[0] = MF[1] = 0;
 
 		return vsr;
 	}
@@ -515,9 +521,8 @@ public:
 		{
 			default:
 				if ((inst >> 24 & 0xFF) >= 0x80u && (inst >> 24 & 0xFF) < 0xC0u) {
-					uint8_t index = (inst >> 24 & 0xFF) + (reg.BankCLUT * 0x40) - 0x80u;
-					reg.ColorCLUT[index] = inst & 0x00FCFCFCu;
-					//MiniCDI::Log("[DCA%d] color $%06x", Path, reg.ColorCLUT[index]);
+					reg.ColorCLUT[(inst >> 24 & 0xFF) - 0x80u + (reg.BankCLUT * 0x40)] = inst & 0x00FFFFFFu;
+					//MiniCDI::Log("[DCA%d] color $%06x", Path, reg.ColorCLUT[(inst >> 24 & 0xFF) - 0x80u + (reg.BankCLUT * 0x40)]);
 				}
 				break;
 
@@ -617,22 +622,21 @@ public:
 			case 0xD6:
 			case 0xD7:
 				{
-					uint8_t cIndex = (inst >> 24 & 0xFF) - 0xD0;
-					uint8_t mIndex = reg.MatteCount > 0 ? cIndex >= 4 ? 1 : 0 : (inst & 0x00010000u) >> 16;
+					uint8_t rIndex = (inst >> 24 & 0xFF) - 0xD0;
 
-					if (!Matte[mIndex].opcode.size()) {
-						Matte[mIndex].reset();
+					if (!Matte.opcode.size()) {
+						Matte.reset();
 					}
 
-					if (!Matte[mIndex].active[cIndex]) {
-						Matte[mIndex].active[cIndex] = true;
-						Matte[mIndex].X[cIndex] = inst & 0x000003FFu;
-						Matte[mIndex].WF[cIndex] = (inst & 0x0000FC00u) >> 10;
-						Matte[mIndex].flag[cIndex] = (inst & 0x00010000u) >> 16;
-						Matte[mIndex].opcode[cIndex] = (inst & 0x00F80000u) >> 20;
+					if (!Matte.active[rIndex]) {
+						Matte.active[rIndex] = true;
+						Matte.X[rIndex] = inst & 0x000003FFu;
+						Matte.ICF[rIndex] = (inst & 0x0000FC00u) >> 10;
+						Matte.flag[rIndex] = reg.MatteCount ? rIndex >= 4 ? 1 : 0 : (inst & 0x00010000u) >> 16;
+						Matte.opcode[rIndex] = (inst & 0x00F80000u) >> 20;
 						/*if (inst & 0x00FFFFFF) {
 							MiniCDI::Log("%X", inst);
-							MiniCDI::Log("[DCA%d] mc x=%d,wf=%d,f=%d,op=%01X", Path, Matte[0].X[cIndex], Matte[0].WF[cIndex], Matte[0].flag[cIndex], Matte[0].opcode[cIndex]);
+							MiniCDI::Log("[DCA%d] mc x=%d,wf=%d,f=%d,op=%01X", Path, Matte.X[rIndex], Matte.ICF[rIndex], Matte.flag[rIndex], Matte.opcode[rIndex]);
 						}*/
 					}
 				}
@@ -649,7 +653,7 @@ public:
 
 			case 0xDB:
 			case 0xDC:
-				reg.WeightFactor[Path] = inst & 0x00FFFFFFu;
+				reg.ICF[Path] = inst & 0x3Fu;
 				break;
 		}
 	}

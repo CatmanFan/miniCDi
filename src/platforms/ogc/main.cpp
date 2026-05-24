@@ -31,13 +31,13 @@ public:
 	{
 		if (display_output) {
 			// Clear screen
-			SDL_SetRenderDrawColor(this->renderer, 10, 11, 12, 255);
+			SDL_SetRenderDrawColor(this->renderer, 64, 64, 64, 255);
 			SDL_RenderClear(this->renderer);
 
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
 			#ifdef MINICDI_NATIVERES
-			SDL_Rect dest = {0, 0, 384, 280};
+			SDL_Rect dest = {384/3, 280/3, 384, 280};
 			SDL_RenderCopy(this->renderer, this->texture, NULL, &dest);
 			#else
 			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
@@ -122,14 +122,14 @@ static void RUN_CDI(const std::string &biosName)
 	}
 
 	MiniCDI::Config::PAL = true;
-	MiniCDI::Config::ShowLCD = true;
+	MiniCDI::Config::ShowLCD = false;
 
 	bool paused = false;
 
 	// config.log = fopen((appPath + "log.txt").c_str(), "wt");
 
-	// MonoI cdi;
-	MonoIV cdi;
+	MonoI cdi;
+	// MonoIV cdi;
 
 	cdi.Init((appPath + "rom/" + biosName + ".rom").c_str());
 
@@ -223,8 +223,8 @@ int main(int argc, char **argv) {
 	}
 
 	printf("Loading\n");
-	// RUN_CDI("cdi220b");
-	RUN_CDI("cdi490a");
+	RUN_CDI("cdi220b");
+	// RUN_CDI("cdi490a");
 
 	VIDEO_SetBlack(true);
 	return 0;

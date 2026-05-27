@@ -5,6 +5,7 @@ namespace MiniCDI
 {
 	namespace Config
 	{
+		inline static bool TestPlug = false; // enables service menu
 		inline static bool PAL = true;
 		inline static bool ShowLCD = true;
 		// inline static FILE* LogFile = nullptr;

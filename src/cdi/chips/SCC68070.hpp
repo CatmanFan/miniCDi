@@ -221,15 +221,15 @@ public:
 				{
 					case 0x20: // reset receiver
 						URH = 0;
-						MiniCDI::Log("[UART] UCR %02X (reset URH)", value);
+						//MiniCDI::Log("[UART] UCR %02X (reset URH)", value);
 						break;
 					case 0x30: // reset transmitter
 						UTH = 0; USR |= 0x08;
-						MiniCDI::Log("[UART] UCR %02X (reset UTH)", value);
+						//MiniCDI::Log("[UART] UCR %02X (reset UTH)", value);
 						break;
 					case 0x40: // reset error status
 						USR &= 0x0F;
-						MiniCDI::Log("[UART] UCR %02X (reset error)", value);
+						//MiniCDI::Log("[UART] UCR %02X (reset error)", value);
 						break;
 				}
 				break;

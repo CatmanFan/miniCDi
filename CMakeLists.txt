@@ -9,10 +9,11 @@ add_executable(${PROJECT_NAME})
 dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -Ofast -Wall)
 
-option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." OFF)
+option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." ON)
 option(MINICDI_ENABLE_DEBUG_CPU "Debug CPU information (PC, SR, FC, D*, A*)." OFF)
-option(MINICDI_ENABLE_FRAMESKIP "Enable frameskip hack" ON)
-option(MINICDI_ENABLE_NATIVERES "Render native res" OFF)
+option(MINICDI_ENABLE_FRAMESKIP "Enable frameskip hack." OFF)
+option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode." OFF)
+option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper (breaks player shell if no NVRAM settings data exists)." OFF)
 
 if (MINICDI_ENABLE_DEBUG)
 	MESSAGE(STATUS "MINICDI_ENABLE_DEBUG")
@@ -28,6 +29,10 @@ endif()
 if (MINICDI_ENABLE_NATIVERES)
 	MESSAGE(STATUS "MINICDI_ENABLE_NATIVERES")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NATIVERES)
+endif()
+if (MINICDI_ENABLE_DEADNVRAM)
+	MESSAGE(STATUS "MINICDI_ENABLE_DEADNVRAM")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEADNVRAM)
 endif()
 
 set (APP_AUTHOR "Mr. Lechkar / CatmanFan")
@@ -72,7 +77,7 @@ if (NINTENDO_3DS)
 
 	ctr_create_3dsx(${PROJECT_NAME}
 		SMDH ${PROJECT_NAME}.smdh
-		ROMFS res/3ds/romfs
+		# ROMFS res/3ds/romfs
 	)
 endif()
 

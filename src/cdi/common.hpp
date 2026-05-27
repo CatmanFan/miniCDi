@@ -49,10 +49,10 @@
 #include "cdi/chips/MCD212.hpp"
 #include "cdi/chips/MC6805_SLAVE.hpp"
 #include "cdi/chips/MC6805_IKAT.hpp"
+#include "cdi/PointingDevice.hpp"
+#include "cdi/CDiDisc.hpp"
 #include "cdi/chips/IMS66490_CDIC.hpp"
 #include "cdi/chips/MCD221_CIAP.hpp"
-#include "cdi/CDDrive.hpp"
-#include "cdi/PointingDevice.hpp"
 
 // Other namespace defs
 #include "../LCD.hpp"

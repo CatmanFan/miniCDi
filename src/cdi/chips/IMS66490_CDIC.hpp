@@ -8,9 +8,9 @@ class CDIC
 	uint16_t ADPCM[2][0xA00];
 
 	uint16_t CMD;
-	uint16_t TIME;
+	uint32_t TIME;
 	uint16_t FILE;
-	uint16_t CHAN;
+	uint32_t CHAN;
 	uint16_t ACHAN;
 	uint16_t DSEL;
 	uint16_t ABUF;
@@ -20,8 +20,10 @@ class CDIC
 	uint16_t IVEC;
 	uint16_t DBUF;
 
+	CDiDisc *disc;
+
 public:
-	CDIC(uint8_t* memory) : memory(memory)
+	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc)
 	{
 	}
 
@@ -42,20 +44,30 @@ public:
 				return (memory[addr] << 8) | memory[addr+1];
 
 				case 0x303C00: return CMD;
-				case 0x303C02: return TIME;
+				case 0x303C02: return TIME >> 16 & 0xFF;
+				case 0x303C04: return TIME;
 				case 0x303C06: return FILE;
-				case 0x303C08: return CHAN;
+				case 0x303C08: return CHAN >> 16 & 0xFF;
+				case 0x303C0A: return CHAN;
 				case 0x303C0C: return ACHAN;
 				case 0x303C80: return DSEL;
 				case 0x303FF4: {
 					MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
 					uint16_t value = ABUF;
+					if ((ABUF & 0x8000) && (AUDCTL & 0x2000)) {
+						MiniCDI::Log("[CDIC] audio IRQ");
+						m68k_set_irq(IVEC & 0x07);
+					}
 					ABUF &= 0x7FFF;
 					return value;
 				}
 				case 0x303FF6: {
 					MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
 					uint16_t value = XBUF;
+					if ((XBUF & 0x8000) && (DBUF & 0x4000)) {
+						MiniCDI::Log("[CDIC] sector IRQ");
+						m68k_set_irq(IVEC & 0x07);
+					}
 					XBUF &= 0x7FFF;
 					return value;
 				}
@@ -66,7 +78,18 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint16_t value, SCC68070* cpu)
+	uint32_t read32(uint32_t addr)
+	{
+		switch (addr)
+		{
+			default:
+				return (read16(addr) << 16) | read16(addr+2);
+				case 0x303C02: return TIME;
+				case 0x303C08: return CHAN;
+		}
+	}
+
+	void write16(uint32_t addr, uint16_t value)
 	{
 		switch (addr)
 		{
@@ -84,57 +107,92 @@ public:
 					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x303200, value);
 					ADPCM[1][addr - 0x303200] = value;
 				} else {
-					memory[addr] = (value >> 8) & 0xFF;
+					memory[addr] = value >> 8 & 0xFF;
 					memory[addr+1] = value & 0xFF;
 				}
 				break;
 
-				case 0x303C00: MiniCDI::Log("[CDIC] CMD <= %04X", value); CMD = value;
-				case 0x303C02: MiniCDI::Log("[CDIC] TIME <= %04X", value); TIME = value; break;
-				case 0x303C06: MiniCDI::Log("[CDIC] FILE <= %04X", value); FILE = value; break;
-				case 0x303C08: MiniCDI::Log("[CDIC] CHAN <= %04X", value); CHAN = value; break;
-				case 0x303C0C: MiniCDI::Log("[CDIC] ACHAN <= %04X", value); ACHAN = value; break;
-				case 0x303C80: MiniCDI::Log("[CDIC] DSEL <= %04X", value); DSEL = value; break;
-				case 0x303FF4: MiniCDI::Log("[CDIC] ABUF <= %04X", value); ABUF = value; break;
-				case 0x303FF6: MiniCDI::Log("[CDIC] XBUF <= %04X", value); XBUF = value; break;
-				case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value); DMACTL = value; break;
-				case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value; break;
-				case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); IVEC = value; break;
-				case 0x303FFE: MiniCDI::Log("[CDIC] DBUF <= %04X", value); DBUF = value;
-					if (DBUF & 0x8000)
+			case 0x303C00: CMD = value;
+			case 0x303C02: MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value); TIME &= 0x00FF; TIME |= (value << 16); break;
+			case 0x303C04: MiniCDI::Log("[CDIC] TIME (lower) <= %04X", value); TIME &= 0xFF00; TIME |= value; break;
+			case 0x303C06: MiniCDI::Log("[CDIC] FILE <= %04X", value); FILE = value; break;
+			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) <= %04X", value); CHAN &= 0x00FF; CHAN |= (value << 16); break;
+			case 0x303C0A: MiniCDI::Log("[CDIC] CHAN (lower) <= %04X", value); CHAN &= 0xFF00; CHAN |= value; break;
+			case 0x303C0C: MiniCDI::Log("[CDIC] ACHAN <= %04X", value); ACHAN = value; break;
+			case 0x303C80: MiniCDI::Log("[CDIC] DSEL <= %04X", value); DSEL = value; break;
+			case 0x303FF4: MiniCDI::Log("[CDIC] ABUF <= %04X", value); ABUF = value; break;
+			case 0x303FF6: MiniCDI::Log("[CDIC] XBUF <= %04X", value); XBUF = value; break;
+			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value); DMACTL = value; break;
+			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value; break;
+			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); IVEC = value; break;
+			case 0x303FFE: MiniCDI::Log("[CDIC] DBUF <= %04X", value); DBUF = value;
+				if (DBUF & 0x8000)
+				{
+					switch (CMD)
 					{
-						switch (CMD)
-						{
-							case 0x23:
-								MiniCDI::Log("[CDIC] reset 1");
-								break;
-							case 0x24:
-								MiniCDI::Log("[CDIC] reset 2");
-								break;
-							case 0x2B:
-								MiniCDI::Log("[CDIC] Stop CDDA");
-								break;
-							case 0x2E:
-								MiniCDI::Log("[CDIC] update");
-								break;
-							case 0x27:
-								MiniCDI::Log("[CDIC] fetch CDDA");
-								break;
-							case 0x28:
-								MiniCDI::Log("[CDIC] begin play CDDA");
-								break;
-							case 0x29:
-								MiniCDI::Log("[CDIC] read 1");
-								break;
-							case 0x2A:
-								MiniCDI::Log("[CDIC] read 2");
-								break;
-							case 0x2C:
-								MiniCDI::Log("[CDIC] seek");
-								break;
-						}
+						case 0x23:
+							MiniCDI::Log("[CDIC] stop disc rotation (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
+						case 0x24:
+							MiniCDI::Log("[CDIC] stop reading (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
+						case 0x27:
+							MiniCDI::Log("[CDIC] fetch TOC (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
+						case 0x28:
+							MiniCDI::Log("[CDIC] play CDDA (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
+						case 0x29:
+							MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
+							disc->get_lba_from_time(TIME);
+							disc->read_sector();
+							{
+								int i = 0;
+								for (int j = 0; j < 2352; j += 2)
+								{
+									DATA[0][i] = (disc->Sector.buffer[j] << 8) | disc->Sector.buffer[j+1];
+								}
+							}
+							XBUF |= 0x8000; // sector filled
+							DBUF &= 0x7FFF;
+							break;
+						case 0x2A:
+							MiniCDI::Log("[CDIC] read CD-i data (mode2) (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
+						case 0x2B:
+							MiniCDI::Log("[CDIC] stop CDDA ? (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
+						case 0x2E:
+							MiniCDI::Log("[CDIC] update (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
+						case 0x2C:
+							MiniCDI::Log("[CDIC] seek ? (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							break;
 					}
-					break;
+				}
+				break;
+		}
+	}
+
+	void write32(uint32_t addr, uint32_t value)
+	{
+		switch (addr)
+		{
+			default:
+				write16(addr, value >> 16 & 0xFFFF);
+				write16(addr+2, value & 0xFFFF);
+				break;
+
+			case 0x303C02: MiniCDI::Log("[CDIC] TIME <= %08X", value); TIME = value; break;
+			case 0x303C08: MiniCDI::Log("[CDIC] CHAN <= %08X", value); CHAN = value; break;
 		}
 	}
 };

@@ -24,12 +24,13 @@ public:
 	} IO;
 
 	bool buttons[6];
-	bool changed;
+	bool changed_Face;
+	bool changed_DPad;
 	int x = 0, y = 0;
 
 	void send()
 	{
-		if (IO.slave && IO.slave->polling) {
+		if (IO.slave && IO.slave->pointer_used) {
 			if (!IO.slave->pointer)
 			{
 				IO.slave->Ch[0].Out = {'M'};
@@ -37,14 +38,25 @@ public:
 				m68k_set_irq(2);
 			}
 
-			else if (changed || buttons[Left] || buttons[Right] || buttons[Down] || buttons[Up])
+			if (IO.slave->pointer_posChanged) {
+				// x = IO.slave->pointer_x;
+				// y = IO.slave->pointer_y;
+				IO.slave->pointer_posChanged = false;
+			}
+
+			else if (changed_Face || changed_DPad)
 			{
-				x = std::clamp(x + (buttons[Left] && !buttons[Right] ? -1
-																	 : !buttons[Left] && buttons[Right] ? 1
-																	 : 0), 0, 767);
-				y = std::clamp(y + (buttons[Up] && !buttons[Down] ? -1
-																  : !buttons[Up] && buttons[Down] ? 1
-																  : 0), 0, 559);
+				if (changed_Face) { changed_Face = false; }
+				if (changed_DPad)
+				{
+					x = std::clamp(x + (buttons[Left] && !buttons[Right] ? -2
+																		 : !buttons[Left] && buttons[Right] ? 2
+																		 : 0), 0, 767);
+					y = std::clamp(y + (buttons[Up] && !buttons[Down] ? -2
+																	  : !buttons[Up] && buttons[Down] ? 2
+																	  : 0), 0, 559);
+					x = 550; y = 306;
+				}
 
 				// Convert to SLAVE response (allowed coord bounds: 54x97 to 704x679?)
 				IO.slave->Ch[0].Out =
@@ -56,17 +68,21 @@ public:
 				};
 				MiniCDI::Log("[PD] x=%d,y=%d", x, y);
 				m68k_set_irq(2);
-				changed = false;
 			}
 		}
 
-		if (IO.ikat && IO.ikat->has_pointer && (changed || buttons[Left] || buttons[Right] || buttons[Down] || buttons[Up])) {
-			x = std::clamp(x + (buttons[Left] && !buttons[Right] ? -1
-																 : !buttons[Left] && buttons[Right] ? 1
-																 : 0), 0, 1023);
-			y = std::clamp(y + (buttons[Up] && !buttons[Down] ? -1
-															  : !buttons[Up] && buttons[Down] ? 1
-															  : 0), 0, 1023);
+		if (IO.ikat && IO.ikat->has_pointer && (changed_Face || changed_DPad)) {
+			if (changed_Face) { changed_Face = false; }
+			if (changed_DPad)
+			{
+				x = std::clamp(x + (buttons[Left] && !buttons[Right] ? -1
+																	 : !buttons[Left] && buttons[Right] ? 1
+																	 : 0), 0, 1023);
+				y = std::clamp(y + (buttons[Up] && !buttons[Down] ? -1
+																  : !buttons[Up] && buttons[Down] ? 1
+																  : 0), 0, 1023);
+			}
+
 			IO.ikat->Ch[1].Out =
 			{
 				(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0x0F)),
@@ -74,8 +90,6 @@ public:
 				(uint8_t)(x & 0x3F),
 				(uint8_t)(0x80 | (y & 0x3F)),
 			};
-
-			changed = false;
 
 			// REMTY OFF + INT
 			IO.ikat->Ch[1].SR &= ~(0x10);
@@ -91,9 +105,14 @@ public:
 
 		if (b == Left || b == Right || b == Down || b == Up) {
 			this->buttons[(int)b] = value;
-		} else if (this->buttons[(int)b] != value) {
+			changed_DPad = true;
+		} else {
+			changed_DPad = this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up];
+		}
+
+		if ((b == Button1 || b == Button2) && this->buttons[(int)b] != value) {
 			this->buttons[(int)b] = value;
-			changed = true;
+			changed_Face = true;
 		}
 	}
 };

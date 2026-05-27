@@ -23,8 +23,9 @@ private:
 public:
 	MonoI() : CDi() {}
 
-	bool Init(const char* bios) override;
+	bool Init(const std::string &bios) override;
 
+	/** /!\ Currently this code crashes if not using frameskip (i.e. do_frame() is called only once) /!\ **/
 	inline void do_frame(bool draw = true) override {
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		while (1)
@@ -39,6 +40,7 @@ public:
 		// Update LCD display
 		lcd.update_SLAVE(slave);
 		pd.send();
+		disc.increment_lba();
 	}
 
 	inline void reset() override {

@@ -7,7 +7,7 @@ namespace MiniCDI
 {
 	static void Log(const char* txt, ...)
 	{
-		#ifdef MINICDI_DEBUG
+		#if defined(MINICDI_DEBUG) || defined(__3DS__)
 		#ifndef MINICDI_DEBUG_CPU
 		va_list arg1, arg2;
 
@@ -23,7 +23,7 @@ namespace MiniCDI
 		vsnprintf(szBuff, 1024, txt, arg1);
 
 		va_end(arg1);
-		
+
 		#ifdef __WIIU__
 		WHBLogPrintf(szBuff);
 		#else

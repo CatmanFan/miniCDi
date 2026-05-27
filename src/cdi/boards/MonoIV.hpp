@@ -23,7 +23,7 @@ private:
 public:
 	MonoIV() : CDi() {}
 
-	bool Init(const char* bios) override;
+	bool Init(const std::string &bios) override;
 
 	inline void do_frame(bool draw = true) override {
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
@@ -33,6 +33,7 @@ public:
 				cpu.run(96);
 				cpu.tick_timer();
 			}
+			ciap->set_isr(0x09);
 			if (vpu->tick(!draw)) break;
 		}
 

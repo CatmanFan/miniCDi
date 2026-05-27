@@ -7,7 +7,6 @@
 class SLAVE
 {
 	uint8_t* memory;
-	SCC68070* cpu;
 
 	struct
 	{
@@ -19,6 +18,7 @@ class SLAVE
 	bool pointer_used;
 	bool polling;
 	bool pointer;
+	bool pointer_posChanged;
 	int pointer_x, pointer_y;
 
 	uint32_t DR[4]; // addresses to data registers
@@ -29,7 +29,7 @@ public:
 	friend class PlayerLCD;
 	friend class PointingDevice;
 
-	SLAVE(SCC68070* cpu, uint8_t* memory, uint32_t start) : memory(memory), cpu(cpu), pointer_used(false), polling(false), pointer(false)
+	SLAVE(uint8_t* memory, uint32_t start) : memory(memory), pointer_used(false), polling(false), pointer(false)
 	{
 		DR[0] = start + 0x01; // ADR
 		DR[1] = start + 0x03; // BDR
@@ -82,23 +82,19 @@ public:
 					switch (value)
 					{
 						default:
-							switch (Ch[c].InSize) {
-								default:
-									/** Set Pointer Pos **/
-									if (pointer_used && value >= 0xC0 && value <= 0xFF
-									 && Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-										Ch[c].InSize = 3;
-									}
-									break;
-								case 3:
-									if (Ch[c].In.size() >= Ch[c].InSize) {
-										pointer_x = ((Ch[c].In[1] & 0x70) << 3) | (Ch[c].In[2] & 0x7F);
-										pointer_y = ((Ch[c].In[0] & 0x3F) << 4) | (Ch[c].In[1] & 0x0F);
-										MiniCDI::Log("[SLAVE] pointer x=%d,y=%d", pointer_x, pointer_y);
-										Ch[c].In.clear();
-										Ch[c].InSize = 0;
-									}
-									break;
+							if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
+								pointer_x = ((Ch[c].In[1] & 0x70) << 3) | (Ch[c].In[2] & 0x7F);
+								pointer_y = ((Ch[c].In[0] & 0x3F) << 4) | (Ch[c].In[1] & 0x0F);
+								pointer_posChanged = true;
+								//MiniCDI::Log("[SLAVE] pointer x=%d,y=%d", pointer_x, pointer_y);
+								Ch[c].In.clear();
+								Ch[c].InSize = 0;
+							} else {
+								/** Set Pointer Pos **/
+								if (pointer_used && value >= 0xC0 && value <= 0xFF
+								 && Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
+									Ch[c].InSize = 3;
+								}
 							}
 							break;
 
@@ -136,7 +132,7 @@ public:
 						/** Set Front Panel LCD **/
 						case 0xF0:
 							if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-								MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
+								//MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
 								Ch[c].InSize = 17;
 							}
 							break;
@@ -149,7 +145,7 @@ public:
 					{
 						/** Set Front Panel LCD **/
 						case 0xF0:
-							MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
+							//MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
 							Ch[1].InSize = 16; // redirects LCD display input to BDR
 							break;
 					}
@@ -160,39 +156,64 @@ public:
 					switch (value)
 					{
 						default:
+							if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
+								switch (Ch[c].In[0]) {
+									case 0xB0:
+										MiniCDI::Log("[SLAVE] get disc status (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
+										Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
+										m68k_set_irq(2);
+										break;
+									case 0xB1:
+										MiniCDI::Log("[SLAVE] get disc base (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
+										Ch[c].Out = { 0xB1, 0x00, 0x00, 0x00 }; // use response data from MAME
+										m68k_set_irq(2);
+										break;
+								}
+								Ch[c].In.clear();
+								Ch[c].InSize = 0;
+							}
 							break;
 
 						/** Disc Status **/
 						case 0xB0:
-							MiniCDI::Log("[SLAVE] get disc status (0x%02X)", value);
-							Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // use response data from MAME
+							if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
+								Ch[c].InSize = 4;
+							}
+							break;
+
+						/** Disc Base **/
+						case 0xB1:
+							if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
+								Ch[c].InSize = 4;
+							}
 							break;
 
 						/** SLAVE rev **/
 						case 0xF0:
 							MiniCDI::Log("[SLAVE] get SLAVE revision (0x%02X)", value);
 							Ch[2].Out = { 0xF0, 0x32 }; // use response data from MAME
+							m68k_set_irq(2);
 							break;
 
 						/** Pointer Type **/
 						case 0xF3:
 							MiniCDI::Log("[SLAVE] get pointer type (0x%02X)", value);
-							Ch[2].Out = { 0xF3, 0x01 };
-							/** cdifan: 1 => CL="c"; 2 => CL="d"; 3 => CL="b"; 4 => CL="a"; 5 => CL="c" + /kb1 **/
+							Ch[2].Out = { 0xF3, 0x01 }; /** cdifan: 1 => CL="c"; 2 => CL="d"; 3 => CL="b"; 4 => CL="a"; 5 => CL="c" + /kb1 **/
+							m68k_set_irq(2);
 							break;
 
 						/** Boot Mode **/
 						case 0xF4:
 							MiniCDI::Log("[SLAVE] get test plug status (0x%02X)", value);
-							Ch[2].Out = { 0xF4, 0x01 };
+							Ch[2].Out = { 0xF4, (uint8_t)(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
+							m68k_set_irq(2);
 							break;
 
 						/** Video Mode **/
 						case 0xF6:
 							MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
-							{
-								Ch[2].Out = { 0xF6, 0x02 };
-							}
+							Ch[2].Out = { 0xF6, (uint8_t)(MiniCDI::Config::PAL ? 0x02 : 0x01) };
+							m68k_set_irq(2);
 							break;
 
 						/** Enable Polling **/

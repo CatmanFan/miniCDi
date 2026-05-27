@@ -131,7 +131,10 @@ static void RUN_CDI(const std::string &biosName)
 	MonoI cdi;
 	// MonoIV cdi;
 
-	cdi.Init((appPath + "rom/" + biosName + ".rom").c_str());
+	cdi.Init(appPath + "rom/" + biosName + ".rom");
+	if (access((appPath + "BADAPPLE.BIN").c_str(), F_OK) == 0) {
+		cdi.disc.open(appPath + "rom/" + biosName + ".rom");
+	}
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;
@@ -173,10 +176,7 @@ static void RUN_CDI(const std::string &biosName)
 		if (!paused)
 		{
 			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode (likely because emulated machine is configured to use 60Hz?).
-			#ifdef MINICDI_FRAMESKIP
 			cdi.do_frame(false);
-			cdi.do_frame(false);
-			#endif
 			cdi.do_frame(true);
 
 			#ifdef MINICDI_DEBUG

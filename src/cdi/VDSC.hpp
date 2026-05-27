@@ -148,44 +148,44 @@ class Decoder
 		switch (Matte.opcode[Matte.p]) {
 			default:
 			case 0x0: // end of matte control
-				Matte.p = 0;
+				Matte.p = Matte.opcode.size();
 				//MiniCDI::Log("[VDSC] matte end");
 				return;
 			case 0x4: // change weight of pA
 				reg.ICF[0] = Matte.ICF[Matte.p];
-				MiniCDI::Log("[VDSC] matte changed ICF for planeA: %.02f", reg.ICF[0]);
+				//MiniCDI::Log("[VDSC] matte changed ICF for planeA: %.02f", reg.ICF[0]);
 				break;
 			case 0x6: // change weight of pB
 				reg.ICF[1] = Matte.ICF[Matte.p];
-				MiniCDI::Log("[VDSC] matte changed ICF for planeB: %.02f", reg.ICF[0]);
+				//MiniCDI::Log("[VDSC] matte changed ICF for planeB: %.02f", reg.ICF[0]);
 				break;
 			case 0x8: // reset
 				MF[Matte.flag[Matte.p]] = 0;
-				MiniCDI::Log("[VDSC] matte flag %d unset", Matte.flag[Matte.p]);
+				//MiniCDI::Log("[VDSC] matte flag %d unset", Matte.flag[Matte.p]);
 				break;
 			case 0x9: // set
 				MF[Matte.flag[Matte.p]] = 1;
-				MiniCDI::Log("[VDSC] matte flag %d set", Matte.flag[Matte.p]);
+				//MiniCDI::Log("[VDSC] matte flag %d set", Matte.flag[Matte.p]);
 				break;
 			case 0xC: // reset & change weight of pA
 				MF[Matte.flag[Matte.p]] = 0;
 				reg.ICF[0] = Matte.ICF[Matte.p];
-				MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeA: %.02f", Matte.flag[Matte.p], reg.ICF[0]);
+				//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeA: %.02f", Matte.flag[Matte.p], reg.ICF[0]);
 				break;
 			case 0xD: // set & change weight of pA
 				MF[Matte.flag[Matte.p]] = 1;
 				reg.ICF[0] = Matte.ICF[Matte.p];
-				MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeA: %.02f", Matte.flag[Matte.p], reg.ICF[0]);
+				//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeA: %.02f", Matte.flag[Matte.p], reg.ICF[0]);
 				break;
 			case 0xE: // reset & change weight of pB
 				MF[Matte.flag[Matte.p]] = 0;
 				reg.ICF[1] = Matte.ICF[Matte.p];
-				MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeB: %.02f", Matte.flag[Matte.p], reg.ICF[1]);
+				//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeB: %.02f", Matte.flag[Matte.p], reg.ICF[1]);
 				break;
 			case 0xF: // set & change weight of pB
 				MF[Matte.flag[Matte.p]] = 1;
 				reg.ICF[1] = Matte.ICF[Matte.p];
-				MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeB: %.02f", Matte.flag[Matte.p], reg.ICF[1]);
+				//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeB: %.02f", Matte.flag[Matte.p], reg.ICF[1]);
 				break;
 		}
 		if (Matte.p < Matte.opcode.size()) Matte.p++;
@@ -282,7 +282,7 @@ class Decoder
 
 			case CLUT7:
 			case CLUT77:
-				index = Path ? ((*src & 0x7F) > 127 ? 255 : (*src & 0x7F) + 128) : *src & 0x7F;
+				index = Path && (*src & 0x7F) < 128 ? (*src & 0x7F) + 128 : *src & 0x7F;
 				*dst = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
 				return 1;
 
@@ -292,10 +292,10 @@ class Decoder
 				return 1;
 
 			case CLUT4:
-				index = Path ? (((*src & 0x70) >> 4) > 127 ? 255 : ((*src & 0x70) >> 4) + 128) : (*src & 0x70) >> 4;
+				index = Path && (*src >> 4 & 0x07) < 128 ? (*src >> 4 & 0x07) + 128 : *src >> 4 & 0x07;
 				*dst = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
 
-				index = Path ? ((*src & 0x07) > 127 ? 255 : (*src & 0x07) + 128) : *src & 0x07;
+				index = Path && (*src & 0x07) < 128 ? (*src & 0x07) + 128 : *src & 0x07;
 				*(dst+1) = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
 				return 2;
 		}
@@ -345,15 +345,14 @@ public:
 	{
 		output.assign(FG[0].width * FG[0].height, 0);
 
-		#define PLANEA FG[reg.PlaneOrder && !reg.Mixing ? 1 : 0]
-		#define PLANEB FG[reg.PlaneOrder && !reg.Mixing ? 0 : 1]
+		#define PLANEA FG[reg.PlaneOrder ? 1 : 0]
+		#define PLANEB FG[reg.PlaneOrder ? 0 : 1]
 		#define GET_R(V) ((V) >> 24 & 0xFF)
 		#define GET_G(V) ((V) >> 16 & 0xFF)
 		#define GET_B(V) ((V) >> 8 & 0xFF)
 		#define GET_A(V) ((V) & 0xFF)
 
-		/** Green Book 5.9 **/
-		#define WF_MIX(V1, V2) std::clamp((int)(((V1-16.0f) * reg.ICF[0]/64.0f) + ((V2-16.0f) * reg.ICF[1]/64.0f) + 16.0f), 0, 255)
+		#define WF_MIX(V1, V2) std::clamp((int)(((V1-16.0f) * (float)reg.ICF[0]/64.0f) + ((V2-16.0f) * (float)reg.ICF[1]/64.0f) + 16.0f), 0, 255)
 
 		for (int y = 0; y < FG[0].height; y++) {
 			for (int x = 0; x < FG[0].width; x++) {
@@ -370,8 +369,8 @@ public:
 						aB = GET_A(PLANEB.decoded[(y*PLANEB.width)+x]);
 
 				// Mixing technique
-				if ((rA || gA || bA) && (rB || gB || bB) && reg.Mixing) {
-					output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | 0xFF;
+				if (((rA & 0xFC) || (gA & 0xFC) || (bA & 0xFC)) && ((rB & 0xFC) || (gB & 0xFC) || (bB & 0xFC)) && reg.Mixing) {
+					output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | (WF_MIX(aA, aB));
 				}
 
 				// Overlay technique
@@ -388,11 +387,11 @@ public:
 						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
 					}
 
-					if ((rA || gA || bA) && aA) {
+					if (((rA & 0xFC) || (gA & 0xFC) || (bA & 0xFC)) && aA) {
 						output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | 0xFF;
 					}
 
-					if ((rB || gB || bB) && aB) {
+					if (((rB & 0xFC) || (gB & 0xFC) || (bB & 0xFC)) && aB) {
 						output[outputPixel] = (rB << 24) | (gB << 16) | (bB << 8) | 0xFF;
 					}
 				}
@@ -560,13 +559,13 @@ public:
 				break;
 
 			case 0xC1:
-				reg.Transparency[0] = (enum Tcr)(inst & 0x0Fu);
-				reg.Transparency[1] = (enum Tcr)((inst & 0x0Fu) >> 8);
-				reg.Mixing = (inst & 0x00800000u) >> 23;
+				if (!Path) reg.Transparency[0] = (enum Tcr)(inst & 0x0Fu);
+				if (!Path) reg.Transparency[1] = (enum Tcr)((inst & 0x0Fu) >> 8);
+				if (!Path) reg.Mixing = (inst & 0x00800000u) >> 23;
 				break;
 
 			case 0xC2:
-				reg.PlaneOrder = inst & 0x0Fu;
+				if (!Path) reg.PlaneOrder = inst & 0x0Fu;
 				//MiniCDI::Log("[DCA%d] po %s", Path, reg.PlaneOrder ? "b,a" : "a,b");
 				break;
 
@@ -634,10 +633,7 @@ public:
 						Matte.ICF[rIndex] = (inst & 0x0000FC00u) >> 10;
 						Matte.flag[rIndex] = reg.MatteCount ? rIndex >= 4 ? 1 : 0 : (inst & 0x00010000u) >> 16;
 						Matte.opcode[rIndex] = (inst & 0x00F80000u) >> 20;
-						/*if (inst & 0x00FFFFFF) {
-							MiniCDI::Log("%X", inst);
-							MiniCDI::Log("[DCA%d] mc x=%d,wf=%d,f=%d,op=%01X", Path, Matte.X[rIndex], Matte.ICF[rIndex], Matte.flag[rIndex], Matte.opcode[rIndex]);
-						}*/
+						//if (inst & 0x00FFFFFF) MiniCDI::Log("[DCA%d] mc x=%d,wf=%d,f=%d,op=%01X", Path, Matte.X[rIndex], Matte.ICF[rIndex], Matte.flag[rIndex], Matte.opcode[rIndex]);
 					}
 				}
 				break;

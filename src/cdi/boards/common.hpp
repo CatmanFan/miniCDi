@@ -12,9 +12,9 @@ protected:
 
 public:
 	PointingDevice pd;
-	CDDrive drive;
+	CDiDisc disc;
 
-	virtual bool Init(const char* bios)
+	virtual bool Init(const std::string &bios)
 	{
 		/** Order of initialization:
 		1) Initialising slave processor

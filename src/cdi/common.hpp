@@ -1,6 +1,10 @@
 #ifndef MINICDI_COMMON
 #define MINICDI_COMMON
 
+#ifndef MINICDI_DEBUG
+#define MINICDI_DEBUG
+#endif
+
 // Macros
 #define READ8(x, l)			(uint8_t)(x[l])
 #define READ16(x, l)		(uint16_t)((x[l] << 8) | x[l+1])

@@ -1,13 +1,21 @@
 # miniCDi
 An experimental Philips CD-i emulator for the Wii and 3DS. Currently only supports Mono-I and Mono-IV boards.
 
-Aims to support Mono-I, Mono-III, Mono-IV and Robocon boards. Support for third-party boards which do not use the SCC68070 processor is not planned.
+Aims to support Mono-I, Mono-III, Mono-IV (incl. Robocon) boards. Support for third-party boards which do not use the SCC68070 processor is not planned.
+
+## Includes
+- [ ] VDSC (experimental)
+- [X] Pointer Device (experimental)
+- Video:
+  - [X] MCD212
+- CD+Audio:
+  - [ ] CDIC (Mono-I)
+  - [ ] CIAP (Mono-IV)
+- Microcontrollers:
+  - [X] SLAVE (Mono-I and Mono-II)
+  - [ ] IKAT (Mono-III, Mono-IV and Robocon)
 
 ## To-Do
-- [ ] Plane mixing/transparency emulation (VDSC)
-- [ ] Pointer Devices
-- [X] CIAP (Mono-IV)
-# - [ ] CDIC (Mono-I)
 - [ ] Proper reset sequence
 
 ## Building

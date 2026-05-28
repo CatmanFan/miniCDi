@@ -41,11 +41,6 @@ class CIAP
 
 	CDiDisc *disc;
 
-	void go_to_LBN(int lbn, int offset)
-	{
-		;
-	}
-
 public:
 	CIAP(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc)
 	{

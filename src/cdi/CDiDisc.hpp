@@ -5,18 +5,6 @@ class CDiDisc
 {
 	std::ifstream disc;
 
-	enum SubmodeType
-	{
-		Submode_EOF,
-		Submode_RT,
-		Submode_F,
-		Submode_T,
-		Submode_D,
-		Submode_A,
-		Submode_V,
-		Submode_EOR,
-	};
-
 	/**
 	The sector is structured as follows:
 	* Sync field (12 bytes)
@@ -24,26 +12,31 @@ class CDiDisc
 	* Subheader field (8 bytes)
 	* Data field (2328 bytes)
 	**/
+
 	struct {
 		// Sync field is 00FFFFFFFFFFFFFFFFFFFF00, can be ignored(?)
 
 		// Header, contains address and mode
-		char Mins;
-		char Secs;
-		char Sects;
+		char Min;
+		char Sec;
+		char Frame;
 		char Mode;
 
 		// Subheader, is repeated twice
 		char FileNum;
 		char ChNum;
-		char Submode;
+		char Submode; // 0x01 = EOR, 0x02 = Video, 0x04 = Audio, 0x08 = Data, 0x10 = Trigger, 0x20 = Form, 0x40 = Real-Time Sector, 0x80 = EOF
 		char CodingInfo;
 
-		char buffer[2352];
-	} Sector; // CD-i, not CD-DA
+		char Data[2340];
+	} Sector; // CD-i, not CD-DA*/
 
-	int lba;
-	int lbn;
+	int lba = -1;
+
+	bool sector_valid()
+	{
+		return disc.is_open() && lba >= 0;
+	}
 
 	void get_lba_from_time(uint32_t time)
 	{
@@ -72,27 +65,29 @@ class CDiDisc
 
 		if (lba >= 150)
 			lba -= 150;
+
+		disc.clear();
+		disc.seekg(lba*2352 + 12, std::ios::beg);
 	}
 
 	void read_sector()
 	{
-		if (lba >= 0) {
-			lbn = lba / 2352;
+		if (sector_valid()) {
+			// const uint32_t real_lba = lba + 150;
 
-			disc.clear();
-			disc.seekg(lba - (lba % 2352), std::ios::beg);
-			disc.get(Sector.Mins);
-			disc.get(Sector.Secs);
-			disc.get(Sector.Sects);
+			disc.get(Sector.Min);
+			disc.get(Sector.Sec);
+			disc.get(Sector.Frame);
 			disc.get(Sector.Mode);
 			disc.get(Sector.FileNum);
 			disc.get(Sector.ChNum);
 			disc.get(Sector.Submode);
 			disc.get(Sector.CodingInfo);
 			disc.seekg(4, std::ios::cur);
-			disc.read(Sector.buffer, 2352);
 
-			MiniCDI::Log("[CD] Read sector %d", lbn);
+			MiniCDI::Log("[Disc] sector read. time: %02d:%02d:%02d, mode: %02X", Sector.Min, Sector.Sec, Sector.Frame, Sector.Mode);
+			MiniCDI::Log("                    file: %d, ch: %d, submode: %02X, coding: %02X", Sector.FileNum, Sector.ChNum, Sector.Submode, Sector.CodingInfo);
+			disc.read(&Sector.Data[0], 2340);
 		}
 	}
 
@@ -110,9 +105,7 @@ public:
 
 	void increment_lba()
 	{
-		if (disc.is_open() && lba >= 0) {
-			lba++;
-		}
+		read_sector();
 	}
 };
 

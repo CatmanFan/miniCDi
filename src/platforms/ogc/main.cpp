@@ -132,8 +132,8 @@ static void RUN_CDI(const std::string &biosName)
 	// MonoIV cdi;
 
 	cdi.Init(appPath + "rom/" + biosName + ".rom");
-	if (access((appPath + "BADAPPLE.BIN").c_str(), F_OK) == 0) {
-		cdi.disc.open(appPath + "rom/" + biosName + ".rom");
+	if (access((appPath + "DEBUGCTL.BIN").c_str(), F_OK) == 0) {
+		cdi.disc.open(appPath + "DEBUGCTL.BIN");
 	}
 
 	#ifndef MINICDI_DEBUG

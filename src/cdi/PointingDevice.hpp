@@ -46,6 +46,7 @@ public:
 
 			else if (changed_Face || changed_DPad)
 			{
+				x = 550; y = 306;
 				if (changed_Face) { changed_Face = false; }
 				if (changed_DPad)
 				{
@@ -55,7 +56,6 @@ public:
 					y = std::clamp(y + (buttons[Up] && !buttons[Down] ? -2
 																	  : !buttons[Up] && buttons[Down] ? 2
 																	  : 0), 0, 559);
-					x = 550; y = 306;
 				}
 
 				// Convert to SLAVE response (allowed coord bounds: 54x97 to 704x679?)

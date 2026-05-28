@@ -4,8 +4,8 @@
 class CDIC
 {
 	uint8_t* memory;
-	uint16_t DATA[2][0xA00];
-	uint16_t ADPCM[2][0xA00];
+	uint8_t DATA[2][0xA00];
+	uint8_t ADPCM[2][0xA00];
 
 	uint16_t CMD;
 	uint32_t TIME;
@@ -33,13 +33,13 @@ public:
 		{
 			default:
 				if (addr >= 0x300000 && addr <= 0x3009FF) {
-					return DATA[0][addr - 0x300000];
+					return (DATA[0][addr - 0x300000] << 8) | DATA[0][addr - 0x300000 + 1];
 				} else if (addr >= 0x300A00 && addr <= 0x3013FF) {
-					return DATA[1][addr - 0x300A00];
+					return (DATA[1][addr - 0x300A00] << 8) | DATA[1][addr - 0x300A00 + 1];
 				} else if (addr >= 0x302800 && addr <= 0x3031FF) {
-					return ADPCM[0][addr - 0x302800];
+					return (ADPCM[0][addr - 0x302800] << 8) | ADPCM[0][addr - 0x302800 + 1];
 				} else if (addr >= 0x303200 && addr <= 0x303BFF) {
-					return ADPCM[1][addr - 0x303200];
+					return (ADPCM[1][addr - 0x303200] << 8) | ADPCM[1][addr - 0x303200 + 1];
 				}
 				return (memory[addr] << 8) | memory[addr+1];
 
@@ -56,7 +56,7 @@ public:
 					uint16_t value = ABUF;
 					if ((ABUF & 0x8000) && (AUDCTL & 0x2000)) {
 						MiniCDI::Log("[CDIC] audio IRQ");
-						m68k_set_irq(IVEC & 0x07);
+						m68k_set_irq(2);
 					}
 					ABUF &= 0x7FFF;
 					return value;
@@ -66,7 +66,7 @@ public:
 					uint16_t value = XBUF;
 					if ((XBUF & 0x8000) && (DBUF & 0x4000)) {
 						MiniCDI::Log("[CDIC] sector IRQ");
-						m68k_set_irq(IVEC & 0x07);
+						m68k_set_irq(2);
 					}
 					XBUF &= 0x7FFF;
 					return value;
@@ -96,16 +96,16 @@ public:
 			default:
 				if (addr >= 0x300000 && addr <= 0x3009FF) {
 					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x300000, value);
-					DATA[0][addr - 0x300000] = value;
+					// DATA[0][addr - 0x300000] = value;
 				} else if (addr >= 0x300A00 && addr <= 0x3013FF) {
 					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x300A00, value);
-					DATA[1][addr - 0x300A00] = value;
+					// DATA[1][addr - 0x300A00] = value;
 				} else if (addr >= 0x302800 && addr <= 0x3031FF) {
 					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x302800, value);
-					ADPCM[0][addr - 0x302800] = value;
+					// ADPCM[0][addr - 0x302800] = value;
 				} else if (addr >= 0x303200 && addr <= 0x303BFF) {
 					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x303200, value);
-					ADPCM[1][addr - 0x303200] = value;
+					// ADPCM[1][addr - 0x303200] = value;
 				} else {
 					memory[addr] = value >> 8 & 0xFF;
 					memory[addr+1] = value & 0xFF;
@@ -151,10 +151,21 @@ public:
 							disc->get_lba_from_time(TIME);
 							disc->read_sector();
 							{
-								int i = 0;
-								for (int j = 0; j < 2352; j += 2)
+								memory[0x300000] = DATA[0][0] = disc->Sector.Min;
+								memory[0x300001] = DATA[0][1] = disc->Sector.Sec;
+								memory[0x300002] = DATA[0][2] = disc->Sector.Frame;
+								memory[0x300003] = DATA[0][3] = disc->Sector.Mode;
+								memory[0x300004] = DATA[0][4] = disc->Sector.FileNum;
+								memory[0x300005] = DATA[0][5] = disc->Sector.ChNum;
+								memory[0x300006] = DATA[0][6] = disc->Sector.Submode;
+								memory[0x300007] = DATA[0][7] = disc->Sector.CodingInfo;
+								memory[0x300008] = DATA[0][8] = disc->Sector.FileNum;
+								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
+								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
+								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
+								for (int i = 0; i < 2340; i++)
 								{
-									DATA[0][i] = (disc->Sector.buffer[j] << 8) | disc->Sector.buffer[j+1];
+									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
 								}
 							}
 							XBUF |= 0x8000; // sector filled
@@ -162,6 +173,27 @@ public:
 							break;
 						case 0x2A:
 							MiniCDI::Log("[CDIC] read CD-i data (mode2) (0x%02X)", CMD);
+							disc->get_lba_from_time(TIME);
+							disc->read_sector();
+							{
+								memory[0x300000] = DATA[0][0] = disc->Sector.Min;
+								memory[0x300001] = DATA[0][1] = disc->Sector.Sec;
+								memory[0x300002] = DATA[0][2] = disc->Sector.Frame;
+								memory[0x300003] = DATA[0][3] = disc->Sector.Mode;
+								memory[0x300004] = DATA[0][4] = disc->Sector.FileNum;
+								memory[0x300005] = DATA[0][5] = disc->Sector.ChNum;
+								memory[0x300006] = DATA[0][6] = disc->Sector.Submode;
+								memory[0x300007] = DATA[0][7] = disc->Sector.CodingInfo;
+								memory[0x300008] = DATA[0][8] = disc->Sector.FileNum;
+								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
+								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
+								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
+								for (int i = 0; i < 2340; i++)
+								{
+									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
+								}
+							}
+							XBUF |= 0x8000; // sector filled
 							DBUF &= 0x7FFF;
 							break;
 						case 0x2B:

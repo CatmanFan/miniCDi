@@ -192,7 +192,30 @@ class Decoder
 	}
 
 	template <size_t Path>
-	bool isTransparent(uint32_t rgb)
+	uint8_t getCLUTindex(uint8_t* src, bool second = false)
+	{
+		switch (reg.Icm[Path]) {
+			default:
+				assert(0);
+				return 0;
+
+			case CLUT7:
+				return Path ? std::clamp(*src & 0x7F, 0, 127) + 128 : *src & 0x7F;
+
+			case CLUT77:
+				return Path == 0 && reg.IcmCS ? std::clamp(*src & 0x7F, 0, 127) + 128 : *src & 0x7F;
+
+			case CLUT8:
+				return *src;
+
+			case CLUT4:
+				return second ? (Path ? std::clamp(*src & 0x07, 0, 127) + 128 : *src & 0x07)
+							  : (Path ? std::clamp(*src >> 4 & 0x07, 0, 127) + 128 : *src >> 4 & 0x07);
+		}
+	}
+
+	template <size_t Path>
+	bool isTransparent(uint8_t* src)
 	{
 		switch (reg.Transparency[Path])
 		{
@@ -202,31 +225,41 @@ class Decoder
 			case TcrAlways:
 				return true;
 			case TcrIfCK:
-				return (rgb & 0x00FCFCFC) == reg.TransparentCol[Path] || (rgb & 0x00FCFCFC) == reg.MaskCol[Path];
+				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC))
+					|| ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.MaskCol[Path] & 0xFCFCFC));
 			case TcrIfTB:
-				return rgb & 0xFF000000;
+				return reg.Icm[Path] == RGB555 && Path && (*src & 0x8000);
 			case TcrIfMF0:
-				return !MF[0];
+				return MF[0];
 			case TcrIfMF1:
-				return !MF[1];
+				return MF[1];
 			case TcrIfCK_MF0:
-				return (rgb & 0x00FCFCFC) == reg.TransparentCol[Path] || (rgb & 0x00FCFCFC) == reg.MaskCol[Path] || !MF[0];
+				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC))
+					|| ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.MaskCol[Path] & 0xFCFCFC))
+					|| MF[0];
 			case TcrIfCK_MF1:
-				return (rgb & 0x00FCFCFC) == reg.TransparentCol[Path] || (rgb & 0x00FCFCFC) == reg.MaskCol[Path] || !MF[1];
+				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC))
+					|| ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.MaskCol[Path] & 0xFCFCFC))
+					|| MF[1];
 			case TcrNever:
 				return false;
 			case TcrIfNotCK:
-				return (rgb & 0x00FCFCFC) != reg.TransparentCol[Path] && (rgb & 0x00FCFCFC) != reg.MaskCol[Path];
+				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.TransparentCol[Path] & 0xFCFCFC))
+					&& ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.MaskCol[Path] & 0xFCFCFC));
 			case TcrIfNotTB:
-				return rgb != 0xFF000000;
+				return reg.Icm[Path] == RGB555 && Path && !(*src & 0x8000);
 			case TcrIfNotMF0:
-				return MF[0];
+				return !MF[0];
 			case TcrIfNotMF1:
-				return MF[1];
+				return !MF[1];
 			case TcrIfNotCK_MF0:
-				return (rgb & 0x00FCFCFC) != reg.TransparentCol[Path] && (rgb & 0x00FCFCFC) != reg.MaskCol[Path] && MF[0];
+				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.TransparentCol[Path] & 0xFCFCFC))
+					&& ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.MaskCol[Path] & 0xFCFCFC))
+					&& !MF[0];
 			case TcrIfNotCK_MF1:
-				return (rgb & 0x00FCFCFC) != reg.TransparentCol[Path] && (rgb & 0x00FCFCFC) != reg.MaskCol[Path] && MF[1];
+				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.TransparentCol[Path] & 0xFCFCFC))
+					&& ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.MaskCol[Path] & 0xFCFCFC))
+					&& !MF[1];
 		}
 	}
 
@@ -258,7 +291,7 @@ class Decoder
 		*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
 				(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
 				(b > 255 ? 255 : b < 0 ? 0 : b) << 8 |
-				(isTransparent<Path>(((*src & 0x8000) << 9) | (r << 16) | (g << 8) | b) ? 0 : 0xff));
+				0xFF);
 
 		return 1;
 	}
@@ -274,29 +307,14 @@ class Decoder
 	template <size_t Path>
 	uint32_t decodeCLUT(uint8_t* src, uint32_t *dst)
 	{
-		uint8_t index = 0;
 		switch (reg.Icm[Path]) {
 			default:
-				assert(0);
-				return 0;
-
-			case CLUT7:
-			case CLUT77:
-				index = Path && (*src & 0x7F) < 128 ? (*src & 0x7F) + 128 : *src & 0x7F;
-				*dst = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
-				return 1;
-
-			case CLUT8:
-				index = *src;
-				*dst = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
+				*dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | (isTransparent<Path>(src) ? 0 : 0xFF);
 				return 1;
 
 			case CLUT4:
-				index = Path && (*src >> 4 & 0x07) < 128 ? (*src >> 4 & 0x07) + 128 : *src >> 4 & 0x07;
-				*dst = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
-
-				index = Path && (*src & 0x07) < 128 ? (*src & 0x07) + 128 : *src & 0x07;
-				*(dst+1) = (reg.ColorCLUT[index] << 8) | (isTransparent<Path>(reg.ColorCLUT[index]) ? 0 : 0xff);
+				*dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | (isTransparent<Path>(src) ? 0 : 0xFF);
+				*(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | (isTransparent<Path>(src) ? 0 : 0xFF);
 				return 2;
 		}
 	}
@@ -336,81 +354,81 @@ public:
 
 		FG[0].decoded.assign(FG[0].width * FG[0].height, 0);
 		FG[1].decoded.assign(FG[1].width * FG[1].height, 0);
+
+		output.assign(FG[0].width * FG[0].height, 0);
 	}
 
 	/**
 	 * @brief  Mixes all planes to the framebuffer.
 	 */
-	void draw_frame()
+	void mix_to_frame(int y)
 	{
-		output.assign(FG[0].width * FG[0].height, 0);
-
-		#define PLANEA FG[reg.PlaneOrder ? 1 : 0]
-		#define PLANEB FG[reg.PlaneOrder ? 0 : 1]
+		#define PLANEA FG[reg.PlaneOrder ? 0 : 1]
+		#define PLANEB FG[reg.PlaneOrder ? 1 : 0]
 		#define GET_R(V) ((V) >> 24 & 0xFF)
 		#define GET_G(V) ((V) >> 16 & 0xFF)
 		#define GET_B(V) ((V) >> 8 & 0xFF)
 		#define GET_A(V) ((V) & 0xFF)
 
-		#define WF_MIX(V1, V2) std::clamp((int)(((V1-16.0f) * (float)reg.ICF[0]/64.0f) + ((V2-16.0f) * (float)reg.ICF[1]/64.0f) + 16.0f), 0, 255)
+		#define WF_MIX(V1, V2) std::clamp((int)((std::clamp(V1-16, 0, 255) * ((float)reg.ICF[reg.PlaneOrder ? 0 : 1]/64.0f)) \
+											  + (std::clamp(V2-16, 0, 255) * ((float)reg.ICF[reg.PlaneOrder ? 1 : 0]/64.0f)) \
+											  + 16.0f), 0, 255)
 
-		for (int y = 0; y < FG[0].height; y++) {
-			for (int x = 0; x < FG[0].width; x++) {
-				int outputPixel = (y*FG[0].width) + x;
+		#define WF_MIX_SINGLE(V1, WF) std::clamp((int)((std::clamp(V1-16, 0, 255) \
+											  * ((float)reg.ICF[WF ? (reg.PlaneOrder ? 1 : 0) : (reg.PlaneOrder ? 0 : 1)] \
+											  /64.0f) + 16.0f)), 0, 255)
 
-				uint8_t rA = GET_R(PLANEA.decoded[(y*PLANEA.width)+x]),
-						gA = GET_G(PLANEA.decoded[(y*PLANEA.width)+x]),
-						bA = GET_B(PLANEA.decoded[(y*PLANEA.width)+x]),
-						aA = GET_A(PLANEA.decoded[(y*PLANEA.width)+x]),
+		for (int x = 0; x < FG[0].width; x++) {
+			int PIXELA = (y*PLANEA.width) + x;
+			int PIXELB = (y*PLANEB.width) + x;
+			int outputPixel = ((FG[0].height == 240 ? y+20 : y)*FG[0].width) + x;
 
-						rB = GET_R(PLANEB.decoded[(y*PLANEB.width)+x]),
-						gB = GET_G(PLANEB.decoded[(y*PLANEB.width)+x]),
-						bB = GET_B(PLANEB.decoded[(y*PLANEB.width)+x]),
-						aB = GET_A(PLANEB.decoded[(y*PLANEB.width)+x]);
+			uint8_t rA = GET_R(PLANEA.decoded[PIXELA]),
+					gA = GET_G(PLANEA.decoded[PIXELA]),
+					bA = GET_B(PLANEA.decoded[PIXELA]),
+					aA = GET_A(PLANEA.decoded[PIXELA]),
 
-				// Mixing technique
-				if (((rA & 0xFC) || (gA & 0xFC) || (bA & 0xFC)) && ((rB & 0xFC) || (gB & 0xFC) || (bB & 0xFC)) && reg.Mixing) {
-					output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | (WF_MIX(aA, aB));
+					rB = GET_R(PLANEB.decoded[PIXELB]),
+					gB = GET_G(PLANEB.decoded[PIXELB]),
+					bB = GET_B(PLANEB.decoded[PIXELB]),
+					aB = GET_A(PLANEB.decoded[PIXELB]);
+
+			if (reg.Mixing) {
+				output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | 0xFF;
+			} else {
+				// Transparent, draw backdrop.
+				switch (reg.BackdropColor & 0x07) {
+					default: output[outputPixel] = 0x101010ff; break;
+					case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
+					case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
+					case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
+					case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
+					case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
+					case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
+					case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
 				}
 
-				// Overlay technique
-				else {
-					// Transparent, draw backdrop.
-					switch (reg.BackdropColor & 0x07) {
-						default: output[outputPixel] = 0x000000ff; break;
-						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
-						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
-						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
-						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
-						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
-						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
-						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
-					}
+				if ((PLANEA.decoded[PIXELA] & 0xFEFEFE00) && aA)
+					output[outputPixel] = PLANEA.decoded[PIXELA];
 
-					if (((rA & 0xFC) || (gA & 0xFC) || (bA & 0xFC)) && aA) {
-						output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | 0xFF;
-					}
+				if ((PLANEB.decoded[PIXELB] & 0xFEFEFE00) && aB)
+					output[outputPixel] = PLANEB.decoded[PIXELB];
+			}
 
-					if (((rB & 0xFC) || (gB & 0xFC) || (bB & 0xFC)) && aB) {
-						output[outputPixel] = (rB << 24) | (gB << 16) | (bB << 8) | 0xFF;
-					}
-				}
-
-				if (x >= reg.CursorPosition[0] && x < reg.CursorPosition[0]+16
-				 && y >= reg.CursorPosition[1] && y < reg.CursorPosition[1]+16
-				 && cursor[(y-reg.CursorPosition[1])*16 + (x-reg.CursorPosition[0])] != 0
-				 && reg.CursorEnable)
-				{
-					switch (reg.CursorColor & 0x07) {
-						default: output[outputPixel] = 0x000000ff; continue;
-						case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; continue;
-						case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; continue;
-						case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; continue;
-						case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; continue;
-						case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; continue;
-						case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; continue;
-						case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; continue;
-					}
+			if (x >= reg.CursorPosition[0] && x < reg.CursorPosition[0]+16
+			 && y >= reg.CursorPosition[1] && y < reg.CursorPosition[1]+16
+			 && cursor[(y-reg.CursorPosition[1])*16 + (x-reg.CursorPosition[0])] != 0
+			 && reg.CursorEnable)
+			{
+				switch (reg.CursorColor & 0x07) {
+					default: output[outputPixel] = 0x000000ff; continue;
+					case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; continue;
+					case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; continue;
+					case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; continue;
+					case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; continue;
+					case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; continue;
+					case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; continue;
+					case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; continue;
 				}
 			}
 		}
@@ -422,6 +440,7 @@ public:
 		#undef GET_B
 		#undef GET_A
 		#undef WF_MIX
+		#undef WF_MIX_SINGLE
 	}
 
 	/**
@@ -442,10 +461,10 @@ public:
 
 		for (int x = 0; x < FG[Path].width;)
 		{
-			matteCheck(FG[Path].width > 400 ? x*2 : x);
-
 			uint8_t* src = &memory[++vsr];
 			uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
+
+			matteCheck(FG[Path].width > 400 ? x*2 : x);
 
 			switch (reg.FT[Path]) {
 				default:
@@ -479,21 +498,20 @@ public:
 						default:
 						case CLUT4:
 						case CLUT7:
-							int length = 1;
 							if (*src & 0x80) {
-								length = *(src+1);
+								int length = *(src+1);
 								++vsr;
-							}
 
-							if (length == 0) {
-								while (x < FG[Path].width) {
-									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
-								}
-							} else {
-								for (int i = 0; i < length;) {
-									i += decodeCLUT<Path>(src, dst+i);
+								if (length != 1) {
+									if (length == 0)
+										length = FG[Path].width - x;
+									for (int i = 0; i < length;) {
+										i += decodeCLUT<Path>(src, dst+i);
+									}
 								}
 								x += length;
+							} else {
+								x += decodeCLUT<Path>(src, dst);
 							}
 							continue;
 					}
@@ -520,8 +538,8 @@ public:
 		{
 			default:
 				if ((inst >> 24 & 0xFF) >= 0x80u && (inst >> 24 & 0xFF) < 0xC0u) {
-					reg.ColorCLUT[(inst >> 24 & 0xFF) - 0x80u + (reg.BankCLUT * 0x40)] = inst & 0x00FFFFFFu;
-					//MiniCDI::Log("[DCA%d] color $%06x", Path, reg.ColorCLUT[(inst >> 24 & 0xFF) - 0x80u + (reg.BankCLUT * 0x40)]);
+					reg.ColorCLUT[(inst >> 24 & 0xFF) - 0x80u + (reg.BankCLUT * 64)] = inst & 0x00FFFFFFu;
+					//MiniCDI::Log("[DCA%d] color $%06x", Path, reg.ColorCLUT[(inst >> 24 & 0xFF) - 0x80u + (reg.BankCLUT * 64)]);
 				}
 				break;
 
@@ -534,8 +552,8 @@ public:
 			case 0x7e:
 			case 0x7f:
 				reg.FT[Path] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
-				reg.MF[Path] = (enum MosaicFactor)((inst & 0b1100u) >> 2);
-				reg.CM[Path] = (enum ColorMode)((inst & 0b100000000u) >> 8);
+				reg.MF[Path] = (enum MosaicFactor)(inst >> 2 & 0x03u);
+				reg.CM[Path] = (enum ColorMode)(inst >> 8 & 0x01u);
 				/*MiniCDI::Log("[DCA%d] dprm cm=%s,mf=%s,ft=%s", Path, reg.CM[Path] == Double4 ? "p4" : "p8",
 																reg.MF[Path] == x16 ? "x16" : reg.MF[Path] == x8 ? "x8"
 															  : reg.MF[Path] == x4 ? "x4" : "x2",
@@ -544,11 +562,11 @@ public:
 				break;
 
 			case 0xC0:
-				reg.IcmCS = (inst & 0x00400000u) >> 22;
-				reg.MatteCount = (inst & 0x00100000u) >> 19;
-				reg.ExternalVideo = (inst & 0x00080000u) >> 18;
-				reg.Icm[1] = (enum Icm)((inst & 0b111100000000u) >> 8);
-				reg.Icm[0] = (enum Icm)(inst & 0b1111u);
+				reg.IcmCS = inst >> 22 & 0x01u;
+				reg.MatteCount = inst >> 19 & 0x01u;
+				reg.ExternalVideo = inst >> 18 & 0x01u;
+				reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
+				reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
 				/*MiniCDI::Log("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s", Path,
 						  reg.IcmCS, reg.MatteCount, reg.ExternalVideo,
 						  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
@@ -559,29 +577,32 @@ public:
 				break;
 
 			case 0xC1:
-				if (!Path) reg.Transparency[0] = (enum Tcr)(inst & 0x0Fu);
-				if (!Path) reg.Transparency[1] = (enum Tcr)((inst & 0x0Fu) >> 8);
-				if (!Path) reg.Mixing = (inst & 0x00800000u) >> 23;
+				if (!Path) {
+					reg.Transparency[0] = (enum Tcr)(inst & 0x0Fu);
+					reg.Transparency[1] = (enum Tcr)(inst >> 8 & 0x0Fu);
+					reg.Mixing = inst & 0x00800000u ? 0 : 1;
+					//MiniCDI::Log("[DCA%d] tctl mx=%d,tca=%02d,tcb=%02d", Path, reg.Mixing, reg.Transparency[0], reg.Transparency[1]);
+				}
 				break;
 
 			case 0xC2:
 				if (!Path) reg.PlaneOrder = inst & 0x0Fu;
-				//MiniCDI::Log("[DCA%d] po %s", Path, reg.PlaneOrder ? "b,a" : "a,b");
+				//MiniCDI::Log("[DCA%d] po %s", Path, reg.PlaneOrder ? "a,b" : "b,a");
 				break;
 
 			case 0xC3:
-				reg.BankCLUT = inst & 0x0Fu;
+				reg.BankCLUT = inst & 0xFFu;
 				//MiniCDI::Log("[DCA%d] cbnk %d", Path, reg.BankCLUT);
 				break;
 
 			case 0xC4:
 			case 0xC6:
-				reg.TransparentCol[Path] = inst & 0x00FCFCFCu;
+				reg.TransparentCol[Path] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xC7:
 			case 0xC9:
-				reg.MaskCol[Path] = inst & 0x00FCFCFCu;
+				reg.MaskCol[Path] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xCA:
@@ -591,25 +612,32 @@ public:
 
 			case 0xCD: // channel 1
 				reg.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
-				reg.CursorPosition[1] = (inst >> 12) & 0x00000FFFu;
+				reg.CursorPosition[1] = inst >> 12 & 0x0FFFu;
 				//MiniCDI::Log("[DCA%d] cpos x=%d,y=%d", Path, reg.CursorPosition[0], reg.CursorPosition[1]);
 				break;
 
 			case 0xCE: // channel 1
-				reg.CursorColor = inst & 0x000000FFu;
-				reg.CursorRes = (inst >> 15) & 0x01u;
-				reg.CursorOffTime = (inst >> 16) & 0x07u;
-				reg.CursorOnTime = (inst >> 19) & 0x07u;
-				reg.CursorBlink = (inst >> 22) & 0x01u;
-				reg.CursorEnable = (inst >> 23) & 0x01u;
+				reg.CursorColor = inst & 0x0FFu;
+				reg.CursorRes = inst >> 15 & 0x01u;
+				reg.CursorOffTime = inst >> 16 & 0x07u;
+				reg.CursorOnTime = inst >> 19 & 0x07u;
+				reg.CursorBlink = inst >> 22 & 0x01u;
+				reg.CursorEnable = inst >> 23 & 0x01u;
+				/*MiniCDI::Log("[DCA%d] cctl en=%d,blkc=%d,con=%d,fon=%d,cuw=%d,y=%d,r=%d,g=%d,b=%d",
+								Path, reg.CursorEnable, reg.CursorBlink, reg.CursorOnTime, reg.CursorOffTime, reg.CursorRes,
+								reg.CursorColor & 0b1000u ? 1 : 0,
+								reg.CursorColor & 0b0100u ? 1 : 0,
+								reg.CursorColor & 0b0010u ? 1 : 0,
+								reg.CursorColor & 0b0001u ? 1 : 0);*/
 				break;
 
 			case 0xCF: // channel 1
 				reg.CursorPatternX = inst & 0x0000FFFFu;
-				reg.CursorPatternY = (inst >> 16) & 0x0Fu;
+				reg.CursorPatternY = inst >> 16 & 0x0Fu;
 				for (uint8_t x = 0; x < 16; x++) {
 					cursor[(reg.CursorPatternY*16)+x] = (reg.CursorPatternX >> (15-x) & 0x01) != 0 ? 0xFF : 0x00;
 				}
+				//MiniCDI::Log("[DCA%d] cpat %d,p=$%04X", Path, reg.CursorPatternY, reg.CursorPatternX);
 				break;
 
 			case 0xD0:
@@ -629,10 +657,10 @@ public:
 
 					if (!Matte.active[rIndex]) {
 						Matte.active[rIndex] = true;
-						Matte.X[rIndex] = inst & 0x000003FFu;
-						Matte.ICF[rIndex] = (inst & 0x0000FC00u) >> 10;
-						Matte.flag[rIndex] = reg.MatteCount ? rIndex >= 4 ? 1 : 0 : (inst & 0x00010000u) >> 16;
-						Matte.opcode[rIndex] = (inst & 0x00F80000u) >> 20;
+						Matte.X[rIndex] = inst & 0x3FFu;
+						Matte.ICF[rIndex] = inst >> 10 & 0x3Fu;
+						Matte.flag[rIndex] = reg.MatteCount ? rIndex >= 4 ? 1 : 0 : inst >> 16 & 0x01u;
+						Matte.opcode[rIndex] = inst >> 20 & 0x0Fu;
 						//if (inst & 0x00FFFFFF) MiniCDI::Log("[DCA%d] mc x=%d,wf=%d,f=%d,op=%01X", Path, Matte.X[rIndex], Matte.ICF[rIndex], Matte.flag[rIndex], Matte.opcode[rIndex]);
 					}
 				}
@@ -644,12 +672,13 @@ public:
 
 			case 0xD9:
 			case 0xDA:
-				reg.MosaicPixel[Path] = inst & 0x00FFFFFFu;
+				reg.MosaicPixel[Path] = inst & 0xFFu;
 				break;
 
 			case 0xDB:
 			case 0xDC:
 				reg.ICF[Path] = inst & 0x3Fu;
+				//if (reg.ICF[Path]) MiniCDI::Log("[DCA%d] wfac_%s %d", Path ? "b" : "a", reg.ICF[Path]);
 				break;
 		}
 	}

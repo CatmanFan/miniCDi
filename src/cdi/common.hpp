@@ -2,7 +2,7 @@
 #define MINICDI_COMMON
 
 #ifndef MINICDI_DEBUG
-#define MINICDI_DEBUG
+// #define MINICDI_DEBUG
 #endif
 
 // Macros

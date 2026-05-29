@@ -240,6 +240,7 @@ public:
 				// render line onto bitmap
 				VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
 				VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+				vdsc.mix_to_frame(line);
 			}
 
 			if (DC[0] && IC[0]) DCA_execute<0>();
@@ -253,10 +254,6 @@ public:
 			linesV = 0;
 			line = 0;
 			interlace = SM ? !interlace : false;
-
-			if (!skip_draw) {
-				vdsc.draw_frame();
-			}
 
 			return true;
 		}

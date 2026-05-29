@@ -52,6 +52,7 @@ class SCC68070
 public:
 	uint8_t fc; // used for FC/address space callback
 	friend class PointingDevice;
+	friend class CDIC;
 
 	SCC68070(uint8_t* memory) : memory(memory)
 	{

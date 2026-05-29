@@ -28,7 +28,7 @@ class CDiDisc
 		char Submode; // 0x01 = EOR, 0x02 = Video, 0x04 = Audio, 0x08 = Data, 0x10 = Trigger, 0x20 = Form, 0x40 = Real-Time Sector, 0x80 = EOF
 		char CodingInfo;
 
-		char Data[2340];
+		char Data[2328];
 	} Sector; // CD-i, not CD-DA*/
 
 	int lba = -1;
@@ -40,41 +40,33 @@ class CDiDisc
 
 	void get_lba_from_time(uint32_t time)
 	{
-		/** from MAME source code of CD-i driver **/
-		const uint8_t bcd_mins = (time >> 24) & 0xff;
-		const uint8_t mins_upper_digit = bcd_mins >> 4;
-		const uint8_t mins_lower_digit = bcd_mins & 0xf;
-		const uint8_t raw_mins = (mins_upper_digit * 10) + mins_lower_digit;
+		/** Copied from MAME source code of CD-i CDIC driver **/
+		Sector.Min = time >> 24 & 0xFF;
+		Sector.Sec = time >> 16 & 0xFF;
+		Sector.Frame = time >> 8 & 0xFF;
 
-		const uint8_t bcd_secs = (time >> 16) & 0xff;
-		const uint8_t secs_upper_digit = bcd_secs >> 4;
-		const uint8_t secs_lower_digit = bcd_secs & 0xf;
-		const uint8_t raw_secs = (secs_upper_digit * 10) + secs_lower_digit;
+		// Convert to raw mm:ss:ff
+		const uint8_t raw_min = ((Sector.Min >> 4) * 10) + (Sector.Min & 0xf);
+		const uint8_t raw_sec = ((Sector.Sec >> 4) * 10) + (Sector.Sec & 0xf);
 
-		lba = ((raw_mins * 60) + raw_secs) * 75;
-
-		const uint8_t bcd_frac = (time >> 8) & 0xff;
-		const bool even_second = bcd_frac & 0x80;
-		if (!even_second)
+		lba = ((raw_min * 60) + raw_sec) * 75;
+		if (!(Sector.Frame & 0x80))
 		{
-			const uint8_t frac_upper_digit = bcd_frac >> 4;
-			const uint8_t frac_lower_digit = bcd_frac & 0xf;
-			const uint8_t raw_frac = (frac_upper_digit * 10) + frac_lower_digit;
-			lba += raw_frac;
+			const uint8_t raw_frame = ((Sector.Frame >> 4) * 10) + (Sector.Frame & 0xf);
+			lba += raw_frame;
 		}
 
 		if (lba >= 150)
 			lba -= 150;
 
 		disc.clear();
-		disc.seekg(lba*2352 + 12, std::ios::beg);
+		disc.seekg(lba*2352, std::ios::beg);
 	}
 
 	void read_sector()
 	{
 		if (sector_valid()) {
-			// const uint32_t real_lba = lba + 150;
-
+			disc.seekg(12, std::ios::cur); // sync field
 			disc.get(Sector.Min);
 			disc.get(Sector.Sec);
 			disc.get(Sector.Frame);
@@ -85,9 +77,9 @@ class CDiDisc
 			disc.get(Sector.CodingInfo);
 			disc.seekg(4, std::ios::cur);
 
-			MiniCDI::Log("[Disc] sector read. time: %02d:%02d:%02d, mode: %02X", Sector.Min, Sector.Sec, Sector.Frame, Sector.Mode);
+			MiniCDI::Log("[Disc] sector read. time: %02X:%02X:%02X, mode: %02X", Sector.Min, Sector.Sec, Sector.Frame, Sector.Mode);
 			MiniCDI::Log("                    file: %d, ch: %d, submode: %02X, coding: %02X", Sector.FileNum, Sector.ChNum, Sector.Submode, Sector.CodingInfo);
-			disc.read(&Sector.Data[0], 2340);
+			disc.read(&Sector.Data[0], 2328);
 		}
 	}
 
@@ -105,7 +97,7 @@ public:
 
 	void increment_lba()
 	{
-		read_sector();
+		// read_sector();
 	}
 };
 

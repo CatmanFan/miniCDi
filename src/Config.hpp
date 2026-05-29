@@ -7,7 +7,7 @@ namespace MiniCDI
 	{
 		inline static bool TestPlug = false; // enables service menu
 		inline static bool PAL = true;
-		inline static bool ShowLCD = true;
+		inline static bool ShowLCD = false;
 		// inline static FILE* LogFile = nullptr;
 	}
 }

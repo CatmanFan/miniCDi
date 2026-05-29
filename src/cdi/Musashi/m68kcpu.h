@@ -477,6 +477,7 @@ typedef uint32 uint64;
 #if M68K_EMULATE_INT_ACK
 	#if M68K_EMULATE_INT_ACK == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_int_ack(A) M68K_INT_ACK_CALLBACK(A)
+		extern int m68ki_int_ack(int int_level);
 	#else
 		#define m68ki_int_ack(A) CALLBACK_INT_ACK(A)
 	#endif

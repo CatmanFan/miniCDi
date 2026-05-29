@@ -19,10 +19,15 @@ unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_
 unsigned int  m68k_read_disassembler_16(unsigned int address) { return m68k_read_memory_16(address); }
 unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read_memory_32(address); }
 
-void scc68070_set_fc(unsigned int new_fc) {
+void MiniCDI_set_fc(unsigned int new_fc) {
 	if (MiniCDI::Player.scc68070) {
 		MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
 	}
+}
+
+int  MiniCDI_int_ack_handler(int int_level) {
+	m68k_set_irq(0);
+	return MiniCDI::Player.cdic && int_level == 4 ? MiniCDI::Player.memory[0x303FFC] : M68K_INT_ACK_AUTOVECTOR;
 }
 
 unsigned int  m68k_read_memory_8(unsigned int address) {
@@ -58,7 +63,7 @@ void m68k_write_memory_8(unsigned int address, unsigned int value) {
 
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
 	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) MiniCDI::Player.mcd212->write16(address, value);
-	else if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.cdic->write16(address, value);
+	else if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.cdic->write16(address, value, MiniCDI::Player.scc68070);
 	else if (MiniCDI::Player.ciap && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.ciap->write16(address, value);
 	else {
 		m68k_write_memory_8(address, (uint8_t)(value >> 8 & 0x00FF));
@@ -67,7 +72,7 @@ void m68k_write_memory_16(unsigned int address, unsigned int value) {
 }
 
 void m68k_write_memory_32(unsigned int address, unsigned int value) {
-	if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.cdic->write32(address, value);
+	if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.cdic->write32(address, value, MiniCDI::Player.scc68070);
 	else {
 		m68k_write_memory_16(address, (uint16_t)(value >> 16 & 0x0000FFFF));
 		m68k_write_memory_16(address + 2, (uint16_t)(value & 0x0000FFFF));

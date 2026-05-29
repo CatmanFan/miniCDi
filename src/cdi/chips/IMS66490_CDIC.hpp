@@ -56,7 +56,7 @@ public:
 					uint16_t value = ABUF;
 					if ((ABUF & 0x8000) && (AUDCTL & 0x2000)) {
 						MiniCDI::Log("[CDIC] audio IRQ");
-						m68k_set_irq(2);
+						m68k_set_irq(4);
 					}
 					ABUF &= 0x7FFF;
 					return value;
@@ -66,7 +66,7 @@ public:
 					uint16_t value = XBUF;
 					if ((XBUF & 0x8000) && (DBUF & 0x4000)) {
 						MiniCDI::Log("[CDIC] sector IRQ");
-						m68k_set_irq(2);
+						m68k_set_irq(4);
 					}
 					XBUF &= 0x7FFF;
 					return value;
@@ -89,7 +89,7 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint16_t value)
+	void write16(uint32_t addr, uint16_t value, SCC68070* cpu)
 	{
 		switch (addr)
 		{
@@ -122,9 +122,13 @@ public:
 			case 0x303C80: MiniCDI::Log("[CDIC] DSEL <= %04X", value); DSEL = value; break;
 			case 0x303FF4: MiniCDI::Log("[CDIC] ABUF <= %04X", value); ABUF = value; break;
 			case 0x303FF6: MiniCDI::Log("[CDIC] XBUF <= %04X", value); XBUF = value; break;
-			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value); DMACTL = value; break;
+			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
+				{
+					DMACTL = value;
+				}
+				break;
 			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value; break;
-			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); IVEC = value; break;
+			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); memory[addr] = IVEC = value; break;
 			case 0x303FFE: MiniCDI::Log("[CDIC] DBUF <= %04X", value); DBUF = value;
 				if (DBUF & 0x8000)
 				{
@@ -136,6 +140,26 @@ public:
 							break;
 						case 0x24:
 							MiniCDI::Log("[CDIC] stop reading (0x%02X)", CMD);
+							disc->read_sector();
+							{
+								memory[0x300000] = DATA[0][0] = disc->Sector.Min;
+								memory[0x300001] = DATA[0][1] = disc->Sector.Sec;
+								memory[0x300002] = DATA[0][2] = disc->Sector.Frame;
+								memory[0x300003] = DATA[0][3] = disc->Sector.Mode;
+								memory[0x300004] = DATA[0][4] = disc->Sector.FileNum;
+								memory[0x300005] = DATA[0][5] = disc->Sector.ChNum;
+								memory[0x300006] = DATA[0][6] = disc->Sector.Submode;
+								memory[0x300007] = DATA[0][7] = disc->Sector.CodingInfo;
+								memory[0x300008] = DATA[0][8] = disc->Sector.FileNum;
+								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
+								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
+								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
+								for (int i = 0; i < 2328; i++)
+								{
+									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
+								}
+								MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
+							}
 							DBUF &= 0x7FFF;
 							break;
 						case 0x27:
@@ -147,7 +171,6 @@ public:
 							DBUF &= 0x7FFF;
 							break;
 						case 0x29:
-							MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
 							disc->get_lba_from_time(TIME);
 							disc->read_sector();
 							{
@@ -163,16 +186,16 @@ public:
 								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
 								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
 								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
-								for (int i = 0; i < 2340; i++)
+								for (int i = 0; i < 2328; i++)
 								{
 									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
 								}
+								MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
 							}
 							XBUF |= 0x8000; // sector filled
 							DBUF &= 0x7FFF;
 							break;
 						case 0x2A:
-							MiniCDI::Log("[CDIC] read CD-i data (mode2) (0x%02X)", CMD);
 							disc->get_lba_from_time(TIME);
 							disc->read_sector();
 							{
@@ -188,10 +211,11 @@ public:
 								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
 								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
 								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
-								for (int i = 0; i < 2340; i++)
+								for (int i = 0; i < 2328; i++)
 								{
 									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
 								}
+								MiniCDI::Log("[CDIC] read CD-i data (mode2) (0x%02X)", CMD);
 							}
 							XBUF |= 0x8000; // sector filled
 							DBUF &= 0x7FFF;
@@ -214,13 +238,13 @@ public:
 		}
 	}
 
-	void write32(uint32_t addr, uint32_t value)
+	void write32(uint32_t addr, uint32_t value, SCC68070* cpu)
 	{
 		switch (addr)
 		{
 			default:
-				write16(addr, value >> 16 & 0xFFFF);
-				write16(addr+2, value & 0xFFFF);
+				write16(addr, value >> 16 & 0xFFFF, cpu);
+				write16(addr+2, value & 0xFFFF, cpu);
 				break;
 
 			case 0x303C02: MiniCDI::Log("[CDIC] TIME <= %08X", value); TIME = value; break;

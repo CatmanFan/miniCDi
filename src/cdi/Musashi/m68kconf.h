@@ -108,8 +108,8 @@
  * auto-clear when the interrupt is serviced.
  */
 #ifndef M68K_EMULATE_INT_ACK
-#define M68K_EMULATE_INT_ACK        M68K_OPT_OFF
-#define M68K_INT_ACK_CALLBACK(A)    your_int_ack_handler_function(A)
+#define M68K_EMULATE_INT_ACK        M68K_OPT_SPECIFY_HANDLER
+#define M68K_INT_ACK_CALLBACK(A)    MiniCDI_int_ack_handler(A)
 #endif
 
 
@@ -198,7 +198,7 @@
  */
 #ifndef M68K_EMULATE_FC
 #define M68K_EMULATE_FC             M68K_OPT_SPECIFY_HANDLER
-#define M68K_SET_FC_CALLBACK(A)     scc68070_set_fc(A)
+#define M68K_SET_FC_CALLBACK(A)     MiniCDI_set_fc(A)
 #endif
 
 /* If ON, CPU will call the pc changed callback when it changes the PC by a

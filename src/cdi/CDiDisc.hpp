@@ -68,7 +68,7 @@ class CDiDisc
 	void read_sector(int lba = -1)
 	{
 		if (sector_valid()) {
-			if (lba >= 0) { disc.seekg(lba*2352, std::ios::beg); }
+			if (lba >= 0) { this->lba = lba; disc.seekg(lba*2352, std::ios::beg); }
 
 			disc.seekg(12, std::ios::cur); // sync field
 			disc.get(Sector.Min);

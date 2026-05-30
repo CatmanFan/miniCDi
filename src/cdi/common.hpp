@@ -1,19 +1,6 @@
 #ifndef MINICDI_COMMON
 #define MINICDI_COMMON
 
-#ifndef MINICDI_DEBUG
-#define MINICDI_DEBUG
-#endif
-
-// Macros
-#define WRITE8(x, l, v)		x[l] = (uint8_t)(v) & 0x00FF;
-#define WRITE16(x, l, v)	x[l] = ((uint16_t)(v) >> 8) & 0xFF; \
-							x[l+1] = (uint16_t)(v) & 0xFF;
-#define WRITE32(x, l, v)	x[l] = ((uint32_t)(v) >> 24) & 0xFF; \
-							x[l+1] = ((uint32_t)(v) >> 16) & 0xFF; \
-							x[l+2] = ((uint32_t)(v) >> 8) & 0xFF; \
-							x[l+3] = (uint32_t)(v) & 0xFF;
-
 // Libraries
 #include <cstdio>
 #include <cstdlib>

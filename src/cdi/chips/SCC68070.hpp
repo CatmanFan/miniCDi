@@ -40,6 +40,60 @@ class SCC68070
 		uint8_t CPR;
 	} DMA[2];
 
+	void dma_call(size_t index, uint32_t start_address)
+	{
+		if (DMA[index].CCR & 0x80) {
+			DMA[index].CCR &= ~0x80; // START unset
+			DMA[index].CSR |= 0x08; // Channel Active set
+			DMA[index].CSR &= ~0xA0; // COC and NDT unset
+
+			if (index == 1) start_address = DMA[1].DAC & 0x00FFFFFF;
+			// if (index == 0 && (DMA[index].OCR & 0x80)) DMA[index].MAC /= 2;
+
+			MiniCDI::Log("[SCC68070:DMA%d] transferring %d %s %s $%08X %s $%08X", index+1,
+						 DMA[index].MTC,
+						 DMA[index].OCR & 0x10 ? "words" : "bytes",
+						 DMA[index].OCR & 0x80 ? "from" : "to",
+						 start_address,
+						 DMA[index].OCR & 0x80 ? "to" : "from",
+						 DMA[index].MAC & 0x00FFFFFF);
+
+			while (DMA[index].MTC > 0) {
+				if (DMA[index].CCR & 0x10) {
+					// MiniCDI::Log("[SCC68070:DMA%d] transfer aborted", index+1);
+					DMA[index].CSR |= 0x90; // COC and ERR set
+					DMA[index].CSR &= ~0x08; // Channel Active unset
+					DMA[index].CER = 0b10001u; // Abort Error
+					return;
+				}
+
+				if (DMA[index].OCR & 0x80) {
+					if (DMA[index].OCR & 0x10)
+						m68k_write_memory_16(DMA[index].MAC, memory[start_address]);
+					else
+						m68k_write_memory_8(DMA[index].MAC, memory[start_address]);
+				}
+
+				if (index == 1 && (DMA[index].SCR & 0x04)) {
+					start_address += DMA[index].OCR & 0x10 ? 2 : 1;
+					DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
+					DMA[index].DAC += DMA[index].OCR & 0x10 ? 2 : 1;
+				} else if (index == 0) {
+					start_address += DMA[index].OCR & 0x10 ? 2 : 1;
+					DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
+				}
+				DMA[index].MTC--;
+			}
+
+			DMA[index].CSR &= ~0x08; // Channel Active unset
+			DMA[index].CSR |= 0x80; // COC set
+
+			if (DMA[index].CCR & 0x08) {
+				m68k_set_irq((DMA[index].CCR & 0x07) + 32);
+			}
+		}
+	}
+
 	/** I²C **/
 	uint8_t IDR;
 	uint8_t IAR;
@@ -105,7 +159,7 @@ public:
 		int level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx});
 
 		if (level > 0) {
-			//MiniCDI::Log("[SCC68070] INT%dN lvl %d", ch, level);
+			//MiniCDI::Log("[SCC68070] on-chip INT%dN lvl %d", ch, level);
 
 			m68k_set_irq(level + 32);
 		}
@@ -216,15 +270,15 @@ public:
 				{
 					case 0x20: // reset receiver
 						URH = 0;
-						//MiniCDI::Log("[UART] UCR %02X (reset URH)", value);
+						//MiniCDI::Log("[SCC68070:UART] UCR %02X (reset URH)", value);
 						break;
 					case 0x30: // reset transmitter
 						UTH = 0; USR |= 0x08;
-						//MiniCDI::Log("[UART] UCR %02X (reset UTH)", value);
+						//MiniCDI::Log("[SCC68070:UART] UCR %02X (reset UTH)", value);
 						break;
 					case 0x40: // reset error status
 						USR &= 0x0F;
-						//MiniCDI::Log("[UART] UCR %02X (reset error)", value);
+						//MiniCDI::Log("[SCC68070:UART] UCR %02X (reset error)", value);
 						break;
 				}
 				break;
@@ -254,7 +308,7 @@ public:
 				break;
 
 			/** DMA (ch1) **/
-			case 0x80004000: DMA[0].CSR = value; break;
+			case 0x80004000: DMA[0].CSR = (DMA[0].CSR & 0x08) | (value & 0xF7); break;
 			case 0x80004001: DMA[0].CER = value; break; // cannot be written per datasheet
 			case 0x80004004: DMA[0].DCR = value; break;
 			case 0x80004005: DMA[0].OCR = value; break;
@@ -272,7 +326,7 @@ public:
 			case 0x80004017: DMA[0].DAC &= 0xFFFFFF00; DMA[0].DAC |= value; break;
 
 			/** DMA (ch2) **/
-			case 0x80004040: DMA[1].CSR = value; break;
+			case 0x80004040: DMA[1].CSR = (DMA[1].CSR & 0x08) | (value & 0xF7); break;
 			case 0x80004041: DMA[1].CER = value; break; // cannot be written per datasheet
 			case 0x80004044: DMA[1].DCR = value; break;
 			case 0x80004045: DMA[1].OCR = value; break;
@@ -295,7 +349,7 @@ public:
 	{
 		if (T[0] == 0xFFFF)
 		{
-			//MiniCDI::Log("[Timer] T0 overflow");
+			//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
 			TSR |= 0x80; // OV in T0
 			T[0] = RR;
 			interrupt(0);
@@ -315,7 +369,7 @@ public:
 			if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
 				char text[192];
 				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-				fprintf(MiniCDI::Config::LogFile, "[CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+				fprintf(MiniCDI::Config::LogFile, "[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
 				// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 			}
 		} else {

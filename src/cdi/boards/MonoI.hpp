@@ -27,19 +27,17 @@ public:
 
 	inline void do_frame(bool draw = true) override {
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
+		int loops = 0;
 		while (1)
 		{
-			for (uint8_t loops1 = 0; loops1 < 208; loops1++) {
-				for (uint8_t loops2 = 0; loops2 < 10; loops2++) {
-					cpu.run(96);
-					cpu.tick_timer();
-				}
-				if (vpu->tick(!draw)) goto end;
-			}
-			cdic->tick();
+			cpu.run(96);
+			cpu.tick_timer();
+
+			loops++;
+			if (loops % 10 == 0) { if (vpu->tick(!draw)) break; }
+			if (loops % 1100 == 0) { cdic->tick(); } // 1100 is arbitrary number, should check how many cycles is equal to a sector tick
 		}
 
-		end:
 		// Update LCD display
 		lcd.update_SLAVE(slave);
 		pd.send();

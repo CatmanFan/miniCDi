@@ -291,10 +291,10 @@ class Decoder
 
 	/**
 	 * @brief  Decodes CLUT to an RGB pixel.
-	 * 
+	 *
 	 * @param  src:  pointer to the VSR buffer
 	 * @param  dst:  pointer to the uint32_t pixel
-	 * 
+	 *
 	 * @return The number of RGB pixels incremented
 	 */
 	template <size_t Path>
@@ -435,10 +435,10 @@ public:
 
 	/**
 	 * @brief  Draws a VSR line to a plane.
-	 * 
+	 *
 	 * @param  vsr:  memory index for the start of the VSR
 	 * @param  y:    the line
-	 * 
+	 *
 	 * @return The incremented VSR
 	 */
 	template <size_t Path>

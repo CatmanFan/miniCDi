@@ -62,32 +62,34 @@ public:
 			}
 
 			disc->read_sector(DiscStatus.LBA);
-			{
-				DBUF ^= 0x0001; // from MAME
-				DBUF &= ~0x0004; // from MAME
 
-				DATA[DBUF & 0x01][0] = disc->Sector.Min;
-				DATA[DBUF & 0x01][1] = disc->Sector.Sec;
-				DATA[DBUF & 0x01][2] = disc->Sector.Frame;
-				DATA[DBUF & 0x01][3] = disc->Sector.Mode;
-				DATA[DBUF & 0x01][4] = disc->Sector.FileNum;
-				DATA[DBUF & 0x01][5] = disc->Sector.ChNum;
-				DATA[DBUF & 0x01][6] = disc->Sector.Submode;
-				DATA[DBUF & 0x01][7] = disc->Sector.CodingInfo;
-				DATA[DBUF & 0x01][8] = disc->Sector.FileNum;
-				DATA[DBUF & 0x01][9] = disc->Sector.ChNum;
-				DATA[DBUF & 0x01][10] = disc->Sector.Submode;
-				DATA[DBUF & 0x01][11] = disc->Sector.CodingInfo;
-				for (int i = 0; i < 2328; i++) {
-					DATA[DBUF & 0x01][12+i] = disc->Sector.Data[i];
-				}
+			DBUF ^= 0x0001; // from MAME
+			DBUF &= ~0x0004; // from MAME
+
+			memory[0x300000 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][0] = disc->Sector.Min;
+			memory[0x300001 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][1] = disc->Sector.Sec;
+			memory[0x300002 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][2] = disc->Sector.Frame;
+			memory[0x300003 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][3] = disc->Sector.Mode;
+			memory[0x300004 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][4] = disc->Sector.FileNum;
+			memory[0x300005 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][5] = disc->Sector.ChNum;
+			memory[0x300006 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][6] = disc->Sector.Submode;
+			memory[0x300007 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][7] = disc->Sector.CodingInfo;
+			memory[0x300008 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][8] = disc->Sector.FileNum;
+			memory[0x300009 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][9] = disc->Sector.ChNum;
+			memory[0x30000A + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][10] = disc->Sector.Submode;
+			memory[0x30000B + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][11] = disc->Sector.CodingInfo;
+			for (int i = 0; i < 2328; i++) {
+				memory[0x30000C+i + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][12+i] = disc->Sector.Data[i];
 			}
+			// MiniCDI::Log("[CDIC] $%04X <= %02X:%02X:%02X", (DBUF & 0x01)*0xA00, memory[0x300000 + ((DBUF & 0x01)*0xA00)],
+																				// memory[0x300001 + ((DBUF & 0x01)*0xA00)],
+																				// memory[0x300002 + ((DBUF & 0x01)*0xA00)]);
+
 			XBUF |= 0x8000; // sector filled for processing
 			DBUF |= 0x4000;
 			m68k_set_irq(4);
 
-			if (DiscStatus.cmd == 0)
-			{
+			if (DiscStatus.cmd == 0) {
 				disc_stop_read();
 				return;
 			}
@@ -199,7 +201,7 @@ public:
 
 			case 0x303C00: CMD = value;
 			case 0x303C02: // This is actually the command register??
-				/*MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value);*/ TIME &= 0x00FF; TIME |= (value << 16); break; 
+				/*MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value);*/ TIME &= 0x00FF; TIME |= (value << 16); break;
 			case 0x303C04: /*MiniCDI::Log("[CDIC] TIME (lower) <= %04X", value);*/ TIME &= 0xFF00; TIME |= value; break;
 			case 0x303C06: MiniCDI::Log("[CDIC] FILE <= %04X", value); FILE = value; break;
 			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) <= %04X", value); CHAN &= 0x00FF; CHAN |= (value << 16); break;
@@ -208,7 +210,9 @@ public:
 			case 0x303C80: MiniCDI::Log("[CDIC] DSEL <= %04X", value); DSEL = value; break;
 			case 0x303FF4: MiniCDI::Log("[CDIC] ABUF <= %04X", value); ABUF = value; break;
 			case 0x303FF6: MiniCDI::Log("[CDIC] XBUF <= %04X", value); XBUF = value; break;
-			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value); DMACTL = value; break;
+			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value); DMACTL = value;
+				if (value & 0x8000) cpu->dma_call(0, 0x300000 + (value & 0x3FFF));
+				break;
 			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value; break;
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); memory[addr] = IVEC = value; break;
 			case 0x303FFE: MiniCDI::Log("[CDIC] DBUF <= %04X", value); DBUF = value;

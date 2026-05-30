@@ -133,7 +133,8 @@ static void RUN_CDI(const std::string &biosName)
 
 	cdi.Init(appPath + "rom/" + biosName + ".rom");
 	if (access((appPath + "DEBUGCTL.BIN").c_str(), F_OK) == 0) {
-		cdi.disc.open(appPath + "DEBUGCTL.BIN");
+		cdi.disc.open(appPath + "BADAPPLE.BIN");
+		// cdi.disc.open(appPath + "DEBUGCTL.BIN");
 	}
 
 	#ifndef MINICDI_DEBUG
@@ -185,7 +186,7 @@ static void RUN_CDI(const std::string &biosName)
 			#ifdef MINICDI_DEBUG
 			VIDEO_WaitVSync();
 			#else
-			screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : NULL);
+			screen.update(cdi.get_display(), cdi.get_display_width(), NULL);
 			#endif
 		}
 	}

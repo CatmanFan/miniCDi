@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
 	printf("Loading CDi 220 bios\n");
 
 	// Check for BIOS
-	if (access("romfs:/cdi220b.rom", F_OK) != 0) {
+	if (access("sdmc:/3ds/miniCDi/rom/cdi220b.rom", F_OK) != 0) {
 		printf("BIOS not found, exiting");
 		sleep(5);
 		exit(0);
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
 
 	EmulatorWindow cdiScreen(384,280);
 	MonoI cdi;
-	cdi.Init("romfs:/cdi220b.rom");
+	cdi.Init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
 	// MonoIV cdi;
 
     bool has_quit = false;
@@ -135,17 +135,12 @@ int main(int argc, char* argv[])
 
 		// Ensure that drawing is done at 30fps
 		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
 		cdi.do_frame(true);
 		cdiScreen.Update(cdi.get_display(), cdi.get_display_width());
 
 		C3D_FrameBegin(C3D_FRAME_NONBLOCK);
 		C2D_TargetClear(top, C2D_Color32(0x00, 0x00, 0x00, 0xFF));
 		C2D_SceneBegin(top);
-
-		// Use the top screen
-		// C3D_FrameDrawOn(top);
 
 		cdiScreen.Draw();
 
@@ -155,6 +150,8 @@ int main(int argc, char* argv[])
 	// if (config.log)
 		// fclose(config.log);
 
+	/// TO-DO: Properly free memory to prevent crash on exit.
+	///        Address slowdown when CD-i screen display is enabled.
 	C2D_Fini();
 	C3D_Fini();
 	gfxExit();

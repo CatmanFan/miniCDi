@@ -217,6 +217,9 @@ class Decoder
 	template <size_t Path>
 	bool isTransparent(uint8_t* src)
 	{
+		bool ColorKey = (reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC)
+					 || (reg.MaskCol[Path] & 0xFCFCFC);
+
 		switch (reg.Transparency[Path])
 		{
 			default:
@@ -225,8 +228,7 @@ class Decoder
 			case TcrAlways:
 				return true;
 			case TcrIfCK:
-				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC))
-					|| ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.MaskCol[Path] & 0xFCFCFC));
+				return ColorKey;
 			case TcrIfTB:
 				return reg.Icm[Path] == RGB555 && Path && (*src & 0x8000);
 			case TcrIfMF0:
@@ -234,18 +236,13 @@ class Decoder
 			case TcrIfMF1:
 				return MF[1];
 			case TcrIfCK_MF0:
-				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC))
-					|| ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.MaskCol[Path] & 0xFCFCFC))
-					|| MF[0];
+				return ColorKey || MF[0];
 			case TcrIfCK_MF1:
-				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC))
-					|| ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.MaskCol[Path] & 0xFCFCFC))
-					|| MF[1];
+				return ColorKey || MF[1];
 			case TcrNever:
 				return false;
 			case TcrIfNotCK:
-				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.TransparentCol[Path] & 0xFCFCFC))
-					&& ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.MaskCol[Path] & 0xFCFCFC));
+				return !ColorKey;
 			case TcrIfNotTB:
 				return reg.Icm[Path] == RGB555 && Path && !(*src & 0x8000);
 			case TcrIfNotMF0:
@@ -253,13 +250,9 @@ class Decoder
 			case TcrIfNotMF1:
 				return !MF[1];
 			case TcrIfNotCK_MF0:
-				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.TransparentCol[Path] & 0xFCFCFC))
-					&& ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.MaskCol[Path] & 0xFCFCFC))
-					&& !MF[0];
+				return !ColorKey && !MF[0];
 			case TcrIfNotCK_MF1:
-				return ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.TransparentCol[Path] & 0xFCFCFC))
-					&& ((reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) != (reg.MaskCol[Path] & 0xFCFCFC))
-					&& !MF[1];
+				return !ColorKey && !MF[1];
 		}
 	}
 
@@ -309,12 +302,12 @@ class Decoder
 	{
 		switch (reg.Icm[Path]) {
 			default:
-				*dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | (isTransparent<Path>(src) ? 0 : 0xFF);
+				if (!isTransparent<Path>(src)) *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
 				return 1;
 
 			case CLUT4:
-				*dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | (isTransparent<Path>(src) ? 0 : 0xFF);
-				*(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | (isTransparent<Path>(src) ? 0 : 0xFF);
+				if (!isTransparent<Path>(src)) *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
+				if (!isTransparent<Path>(src)) *(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
 				return 2;
 		}
 	}
@@ -396,23 +389,23 @@ public:
 			if (reg.Mixing) {
 				output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | 0xFF;
 			} else {
-				// Transparent, draw backdrop.
-				switch (reg.BackdropColor & 0x07) {
-					default: output[outputPixel] = 0x101010ff; break;
-					case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
-					case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
-					case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
-					case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
-					case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
-					case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
-					case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
+				if (PLANEB.decoded[PIXELB])
+					output[outputPixel] = (WF_MIX_SINGLE(rB, 1) << 24) | (WF_MIX_SINGLE(gB, 1) << 16) | (WF_MIX_SINGLE(bB, 1) << 8) | 0xFF;
+				else if (PLANEA.decoded[PIXELA])
+					output[outputPixel] = (WF_MIX_SINGLE(rA, 0) << 24) | (WF_MIX_SINGLE(gA, 0) << 16) | (WF_MIX_SINGLE(bA, 0) << 8) | 0xFF;
+				else {
+					// Transparent, draw backdrop.
+					switch (reg.BackdropColor & 0x07) {
+						default: output[outputPixel] = 0x101010ff; break;
+						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
+						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
+						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
+						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
+						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
+						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
+						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
+					}
 				}
-
-				if ((PLANEA.decoded[PIXELA] & 0xFEFEFE00) && aA)
-					output[outputPixel] = PLANEA.decoded[PIXELA];
-
-				if ((PLANEB.decoded[PIXELB] & 0xFEFEFE00) && aB)
-					output[outputPixel] = PLANEB.decoded[PIXELB];
 			}
 
 			if (x >= reg.CursorPosition[0] && x < reg.CursorPosition[0]+16

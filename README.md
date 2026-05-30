@@ -1,20 +1,14 @@
 # miniCDi
 An experimental Philips CD-i emulator for the Wii and 3DS. Currently only supports the Mono-I 220/20 player revision, with partial support for Mono-IV boards.
 
-## Includes
-- [X] VDSC (experimental)
-- [X] Pointer Device (experimental)
-### Master CPU
-- [X] SCC68070 (Mini-MMC, Maxi-MMC, Mono-I, Mono-II, Mono-III, Mono-IV and Robocon)
-### Video
-- [X] MCD212 (Mono-I, Mono-II, Mono-III, Mono-IV and Robocon)
-### CD+Audio
-- [ ] CDIC (Mini-MMC, Maxi-MMC and Mono-I)
-- [ ] DSP (Mono-II)
-- [ ] CIAP (Mono-III, Mono-IV and Robocon)
-### Microcontrollers
-- [X] SLAVE (Mini-MMC, Maxi-MMC, Mono-I and Mono-II)
-- [ ] IKAT (Mono-III, Mono-IV and Robocon)
+## Compatibility
+
+| Board | CPU | Video | CD+Audio | Microcont. | Pointer Device |
+|-------|-----|-------|----------|------------|----------------|
+| Mini-MMC, Maxi-MMC | :heavy_check_mark: (SCC68070) | :x: (VSC + VSD) | :x: (CDIC) | :heavy_check_mark: (SLAVE) | :heavy_check_mark: |
+| Mono-I | :heavy_check_mark: (SCC68070) | :heavy_check_mark: (MCD212) | :x: (CDIC) | :heavy_check_mark: (SLAVE) | :heavy_check_mark: |
+| Mono-II | :heavy_check_mark: (SCC68070) | :heavy_check_mark: (MCD212) | :x: (DSP) | :heavy_check_mark: (SLAVE) | :heavy_check_mark: |
+| Mono-III, Mono-IV, Robocon | :heavy_check_mark: (SCC68070) | :heavy_check_mark: (MCD212) | :x: (CIAP) | :x: (IKAT) | :x: |
 
 ## To-Do
 - [ ] Proper reset sequence

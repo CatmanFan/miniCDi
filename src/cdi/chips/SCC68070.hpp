@@ -47,8 +47,6 @@ class SCC68070
 	uint8_t ICR;
 	uint8_t ICCR;
 
-	uint32_t romPC, romSP;
-
 public:
 	uint8_t fc; // used for FC/address space callback
 	friend class PointingDevice;
@@ -76,8 +74,6 @@ public:
 
 		memcpy(&memory[0], &rom[0], 0x8); // contains initial SSP and PC
 		memcpy(&memory[romAddr], &rom[0], 512*1024*sizeof(char));
-		romSP = READ32(memory, 0);
-		romPC = READ32(memory, 4);
 	}
 
 	void reset()
@@ -87,8 +83,6 @@ public:
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
 		m68k_pulse_reset();
-		m68k_set_reg(M68K_REG_SP, romSP);
-		m68k_set_reg(M68K_REG_PC, romPC);
 
 		UMR = 0x20; // unused bit
 		USR = 0b0000'0110; // TX ready and unused bit

@@ -6,6 +6,9 @@
 #include "os9/os9mmod.hpp"
 #include "os9/os9trap.hpp"
 
+#define READ16(x, l)		(uint16_t)((x[l] << 8) | x[l+1])
+#define READ32(x, l)		(uint32_t)((x[l] << 24) | (x[l+1] << 16) | (x[l+2] << 8) | x[l+3])
+
 namespace OS9
 {
 	enum ModuleType : uint8_t

@@ -232,13 +232,13 @@ class Decoder
 			case TcrIfTB:
 				return reg.Icm[Path] == RGB555 && Path && (*src & 0x8000);
 			case TcrIfMF0:
-				return MF[0];
+				return !MF[0];
 			case TcrIfMF1:
-				return MF[1];
+				return !MF[1];
 			case TcrIfCK_MF0:
-				return ColorKey || MF[0];
+				return ColorKey || !MF[0];
 			case TcrIfCK_MF1:
-				return ColorKey || MF[1];
+				return ColorKey || !MF[1];
 			case TcrNever:
 				return false;
 			case TcrIfNotCK:
@@ -246,13 +246,13 @@ class Decoder
 			case TcrIfNotTB:
 				return reg.Icm[Path] == RGB555 && Path && !(*src & 0x8000);
 			case TcrIfNotMF0:
-				return !MF[0];
+				return MF[0];
 			case TcrIfNotMF1:
-				return !MF[1];
+				return MF[1];
 			case TcrIfNotCK_MF0:
-				return !ColorKey && !MF[0];
+				return !ColorKey && MF[0];
 			case TcrIfNotCK_MF1:
-				return !ColorKey && !MF[1];
+				return !ColorKey && MF[1];
 		}
 	}
 
@@ -379,12 +379,9 @@ public:
 			uint8_t rA = GET_R(PLANEA.decoded[PIXELA]),
 					gA = GET_G(PLANEA.decoded[PIXELA]),
 					bA = GET_B(PLANEA.decoded[PIXELA]),
-					aA = GET_A(PLANEA.decoded[PIXELA]),
-
 					rB = GET_R(PLANEB.decoded[PIXELB]),
 					gB = GET_G(PLANEB.decoded[PIXELB]),
-					bB = GET_B(PLANEB.decoded[PIXELB]),
-					aB = GET_A(PLANEB.decoded[PIXELB]);
+					bB = GET_B(PLANEB.decoded[PIXELB]);
 
 			if (reg.Mixing) {
 				output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | 0xFF;
@@ -510,7 +507,7 @@ public:
 					}
 
 				case Mosaic:
-					// to-do
+					// TO-DO
 					// reg.ICF[Path] /= 2;
 					assert(0);
 					continue;

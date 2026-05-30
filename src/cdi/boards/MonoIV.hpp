@@ -29,17 +29,17 @@ public:
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		while (1)
 		{
-			for (uint8_t cycles = 0; cycles < 10; cycles++) {
+			for (uint8_t cycles = 0; cycles < 20; cycles++) {
 				cpu.run(96);
 				cpu.tick_timer();
 			}
-			ciap->set_isr(0x09);
 			if (vpu->tick(!draw)) break;
 		}
 
 		// Update LCD display
 		lcd.update_IKAT(ikat);
 		pd.send();
+		disc.increment_lba();
 	}
 
 	inline void reset() override {

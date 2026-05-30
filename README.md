@@ -1,11 +1,11 @@
 # miniCDi
-An experimental Philips CD-i emulator for the Wii and 3DS. Currently only supports Mono-I and Mono-IV boards.
-
-Aims to support Mono-I, Mono-III, Mono-IV (incl. Robocon) boards. Support for third-party boards which do not use the SCC68070 processor is not planned.
+An experimental Philips CD-i emulator for the Wii and 3DS. Currently only supports the Mono-I 220/20 player revision, with partial support for Mono-IV boards.
 
 ## Includes
-- [ ] VDSC (experimental)
+- [X] VDSC (experimental)
 - [X] Pointer Device (experimental)
+- Master CPU:
+  - [X] SCC68070 (Mini-MMC, Maxi-MMC, Mono-I, Mono-II, Mono-III, Mono-IV and Robocon)
 - Video:
   - [X] MCD212
 - CD+Audio:
@@ -17,6 +17,7 @@ Aims to support Mono-I, Mono-III, Mono-IV (incl. Robocon) boards. Support for th
 
 ## To-Do
 - [ ] Proper reset sequence
+- [ ] Emulator CPU/chip timing
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS).

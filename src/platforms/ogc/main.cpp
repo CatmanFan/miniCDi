@@ -176,7 +176,10 @@ static void RUN_CDI(const std::string &biosName)
 		if (!paused)
 		{
 			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode (likely because emulated machine is configured to use 60Hz?).
+			// TO-DO: Address crashing if doing do_frame(true) solo
+			#ifdef MINICDI_FRAMESKIP
 			cdi.do_frame(false);
+			#endif
 			cdi.do_frame(true);
 
 			#ifdef MINICDI_DEBUG

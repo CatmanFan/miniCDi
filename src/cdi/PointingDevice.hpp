@@ -5,6 +5,7 @@ class PointingDevice
 {
 	static constexpr int MAX_POINTER_X = 768;
 	static constexpr int MAX_POINTER_Y = 560;
+	static constexpr int POINTER_ADVANCE = 4;
 
 public:
 	enum Buttons
@@ -46,16 +47,16 @@ public:
 
 			else if (changed_Face || changed_DPad)
 			{
-				// /!\ //
-				// x = 550; y = 306;
+				x = 550; y = 306;
+
 				if (changed_Face) { changed_Face = false; }
 				if (changed_DPad)
 				{
-					x = std::clamp(x + (buttons[Left] && !buttons[Right] ? -2
-																		 : !buttons[Left] && buttons[Right] ? 2
+					x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
+																		 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
 																		 : 0), 0, 767);
-					y = std::clamp(y + (buttons[Up] && !buttons[Down] ? -2
-																	  : !buttons[Up] && buttons[Down] ? 2
+					y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
+																	  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
 																	  : 0), 0, 559);
 				}
 
@@ -76,11 +77,11 @@ public:
 			if (changed_Face) { changed_Face = false; }
 			if (changed_DPad)
 			{
-				x = std::clamp(x + (buttons[Left] && !buttons[Right] ? -1
-																	 : !buttons[Left] && buttons[Right] ? 1
+				x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
+																	 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
 																	 : 0), 0, 1023);
-				y = std::clamp(y + (buttons[Up] && !buttons[Down] ? -1
-																  : !buttons[Up] && buttons[Down] ? 1
+				y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
+																  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
 																  : 0), 0, 1023);
 			}
 

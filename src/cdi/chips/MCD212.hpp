@@ -67,7 +67,7 @@ class MCD212
 
 		for (int cycles = 0; cycles < MCD212_HSYNC_CYCLES * MCD212_INACTIVE_VLINES; cycles++)
 		{
-			uint32_t inst = READ32(memory, addr);
+			uint32_t inst = (memory[addr] << 24) | (memory[addr+1] << 16) | (memory[addr+2] << 8) | memory[addr+3];
 			addr += 4;
 
 			switch (inst >> 24 & 0xFF)
@@ -132,7 +132,7 @@ class MCD212
 	{
 		for (size_t period = 0; period < (CF ? 16 : 8); period++)
 		{
-			uint32_t inst = READ32(memory, DCP[Path]);
+			uint32_t inst = (memory[DCP[Path]] << 24) | (memory[DCP[Path]+1] << 16) | (memory[DCP[Path]+2] << 8) | memory[DCP[Path]+3];
 			DCP[Path] += 4;
 
 			switch (inst >> 24 & 0xFF)
@@ -283,7 +283,7 @@ public:
 		switch (addr)
 		{
 			default:
-				return READ16(memory, addr);
+				return (memory[addr] << 8) | memory[addr+1];
 			case 0x4FFFF0: // CSR1R
 				return 0xFF00 | (PA << 5) | (DA << 7);
 			case 0x4FFFE0: // CSR2R

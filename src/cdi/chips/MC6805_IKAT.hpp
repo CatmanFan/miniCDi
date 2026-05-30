@@ -63,7 +63,7 @@ public:
 		ISR |= INT;
 
 		if (IMR & INT) {
-			//MiniCDI::Log("[IKAT] sending interrupt via %d", c);
+			MiniCDI::Log("[IKAT] INT %d", c);
 			m68k_set_irq(2);
 		}
 	}
@@ -197,7 +197,7 @@ public:
 							/** Boot Mode **/
 							case 0xF4:
 								MiniCDI::Log("[IKAT] report boot status (0x%02X)", value);
-								Ch[c].Out = { 0xA5, 0xF4, 0x01 };
+								Ch[c].Out = { 0xA5, 0xF4, (uint8_t)(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
 								Ch[c].In.clear();
 								set_int(c);
 								break;
@@ -205,7 +205,7 @@ public:
 							/** Video Mode **/
 							case 0xF6:
 								MiniCDI::Log("[IKAT] report video mode (0x%02X)", value);
-								Ch[c].Out = { 0xA5, 0xF6, 0x02, 0xFF };
+								Ch[c].Out = { 0xA5, 0xF6, (uint8_t)(MiniCDI::Config::PAL ? 0x02 : 0x01), 0xFF };
 								Ch[c].In.clear();
 								set_int(c);
 								break;
@@ -216,36 +216,20 @@ public:
 					case 3:
 						switch (value)
 						{
-							default:
-								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
-									switch (Ch[c].In[0]) {
-										case 0xB0:
-											Ch[c].Out = { 0xB0, 0x00, 0x02, 0x10 }; // cdifan: $00060E for SLAVE 5.0 (CD-i rev 450), $000210 for IKAT 6.x-9.x
-											break;
-										case 0xB1:
-											Ch[c].Out = { 0xB1, 0x00, 0x02, 0x00 }; // imitate cdiemu
-											break;
-									}
-									Ch[c].In.clear();
-									Ch[c].InSize = 0;
-									set_int(c);
-								}
-								break;
-
 							/** Disc Status **/
 							case 0xB0:
-								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-									MiniCDI::Log("[IKAT] report disc status (0x%02X)", value);
-									Ch[c].InSize = 4;
-								}
+								MiniCDI::Log("[IKAT] report disc status (0x%02X)", value);
+								Ch[c].Out = { 0xB0, 0x02, 0x10 }; // cdifan: $00060E for SLAVE 5.0 (CD-i rev 450), $000210 for IKAT 6.x-9.x
+								Ch[c].In.clear();
+								set_int(c);
 								break;
 
 							/** Disc Base **/
 							case 0xB1:
-								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-									MiniCDI::Log("[IKAT] report disc base (0x%02X)", value);
-									Ch[c].InSize = 4;
-								}
+								MiniCDI::Log("[IKAT] report disc base (0x%02X)", value);
+								Ch[c].Out = { 0xB1, 0x00, 0x02, 0x00 }; // imitate cdiemu
+								Ch[c].In.clear();
+								set_int(c);
 								break;
 
 							/** Disc Select **/

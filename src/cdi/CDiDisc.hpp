@@ -38,7 +38,7 @@ class CDiDisc
 		return disc.is_open() && lba >= 0;
 	}
 
-	void get_lba_from_time(uint32_t time)
+	uint32_t get_lba_from_time(uint32_t time)
 	{
 		/** Copied from MAME source code of CD-i CDIC driver **/
 		Sector.Min = time >> 24 & 0xFF;
@@ -61,11 +61,15 @@ class CDiDisc
 
 		disc.clear();
 		disc.seekg(lba*2352, std::ios::beg);
+
+		return lba;
 	}
 
-	void read_sector()
+	void read_sector(int lba = -1)
 	{
 		if (sector_valid()) {
+			if (lba >= 0) { disc.seekg(lba*2352, std::ios::beg); }
+
 			disc.seekg(12, std::ios::cur); // sync field
 			disc.get(Sector.Min);
 			disc.get(Sector.Sec);
@@ -77,8 +81,8 @@ class CDiDisc
 			disc.get(Sector.CodingInfo);
 			disc.seekg(4, std::ios::cur);
 
-			MiniCDI::Log("[Disc] sector read. time: %02X:%02X:%02X, mode: %02X", Sector.Min, Sector.Sec, Sector.Frame, Sector.Mode);
-			MiniCDI::Log("                    file: %d, ch: %d, submode: %02X, coding: %02X", Sector.FileNum, Sector.ChNum, Sector.Submode, Sector.CodingInfo);
+			// MiniCDI::Log("[Disc] sector read. time: %02X:%02X:%02X, mode: %02X", Sector.Min, Sector.Sec, Sector.Frame, Sector.Mode);
+			// MiniCDI::Log("                    file: %d, ch: %d, submode: %02X, coding: %02X", Sector.FileNum, Sector.ChNum, Sector.Submode, Sector.CodingInfo);
 			disc.read(&Sector.Data[0], 2328);
 		}
 	}

@@ -13,10 +13,10 @@ audio output can be in either I2S or Sony formats. **/
 class CIAP
 {
 	uint8_t* memory;
-	uint16_t ADPCM[2][0x8FF];
-	uint16_t Main[2][2340];
-	uint16_t SubQ[2][0x0A];
-	uint16_t SubR[2][0x0A];
+	uint8_t ADPCM[2][0x8FF];
+	uint8_t Main[2][2340];
+	uint8_t SubQ[2][0x0A];
+	uint8_t SubR[2][0x0A];
 
 	uint16_t IER;
 	uint16_t ISR;
@@ -48,21 +48,17 @@ public:
 
 	uint16_t read16(uint32_t addr)
 	{
-		// MiniCDI::Log("[CIAP] read");
 		switch (addr)
 		{
 			default:
-				if (addr >= 0x300000 && addr <= 0x3008FE) {
-					return ADPCM[0][addr - 0x300000];
-				}
-				if (addr >= 0x300900 && addr <= 0x3011FE) {
-					return ADPCM[1][addr - 0x300900];
-				}
 				if (addr >= 0x301200 && addr <= 0x301B22) {
-					return Main[0][addr - 0x301200];
-				}
-				if (addr >= 0x301BC2 && addr <= 0x3024E4) {
-					return Main[1][addr - 0x301BC2];
+					return (Main[0][addr - 0x301200] << 8) | Main[0][addr - 0x301200 + 1];
+				} else if (addr >= 0x301BC2 && addr <= 0x3024E4) {
+					return (Main[1][addr - 0x301BC2] << 8) | Main[1][addr - 0x301BC2 + 1];
+				} else if (addr >= 0x300000 && addr <= 0x3008FE) {
+					return (ADPCM[0][addr - 0x300000] << 8) | ADPCM[0][addr - 0x300000 + 1];
+				} else if (addr >= 0x300900 && addr <= 0x3011FE) {
+					return (ADPCM[1][addr - 0x300900] << 8) | ADPCM[1][addr - 0x300900 + 1];
 				}
 				return (memory[addr] << 8) | memory[addr+1];
 
@@ -100,15 +96,19 @@ public:
 		{
 			default:
 				if (addr >= 0x300000 && addr <= 0x3008FE) {
-					ADPCM[0][addr - 0x300000] = value;
+					MiniCDI::Log("[CIAP] ADPCM1 %02X <= %04X", addr-0x300000, value);
+					// ADPCM[0][addr - 0x300000] = value;
 				} else if (addr >= 0x300900 && addr <= 0x3011FE) {
-					ADPCM[1][addr - 0x300900] = value;
+					MiniCDI::Log("[CIAP] ADPCM2 %02X <= %04X", addr-0x300900, value);
+					// ADPCM[1][addr - 0x300900] = value;
 				} else if (addr >= 0x301200 && addr <= 0x301B22) {
-					Main[0][addr - 0x301200] = value;
+					MiniCDI::Log("[CIAP] Main1 %02X <= %04X", addr-0x301200, value);
+					// Main[0][addr - 0x301200] = value;
 				} else if (addr >= 0x301BC2 && addr <= 0x3024E4) {
-					Main[1][addr - 0x301BC2] = value;
+					MiniCDI::Log("[CIAP] Main2 %02X <= %04X", addr-0x301BC2, value);
+					// Main[1][addr - 0x301BC2] = value;
 				} else {
-					memory[addr] = (value >> 8) & 0xFF;
+					memory[addr] = value >> 8 & 0xFF;
 					memory[addr+1] = value & 0xFF;
 				}
 				break;
@@ -142,21 +142,26 @@ public:
 							break;
 						case 0x7000:
 							MiniCDI::Log("[CIAP] PREPD (0x%04X)", value);
-							if (disc && disc->disc.is_open())
+							disc->get_lba_from_time(0x000216);
+							disc->read_sector();
 							{
-								disc->disc.clear();
-								disc->disc.seekg(16 * 2352 + 24 + 148);
-								for (int i = 0; i < 2340; i++)
-								{
-									uint16_t var = 0;
-									char c;
-									disc->disc.get(c); var |= (uint8_t)c << 8;
-									disc->disc.get(c); var |= (uint8_t)c;
-									memory[0x301200 + i] = Main[0][i] = var;
+								memory[0x301200] = Main[0][0] = disc->Sector.Min;
+								memory[0x301201] = Main[0][1] = disc->Sector.Sec;
+								memory[0x301202] = Main[0][2] = disc->Sector.Frame;
+								memory[0x301203] = Main[0][3] = disc->Sector.Mode;
+								memory[0x301204] = Main[0][4] = disc->Sector.FileNum;
+								memory[0x301205] = Main[0][5] = disc->Sector.ChNum;
+								memory[0x301206] = Main[0][6] = disc->Sector.Submode;
+								memory[0x301207] = Main[0][7] = disc->Sector.CodingInfo;
+								memory[0x301208] = Main[0][8] = disc->Sector.FileNum;
+								memory[0x301209] = Main[0][9] = disc->Sector.ChNum;
+								memory[0x30120A] = Main[0][10] = disc->Sector.Submode;
+								memory[0x30120B] = Main[0][11] = disc->Sector.CodingInfo;
+								for (int i = 0; i < 2328; i++) {
+									memory[0x30120C+i] = Main[0][12+i] = disc->Sector.Data[i];
 								}
-								MiniCDI::Log("[CIAP] data: %02X %02X %02X %02X", Main[0][0], Main[0][1], Main[0][2], Main[0][3]);
-								set_isr(0x01);
 							}
+							set_isr(0x01);
 							break;
 						case 0x0094: // STARTA
 						case 0x00C4: // STARTD
@@ -184,8 +189,14 @@ public:
 		if (((ISR & 0x01) && (IER & 0x01))
 		|| ((ISR & 0x04) && (IER & 0x04))
 		|| ((ISR & 0x08) && (IER & 0x08))
-		|| ((ISR & 0x0800) && (IER & 0x0800)))
+		|| ((ISR & 0x0800) && (IER & 0x0800))) {
+			MiniCDI::Log("[CIAP] INT %s", (ISR & 0x01) && (IER & 0x01) ? "data"
+										: (ISR & 0x04) && (IER & 0x04) ? "subcode"
+										: (ISR & 0x08) && (IER & 0x08) ? "audio"
+										: (ISR & 0x0800) && (IER & 0x0800) ? "qerror"
+										: "unknown");
 			m68k_set_irq(ICR & 0x07);
+		}
 	}
 };
 

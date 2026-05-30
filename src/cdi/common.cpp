@@ -27,7 +27,8 @@ void MiniCDI_set_fc(unsigned int new_fc) {
 
 int  MiniCDI_int_ack_handler(int int_level) {
 	m68k_set_irq(0);
-	return MiniCDI::Player.cdic && int_level == 4 ? MiniCDI::Player.memory[0x303FFC] : M68K_INT_ACK_AUTOVECTOR;
+	return MiniCDI::Player.ciap && int_level == 4 ? 0x3C
+		 : MiniCDI::Player.cdic && int_level == 4 ? MiniCDI::Player.memory[0x303FFC] : M68K_INT_ACK_AUTOVECTOR;
 }
 
 unsigned int  m68k_read_memory_8(unsigned int address) {

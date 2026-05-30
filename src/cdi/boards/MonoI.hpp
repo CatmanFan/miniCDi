@@ -25,22 +25,24 @@ public:
 
 	bool Init(const std::string &bios) override;
 
-	/** /!\ Currently this code crashes if not using frameskip (i.e. do_frame() is called only once) /!\ **/
 	inline void do_frame(bool draw = true) override {
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		while (1)
 		{
-			for (uint8_t cycles = 0; cycles < 10; cycles++) {
-				cpu.run(96);
-				cpu.tick_timer();
+			for (uint8_t loops1 = 0; loops1 < 208; loops1++) {
+				for (uint8_t loops2 = 0; loops2 < 10; loops2++) {
+					cpu.run(96);
+					cpu.tick_timer();
+				}
+				if (vpu->tick(!draw)) goto end;
 			}
-			if (vpu->tick(!draw)) break;
+			cdic->tick();
 		}
 
+		end:
 		// Update LCD display
 		lcd.update_SLAVE(slave);
 		pd.send();
-		disc.increment_lba();
 	}
 
 	inline void reset() override {

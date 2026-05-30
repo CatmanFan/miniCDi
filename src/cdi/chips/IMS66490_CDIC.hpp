@@ -21,10 +21,79 @@ class CDIC
 	uint16_t DBUF;
 
 	CDiDisc *disc;
+	int ns;
+
+	/// From MAME CDIC driver
+	struct {
+		uint8_t cmd;
+		uint8_t mode; // mode1, mode2, cdda, toc
+		uint8_t spinup_counter;
+		int LBA;
+	} DiscStatus;
+
+	void disc_start_read(uint8_t mode)
+	{
+		DiscStatus.cmd = CMD;
+		DiscStatus.mode = mode;
+		DiscStatus.spinup_counter = 6;
+		DiscStatus.LBA = disc->get_lba_from_time(TIME);
+	}
+
+	void disc_stop_read()
+	{
+		DiscStatus.cmd = 0;
+		DiscStatus.mode = 0;
+		DiscStatus.spinup_counter = 0;
+		DiscStatus.LBA = 0;
+	}
 
 public:
 	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc)
 	{
+	}
+
+	void tick()
+	{
+		if (DiscStatus.cmd != 0)
+		{
+			if (DiscStatus.spinup_counter > 0) {
+				DiscStatus.spinup_counter--;
+				return;
+			}
+
+			disc->read_sector(DiscStatus.LBA);
+			{
+				DBUF ^= 0x0001; // from MAME
+				DBUF &= ~0x0004; // from MAME
+
+				DATA[DBUF & 0x01][0] = disc->Sector.Min;
+				DATA[DBUF & 0x01][1] = disc->Sector.Sec;
+				DATA[DBUF & 0x01][2] = disc->Sector.Frame;
+				DATA[DBUF & 0x01][3] = disc->Sector.Mode;
+				DATA[DBUF & 0x01][4] = disc->Sector.FileNum;
+				DATA[DBUF & 0x01][5] = disc->Sector.ChNum;
+				DATA[DBUF & 0x01][6] = disc->Sector.Submode;
+				DATA[DBUF & 0x01][7] = disc->Sector.CodingInfo;
+				DATA[DBUF & 0x01][8] = disc->Sector.FileNum;
+				DATA[DBUF & 0x01][9] = disc->Sector.ChNum;
+				DATA[DBUF & 0x01][10] = disc->Sector.Submode;
+				DATA[DBUF & 0x01][11] = disc->Sector.CodingInfo;
+				for (int i = 0; i < 2328; i++) {
+					DATA[DBUF & 0x01][12+i] = disc->Sector.Data[i];
+				}
+			}
+			XBUF |= 0x8000; // sector filled for processing
+			DBUF |= 0x4000;
+			m68k_set_irq(4);
+
+			if (DiscStatus.cmd == 0)
+			{
+				disc_stop_read();
+				return;
+			}
+
+			DiscStatus.LBA++;
+		}
 	}
 
 	uint16_t read16(uint32_t addr)
@@ -43,38 +112,54 @@ public:
 				}
 				return (memory[addr] << 8) | memory[addr+1];
 
-				case 0x303C00: return CMD;
-				case 0x303C02: return TIME >> 16 & 0xFF;
-				case 0x303C04: return TIME;
-				case 0x303C06: return FILE;
-				case 0x303C08: return CHAN >> 16 & 0xFF;
-				case 0x303C0A: return CHAN;
-				case 0x303C0C: return ACHAN;
-				case 0x303C80: return DSEL;
-				case 0x303FF4: {
-					MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
-					uint16_t value = ABUF;
-					if ((ABUF & 0x8000) && (AUDCTL & 0x2000)) {
-						MiniCDI::Log("[CDIC] audio IRQ");
-						m68k_set_irq(4);
-					}
+			case 0x303C00: MiniCDI::Log("[CDIC] CMD => %04X", CMD); return CMD;
+			case 0x303C02: MiniCDI::Log("[CDIC] TIME (upper) => %04X", TIME >> 16 & 0xFF); return TIME >> 16 & 0xFF;
+			case 0x303C04: MiniCDI::Log("[CDIC] TIME (lower) => %04X", TIME & 0xFF); return TIME & 0xFF;
+			case 0x303C06: MiniCDI::Log("[CDIC] FILE => %04X", FILE); return FILE;
+			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) => %04X", CHAN >> 16 & 0xFF); return CHAN >> 16 & 0xFF;
+			case 0x303C0A: MiniCDI::Log("[CDIC] CHAN (lower) => %04X", CHAN & 0xFF); return CHAN & 0xFF;
+			case 0x303C0C: MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN); return ACHAN;
+			case 0x303C80: MiniCDI::Log("[CDIC] DSEL => %04X", DSEL); return DSEL;
+			case 0x303FF4: {
+				MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
+				uint16_t value = ABUF;
+				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
-					return value;
+					if (AUDCTL & 0x2000) { MiniCDI::Log("[CDIC] audio IRQ"); m68k_set_irq(4); }
 				}
-				case 0x303FF6: {
-					MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
-					uint16_t value = XBUF;
-					if ((XBUF & 0x8000) && (DBUF & 0x4000)) {
-						MiniCDI::Log("[CDIC] sector IRQ");
-						m68k_set_irq(4);
-					}
+				return value;
+			}
+			case 0x303FF6: {
+				MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
+				uint16_t value = XBUF;
+				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
-					return value;
+					if (DBUF & 0x4000) { MiniCDI::Log("[CDIC] sector read IRQ"); m68k_set_irq(4); }
 				}
-				case 0x303FF8: return DMACTL;
-				case 0x303FFA: return AUDCTL;
-				case 0x303FFC: return IVEC;
-				case 0x303FFE: return DBUF;
+				return value;
+			}
+			case 0x303FF8: {
+				MiniCDI::Log("[CDIC] DMACTL => %04X", DMACTL);
+				return DMACTL;
+			}
+			case 0x303FFA: {
+				AUDCTL ^= 0x0001;
+				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
+				/*uint16_t value = AUDCTL;
+				if (AUDCTL & 0x0001) { // reset ADPCM playback stopped bit
+					AUDCTL &= 0xFFFE;
+				}*/
+				return AUDCTL;
+			}
+			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC => %04X", IVEC); return IVEC;
+			case 0x303FFE: {
+				MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
+				uint16_t value = DBUF;
+				if (DBUF & 0x0080) { // reset subQ CRC error bit
+					DBUF &= 0xFF7F;
+				}
+				return value;
+			}
 		}
 	}
 
@@ -113,8 +198,9 @@ public:
 				break;
 
 			case 0x303C00: CMD = value;
-			case 0x303C02: MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value); TIME &= 0x00FF; TIME |= (value << 16); break;
-			case 0x303C04: MiniCDI::Log("[CDIC] TIME (lower) <= %04X", value); TIME &= 0xFF00; TIME |= value; break;
+			case 0x303C02: // This is actually the command register??
+				/*MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value);*/ TIME &= 0x00FF; TIME |= (value << 16); break; 
+			case 0x303C04: /*MiniCDI::Log("[CDIC] TIME (lower) <= %04X", value);*/ TIME &= 0xFF00; TIME |= value; break;
 			case 0x303C06: MiniCDI::Log("[CDIC] FILE <= %04X", value); FILE = value; break;
 			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) <= %04X", value); CHAN &= 0x00FF; CHAN |= (value << 16); break;
 			case 0x303C0A: MiniCDI::Log("[CDIC] CHAN (lower) <= %04X", value); CHAN &= 0xFF00; CHAN |= value; break;
@@ -122,115 +208,49 @@ public:
 			case 0x303C80: MiniCDI::Log("[CDIC] DSEL <= %04X", value); DSEL = value; break;
 			case 0x303FF4: MiniCDI::Log("[CDIC] ABUF <= %04X", value); ABUF = value; break;
 			case 0x303FF6: MiniCDI::Log("[CDIC] XBUF <= %04X", value); XBUF = value; break;
-			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
-				{
-					DMACTL = value;
-				}
-				break;
+			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value); DMACTL = value; break;
 			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value; break;
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); memory[addr] = IVEC = value; break;
 			case 0x303FFE: MiniCDI::Log("[CDIC] DBUF <= %04X", value); DBUF = value;
 				if (DBUF & 0x8000)
 				{
+					DBUF &= 0x7FFF;
 					switch (CMD)
 					{
 						case 0x23:
 							MiniCDI::Log("[CDIC] stop disc rotation (0x%02X)", CMD);
-							DBUF &= 0x7FFF;
+							disc_stop_read();
 							break;
 						case 0x24:
 							MiniCDI::Log("[CDIC] stop reading (0x%02X)", CMD);
-							disc->read_sector();
-							{
-								memory[0x300000] = DATA[0][0] = disc->Sector.Min;
-								memory[0x300001] = DATA[0][1] = disc->Sector.Sec;
-								memory[0x300002] = DATA[0][2] = disc->Sector.Frame;
-								memory[0x300003] = DATA[0][3] = disc->Sector.Mode;
-								memory[0x300004] = DATA[0][4] = disc->Sector.FileNum;
-								memory[0x300005] = DATA[0][5] = disc->Sector.ChNum;
-								memory[0x300006] = DATA[0][6] = disc->Sector.Submode;
-								memory[0x300007] = DATA[0][7] = disc->Sector.CodingInfo;
-								memory[0x300008] = DATA[0][8] = disc->Sector.FileNum;
-								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
-								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
-								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
-								for (int i = 0; i < 2328; i++)
-								{
-									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
-								}
-								MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
-							}
-							DBUF &= 0x7FFF;
+							disc_stop_read();
 							break;
 						case 0x27:
 							MiniCDI::Log("[CDIC] fetch TOC (0x%02X)", CMD);
-							DBUF &= 0x7FFF;
+							disc_start_read(4);
 							break;
 						case 0x28:
 							MiniCDI::Log("[CDIC] play CDDA (0x%02X)", CMD);
-							DBUF &= 0x7FFF;
+							disc_start_read(3);
 							break;
 						case 0x29:
-							disc->get_lba_from_time(TIME);
-							disc->read_sector();
-							{
-								memory[0x300000] = DATA[0][0] = disc->Sector.Min;
-								memory[0x300001] = DATA[0][1] = disc->Sector.Sec;
-								memory[0x300002] = DATA[0][2] = disc->Sector.Frame;
-								memory[0x300003] = DATA[0][3] = disc->Sector.Mode;
-								memory[0x300004] = DATA[0][4] = disc->Sector.FileNum;
-								memory[0x300005] = DATA[0][5] = disc->Sector.ChNum;
-								memory[0x300006] = DATA[0][6] = disc->Sector.Submode;
-								memory[0x300007] = DATA[0][7] = disc->Sector.CodingInfo;
-								memory[0x300008] = DATA[0][8] = disc->Sector.FileNum;
-								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
-								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
-								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
-								for (int i = 0; i < 2328; i++)
-								{
-									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
-								}
-								MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
-							}
-							XBUF |= 0x8000; // sector filled
-							DBUF &= 0x7FFF;
+							MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
+							disc_start_read(1);
 							break;
 						case 0x2A:
-							disc->get_lba_from_time(TIME);
-							disc->read_sector();
-							{
-								memory[0x300000] = DATA[0][0] = disc->Sector.Min;
-								memory[0x300001] = DATA[0][1] = disc->Sector.Sec;
-								memory[0x300002] = DATA[0][2] = disc->Sector.Frame;
-								memory[0x300003] = DATA[0][3] = disc->Sector.Mode;
-								memory[0x300004] = DATA[0][4] = disc->Sector.FileNum;
-								memory[0x300005] = DATA[0][5] = disc->Sector.ChNum;
-								memory[0x300006] = DATA[0][6] = disc->Sector.Submode;
-								memory[0x300007] = DATA[0][7] = disc->Sector.CodingInfo;
-								memory[0x300008] = DATA[0][8] = disc->Sector.FileNum;
-								memory[0x300009] = DATA[0][9] = disc->Sector.ChNum;
-								memory[0x30000A] = DATA[0][10] = disc->Sector.Submode;
-								memory[0x30000B] = DATA[0][11] = disc->Sector.CodingInfo;
-								for (int i = 0; i < 2328; i++)
-								{
-									memory[0x30000C+i] = DATA[0][12+i] = disc->Sector.Data[i];
-								}
-								MiniCDI::Log("[CDIC] read CD-i data (mode2) (0x%02X)", CMD);
-							}
-							XBUF |= 0x8000; // sector filled
-							DBUF &= 0x7FFF;
+							MiniCDI::Log("[CDIC] read CD-i data (mode2) (0x%02X)", CMD);
+							disc_start_read(2);
 							break;
 						case 0x2B:
 							MiniCDI::Log("[CDIC] stop CDDA ? (0x%02X)", CMD);
-							DBUF &= 0x7FFF;
-							break;
-						case 0x2E:
-							MiniCDI::Log("[CDIC] update (0x%02X)", CMD);
-							DBUF &= 0x7FFF;
+							disc_stop_read();
 							break;
 						case 0x2C:
 							MiniCDI::Log("[CDIC] seek ? (0x%02X)", CMD);
-							DBUF &= 0x7FFF;
+							disc_start_read(1);
+							break;
+						case 0x2E:
+							MiniCDI::Log("[CDIC] update (0x%02X)", CMD);
 							break;
 					}
 				}

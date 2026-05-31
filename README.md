@@ -5,10 +5,9 @@ An experimental Philips CD-i emulator for the Wii and 3DS. Currently only suppor
 
 | Board | CPU | Video | CD+Audio | Microcont. | Pointer Device |
 |-------|-----|-------|----------|------------|----------------|
-| Mini-MMC, Maxi-MMC | :heavy_check_mark: (SCC68070) | :x: (VSC + VSD) | :x: (CDIC) | :heavy_check_mark: (SLAVE) | :heavy_check_mark: |
-| Mono-I | :heavy_check_mark: (SCC68070) | :heavy_check_mark: (MCD212) | :x: (CDIC) | :heavy_check_mark: (SLAVE) | :heavy_check_mark: |
-| Mono-II | :heavy_check_mark: (SCC68070) | :heavy_check_mark: (MCD212) | :x: (DSP) | :heavy_check_mark: (SLAVE) | :heavy_check_mark: |
-| Mono-III, Mono-IV, Robocon | :heavy_check_mark: (SCC68070) | :heavy_check_mark: (MCD212) | :x: (CIAP) | :x: (IKAT) | :x: |
+| **Mono-I** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – CDIC | :heavy_check_mark: – SLAVE | :heavy_check_mark: |
+| **Mono-II** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – DSP | :heavy_check_mark: – SLAVE | :heavy_check_mark: |
+| **Mono-III<br/>Mono-IV<br/>Robocon** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – CIAP | :x: – IKAT | :x: |
 
 ## To-Do
 - [ ] Proper reset sequence

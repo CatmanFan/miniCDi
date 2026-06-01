@@ -202,7 +202,6 @@ public:
 			case 0x303FFA: {
 				AUDCTL ^= 0x0001; // reset ADPCM playback stopped bit
 				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
-				m68k_set_irq(4);
 				return AUDCTL;
 			}
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC => %04X", IVEC); return IVEC;

@@ -13,7 +13,7 @@ option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." OFF)
 option(MINICDI_ENABLE_DEBUG_CPU "Debug CPU information (PC, SR, FC, D*, A*)." OFF)
 option(MINICDI_ENABLE_DEBUG_OS9 "Debug OS-9 syscall information." OFF)
 option(MINICDI_ENABLE_FRAMESKIP "Enable frameskip hack." ON)
-option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode." ON)
+option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper (breaks player shell if no NVRAM settings data exists)." OFF)
 
 if (MINICDI_ENABLE_DEBUG)

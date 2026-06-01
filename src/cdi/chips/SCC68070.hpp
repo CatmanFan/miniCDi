@@ -49,7 +49,7 @@ class SCC68070
 			DMA[index].CER = 0;
 
 			if (index == 1)
-				start_address = DMA[1].DAC & 0x00FFFFFF;
+				start_address = DMA[1].DAC;
 
 			MiniCDI::Log("[SCC68070:DMA%d] transferring %d %s %s $%08X %s $%08X", index+1,
 						 DMA[index].MTC,
@@ -57,7 +57,7 @@ class SCC68070
 						 DMA[index].OCR & 0x80 ? "from" : "to",
 						 start_address,
 						 DMA[index].OCR & 0x80 ? "to" : "from",
-						 DMA[index].MAC & 0x00FFFFFF);
+						 DMA[index].MAC);
 
 			while (DMA[index].MTC > 0) {
 				if (DMA[index].CCR & 0x10) {
@@ -316,36 +316,36 @@ public:
 
 			/** DMA (ch1) **/
 			case 0x80004000: DMA[0].CSR = (DMA[0].CSR & 0x08) | (value & 0xF7); interrupt(0); break;
-			case 0x80004001: DMA[0].CER = value; break; // cannot be written per datasheet
+			case 0x80004001: /*DMA[0].CER = value;*/ break; // cannot be written per datasheet
 			case 0x80004004: DMA[0].DCR = value; break;
 			case 0x80004005: DMA[0].OCR = value; break;
 			case 0x80004006: DMA[0].SCR = value; break;
 			case 0x80004007: DMA[0].CCR = value; { if (value & 0x80) DMA[0].CSR |= 0x80; } break;
 			case 0x8000400a: DMA[0].MTC &= 0x00FF; DMA[0].MTC |= (value << 8); break;
 			case 0x8000400b: DMA[0].MTC &= 0xFF00; DMA[0].MTC |= value; break;
-			case 0x8000400c: DMA[0].MAC &= 0x00FFFFFF; DMA[0].MAC |= (value << 24); break;
+			case 0x8000400c: DMA[0].MAC &= 0x00FFFFFF; /*DMA[0].MAC |= (value << 24);*/ break;
 			case 0x8000400d: DMA[0].MAC &= 0xFF00FFFF; DMA[0].MAC |= (value << 16); break;
 			case 0x8000400e: DMA[0].MAC &= 0xFFFF00FF; DMA[0].MAC |= (value << 8); break;
 			case 0x8000400f: DMA[0].MAC &= 0xFFFFFF00; DMA[0].MAC |= value; break;
-			case 0x80004014: DMA[0].DAC &= 0x00FFFFFF; DMA[0].DAC |= (value << 24); break;
+			case 0x80004014: DMA[0].DAC &= 0x00FFFFFF; /*DMA[0].DAC |= (value << 24);*/ break;
 			case 0x80004015: DMA[0].DAC &= 0xFF00FFFF; DMA[0].DAC |= (value << 16); break;
 			case 0x80004016: DMA[0].DAC &= 0xFFFF00FF; DMA[0].DAC |= (value << 8); break;
 			case 0x80004017: DMA[0].DAC &= 0xFFFFFF00; DMA[0].DAC |= value; break;
 
 			/** DMA (ch2) **/
 			case 0x80004040: DMA[1].CSR = (DMA[1].CSR & 0x08) | (value & 0xF7); interrupt(0); break;
-			case 0x80004041: DMA[1].CER = value; break; // cannot be written per datasheet
+			case 0x80004041: /*DMA[1].CER = value;*/ break; // cannot be written per datasheet
 			case 0x80004044: DMA[1].DCR = value; break;
 			case 0x80004045: DMA[1].OCR = value; break;
 			case 0x80004046: DMA[1].SCR = value; break;
 			case 0x80004047: DMA[1].CCR = value; { if (value & 0x80) DMA[1].CSR |= 0x80; } break;
 			case 0x8000404a: DMA[1].MTC &= 0x00FF; DMA[1].MTC |= (value << 8); break;
 			case 0x8000404b: DMA[1].MTC &= 0xFF00; DMA[1].MTC |= value; break;
-			case 0x8000404c: DMA[1].MAC &= 0x00FFFFFF; DMA[1].MAC |= (value << 24); break;
+			case 0x8000404c: DMA[1].MAC &= 0x00FFFFFF;/* DMA[1].MAC |= (value << 24);*/ break;
 			case 0x8000404d: DMA[1].MAC &= 0xFF00FFFF; DMA[1].MAC |= (value << 16); break;
 			case 0x8000404e: DMA[1].MAC &= 0xFFFF00FF; DMA[1].MAC |= (value << 8); break;
 			case 0x8000404f: DMA[1].MAC &= 0xFFFFFF00; DMA[1].MAC |= value; break;
-			case 0x80004054: DMA[1].DAC &= 0x00FFFFFF; DMA[1].DAC |= (value << 24); break;
+			case 0x80004054: DMA[1].DAC &= 0x00FFFFFF; /*DMA[1].DAC |= (value << 24);*/ break;
 			case 0x80004055: DMA[1].DAC &= 0xFF00FFFF; DMA[1].DAC |= (value << 16); break;
 			case 0x80004056: DMA[1].DAC &= 0xFFFF00FF; DMA[1].DAC |= (value << 8); break;
 			case 0x80004057: DMA[1].DAC &= 0xFFFFFF00; DMA[1].DAC |= value; break;

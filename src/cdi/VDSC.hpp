@@ -217,8 +217,9 @@ class Decoder
 	template <size_t Path>
 	bool isTransparent(uint8_t* src)
 	{
-		bool ColorKey = (reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC)
-					 || (reg.MaskCol[Path] & 0xFCFCFC);
+		bool ColorKey = (Path == 1 && reg.Icm[Path] == RGB555) || reg.Icm[Path] == DYUV ? false
+					  : (reg.ColorCLUT[getCLUTindex<Path>(src)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC)
+						|| (reg.MaskCol[Path] & 0xFCFCFC);
 
 		switch (reg.Transparency[Path])
 		{
@@ -256,11 +257,16 @@ class Decoder
 		}
 	}
 
+	template <size_t Path>
 	uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 	{
-		int Y = *src & 0x0F;
-		int U = (*src >> 4) & 0x0F;
-		int V = (*(src+1) >> 4) & 0x0F;
+		int Y = reg.ColorDYUV[Path] >> 16 & 0xFF;
+		int U = reg.ColorDYUV[Path] >> 8 & 0xFF;
+		int V = reg.ColorDYUV[Path] & 0xFF;
+
+		// Y += *src & 0x0F;
+		// U += (*src >> 4) & 0x0F;
+		// V += (*(src+1) >> 4) & 0x0F;
 
 		int r = std::floor((Y*256 + 351*(V-128) ) / 256 );
 		int g = std::floor(((Y*256)*(86*(U-128) + 179*(V-128))) / 256 );
@@ -472,7 +478,8 @@ public:
 								continue;
 
 							case DYUV:
-								x += decodeDYUV(src, dst);
+								x += decodeDYUV<Path>(src, dst);
+								++vsr;
 								continue;
 
 							case CLUT4:
@@ -537,12 +544,12 @@ public:
 
 			case 0x78:
 			case 0x79:
-			case 0x7a:
-			case 0x7b:
-			case 0x7c:
-			case 0x7d:
-			case 0x7e:
-			case 0x7f:
+			case 0x7A:
+			case 0x7B:
+			case 0x7C:
+			case 0x7D:
+			case 0x7E:
+			case 0x7F:
 				reg.FT[Path] = (inst & 0b0011u) == 0b11 ? Mosaic : (inst & 0b0011u) == 0b10 ? RunLength : Bitmap;
 				reg.MF[Path] = (enum MosaicFactor)(inst >> 2 & 0x03u);
 				reg.CM[Path] = (enum ColorMode)(inst >> 8 & 0x01u);
@@ -554,18 +561,20 @@ public:
 				break;
 
 			case 0xC0:
-				reg.IcmCS = inst >> 22 & 0x01u;
-				reg.MatteCount = inst >> 19 & 0x01u;
-				reg.ExternalVideo = inst >> 18 & 0x01u;
-				reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
-				reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
-				/*MiniCDI::Log("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s", Path,
-						  reg.IcmCS, reg.MatteCount, reg.ExternalVideo,
-						  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
-						: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
-						: reg.Icm[0] == CLUT4 ? "clut4" : "off",
-						  reg.Icm[1] == RGB555 ? "rgb555" : reg.Icm[1] == DYUV ? "dyuv"
-						: reg.Icm[1] == CLUT4 ? "clut4" : "off");*/
+				if (!Path) {
+					reg.IcmCS = inst >> 22 & 0x01u;
+					reg.MatteCount = inst >> 19 & 0x01u;
+					reg.ExternalVideo = inst >> 18 & 0x01u;
+					reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
+					reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
+					MiniCDI::Log("[DCA%d] icm cs=%d,nr=%d,ev=%d,cma=%s,cmb=%s", Path,
+							  reg.IcmCS, reg.MatteCount, reg.ExternalVideo,
+							  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
+							: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
+							: reg.Icm[0] == CLUT4 ? "clut4" : "off",
+							  reg.Icm[1] == RGB555 ? "rgb555" : reg.Icm[1] == DYUV ? "dyuv"
+							: reg.Icm[1] == CLUT4 ? "clut4" : "off");
+				}
 				break;
 
 			case 0xC1:
@@ -578,8 +587,10 @@ public:
 				break;
 
 			case 0xC2:
-				if (!Path) reg.PlaneOrder = inst & 0x0Fu;
-				//MiniCDI::Log("[DCA%d] po %s", Path, reg.PlaneOrder ? "a,b" : "b,a");
+				if (!Path) {
+					reg.PlaneOrder = inst & 0x0Fu;
+					//MiniCDI::Log("[DCA%d] po %s", Path, reg.PlaneOrder ? "a,b" : "b,a");
+				}
 				break;
 
 			case 0xC3:
@@ -589,47 +600,53 @@ public:
 
 			case 0xC4:
 			case 0xC6:
-				reg.TransparentCol[Path] = inst & 0x00FFFFFFu;
+				reg.TransparentCol[(inst >> 24 & 0xFF) == 0xC6 ? 1 : 0] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xC7:
 			case 0xC9:
-				reg.MaskCol[Path] = inst & 0x00FFFFFFu;
+				reg.MaskCol[(inst >> 24 & 0xFF) == 0xC9 ? 1 : 0] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xCA:
 			case 0xCB:
-				reg.ColorDYUV[Path] = inst & 0x00FFFFFFu;
+				reg.ColorDYUV[(inst >> 24 & 0xFF) == 0xCB ? 1 : 0] = inst & 0x00FFFFFFu;
 				break;
 
 			case 0xCD: // channel 1
-				reg.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
-				reg.CursorPosition[1] = inst >> 12 & 0x0FFFu;
-				//MiniCDI::Log("[DCA%d] cpos x=%d,y=%d", Path, reg.CursorPosition[0], reg.CursorPosition[1]);
+				if (!Path) {
+					reg.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
+					reg.CursorPosition[1] = inst >> 12 & 0x0FFFu;
+					//MiniCDI::Log("[DCA%d] cpos x=%d,y=%d", Path, reg.CursorPosition[0], reg.CursorPosition[1]);
+				}
 				break;
 
 			case 0xCE: // channel 1
-				reg.CursorColor = inst & 0x0FFu;
-				reg.CursorRes = inst >> 15 & 0x01u;
-				reg.CursorOffTime = inst >> 16 & 0x07u;
-				reg.CursorOnTime = inst >> 19 & 0x07u;
-				reg.CursorBlink = inst >> 22 & 0x01u;
-				reg.CursorEnable = inst >> 23 & 0x01u;
-				/*MiniCDI::Log("[DCA%d] cctl en=%d,blkc=%d,con=%d,fon=%d,cuw=%d,y=%d,r=%d,g=%d,b=%d",
-								Path, reg.CursorEnable, reg.CursorBlink, reg.CursorOnTime, reg.CursorOffTime, reg.CursorRes,
-								reg.CursorColor & 0b1000u ? 1 : 0,
-								reg.CursorColor & 0b0100u ? 1 : 0,
-								reg.CursorColor & 0b0010u ? 1 : 0,
-								reg.CursorColor & 0b0001u ? 1 : 0);*/
+				if (!Path) {
+					reg.CursorColor = inst & 0x0FFu;
+					reg.CursorRes = inst >> 15 & 0x01u;
+					reg.CursorOffTime = inst >> 16 & 0x07u;
+					reg.CursorOnTime = inst >> 19 & 0x07u;
+					reg.CursorBlink = inst >> 22 & 0x01u;
+					reg.CursorEnable = inst >> 23 & 0x01u;
+					/*MiniCDI::Log("[DCA%d] cctl en=%d,blkc=%d,con=%d,fon=%d,cuw=%d,y=%d,r=%d,g=%d,b=%d",
+									Path, reg.CursorEnable, reg.CursorBlink, reg.CursorOnTime, reg.CursorOffTime, reg.CursorRes,
+									reg.CursorColor & 0b1000u ? 1 : 0,
+									reg.CursorColor & 0b0100u ? 1 : 0,
+									reg.CursorColor & 0b0010u ? 1 : 0,
+									reg.CursorColor & 0b0001u ? 1 : 0);*/
+				}
 				break;
 
 			case 0xCF: // channel 1
-				reg.CursorPatternX = inst & 0x0000FFFFu;
-				reg.CursorPatternY = inst >> 16 & 0x0Fu;
-				for (uint8_t x = 0; x < 16; x++) {
-					cursor[(reg.CursorPatternY*16)+x] = (reg.CursorPatternX >> (15-x) & 0x01) != 0 ? 0xFF : 0x00;
+				if (!Path) {
+					reg.CursorPatternX = inst & 0x0000FFFFu;
+					reg.CursorPatternY = inst >> 16 & 0x0Fu;
+					for (uint8_t x = 0; x < 16; x++) {
+						cursor[(reg.CursorPatternY*16)+x] = (reg.CursorPatternX >> (15-x) & 0x01) != 0 ? 0xFF : 0x00;
+					}
+					//MiniCDI::Log("[DCA%d] cpat %d,p=$%04X", Path, reg.CursorPatternY, reg.CursorPatternX);
 				}
-				//MiniCDI::Log("[DCA%d] cpat %d,p=$%04X", Path, reg.CursorPatternY, reg.CursorPatternX);
 				break;
 
 			case 0xD0:
@@ -659,17 +676,19 @@ public:
 				break;
 
 			case 0xD8: // channel 1
-				reg.BackdropColor = inst & 0x00FFFFFFu;
+				if (!Path) {
+					reg.BackdropColor = inst & 0x00FFFFFFu;
+				}
 				break;
 
 			case 0xD9:
 			case 0xDA:
-				reg.MosaicPixel[Path] = inst & 0xFFu;
+				reg.MosaicPixel[(inst >> 24 & 0xFF) == 0xDA ? 1 : 0] = inst & 0xFFu;
 				break;
 
 			case 0xDB:
 			case 0xDC:
-				reg.ICF[Path] = inst & 0x3Fu;
+				reg.ICF[(inst >> 24 & 0xFF) == 0xDC ? 1 : 0] = inst & 0x3Fu;
 				//if (reg.ICF[Path]) MiniCDI::Log("[DCA%d] wfac_%s %d", Path ? "b" : "a", reg.ICF[Path]);
 				break;
 		}

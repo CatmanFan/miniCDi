@@ -155,7 +155,7 @@ static void RUN_CDI(const std::string &biosName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL ? true : false;
 	MiniCDI::Config::ShowLCD = true;
 
 	bool paused = false;
@@ -166,11 +166,9 @@ static void RUN_CDI(const std::string &biosName)
 	// MonoIV cdi;
 
 	cdi.init(appPath + "rom/" + biosName + ".rom");
-	if (access((appPath + "HTLMARIO.BIN").c_str(), F_OK) == 0) {
-		// cdi.disc.open(appPath + "DEBUGCTL.BIN");
-		// cdi.disc.open(appPath + "BADAPPLE.BIN");
-		cdi.disc.open(appPath + "HTLMARIO.BIN");
-	}
+	// cdi.disc.open(appPath + "DEBUGCTL.BIN");
+	// cdi.disc.open(appPath + "BADAPPLE.BIN");
+	cdi.disc.open(appPath + "HTLMARIO.BIN");
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;

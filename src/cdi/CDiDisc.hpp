@@ -289,9 +289,16 @@ public:
 
 	void open(const std::string &path)
 	{
-		disc.open(path, std::ios::in | std::ios::binary);
-		if (disc.is_open()) {
-			MiniCDI::Config::HasDisc = true;
+		if (access(path.c_str(), F_OK) == 0) {
+			disc.open(path, std::ios::in | std::ios::binary);
+			if (disc.is_open()) {
+				MiniCDI::Config::HasDisc = true;
+				MiniCDI::Log("[CDI] loaded disc image (%s)", path.c_str());
+			} else {
+				MiniCDI::Log("[CDI] failed to load disc image (%s)", path.c_str());
+			}
+		} else {
+			MiniCDI::Log("[CDI] requested disc image not found (%s)", path.c_str());
 		}
 	}
 
@@ -300,6 +307,7 @@ public:
 		if (disc.is_open()) {
 			disc.close();
 			MiniCDI::Config::HasDisc = false;
+			MiniCDI::Log("[CDI] unloaded disc image");
 		}
 	}
 };

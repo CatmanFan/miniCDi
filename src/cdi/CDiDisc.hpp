@@ -23,10 +23,20 @@ class CDiDisc
 		char Mode;
 
 		// Subheader, is repeated twice
-		char FileNum;
-		char ChNum;
-		char Submode; // 0x01 = EOR, 0x02 = Video, 0x04 = Audio, 0x08 = Data, 0x10 = Trigger, 0x20 = Form, 0x40 = Real-Time Sector, 0x80 = EOF
-		char CodingInfo;
+		char FileNum[2];
+		char ChNum[2];
+		char Submode[2];
+		char CodingInfo[2];
+
+		/// Subheader codes:
+		/// 0x01 = EOR
+		/// 0x02 = Video
+		/// 0x04 = Audio
+		/// 0x08 = Data
+		/// 0x10 = Trigger
+		/// 0x20 = Form
+		/// 0x40 = Real-Time Sector
+		/// 0x80 = EOF
 
 		char Data[2328];
 	} Sector; // CD-i, not CD-DA*/
@@ -75,11 +85,14 @@ class CDiDisc
 			disc.get(Sector.Sec);
 			disc.get(Sector.Frame);
 			disc.get(Sector.Mode);
-			disc.get(Sector.FileNum);
-			disc.get(Sector.ChNum);
-			disc.get(Sector.Submode);
-			disc.get(Sector.CodingInfo);
-			disc.seekg(4, std::ios::cur);
+			disc.get(Sector.FileNum[0]);
+			disc.get(Sector.ChNum[0]);
+			disc.get(Sector.Submode[0]);
+			disc.get(Sector.CodingInfo[0]);
+			disc.get(Sector.FileNum[1]);
+			disc.get(Sector.ChNum[1]);
+			disc.get(Sector.Submode[1]);
+			disc.get(Sector.CodingInfo[1]);
 
 			// MiniCDI::Log("[Disc] sector read %02X:%02X:%02X", Sector.Min, Sector.Sec, Sector.Frame);
 			disc.read(&Sector.Data[0], 2328);

@@ -23,29 +23,26 @@ static GXRModeObj *rmode = NULL;
 class FPS
 {
 	int8_t aggregate;
-	int8_t incremented1;
-	int8_t incremented2;
+	int8_t incremented;
 	clock_t lastTime;
 	clock_t currentTime;
 
 public:
 	FPS() : aggregate(0)
-		  , incremented1(0)
-		  , incremented2(0)
+		  , incremented(0)
 		  , lastTime(ticks_to_millisecs(gettime()))
 	{ }
 
 	void update(int frames = 1)
 	{
-		incremented1 += frames;
+		incremented += frames;
 		currentTime = ticks_to_millisecs(gettime());
 
-		if(currentTime - lastTime > 500)
+		if(currentTime - lastTime > 1000)
 		{
 			lastTime = currentTime;
-			aggregate = incremented1 + incremented2;
-			incremented2 = incremented1;
-			incremented1 = 0;
+			aggregate = incremented;
+			incremented = 0;
 			#ifdef MINICDI_DEBUG
 			printf("[FPS] %d\n", aggregate);
 			#endif
@@ -65,7 +62,7 @@ public:
 	{
 		if (display_output) {
 			// Clear screen
-			SDL_SetRenderDrawColor(this->renderer, 64, 64, 64, 255);
+			SDL_SetRenderDrawColor(this->renderer, 0, 0, 0, 255);
 			SDL_RenderClear(this->renderer);
 
 			// Draw screen

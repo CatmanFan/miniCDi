@@ -149,14 +149,14 @@ public:
 								memory[0x301201] = Main[0][1] = disc->Sector.Sec;
 								memory[0x301202] = Main[0][2] = disc->Sector.Frame;
 								memory[0x301203] = Main[0][3] = disc->Sector.Mode;
-								memory[0x301204] = Main[0][4] = disc->Sector.FileNum;
-								memory[0x301205] = Main[0][5] = disc->Sector.ChNum;
-								memory[0x301206] = Main[0][6] = disc->Sector.Submode;
-								memory[0x301207] = Main[0][7] = disc->Sector.CodingInfo;
-								memory[0x301208] = Main[0][8] = disc->Sector.FileNum;
-								memory[0x301209] = Main[0][9] = disc->Sector.ChNum;
-								memory[0x30120A] = Main[0][10] = disc->Sector.Submode;
-								memory[0x30120B] = Main[0][11] = disc->Sector.CodingInfo;
+								memory[0x301204] = Main[0][4] = disc->Sector.FileNum[0];
+								memory[0x301205] = Main[0][5] = disc->Sector.ChNum[0];
+								memory[0x301206] = Main[0][6] = disc->Sector.Submode[0];
+								memory[0x301207] = Main[0][7] = disc->Sector.CodingInfo[0];
+								memory[0x301208] = Main[0][8] = disc->Sector.FileNum[1];
+								memory[0x301209] = Main[0][9] = disc->Sector.ChNum[1];
+								memory[0x30120A] = Main[0][10] = disc->Sector.Submode[1];
+								memory[0x30120B] = Main[0][11] = disc->Sector.CodingInfo[1];
 								for (int i = 0; i < 2328; i++) {
 									memory[0x30120C+i] = Main[0][12+i] = disc->Sector.Data[i];
 								}

@@ -129,12 +129,13 @@ public:
 			}
 		}
 
-		memcpy(&memory[0], &rom[0], 0x8); // contains initial SSP and PC
+		// memcpy(&memory[0], &rom[0], 0x8); // contains initial SSP and PC
 		memcpy(&memory[romAddr], &rom[0], 512*1024*sizeof(char));
 	}
 
 	void reset()
 	{
+		// Reset onchip peripherals
 		fc = 0;
 
 		UMR = 0x20; // unused bit
@@ -148,10 +149,14 @@ public:
 		DMA[0].CSR = DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
 		IDR = IAR = ISR = ICR = ICCR = 0;
 
-		m68k_init();
-		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
+		// Clear DRAM banks
+		for (int i = 0x000000; i < 0x07ffff; i++) { memory[i] = 0; }
+		for (int i = 0x240000; i < 0x27ffff; i++) { memory[i] = 0; }
+		memcpy(&memory[0], &memory[0x400000], 0x8); // contains initial SSP and PC
+
+		// Reset Musashi processor
 		m68k_pulse_reset();
-		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
+		// for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 	}
 
 	void interrupt(size_t ch)

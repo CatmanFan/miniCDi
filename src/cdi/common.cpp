@@ -3,6 +3,14 @@
 
 namespace MiniCDI
 {
+	namespace Config
+	{
+		bool TestPlug = false;
+		bool PAL = true;
+		bool ShowLCD = false;
+		// FILE* LogFile = nullptr;
+	}
+
 	static struct
 	{
 		uint8_t* memory;
@@ -114,6 +122,8 @@ bool MonoI::init(const std::string &bios)
 			.cdic = this->cdic
 		};
 
+		m68k_init();
+		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
 		this->cpu.load_rom(bios.c_str(), 0x400000);
 		this->cpu.reset();
 
@@ -141,6 +151,8 @@ bool MonoIV::init(const std::string &bios)
 			.ciap = this->ciap
 		};
 
+		m68k_init();
+		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
 		this->cpu.load_rom(bios.c_str(), 0x400000);
 		this->cpu.reset();
 

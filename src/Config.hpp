@@ -5,10 +5,10 @@ namespace MiniCDI
 {
 	namespace Config
 	{
-		inline static bool TestPlug; // enables service menu
-		inline static bool PAL;
-		inline static bool ShowLCD;
-		// inline static FILE* LogFile = nullptr;
+		extern bool TestPlug; // enables service menu
+		extern bool PAL;
+		extern bool ShowLCD;
+		// extern FILE* LogFile = nullptr;
 	}
 }
 

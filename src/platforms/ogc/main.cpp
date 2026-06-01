@@ -155,7 +155,7 @@ static void RUN_CDI(const std::string &biosName)
 		exit(0);
 	}
 
-	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::PAL = false;
 	MiniCDI::Config::ShowLCD = false;
 
 	bool paused = false;

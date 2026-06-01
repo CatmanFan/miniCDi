@@ -199,9 +199,8 @@ public:
 				}
 				break;
 
-			case 0x303C00: CMD = value;
-			case 0x303C02: // This is actually the command register??
-				/*MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value);*/ TIME &= 0x00FF; TIME |= (value << 16); break;
+			case 0x303C00: CMD = value; break;
+			case 0x303C02: /*MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value);*/ TIME &= 0x00FF; TIME |= (value << 16); break;
 			case 0x303C04: /*MiniCDI::Log("[CDIC] TIME (lower) <= %04X", value);*/ TIME &= 0xFF00; TIME |= value; break;
 			case 0x303C06: MiniCDI::Log("[CDIC] FILE <= %04X", value); FILE = value; break;
 			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) <= %04X", value); CHAN &= 0x00FF; CHAN |= (value << 16); break;

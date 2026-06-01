@@ -5,7 +5,8 @@ class CDi
 {
 protected:
 	uint8_t *memory; // Contains full memory map
-	const int memSize	= 0x680000; // cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
+	const int memSize	= 0xFFFFFF; // TO-DO: prevent overhead ?
+	// cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
 
 	// ONLY the chips shared in common by supported boards (MMC and Mono)
 	SCC68070 cpu;

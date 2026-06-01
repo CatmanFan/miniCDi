@@ -207,12 +207,12 @@ static void RUN_CDI(const std::string &biosName)
 
 		if (!paused)
 		{
-			cdi.pd.set_button(PointingDevice::Left, (held & WPAD_BUTTON_UP) || (held & CLASSIC_CTRL_BUTTON_LEFT));
-			cdi.pd.set_button(PointingDevice::Right, (held & WPAD_BUTTON_DOWN) || (held & CLASSIC_CTRL_BUTTON_RIGHT));
-			cdi.pd.set_button(PointingDevice::Down, (held & WPAD_BUTTON_LEFT) || (held & CLASSIC_CTRL_BUTTON_DOWN));
-			cdi.pd.set_button(PointingDevice::Up, (held & WPAD_BUTTON_RIGHT) || (held & CLASSIC_CTRL_BUTTON_UP));
-			cdi.pd.set_button(PointingDevice::Button1, (held & WPAD_BUTTON_1) || (held & CLASSIC_CTRL_BUTTON_A));
-			cdi.pd.set_button(PointingDevice::Button2, (held & WPAD_BUTTON_2) || (held & CLASSIC_CTRL_BUTTON_B));
+			cdi.pd.set_button(PointingDevice::Left, (held & WPAD_BUTTON_UP) || (held & WPAD_CLASSIC_BUTTON_LEFT));
+			cdi.pd.set_button(PointingDevice::Right, (held & WPAD_BUTTON_DOWN) || (held & WPAD_CLASSIC_BUTTON_RIGHT));
+			cdi.pd.set_button(PointingDevice::Down, (held & WPAD_BUTTON_LEFT) || (held & WPAD_CLASSIC_BUTTON_DOWN));
+			cdi.pd.set_button(PointingDevice::Up, (held & WPAD_BUTTON_RIGHT) || (held & WPAD_CLASSIC_BUTTON_UP));
+			cdi.pd.set_button(PointingDevice::Button1, (held & WPAD_BUTTON_1) || (held & WPAD_CLASSIC_BUTTON_A));
+			cdi.pd.set_button(PointingDevice::Button2, (held & WPAD_BUTTON_2) || (held & WPAD_CLASSIC_BUTTON_B));
 			cdi.pd.send();
 
 			static FPS fps;

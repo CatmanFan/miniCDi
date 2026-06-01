@@ -81,8 +81,7 @@ class CDiDisc
 			disc.get(Sector.CodingInfo);
 			disc.seekg(4, std::ios::cur);
 
-			// MiniCDI::Log("[Disc] sector read. time: %02X:%02X:%02X, mode: %02X", Sector.Min, Sector.Sec, Sector.Frame, Sector.Mode);
-			// MiniCDI::Log("                    file: %d, ch: %d, submode: %02X, coding: %02X", Sector.FileNum, Sector.ChNum, Sector.Submode, Sector.CodingInfo);
+			// MiniCDI::Log("[Disc] sector read %02X:%02X:%02X", Sector.Min, Sector.Sec, Sector.Frame);
 			disc.read(&Sector.Data[0], 2328);
 		}
 	}

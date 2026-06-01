@@ -37,6 +37,7 @@ class CDIC
 
 	void disc_start_read(uint8_t mode)
 	{
+		MiniCDI::Log("[CDIC] starting disc read - mode %d", mode);
 		DiscStatus.cmd = CMD;
 		DiscStatus.mode = mode;
 		DiscStatus.spinup_counter = 6;
@@ -70,10 +71,11 @@ public:
 
 		// Additional MODE2 processing
 		bool selected = true;
+		bool adpcm_selected = false;
 		if (disc->Sector.Mode == 2 && DiscStatus.mode == 2)
 		{
 			if ((FILE >> 8 & 0x00FF) != disc->Sector.FileNum[1]) {
-				MiniCDI::Log("[CDIC] MODE2: sector file num does not match, skipping");
+				// MiniCDI::Log("[CDIC] MODE2: sector file num does not match, skipping");
 				selected = false;
 				goto copy_sector;
 			}
@@ -86,35 +88,26 @@ public:
 				goto copy_sector;
 			}
 			if (!(disc->Sector.Submode[1] & (0x08 | 0x04 | 0x02))) { // DATA, VIDEO, AUDIO
-				MiniCDI::Log("[CDIC] MODE2: sector is message, skipping");
+				// MiniCDI::Log("[CDIC] MODE2: sector is message, skipping");
 				selected = false;
 				goto copy_sector;
 			}
 			if (!(CHAN >> disc->Sector.ChNum[1] & 0b01)) {
-				MiniCDI::Log("[CDIC] MODE2: sector channel not satisfied, skipping");
+				// MiniCDI::Log("[CDIC] MODE2: sector channel not satisfied, skipping");
 				selected = false;
 				goto copy_sector;
-			}
-
-			if ((disc->Sector.ChNum[1] & 0x24) && (ACHAN >> disc->Sector.ChNum[1] & 0b01)) {
-				// Audio selected
-				DBUF |= 0x0004; // audio index
-
-				/// TO-DO
-				exit(0);
 			}
 		}
 
 		copy_sector:
 		if (selected)
 		{
-			MiniCDI::Log("[CDIC] read sector %X (%02X:%02X:%02X)", DiscStatus.LBA, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			MiniCDI::Log("[CDIC] read sector %X (%02X:%02X:%02X) (MODE:%d)",
+				DiscStatus.LBA, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame, disc->Sector.Mode);
 			disc->read_sector_data(DiscStatus.LBA);
 
-			// Switch DBUF index
-			DBUF &= 0xFF85; DBUF ^= 0x0001;
-			if (disc->Sector.Mode == 2 && DiscStatus.mode == 2)
-				DBUF |= 0x0020; // MODE2 bit??
+			// Switch DBUF index and reset audio
+			DBUF &= ~0x0024; DBUF ^= 0x0001;
 
 			memory[0x300000 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][0] = disc->Sector.Min;
 			memory[0x300001 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][1] = disc->Sector.Sec;
@@ -129,15 +122,28 @@ public:
 			memory[0x30000A + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][10] = disc->Sector.Submode[1];
 			memory[0x30000B + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
 
-			// Copy data buffer
+			if (DiscStatus.cmd == 0x2A && (disc->Sector.ChNum[1] & 0x24) && (ACHAN >> disc->Sector.ChNum[1] & 0b01)) {
+				// Audio selected
+				adpcm_selected = true;
+				DBUF |= 0x0024; // audio index
+				memory[0x30280B + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
+			}
+
+			// Copy data/ADPCM buffer
 			for (int i = 0; i < 2328; i++) {
-				memory[0x30000C+i + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][12+i] = disc->Sector.Data[i];
+				if (adpcm_selected)
+					memory[0x30280C+i + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][12+i] = disc->Sector.Data[i];
+				else
+					memory[0x30000C+i + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][12+i] = disc->Sector.Data[i];
 			}
 			// memory[DBUF & 0x01 ? 0x301324 : 0x300924] = DATA[DBUF & 0x01][0x924] = 0xff; // 0x00
 
 			XBUF |= 0x8000; // sector filled for processing
-			DBUF &= ~0x0020;
 			DBUF |= 0x4000; // send DATA to CPU
+			if ((AUDCTL & 0x0800) == 0 && adpcm_selected) {
+				MiniCDI::Log("[CDIC] audio playback start");
+				AUDCTL = 0x0800;
+			}
 			m68k_set_irq(4);
 		}
 
@@ -199,17 +205,18 @@ public:
 				return DMACTL;
 			}
 			case 0x303FFA: {
-				AUDCTL ^= 0x0001;
-				//MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
-				/*uint16_t value = AUDCTL;
+				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
+				uint16_t value = AUDCTL;
+				AUDCTL &= ~0x0800;
 				if (AUDCTL & 0x0001) { // reset ADPCM playback stopped bit
-					AUDCTL &= 0xFFFE;
-				}*/
-				return AUDCTL;
+					AUDCTL &= 0xFFF0;
+					if (AUDCTL & 0x2000) m68k_set_irq(4);
+				}
+				return value;
 			}
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC => %04X", IVEC); return IVEC;
 			case 0x303FFE: {
-				//MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
+				MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
 				uint16_t value = DBUF;
 				if (DBUF & 0x0080) { // reset subQ CRC error bit
 					DBUF &= 0xFF7F;
@@ -306,7 +313,7 @@ public:
 							disc_start_read(1);
 							break;
 						case 0x2E:
-							MiniCDI::Log("[CDIC] continue reading (0x%02X)", CMD);
+							MiniCDI::Log("[CDIC] continue (0x%02X)", CMD);
 							break;
 					}
 					DBUF &= 0x7FFF;

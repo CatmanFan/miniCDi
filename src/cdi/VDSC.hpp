@@ -277,14 +277,16 @@ class Decoder
 	template <size_t Path>
 	uint32_t decodeRGB555(uint8_t* src, uint32_t *dst)
 	{
-		uint8_t r = ((*src >> 10) & 0x1F) << 3;
-		uint8_t g = ((*src >> 5) & 0x1F) << 3;
-		uint8_t b = (*src & 0x1F) << 3;
+		if (!isTransparent<Path>(src)) {
+			uint8_t r = ((*src >> 10) & 0x1F) << 3;
+			uint8_t g = ((*src >> 5) & 0x1F) << 3;
+			uint8_t b = (*src & 0x1F) << 3;
 
-		*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
-				(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
-				(b > 255 ? 255 : b < 0 ? 0 : b) << 8 |
-				0xFF);
+			*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
+					(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
+					(b > 255 ? 255 : b < 0 ? 0 : b) << 8 |
+					0xFF);
+		}
 
 		return 1;
 	}

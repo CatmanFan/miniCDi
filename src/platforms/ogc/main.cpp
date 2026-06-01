@@ -44,7 +44,7 @@ public:
 			aggregate = incremented;
 			incremented = 0;
 			#ifdef MINICDI_DEBUG
-			printf("[FPS] %d\n", aggregate);
+			// printf("[FPS] %d\n", aggregate);
 			#endif
 		}
 	}
@@ -96,6 +96,7 @@ public:
 	{
 		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == 0) {
 			// atexit(SDL_Quit);
+			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 			SDL_ShowCursor(SDL_DISABLE);
 
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -165,9 +166,9 @@ static void RUN_CDI(const std::string &biosName)
 	// MonoIV cdi;
 
 	cdi.init(appPath + "rom/" + biosName + ".rom");
-	if (access((appPath + "BADAPPLE.BIN").c_str(), F_OK) == 0) {
-		// cdi.disc.open(appPath + "DEBUGCTL.BIN");
-		cdi.disc.open(appPath + "BADAPPLE.BIN");
+	if (access((appPath + "DEBUGCTL.BIN").c_str(), F_OK) == 0) {
+		cdi.disc.open(appPath + "DEBUGCTL.BIN");
+		// cdi.disc.open(appPath + "BADAPPLE.BIN");
 		// cdi.disc.open(appPath + "HTLMARIO.BIN");
 	}
 

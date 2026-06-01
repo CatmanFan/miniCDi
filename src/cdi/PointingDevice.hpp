@@ -31,74 +31,78 @@ public:
 
 	void send()
 	{
-		if (IO.slave && IO.slave->pointer_used) {
-			if (!IO.slave->pointer)
-			{
-				IO.slave->Ch[0].Out = {'M'};
-				IO.slave->pointer = true;
-				m68k_set_irq(2);
-			}
-
+		if (IO.slave) {
 			if (IO.slave->pointer_posChanged) {
-				// x = IO.slave->pointer_x;
+				x = IO.slave->pointer_x;
 				// y = IO.slave->pointer_y;
 				IO.slave->pointer_posChanged = false;
 			}
 
-			else if (changed_Face || changed_DPad)
-			{
-				#ifdef MINICDI_DEBUG
-				x = 550; y = 306;
-				#endif
+			if (IO.slave->pointer_used) {
+				if (!IO.slave->pointer)
+				{
+					IO.slave->Ch[0].Out = {'M'};
+					IO.slave->pointer = true;
+					m68k_set_irq(2);
+				}
 
+				else if (changed_Face || changed_DPad)
+				{
+					#ifdef MINICDI_DEBUG
+					x = 550; y = 306;
+					#endif
+
+					if (changed_Face) { changed_Face = false; }
+					if (changed_DPad)
+					{
+						x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
+																			 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
+																			 : 0), 0, 767);
+						y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
+																		  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
+																		  : 0), 0, 559);
+					}
+
+					// Convert to SLAVE response (allowed coord bounds: 54x97 to 704x679?)
+					IO.slave->Ch[0].Out =
+					{
+						(uint8_t)((x >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
+						(uint8_t)(x & 0x7f),
+						(uint8_t)(y >> 7 & 0x07),
+						(uint8_t)(y & 0x7f)
+					};
+					MiniCDI::Log("[PD] x=%d,y=%d", x, y);
+					m68k_set_irq(2);
+				}
+			}
+		}
+
+		else if (IO.ikat) {
+			if (IO.ikat->has_pointer && (changed_Face || changed_DPad)) {
 				if (changed_Face) { changed_Face = false; }
 				if (changed_DPad)
 				{
 					x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
 																		 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
-																		 : 0), 0, 767);
+																		 : 0), 0, 1023);
 					y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
 																	  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
-																	  : 0), 0, 559);
+																	  : 0), 0, 1023);
 				}
 
-				// Convert to SLAVE response (allowed coord bounds: 54x97 to 704x679?)
-				IO.slave->Ch[0].Out =
+				IO.ikat->Ch[1].Out =
 				{
-					(uint8_t)((x >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
-					(uint8_t)(x & 0x7f),
-					(uint8_t)(y >> 7 & 0x07),
-					(uint8_t)(y & 0x7f)
+					(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0x0F)),
+					(uint8_t)(0x10 | (y >> 6 & 0x0F)),
+					(uint8_t)(x & 0x3F),
+					(uint8_t)(0x80 | (y & 0x3F)),
 				};
-				MiniCDI::Log("[PD] x=%d,y=%d", x, y);
-				m68k_set_irq(2);
+
+				// REMTY OFF + INT
+				IO.ikat->Ch[1].SR &= ~(0x10);
+				IO.ikat->ISR |= 0x08;
+				if (IO.ikat->IMR & 0x08) m68k_set_irq(2);
 			}
-		}
-
-		if (IO.ikat && IO.ikat->has_pointer && (changed_Face || changed_DPad)) {
-			if (changed_Face) { changed_Face = false; }
-			if (changed_DPad)
-			{
-				x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
-																	 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
-																	 : 0), 0, 1023);
-				y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
-																  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
-																  : 0), 0, 1023);
-			}
-
-			IO.ikat->Ch[1].Out =
-			{
-				(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0x0F)),
-				(uint8_t)(0x10 | (y >> 6 & 0x0F)),
-				(uint8_t)(x & 0x3F),
-				(uint8_t)(0x80 | (y & 0x3F)),
-			};
-
-			// REMTY OFF + INT
-			IO.ikat->Ch[1].SR &= ~(0x10);
-			IO.ikat->ISR |= 0x08;
-			if (IO.ikat->IMR & 0x08) m68k_set_irq(2);
 		}
 	}
 

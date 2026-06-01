@@ -37,7 +37,6 @@ class CDIC
 
 	void disc_start_read(uint8_t mode)
 	{
-		MiniCDI::Log("[CDIC] starting disc read - mode %d", mode);
 		DiscStatus.cmd = CMD;
 		DiscStatus.mode = mode;
 		DiscStatus.spinup_counter = 6;
@@ -80,7 +79,7 @@ public:
 				goto copy_sector;
 			}
 			if (disc->Sector.Submode[1] & 0x80) { // EOF
-				MiniCDI::Log("[CDIC] MODE2: sector is EOF, disc read will stop");
+				MiniCDI::Log("[CDIC] MODE2: reached EOF");
 				DiscStatus.cmd = 0;
 			}
 			if (disc->Sector.Submode[1] & (0x80 | 0x10 | 0x01)) { // EOF, TRIGGER, EOR
@@ -140,10 +139,6 @@ public:
 
 			XBUF |= 0x8000; // sector filled for processing
 			DBUF |= 0x4000; // send DATA to CPU
-			if ((AUDCTL & 0x0800) == 0 && adpcm_selected) {
-				MiniCDI::Log("[CDIC] audio playback start");
-				AUDCTL = 0x0800;
-			}
 			m68k_set_irq(4);
 		}
 
@@ -205,14 +200,10 @@ public:
 				return DMACTL;
 			}
 			case 0x303FFA: {
+				AUDCTL ^= 0x0001; // reset ADPCM playback stopped bit
 				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
-				uint16_t value = AUDCTL;
-				AUDCTL &= ~0x0800;
-				if (AUDCTL & 0x0001) { // reset ADPCM playback stopped bit
-					AUDCTL &= 0xFFF0;
-					if (AUDCTL & 0x2000) m68k_set_irq(4);
-				}
-				return value;
+				m68k_set_irq(4);
+				return AUDCTL;
 			}
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC => %04X", IVEC); return IVEC;
 			case 0x303FFE: {
@@ -243,16 +234,16 @@ public:
 		{
 			default:
 				if (addr >= 0x300000 && addr <= 0x3009FF) {
-					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x300000, value);
+					// MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x300000, value);
 					// DATA[0][addr - 0x300000] = value;
 				} else if (addr >= 0x300A00 && addr <= 0x3013FF) {
-					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x300A00, value);
+					// MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x300A00, value);
 					// DATA[1][addr - 0x300A00] = value;
 				} else if (addr >= 0x302800 && addr <= 0x3031FF) {
-					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x302800, value);
+					// MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x302800, value);
 					// ADPCM[0][addr - 0x302800] = value;
 				} else if (addr >= 0x303200 && addr <= 0x303BFF) {
-					MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x303200, value);
+					// MiniCDI::Log("[CDIC] data %02X <= %04X", addr-0x303200, value);
 					// ADPCM[1][addr - 0x303200] = value;
 				} else {
 					memory[addr] = value >> 8 & 0xFF;
@@ -261,8 +252,8 @@ public:
 				break;
 
 			case 0x303C00: CMD = value; break;
-			case 0x303C02: MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value); TIME &= 0x00FF; TIME |= (value << 16); break;
-			case 0x303C04: MiniCDI::Log("[CDIC] TIME (lower) <= %04X", value); TIME &= 0xFF00; TIME |= value; break;
+			case 0x303C02: TIME &= 0x00FF; TIME |= (value << 16); break;
+			case 0x303C04: TIME &= 0xFF00; TIME |= value; break;
 			case 0x303C06: MiniCDI::Log("[CDIC] FILE <= %04X", value); FILE = value; break;
 			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) <= %04X", value); CHAN &= 0x00FF; CHAN |= (value << 16); break;
 			case 0x303C0A: MiniCDI::Log("[CDIC] CHAN (lower) <= %04X", value); CHAN &= 0xFF00; CHAN |= value; break;
@@ -273,9 +264,11 @@ public:
 			case 0x303FF8: MiniCDI::Log("[CDIC] DMACTL <= %04X", value); DMACTL = value;
 				if (value & 0x8000) cpu->dma_call(0, 0x300000 + (value & 0x3FFF));
 				break;
-			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value; break;
+			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value;
+				if (value & 0x0800) MiniCDI::Log("[CDIC] audio playback start");
+				break;
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); memory[addr] = IVEC = value; break;
-			case 0x303FFE: MiniCDI::Log("[CDIC] DBUF <= %04X", value); DBUF = value;
+			case 0x303FFE: /*MiniCDI::Log("[CDIC] DBUF <= %04X", value);*/ DBUF = value;
 				if (DBUF & 0x8000)
 				{
 					switch (CMD)
@@ -297,11 +290,11 @@ public:
 							disc_start_read(3);
 							break;
 						case 0x29:
-							MiniCDI::Log("[CDIC] read CD-i data (mode1) (0x%02X)", CMD);
+							MiniCDI::Log("[CDIC] start CD-i dataread from $%08X (mode1) (0x%02X)", TIME, CMD);
 							disc_start_read(1);
 							break;
 						case 0x2A:
-							MiniCDI::Log("[CDIC] read CD-i data (mode2) (0x%02X)", CMD);
+							MiniCDI::Log("[CDIC] start CD-i dataread from $%08X (mode2) (0x%02X)", TIME, CMD);
 							disc_start_read(2);
 							break;
 						case 0x2B:
@@ -331,7 +324,7 @@ public:
 				write16(addr+2, value & 0xFFFF, cpu);
 				break;
 
-			case 0x303C02: MiniCDI::Log("[CDIC] TIME <= %08X", value); TIME = value; break;
+			case 0x303C02: TIME = value; break;
 			case 0x303C08: MiniCDI::Log("[CDIC] CHAN <= %08X", value); CHAN = value; break;
 		}
 	}

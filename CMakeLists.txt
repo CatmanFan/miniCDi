@@ -9,7 +9,7 @@ add_executable(${PROJECT_NAME})
 dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
-option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." ON)
+option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." OFF)
 option(MINICDI_ENABLE_DEBUG_CPU "Debug CPU information (PC, SR, FC, D*, A*)." OFF)
 option(MINICDI_ENABLE_DEBUG_OS9 "Debug OS-9 syscall information." OFF)
 option(MINICDI_ENABLE_FRAMESKIP "Enable frameskip hack." ON)

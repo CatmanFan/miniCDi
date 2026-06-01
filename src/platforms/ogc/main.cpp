@@ -155,7 +155,8 @@ static void RUN_CDI(const std::string &biosName)
 		exit(0);
 	}
 
-	MiniCDI::Config::PAL = false;
+	MiniCDI::Config::TestPlug = false;
+	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
 
 	bool paused = false;
@@ -166,9 +167,10 @@ static void RUN_CDI(const std::string &biosName)
 	// MonoIV cdi;
 
 	cdi.init(appPath + "rom/" + biosName + ".rom");
-	if (access((appPath + "DEBUGCTL.BIN").c_str(), F_OK) == 0) {
+	if (access((appPath + "HTLMARIO.BIN").c_str(), F_OK) == 0) {
+		// cdi.disc.open(appPath + "DEBUGCTL.BIN");
 		// cdi.disc.open(appPath + "BADAPPLE.BIN");
-		cdi.disc.open(appPath + "DEBUGCTL.BIN");
+		cdi.disc.open(appPath + "HTLMARIO.BIN");
 	}
 
 	#ifndef MINICDI_DEBUG

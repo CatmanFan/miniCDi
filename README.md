@@ -2,12 +2,11 @@
 An experimental Philips CD-i emulator for the Wii and 3DS. Currently only supports the Mono-I 220/20 player revision, with partial support for Mono-IV boards.
 
 ## Compatibility
+The following boards and chips have been implemented. CD-i Fan has more information regarding hardware at [cdichips](https://github.com/cdifan/cdichips) repository.
 
-| Board | CPU | Video | CD+Audio | Microcont. | Pointer Device |
-| :---: |-----|-------|----------|------------|----------------|
-| **Mono-I** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – CDIC | :heavy_check_mark: – SLAVE | :heavy_check_mark: |
-| **Mono-II** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – DSP | :heavy_check_mark: – SLAVE | :heavy_check_mark: |
-| **Mono-III<br/>Mono-IV<br/>Robocon** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – CIAP | :x: – IKAT | :x: |
+* ***Mono-I***: SCC68070, MCD212, CDIC (partial), SLAVE
+* ***Mono-II***: SCC68070, MCD212, ~~DSP~~, SLAVE
+* ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (partial), IKAT
 
 ## To-Do
 - [ ] Proper reset sequence

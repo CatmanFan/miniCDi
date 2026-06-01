@@ -95,7 +95,7 @@ public:
 	SDL()
 	{
 		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == 0) {
-			atexit(SDL_Quit);
+			// atexit(SDL_Quit);
 			SDL_ShowCursor(SDL_DISABLE);
 
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -113,6 +113,7 @@ public:
 		if (this->window) SDL_DestroyWindow(this->window);
 
 		SDL_Quit();
+		VIDEO_SetBlack(true);
 	}
 };
 
@@ -154,7 +155,7 @@ static void RUN_CDI(const std::string &biosName)
 
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
-	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::ShowLCD = true;
 
 	bool paused = false;
 
@@ -164,10 +165,10 @@ static void RUN_CDI(const std::string &biosName)
 	// MonoIV cdi;
 
 	cdi.init(appPath + "rom/" + biosName + ".rom");
-	if (access((appPath + "HTLMARIO.BIN").c_str(), F_OK) == 0) {
+	if (access((appPath + "BADAPPLE.BIN").c_str(), F_OK) == 0) {
 		// cdi.disc.open(appPath + "DEBUGCTL.BIN");
-		// cdi.disc.open(appPath + "BADAPPLE.BIN");
-		cdi.disc.open(appPath + "HTLMARIO.BIN");
+		cdi.disc.open(appPath + "BADAPPLE.BIN");
+		// cdi.disc.open(appPath + "HTLMARIO.BIN");
 	}
 
 	#ifndef MINICDI_DEBUG
@@ -230,7 +231,7 @@ static void RUN_CDI(const std::string &biosName)
 			#ifdef MINICDI_DEBUG
 			VIDEO_WaitVSync();
 			#else
-			screen.update(cdi.get_display(), cdi.get_display_width(), NULL);
+			screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 			#endif
 		}
 	}

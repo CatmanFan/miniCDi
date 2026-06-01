@@ -58,46 +58,63 @@ public:
 
 	void tick()
 	{
-		if (DiscStatus.cmd != 0)
+		if (DiscStatus.cmd == 0)
+			return;
+
+		if (DiscStatus.spinup_counter > 0) {
+			DiscStatus.spinup_counter--;
+			return;
+		}
+
+		disc->read_sector_header(DiscStatus.LBA);
+
+		// Additional MODE2 processing
+		bool selected = true;
+		if (disc->Sector.Mode == 2 && DiscStatus.mode == 2)
 		{
-			if (DiscStatus.spinup_counter > 0) {
-				DiscStatus.spinup_counter--;
-				return;
+			if ((FILE >> 8 & 0x00FF) != disc->Sector.FileNum[1]) {
+				MiniCDI::Log("[CDIC] MODE2: sector file num does not match, skipping");
+				selected = false;
+				goto copy_sector;
+			}
+			if (disc->Sector.Submode[1] & 0x80) { // EOF
+				MiniCDI::Log("[CDIC] MODE2: sector is EOF, disc read will stop");
+				DiscStatus.cmd = 0;
+			}
+			if (disc->Sector.Submode[1] & (0x80 | 0x10 | 0x01)) { // EOF, TRIGGER, EOR
+				MiniCDI::Log("[CDIC] MODE2: sector automatically satisfied");
+				goto copy_sector;
+			}
+			if (!(disc->Sector.Submode[1] & (0x08 | 0x04 | 0x02))) { // DATA, VIDEO, AUDIO
+				MiniCDI::Log("[CDIC] MODE2: sector is message, skipping");
+				selected = false;
+				goto copy_sector;
+			}
+			if (!(CHAN >> disc->Sector.ChNum[1] & 0b01)) {
+				MiniCDI::Log("[CDIC] MODE2: sector channel not satisfied, skipping");
+				selected = false;
+				goto copy_sector;
 			}
 
-			// Additional MODE2 processing
-			/*if (DiscStatus.cmd == 0x2A && (disc->Sector.ChNum[1] & 0x24) && (disc->Sector.ChNum[1] & ACHAN)) { // Audio selected
+			if ((disc->Sector.ChNum[1] & 0x24) && (ACHAN >> disc->Sector.ChNum[1] & 0b01)) {
+				// Audio selected
 				DBUF |= 0x0004; // audio index
+
 				/// TO-DO
+				exit(0);
 			}
-			if (DiscStatus.mode == 2)
-			{
-				if ((FILE >> 8 & 0xFF) != disc->Sector.FileNum[1]) {
-					MiniCDI::Log("[CDIC] MODE2: sector file num does not match, skipping");
-					DiscStatus.LBA++;
-					return;
-				}
-				if (disc->Sector.Submode[1] & 0x80) { // EOF
-					MiniCDI::Log("[CDIC] MODE2: sector is EOF, disc read will stop");
-					DiscStatus.cmd = 0;
-				}
+		}
 
-				int selected = -1;
-				if (disc->Sector.Submode[1] & 0x91) selected = 1; // EOF, TRIGGER, EOR
-				if (!(disc->Sector.Submode[1] & 0x0E)) selected = 0; // DATA, VIDEO, AUDIO
-				if (selected == -1) selected = disc->Sector.ChNum[1] & CHAN ? 1 : 0;
-				if (selected == 0) {
-					MiniCDI::Log("[CDIC] MODE2: sector not satisfied, skipping");
-					DiscStatus.LBA++;
-					return;
-				}
-			}*/
-
+		copy_sector:
+		if (selected)
+		{
 			MiniCDI::Log("[CDIC] read sector %X (%02X:%02X:%02X)", DiscStatus.LBA, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
-			disc->read_sector(DiscStatus.LBA++);
+			disc->read_sector_data(DiscStatus.LBA);
 
 			// Switch DBUF index
-			DBUF &= 0xFFF0; DBUF ^= 0x0001;
+			DBUF &= 0xFF85; DBUF ^= 0x0001;
+			if (disc->Sector.Mode == 2 && DiscStatus.mode == 2)
+				DBUF |= 0x0020; // MODE2 bit??
 
 			memory[0x300000 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][0] = disc->Sector.Min;
 			memory[0x300001 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][1] = disc->Sector.Sec;
@@ -119,14 +136,17 @@ public:
 			// memory[DBUF & 0x01 ? 0x301324 : 0x300924] = DATA[DBUF & 0x01][0x924] = 0xff; // 0x00
 
 			XBUF |= 0x8000; // sector filled for processing
+			DBUF &= ~0x0020;
 			DBUF |= 0x4000; // send DATA to CPU
 			m68k_set_irq(4);
-
-			if (DiscStatus.cmd == 0) {
-				disc_stop_read();
-				return;
-			}
 		}
+
+		if (DiscStatus.cmd == 0) {
+			disc_stop_read();
+			return;
+		}
+
+		DiscStatus.LBA++;
 	}
 
 	uint16_t read16(uint32_t addr)
@@ -251,7 +271,6 @@ public:
 			case 0x303FFE: MiniCDI::Log("[CDIC] DBUF <= %04X", value); DBUF = value;
 				if (DBUF & 0x8000)
 				{
-					DBUF &= 0x7FFF;
 					switch (CMD)
 					{
 						case 0x23:
@@ -290,6 +309,7 @@ public:
 							MiniCDI::Log("[CDIC] continue reading (0x%02X)", CMD);
 							break;
 					}
+					DBUF &= 0x7FFF;
 				}
 				break;
 		}

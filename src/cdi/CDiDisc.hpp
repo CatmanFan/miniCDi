@@ -94,6 +94,16 @@ public:
 	{
 		disc.open(path, std::ios::in | std::ios::binary);
 		if (disc.is_open()) {
+			MiniCDI::Config::HasDisc = true;
+			lba = -1;
+		}
+	}
+
+	void eject()
+	{
+		if (disc.is_open()) {
+			disc.close();
+			MiniCDI::Config::HasDisc = false;
 			lba = -1;
 		}
 	}

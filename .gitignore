@@ -6,7 +6,7 @@ build/
 cmake-build-*/
 CMakeSettings.json
 
-res/
+docs/
 
 # Binaries
 *.bin

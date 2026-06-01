@@ -3,7 +3,7 @@
 
 #include <deque>
 
-// HLE implementation of IKAT as found in Mono-III & Mono-IV.
+/// HLE implementation of IKAT as found in Mono-III & Mono-IV.
 class IKAT
 {
 	uint8_t* memory;

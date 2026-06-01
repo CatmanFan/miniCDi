@@ -48,8 +48,8 @@ class SCC68070
 			DMA[index].CSR |= 0x08; // Channel Active set
 			DMA[index].CER = 0;
 
-			if (index == 1) start_address = DMA[1].DAC & 0x00FFFFFF;
-			// if (index == 0 && (DMA[index].OCR & 0x80)) DMA[index].MAC /= 2;
+			if (index == 1)
+				start_address = DMA[1].DAC & 0x00FFFFFF;
 
 			MiniCDI::Log("[SCC68070:DMA%d] transferring %d %s %s $%08X %s $%08X", index+1,
 						 DMA[index].MTC,
@@ -69,26 +69,21 @@ class SCC68070
 				}
 
 				if (DMA[index].OCR & 0x80) {
-					if (index == 1) {
-						if (DMA[index].OCR & 0x10)
-							m68k_write_memory_16(DMA[index].MAC, memory[start_address]);
-						else
-							m68k_write_memory_8(DMA[index].MAC, memory[start_address]);
-						DMA[index].MTC--;
-					} else {
-						memcpy(&memory[DMA[index].MAC], &memory[start_address], DMA[index].OCR & 0x10 ? DMA[index].MTC*2 : DMA[index].MTC);
-						DMA[index].MTC = 0;
-					}
+					memory[DMA[index].MAC] = memory[start_address++];
+					if (DMA[index].OCR & 0x10) memory[DMA[index].MAC+1] = memory[start_address++];
+				} else {
+					memory[start_address++] = memory[DMA[index].MAC];
+					if (DMA[index].OCR & 0x10) memory[start_address++] = memory[DMA[index].MAC+1];
 				}
 
 				if (index == 1 && (DMA[index].SCR & 0x04)) {
-					start_address += DMA[index].OCR & 0x10 ? 2 : 1;
 					DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
 					DMA[index].DAC += DMA[index].OCR & 0x10 ? 2 : 1;
 				} else if (index == 0) {
-					start_address += DMA[index].OCR & 0x10 ? 2 : 1;
 					DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
 				}
+
+				DMA[index].MTC--;
 			}
 
 			DMA[index].CSR &= 0xF7; // Channel Active unset

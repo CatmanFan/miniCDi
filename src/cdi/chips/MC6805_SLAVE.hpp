@@ -3,7 +3,7 @@
 
 #include <deque>
 
-// HLE implementation of SLAVE as found in MiniMMC & Mono-I.
+/// HLE implementation of SLAVE as found in MiniMMC & Mono-I.
 class SLAVE
 {
 	uint8_t* memory;
@@ -160,10 +160,8 @@ public:
 								switch (Ch[c].In[0]) {
 									case 0xB0:
 										MiniCDI::Log("[SLAVE] get disc status (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
-										/// DISC inserted
-										Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
-										/// No Disc
-										// Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
+										if (MiniCDI::Config::HasDisc) Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
+										else Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
 										m68k_set_irq(2);
 										break;
 									case 0xB1:

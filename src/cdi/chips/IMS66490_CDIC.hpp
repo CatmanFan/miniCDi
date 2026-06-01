@@ -1,6 +1,11 @@
 #ifndef MINICDI_IMS66490_CDIC
 #define MINICDI_IMS66490_CDIC
 
+/*****
+  DISCLAIMER:
+  Sourced partially from the MAME CDIC driver and documentation by Slamy.
+ *****/
+
 class CDIC
 {
 	uint8_t* memory;

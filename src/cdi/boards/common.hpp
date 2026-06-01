@@ -5,7 +5,6 @@ class CDi
 {
 protected:
 	uint8_t *memory; // Contains full memory map
-	const int memSize	= 0x680000; // cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
 
 	// ONLY the chips shared in common by supported boards (MMC and Mono)
 	SCC68070 cpu;
@@ -27,9 +26,16 @@ public:
 		8) Executing RAM/ROM search
 		9) Starting the kernel */
 
-		memory = (uint8_t *)memalign(32, memSize);
+		int memsize = 16*1024*1024;
+		// TO-DO: reduce overhead ?
+		// The memory size is allocated this way to allow for addresses used by DMA transfer.
+		// In practice Mono-I only has 5.5 MB total (not including DVC RAM).
+		// cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
+
+		memory = (uint8_t *)memalign(32, memsize);
+
 		if (memory) {
-			memset(memory, 0, memSize);
+			memset(memory, 0, memsize);
 			return true;
 		}
 

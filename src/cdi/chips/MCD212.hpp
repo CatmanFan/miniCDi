@@ -297,10 +297,6 @@ public:
 	{
 		switch (addr)
 		{
-			default:
-				memory[addr] = value >> 8 & 0xFF;
-				memory[addr+1] = value & 0xFF;
-				break;
 			case 0x4FFFF0: // CSR1W
 				BE[1] = value & 0b0000'0000'0000'0001u;
 				ST = (value & 0b0000'0000'0000'0010u) >> 1;

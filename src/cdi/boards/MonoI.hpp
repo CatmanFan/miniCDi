@@ -23,9 +23,11 @@ private:
 public:
 	MonoI() : CDi() {}
 
-	bool Init(const std::string &bios) override;
+	bool init(const std::string &bios) override;
 
 	inline void do_frame(bool draw = true) override {
+		cpu.print();
+
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		int loops = 0;
 		while (1)
@@ -40,7 +42,6 @@ public:
 
 		// Update LCD display
 		lcd.update_SLAVE(slave);
-		pd.send();
 	}
 
 	inline void reset() override {

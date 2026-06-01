@@ -6,10 +6,7 @@
 #include "os9/os9mmod.hpp"
 #include "os9/os9trap.hpp"
 
-#define READ16(x, l)		(uint16_t)((x[l] << 8) | x[l+1])
-#define READ32(x, l)		(uint32_t)((x[l] << 24) | (x[l+1] << 16) | (x[l+2] << 8) | x[l+3])
-
-namespace OS9
+class OS9
 {
 	enum ModuleType : uint8_t
 	{
@@ -58,97 +55,67 @@ namespace OS9
 
 			Module(uint8_t *rom, uint32_t loc)
 			{
-				M_SysRev = READ16(rom, loc + 0x02);
-				M_Size = READ32(rom, loc + 0x04);
-				M_Owner = READ32(rom, loc + 0x08);
-				M_Name = READ32(rom, loc + 0x0C);
-				M_Accs = READ16(rom, loc + 0x10);
-				M_Type = (enum ModuleType)(rom[loc + 0x12]);
-				M_Lang = rom[loc + 0x13];
-				M_Attr = rom[loc + 0x14];
-				M_Revs = rom[loc + 0x15];
-				M_Edit = READ16(rom, loc + 0x16);
+				M_SysRev = (rom[loc+0x02] << 8) | rom[loc+0x02+1];
+				M_Size = (rom[loc+0x04] << 24) | (rom[loc+0x04+1] << 16) | (rom[loc+0x04+2] << 8) | rom[loc+0x04+3];
+				M_Owner = (rom[loc+0x08] << 24) | (rom[loc+0x08+1] << 16) | (rom[loc+0x08+2] << 8) | rom[loc+0x08+3];
+				M_Name = (rom[loc+0x0C] << 24) | (rom[loc+0x0C+1] << 16) | (rom[loc+0x0C+2] << 8) | rom[loc+0x0C+3];
+				M_Accs = (rom[loc+0x10] << 8) | rom[loc+0x10+1];
+				M_Type = (enum ModuleType)(rom[loc+0x12]);
+				M_Lang = rom[loc+0x13];
+				M_Attr = rom[loc+0x14];
+				M_Revs = rom[loc+0x15];
+				M_Edit = (rom[loc+0x16] << 8) | rom[loc+0x16+1];
 
-				M_Exec = READ32(rom, loc + 0x30);
-				M_Excpt = READ32(rom, loc + 0x34);
-				M_Mem = READ32(rom, loc + 0x38);
-				M_Stack = READ32(rom, loc + 0x3C);
-				M_IData = READ32(rom, loc + 0x40);
-				M_IRefs = READ32(rom, loc + 0x44);
+				M_Exec = (rom[loc+0x30] << 24) | (rom[loc+0x30+1] << 16) | (rom[loc+0x30+2] << 8) | rom[loc+0x30+3];
+				M_Excpt = (rom[loc+0x34] << 24) | (rom[loc+0x34+1] << 16) | (rom[loc+0x34+2] << 8) | rom[loc+0x34+3];
+				M_Mem = (rom[loc+0x38] << 24) | (rom[loc+0x38+1] << 16) | (rom[loc+0x38+2] << 8) | rom[loc+0x38+3];
+				M_Stack = (rom[loc+0x3C] << 24) | (rom[loc+0x3C+1] << 16) | (rom[loc+0x3C+2] << 8) | rom[loc+0x3C+3];
+				M_IData = (rom[loc+0x40] << 24) | (rom[loc+0x40+1] << 16) | (rom[loc+0x40+2] << 8) | rom[loc+0x40+3];
+				M_IRefs = (rom[loc+0x44] << 24) | (rom[loc+0x44+1] << 16) | (rom[loc+0x44+2] << 8) | rom[loc+0x44+3];
 
 				name = reinterpret_cast<const char *>(&rom[M_Name]);
+				MiniCDI::Log("[OS9] found module \"%s\" at ROM address %08X", name, loc);
 			}
 	};
+	std::vector<Module> modules; // "module directory"
+	std::vector<Process> processes;
 
-	class System
-	{
-		private:
-			SCC68070 *cpu;
+	public:
+		void list_modules(uint8_t *rom, size_t rom_size) {
+			modules.push_back(Module(rom, 0));
 
-			std::vector<Module> modules; // "module directory"
-			std::vector<Process> processes;
+			/*MiniCDI::Log("[header data]");
+			MiniCDI::Log("M$SysRev: %8x  M$Size: %8x\nM$Owner:  %8x  M$Name: %8x", modules[0].M_SysRev, modules[0].M_Size, modules[0].M_Owner, modules[0].M_Name);
+			MiniCDI::Log("M$Accs:   %8x  M$Type: %8x\nM$Lang:   %8x  M$Attr: %8x", modules[0].M_Accs, modules[0].M_Type, modules[0].M_Lang, modules[0].M_Attr);
+			MiniCDI::Log("M$Revs:   %8x  M$Edit: %8x", modules[0].M_Revs, modules[0].M_Edit);*/
 
-		public:
-			void init(SCC68070 *cpu, uint8_t *rom, size_t rom_size) {
-				this->cpu = cpu;
-				modules.push_back(Module(rom, 0));
-
-				/*printf("[header data]\n");
-				printf("M$SysRev: %8x  M$Size: %8x\nM$Owner:  %8x  M$Name: %8x\n", modules[0].M_SysRev, modules[0].M_Size, modules[0].M_Owner, modules[0].M_Name);
-				printf("M$Accs:   %8x  M$Type: %8x\nM$Lang:   %8x  M$Attr: %8x\n", modules[0].M_Accs, modules[0].M_Type, modules[0].M_Lang, modules[0].M_Attr);
-				printf("M$Revs:   %8x  M$Edit: %8x\n", modules[0].M_Revs, modules[0].M_Edit);*/
-
-				for(uint32_t i = 0; i < rom_size; i += 2)
+			for(uint32_t i = 0; i < rom_size; i += 2)
+			{
+				if (rom[i] == 0x4A && rom[i+1] == 0xFC)
 				{
-					if (READ16(rom, i) == 0x4AFC)
-					{
-						// check module parity
-						uint16_t parity = 0;
-						for (int j = 0; j < 24; j++)
-							parity ^= READ16(rom, i + (j * 2));
+					// check module parity
+					uint16_t parity = 0;
+					for (int j = 0; j < 24; j++)
+						parity ^= (rom[i+(j*2)] << 8) | rom[i+(j*2)+1];
 
-						if (parity == 0xFFFF) {
-							modules.push_back(Module(rom, i));
-						}
+					if (parity == 0xFFFF) {
+						modules.push_back(Module(rom, i));
 					}
 				}
-
-				/*printf("loaded %d modules\n", modules.size());*/
 			}
 
-			void execute()
-			{
-				/*if (cpu == nullptr || cpu->context.exception_thrown == 0) return;
+			MiniCDI::Log("[OS9] ROM contains %d modules", modules.size());
+		}
 
-				if (cpu->context.exception_thrown == 32) {
-					printf("OS9 !!!!!!! %x\n", cpu->context.d_regs[0].w);
-					// stop
-					// assert(0);
-					switch ((enum EOs9SysCall)m68k_read_16(&cpu->context, cpu->context.pc)) {
-						default:
-							break;
-
-						case F_Link:
-							{
-								OS9::ModuleType type = (OS9::ModuleType)((cpu->context.d_regs[0].w & 0xFF00) >> 8u);
-								uint8_t lang = (cpu->context.d_regs[0].w & 0x00FF);
-								uint32_t name = cpu->context.a_regs[0].l;
-
-								for (size_t i = 0; i < modules.size(); i++) {
-									if (modules[i].M_Type == type && modules[i].M_Name == name && modules[i].M_Lang == lang) {
-										cpu->context.d_regs[0].w = (((uint8_t)(modules[i].M_Type) << 8u) | modules[i].M_Lang);
-										cpu->context.d_regs[1].w = ((modules[i].M_Attr << 8u) | modules[i].M_Revs);
-										// TO-DO:
-										// a0.l = Updated past the module name.
-										// a2.l = Address of the module directory entry.
-									}
-								}
-							}
-							break;
-					}
-				}*/
+		void log()
+		{
+			switch (m68k_get_reg(NULL, M68K_REG_PC)) {
+				default: MiniCDI::Log("[OS9] %X", m68k_get_reg(NULL, M68K_REG_PC)); return;
+				case 0x00: MiniCDI::Log("[OS9] F$SRqMem  d0.l=%08X d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D0), m68k_get_reg(NULL, M68K_REG_D1)); return;
+				case 0x28: MiniCDI::Log("[OS9] F$SRqMem  d0.l=%08X d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D0), m68k_get_reg(NULL, M68K_REG_D1)); return;
+				case 0x52: MiniCDI::Log("[OS9] F$SysDbg  d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D1)); return;
 			}
-	};
+		}
 };
 
 #endif

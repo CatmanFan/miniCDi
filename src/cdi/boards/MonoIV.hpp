@@ -23,23 +23,26 @@ private:
 public:
 	MonoIV() : CDi() {}
 
-	bool Init(const std::string &bios) override;
+	bool init(const std::string &bios) override;
 
 	inline void do_frame(bool draw = true) override {
+		cpu.print();
+
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
+		int loops = 0;
 		while (1)
 		{
-			for (uint8_t cycles = 0; cycles < 20; cycles++) {
-				cpu.run(96);
-				cpu.tick_timer();
-			}
-			if (vpu->tick(!draw)) break;
+			cpu.run(96);
+			cpu.tick_timer();
+
+			loops++;
+			if (loops % 10 == 0) { if (vpu->tick(!draw)) break; }
+			// if (loops % 1100 == 0) { ciap->tick(); } // 1100 is arbitrary number, should check how many cycles is equal to a sector tick
 		}
 
 		// Update LCD display
 		lcd.update_IKAT(ikat);
 		pd.send();
-		disc.increment_lba();
 	}
 
 	inline void reset() override {

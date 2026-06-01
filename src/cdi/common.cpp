@@ -13,11 +13,25 @@ namespace MiniCDI
 		CDIC* cdic;
 		CIAP* ciap;
 	} Player;
+
+	#ifdef MINICDI_DEBUG_OS9
+	static OS9 OS9Disassembler;
+	#endif
 }
 
 unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_memory_8(address); }
 unsigned int  m68k_read_disassembler_16(unsigned int address) { return m68k_read_memory_16(address); }
 unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read_memory_32(address); }
+
+int  MiniCDI_op_trap_handler(int trap) {
+	#ifdef MINICDI_DEBUG_OS9
+	if (trap == 0) {
+		MiniCDI::OS9Disassembler.log();
+	}
+	#endif
+
+	return 0; // unhandled, generate exception.
+}
 
 void MiniCDI_set_fc(unsigned int new_fc) {
 	if (MiniCDI::Player.scc68070) {
@@ -26,7 +40,7 @@ void MiniCDI_set_fc(unsigned int new_fc) {
 }
 
 int  MiniCDI_int_ack_handler(int int_level) {
-	m68k_set_irq(0);
+	m68k_set_irq(0); // resets IRQ
 	return MiniCDI::Player.ciap && int_level == 4 ? 0x3C
 		 : MiniCDI::Player.cdic && int_level == 4 ? MiniCDI::Player.memory[0x303FFC] : M68K_INT_ACK_AUTOVECTOR;
 }
@@ -82,13 +96,14 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
 
 /** @brief Contains initialization functions for boards. **/
 
-bool MonoI::Init(const std::string &bios)
+bool MonoI::init(const std::string &bios)
 {
-	if (CDi::Init(bios)) {
+	if (CDi::init(bios)) {
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
-		this->slave = new SLAVE(this->memory, 0x00310000);
 		this->cdic = new CDIC(&this->disc, this->memory);
+		this->slave = new SLAVE(this->memory, 0x00310000);
+		this->pd.IO.slave = this->slave;
 
 		MiniCDI::Player =
 		{
@@ -101,9 +116,6 @@ bool MonoI::Init(const std::string &bios)
 
 		this->cpu.load_rom(bios.c_str(), 0x400000);
 		this->cpu.reset();
-		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
-
-		this->pd.IO.slave = this->slave;
 
 		return true;
 	}
@@ -111,13 +123,14 @@ bool MonoI::Init(const std::string &bios)
 	return false;
 }
 
-bool MonoIV::Init(const std::string &bios)
+bool MonoIV::init(const std::string &bios)
 {
-	if (CDi::Init(bios)) {
+	if (CDi::init(bios)) {
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
-		this->ikat = new IKAT();
 		this->ciap = new CIAP(&this->disc, this->memory);
+		this->ikat = new IKAT();
+		this->pd.IO.ikat = this->ikat;
 
 		MiniCDI::Player =
 		{
@@ -130,9 +143,6 @@ bool MonoIV::Init(const std::string &bios)
 
 		this->cpu.load_rom(bios.c_str(), 0x400000);
 		this->cpu.reset();
-		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
-
-		this->pd.IO.ikat = this->ikat;
 
 		return true;
 	}

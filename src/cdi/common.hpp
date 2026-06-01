@@ -21,6 +21,7 @@
 // 68K processor
 #include "cdi/Musashi/m68k.h"
 #include "cdi/chips/SCC68070.hpp"
+#include "os9/OS9.hpp"
 
 // Other cores
 #include "cdi/VDSC.hpp"

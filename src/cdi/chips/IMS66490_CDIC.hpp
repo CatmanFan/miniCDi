@@ -114,13 +114,13 @@ public:
 				}
 				return (memory[addr] << 8) | memory[addr+1];
 
-			case 0x303C00: MiniCDI::Log("[CDIC] CMD => %04X", CMD); return CMD;
+			case 0x303C00: /*MiniCDI::Log("[CDIC] CMD => %04X", CMD);*/ return CMD;
 			case 0x303C02: MiniCDI::Log("[CDIC] TIME (upper) => %04X", TIME >> 16 & 0xFF); return TIME >> 16 & 0xFF;
 			case 0x303C04: MiniCDI::Log("[CDIC] TIME (lower) => %04X", TIME & 0xFF); return TIME & 0xFF;
 			case 0x303C06: MiniCDI::Log("[CDIC] FILE => %04X", FILE); return FILE;
 			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) => %04X", CHAN >> 16 & 0xFF); return CHAN >> 16 & 0xFF;
 			case 0x303C0A: MiniCDI::Log("[CDIC] CHAN (lower) => %04X", CHAN & 0xFF); return CHAN & 0xFF;
-			case 0x303C0C: MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN); return ACHAN;
+			case 0x303C0C: /*MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN);*/ return ACHAN;
 			case 0x303C80: MiniCDI::Log("[CDIC] DSEL => %04X", DSEL); return DSEL;
 			case 0x303FF4: {
 				MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
@@ -132,11 +132,11 @@ public:
 				return value;
 			}
 			case 0x303FF6: {
-				MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
+				/*MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);*/
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
-					if (DBUF & 0x4000) { MiniCDI::Log("[CDIC] sector read IRQ"); m68k_set_irq(4); }
+					if (DBUF & 0x4000) { /*MiniCDI::Log("[CDIC] sector read IRQ");*/ m68k_set_irq(4); }
 				}
 				return value;
 			}
@@ -146,7 +146,7 @@ public:
 			}
 			case 0x303FFA: {
 				AUDCTL ^= 0x0001;
-				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
+				/*MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);*/
 				/*uint16_t value = AUDCTL;
 				if (AUDCTL & 0x0001) { // reset ADPCM playback stopped bit
 					AUDCTL &= 0xFFFE;
@@ -155,7 +155,7 @@ public:
 			}
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC => %04X", IVEC); return IVEC;
 			case 0x303FFE: {
-				MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
+				/*MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);*/
 				uint16_t value = DBUF;
 				if (DBUF & 0x0080) { // reset subQ CRC error bit
 					DBUF &= 0xFF7F;

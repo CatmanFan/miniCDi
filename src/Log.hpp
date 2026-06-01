@@ -8,7 +8,7 @@ namespace MiniCDI
 	static void Log(const char* txt, ...)
 	{
 		#if defined(MINICDI_DEBUG) || defined(__3DS__)
-		#ifndef MINICDI_DEBUG_CPU
+		// #ifndef MINICDI_DEBUG_CPU
 		va_list arg1, arg2;
 
 		va_start(arg1, txt);
@@ -31,7 +31,7 @@ namespace MiniCDI
 		#endif
 
 		delete[] szBuff;
-		#endif
+		// #endif // MINICDI_DEBUG_CPU
 		#endif
 	}
 }

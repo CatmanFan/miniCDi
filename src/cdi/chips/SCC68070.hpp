@@ -44,8 +44,9 @@ class SCC68070
 	{
 		if (DMA[index].CCR & 0x80) {
 			DMA[index].CCR &= ~0x80; // START unset
+			DMA[index].CSR &= 0x0F; // COC, NDT and ERR unset
 			DMA[index].CSR |= 0x08; // Channel Active set
-			DMA[index].CSR &= ~0xA0; // COC and NDT unset
+			DMA[index].CER = 0;
 
 			if (index == 1) start_address = DMA[1].DAC & 0x00FFFFFF;
 			// if (index == 0 && (DMA[index].OCR & 0x80)) DMA[index].MAC /= 2;
@@ -60,18 +61,24 @@ class SCC68070
 
 			while (DMA[index].MTC > 0) {
 				if (DMA[index].CCR & 0x10) {
-					// MiniCDI::Log("[SCC68070:DMA%d] transfer aborted", index+1);
+					MiniCDI::Log("[SCC68070:DMA%d] transfer aborted", index+1);
 					DMA[index].CSR |= 0x90; // COC and ERR set
-					DMA[index].CSR &= ~0x08; // Channel Active unset
+					DMA[index].CSR &= 0xF7; // Channel Active unset
 					DMA[index].CER = 0b10001u; // Abort Error
 					return;
 				}
 
 				if (DMA[index].OCR & 0x80) {
-					if (DMA[index].OCR & 0x10)
-						m68k_write_memory_16(DMA[index].MAC, memory[start_address]);
-					else
-						m68k_write_memory_8(DMA[index].MAC, memory[start_address]);
+					if (index == 1) {
+						if (DMA[index].OCR & 0x10)
+							m68k_write_memory_16(DMA[index].MAC, memory[start_address]);
+						else
+							m68k_write_memory_8(DMA[index].MAC, memory[start_address]);
+						DMA[index].MTC--;
+					} else {
+						memcpy(&memory[DMA[index].MAC], &memory[start_address], DMA[index].OCR & 0x10 ? DMA[index].MTC*2 : DMA[index].MTC);
+						DMA[index].MTC = 0;
+					}
 				}
 
 				if (index == 1 && (DMA[index].SCR & 0x04)) {
@@ -82,15 +89,11 @@ class SCC68070
 					start_address += DMA[index].OCR & 0x10 ? 2 : 1;
 					DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
 				}
-				DMA[index].MTC--;
 			}
 
-			DMA[index].CSR &= ~0x08; // Channel Active unset
+			DMA[index].CSR &= 0xF7; // Channel Active unset
 			DMA[index].CSR |= 0x80; // COC set
-
-			if (DMA[index].CCR & 0x08) {
-				m68k_set_irq((DMA[index].CCR & 0x07) + 32);
-			}
+			interrupt(0);
 		}
 	}
 
@@ -134,10 +137,6 @@ public:
 	{
 		fc = 0;
 
-		m68k_init();
-		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-		m68k_pulse_reset();
-
 		UMR = 0x20; // unused bit
 		USR = 0b0000'0110; // TX ready and unused bit
 		UCS = 0x08; // unused bit
@@ -147,16 +146,24 @@ public:
 		PICR[0] = PICR[1] = 0;
 		TSR = TCR = RR = T[0] = T[1] = T[2] = 0;
 		DMA[0].CSR = DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
-		// IDR = IAR = ISR = ICR = ICCR = 0;
+		IDR = IAR = ISR = ICR = ICCR = 0;
+
+		m68k_init();
+		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
+		m68k_pulse_reset();
+		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 	}
 
 	void interrupt(size_t ch)
 	{
 		int level_lir = (ch == 1 ? LIR : (LIR >> 4)) & 0x07;
 		int level_timer = PICR[0] & 0x07;
-		int level_uart_rx = (PICR[1] & 0x70) >> 4;
+		int level_uart_rx = PICR[1] >> 4 & 0x70;
 		int level_uart_tx = PICR[1] & 0x07;
-		int level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx});
+		int level_i2c = PICR[0] >> 4 & 0x07;
+		int level_dma1 = (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0;
+		int level_dma2 = (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0;
+		int level = std::max({level_lir, level_timer, level_uart_rx, level_uart_tx, level_i2c, level_dma1, level_dma2});
 
 		if (level > 0) {
 			//MiniCDI::Log("[SCC68070] on-chip INT%dN lvl %d", ch, level);
@@ -208,7 +215,7 @@ public:
 			case 0x80004004: return DMA[0].DCR;
 			case 0x80004005: return DMA[0].OCR;
 			case 0x80004006: return DMA[0].SCR;
-			case 0x80004007: return DMA[0].CCR;
+			case 0x80004007: return DMA[0].CCR & 0xEF;
 			case 0x8000400a: return (DMA[0].MTC >> 8) & 0x00FF;
 			case 0x8000400b: return DMA[0].MTC & 0x00FF;
 			case 0x8000400c: return (DMA[0].MAC >> 24) & 0x000000FF;
@@ -226,7 +233,7 @@ public:
 			case 0x80004044: return DMA[1].DCR;
 			case 0x80004045: return DMA[1].OCR;
 			case 0x80004046: return DMA[1].SCR;
-			case 0x80004047: return DMA[1].CCR;
+			case 0x80004047: return DMA[1].CCR & 0xEF;
 			case 0x8000404a: return (DMA[1].MTC >> 8) & 0x00FF;
 			case 0x8000404b: return DMA[1].MTC & 0x00FF;
 			case 0x8000404c: return (DMA[1].MAC >> 24) & 0x000000FF;
@@ -308,12 +315,12 @@ public:
 				break;
 
 			/** DMA (ch1) **/
-			case 0x80004000: DMA[0].CSR = (DMA[0].CSR & 0x08) | (value & 0xF7); break;
+			case 0x80004000: DMA[0].CSR = (DMA[0].CSR & 0x08) | (value & 0xF7); interrupt(0); break;
 			case 0x80004001: DMA[0].CER = value; break; // cannot be written per datasheet
 			case 0x80004004: DMA[0].DCR = value; break;
 			case 0x80004005: DMA[0].OCR = value; break;
 			case 0x80004006: DMA[0].SCR = value; break;
-			case 0x80004007: DMA[0].CCR = value; break;
+			case 0x80004007: DMA[0].CCR = value; { if (value & 0x80) DMA[0].CSR |= 0x80; } break;
 			case 0x8000400a: DMA[0].MTC &= 0x00FF; DMA[0].MTC |= (value << 8); break;
 			case 0x8000400b: DMA[0].MTC &= 0xFF00; DMA[0].MTC |= value; break;
 			case 0x8000400c: DMA[0].MAC &= 0x00FFFFFF; DMA[0].MAC |= (value << 24); break;
@@ -326,12 +333,12 @@ public:
 			case 0x80004017: DMA[0].DAC &= 0xFFFFFF00; DMA[0].DAC |= value; break;
 
 			/** DMA (ch2) **/
-			case 0x80004040: DMA[1].CSR = (DMA[1].CSR & 0x08) | (value & 0xF7); break;
+			case 0x80004040: DMA[1].CSR = (DMA[1].CSR & 0x08) | (value & 0xF7); interrupt(0); break;
 			case 0x80004041: DMA[1].CER = value; break; // cannot be written per datasheet
 			case 0x80004044: DMA[1].DCR = value; break;
 			case 0x80004045: DMA[1].OCR = value; break;
 			case 0x80004046: DMA[1].SCR = value; break;
-			case 0x80004047: DMA[1].CCR = value; break;
+			case 0x80004047: DMA[1].CCR = value; { if (value & 0x80) DMA[1].CSR |= 0x80; } break;
 			case 0x8000404a: DMA[1].MTC &= 0x00FF; DMA[1].MTC |= (value << 8); break;
 			case 0x8000404b: DMA[1].MTC &= 0xFF00; DMA[1].MTC |= value; break;
 			case 0x8000404c: DMA[1].MAC &= 0x00FFFFFF; DMA[1].MAC |= (value << 24); break;
@@ -357,28 +364,8 @@ public:
 		T[0]++;
 	}
 
-	int run(int cycles)
+	void print()
 	{
-		int ran = 0;
-
-		#ifdef MINICDI_DEBUG_CPU
-		if (MiniCDI::Config::LogFile != 0) {
-			uint32_t pcLog;
-			pcLog = m68k_get_reg(NULL, M68K_REG_PC);
-			ran += m68k_execute(cycles);
-			if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
-				char text[192];
-				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-				fprintf(MiniCDI::Config::LogFile, "[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
-				// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
-			}
-		} else {
-			ran += m68k_execute(cycles);
-		}
-		#else
-		ran += m68k_execute(cycles);
-		#endif
-
 		#ifdef MINICDI_DEBUG_CPU
 		printf("\x1b[%d;%dH", 4, 0);
 		printf("PC: %08X SR: %s%s %s%s%s%s%s FC: %d\n",
@@ -399,6 +386,28 @@ public:
 			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
 
 		printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X\n", UCR, URH, USR, LIR);
+		#endif
+	}
+
+	int run(int cycles)
+	{
+		int ran = 0;
+
+		#ifdef MINICDI_DEBUG_CPU
+		/*if (MiniCDI::Config::LogFile != 0) {
+			uint32_t pcLog;
+			pcLog = m68k_get_reg(NULL, M68K_REG_PC);
+			ran += m68k_execute(cycles);
+			if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
+				char text[192];
+				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
+				fprintf(MiniCDI::Config::LogFile, "[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+				// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
+			}
+		} else*/
+			ran += m68k_execute(cycles);
+		#else
+		ran += m68k_execute(cycles);
 		#endif
 
 		return ran;

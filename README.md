@@ -4,7 +4,7 @@ An experimental Philips CD-i emulator for the Wii and 3DS. Currently only suppor
 ## Compatibility
 
 | Board | CPU | Video | CD+Audio | Microcont. | Pointer Device |
-|-------|-----|-------|----------|------------|----------------|
+| :---: |-----|-------|----------|------------|----------------|
 | **Mono-I** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – CDIC | :heavy_check_mark: – SLAVE | :heavy_check_mark: |
 | **Mono-II** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – DSP | :heavy_check_mark: – SLAVE | :heavy_check_mark: |
 | **Mono-III<br/>Mono-IV<br/>Robocon** | :heavy_check_mark: – SCC68070 | :heavy_check_mark: – MCD212 | :x: – CIAP | :x: – IKAT | :x: |
@@ -12,6 +12,7 @@ An experimental Philips CD-i emulator for the Wii and 3DS. Currently only suppor
 ## To-Do
 - [ ] Proper reset sequence
 - [ ] Emulator CPU/chip timing
+- [ ] LibRetro API compatibility?
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS).

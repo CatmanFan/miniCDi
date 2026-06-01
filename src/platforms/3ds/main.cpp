@@ -7,6 +7,34 @@
 #include <3ds.h>
 #include <citro2d.h>
 
+class FPS
+{
+	int8_t aggregate;
+	int8_t incremented;
+	clock_t lastTime;
+	clock_t currentTime;
+
+public:
+	FPS() : aggregate(0)
+		  , incremented(0)
+		  , lastTime(osGetTime())
+	{ }
+
+	void update(int frames = 1)
+	{
+		incremented += frames;
+		currentTime = osGetTime();
+
+		if(currentTime - lastTime > 1000)
+		{
+			lastTime = currentTime;
+			aggregate = incremented;
+			incremented = 0;
+			printf("FPS: %2d\n", aggregate);
+		}
+	}
+};
+
 class EmulatorWindow
 {
 	C2D_Image img;
@@ -111,7 +139,7 @@ int main(int argc, char* argv[])
 
 	// config.log = fopen("miniCDi_log.txt", "wt");
 
-	EmulatorWindow cdiScreen(384,280);
+	EmulatorWindow TOPSCREEN(384,280);
 	MonoI cdi;
 	cdi.Init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
 	// MonoIV cdi;
@@ -132,18 +160,33 @@ int main(int argc, char* argv[])
 		cdi.pd.set_button(PointingDevice::Up, kHeld & KEY_UP);
 		cdi.pd.set_button(PointingDevice::Button1, kHeld & KEY_A);
 		cdi.pd.set_button(PointingDevice::Button2, kHeld & KEY_B);
+		cdi.pd.send();
+
+		static FPS fps;
 
 		// Ensure that drawing is done at 30fps
+		#ifdef MINICDI_FRAMESKIP
+		cdi.do_frame(false);
+		cdi.do_frame(false);
+		cdi.do_frame(false);
+		cdi.do_frame(false);
+		cdi.do_frame(false);
+		cdi.do_frame(false);
+		cdi.do_frame(false);
+		cdi.do_frame(false);
 		cdi.do_frame(false);
 		cdi.do_frame(true);
-		cdiScreen.Update(cdi.get_display(), cdi.get_display_width());
+		fps.update(10);
+		#else
+		cdi.do_frame(true);
+		fps.update(1);
+		#endif
+		TOPSCREEN.Update(cdi.get_display(), cdi.get_display_width());
 
 		C3D_FrameBegin(C3D_FRAME_NONBLOCK);
 		C2D_TargetClear(top, C2D_Color32(0x00, 0x00, 0x00, 0xFF));
 		C2D_SceneBegin(top);
-
-		cdiScreen.Draw();
-
+		TOPSCREEN.Draw();
 		C3D_FrameEnd(0);
 	}
 

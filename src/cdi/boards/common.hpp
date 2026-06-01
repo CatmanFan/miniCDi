@@ -14,7 +14,7 @@ public:
 	PointingDevice pd;
 	CDiDisc disc;
 
-	virtual bool Init(const std::string &bios)
+	virtual bool init(const std::string &bios)
 	{
 		/** Order of initialization:
 		1) Initialising slave processor

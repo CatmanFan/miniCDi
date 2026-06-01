@@ -186,8 +186,8 @@
  * m68k_set_trap_instr_callback explicitly.
  */
 #ifndef M68K_TRAP_HAS_CALLBACK
-#define M68K_TRAP_HAS_CALLBACK  	M68K_OPT_OFF
-#define M68K_TRAP_CALLBACK(trap)	your_op_trap_handler_function(trap)
+#define M68K_TRAP_HAS_CALLBACK  	M68K_OPT_SPECIFY_HANDLER
+#define M68K_TRAP_CALLBACK(trap)	MiniCDI_op_trap_handler(trap)
 #endif
 
 /* If ON, CPU will call the set fc callback on every memory access to

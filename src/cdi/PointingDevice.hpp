@@ -47,7 +47,9 @@ public:
 
 			else if (changed_Face || changed_DPad)
 			{
+				#ifdef MINICDI_DEBUG
 				x = 550; y = 306;
+				#endif
 
 				if (changed_Face) { changed_Face = false; }
 				if (changed_DPad)

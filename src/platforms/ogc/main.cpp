@@ -10,6 +10,7 @@
 #include <SDL2/SDL.h>
 #include <fat.h>
 #include <gccore.h>
+#include <ogc/lwp_watchdog.h>
 
 #ifdef HW_RVL
 #include <sdcard/wiisd_io.h>
@@ -18,6 +19,39 @@
 
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
+
+class FPS
+{
+	int8_t aggregate;
+	int8_t incremented1;
+	int8_t incremented2;
+	clock_t lastTime;
+	clock_t currentTime;
+
+public:
+	FPS() : aggregate(0)
+		  , incremented1(0)
+		  , incremented2(0)
+		  , lastTime(ticks_to_millisecs(gettime()))
+	{ }
+
+	void update(int frames = 1)
+	{
+		incremented1 += frames;
+		currentTime = ticks_to_millisecs(gettime());
+
+		if(currentTime - lastTime > 500)
+		{
+			lastTime = currentTime;
+			aggregate = incremented1 + incremented2;
+			incremented2 = incremented1;
+			incremented1 = 0;
+			#ifdef MINICDI_DEBUG
+			printf("[FPS] %d\n", aggregate);
+			#endif
+		}
+	}
+};
 
 class SDL
 {
@@ -131,14 +165,18 @@ static void RUN_CDI(const std::string &biosName)
 	MonoI cdi;
 	// MonoIV cdi;
 
-	cdi.Init(appPath + "rom/" + biosName + ".rom");
+	cdi.init(appPath + "rom/" + biosName + ".rom");
 	if (access((appPath + "DEBUGCTL.BIN").c_str(), F_OK) == 0) {
-		cdi.disc.open(appPath + "BADAPPLE.BIN");
-		// cdi.disc.open(appPath + "DEBUGCTL.BIN");
+		// cdi.disc.open(appPath + "BADAPPLE.BIN");
+		cdi.disc.open(appPath + "DEBUGCTL.BIN");
 	}
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;
+	#endif
+
+	#ifndef MINICDI_FRAMESKIP
+	cdi.do_frame(false); // Skip a frame anyway, to prevent crashing.
 	#endif
 
 	while (SYS_MainLoop()) {
@@ -152,13 +190,6 @@ static void RUN_CDI(const std::string &biosName)
 
 		if (down & WPAD_BUTTON_PLUS)
 			cdi.reset();
-
-		cdi.pd.set_button(PointingDevice::Left, held & WPAD_BUTTON_UP);
-		cdi.pd.set_button(PointingDevice::Right, held & WPAD_BUTTON_DOWN);
-		cdi.pd.set_button(PointingDevice::Down, held & WPAD_BUTTON_LEFT);
-		cdi.pd.set_button(PointingDevice::Up, held & WPAD_BUTTON_RIGHT);
-		cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
-		cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
 
 		// if (down & WPAD_BUTTON_B) {
 	#else // HW_DOL
@@ -176,12 +207,26 @@ static void RUN_CDI(const std::string &biosName)
 
 		if (!paused)
 		{
+			cdi.pd.set_button(PointingDevice::Left, (held & WPAD_BUTTON_UP) || (held & CLASSIC_CTRL_BUTTON_LEFT));
+			cdi.pd.set_button(PointingDevice::Right, (held & WPAD_BUTTON_DOWN) || (held & CLASSIC_CTRL_BUTTON_RIGHT));
+			cdi.pd.set_button(PointingDevice::Down, (held & WPAD_BUTTON_LEFT) || (held & CLASSIC_CTRL_BUTTON_DOWN));
+			cdi.pd.set_button(PointingDevice::Up, (held & WPAD_BUTTON_RIGHT) || (held & CLASSIC_CTRL_BUTTON_UP));
+			cdi.pd.set_button(PointingDevice::Button1, (held & WPAD_BUTTON_1) || (held & CLASSIC_CTRL_BUTTON_A));
+			cdi.pd.set_button(PointingDevice::Button2, (held & WPAD_BUTTON_2) || (held & CLASSIC_CTRL_BUTTON_B));
+			cdi.pd.send();
+
+			static FPS fps;
+
 			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode (likely because emulated machine is configured to use 60Hz?).
 			// TO-DO: Address crashing if doing do_frame(true) solo
 			#ifdef MINICDI_FRAMESKIP
 			cdi.do_frame(false);
-			#endif
 			cdi.do_frame(true);
+			fps.update(2);
+			#else
+			cdi.do_frame(true);
+			fps.update();
+			#endif
 
 			#ifdef MINICDI_DEBUG
 			VIDEO_WaitVSync();

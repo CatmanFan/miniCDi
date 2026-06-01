@@ -195,7 +195,7 @@ public:
 										: (ISR & 0x08) && (IER & 0x08) ? "audio"
 										: (ISR & 0x0800) && (IER & 0x0800) ? "qerror"
 										: "unknown");
-			m68k_set_irq(ICR & 0x07);
+			// m68k_set_irq(ICR & 0x07);
 		}
 	}
 };

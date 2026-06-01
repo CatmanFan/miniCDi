@@ -549,6 +549,7 @@ typedef uint32 uint64;
 #if M68K_TRAP_HAS_CALLBACK
 	#if M68K_TRAP_HAS_CALLBACK == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_trap_callback(trap) M68K_TRAP_CALLBACK(trap)
+		extern int m68ki_trap_callback(int trap);
 	#else
 		#define m68ki_trap_callback(trap) CALLBACK_TRAP_INSTR(trap)
 	#endif

@@ -70,7 +70,6 @@ public:
 
 		// Additional MODE2 processing
 		bool selected = true;
-		bool adpcm_selected = false;
 		if (disc->Sector.Mode == 2 && DiscStatus.mode == 2)
 		{
 			if ((FILE >> 8 & 0x00FF) != disc->Sector.FileNum[1]) {
@@ -121,16 +120,15 @@ public:
 			memory[0x30000A + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][10] = disc->Sector.Submode[1];
 			memory[0x30000B + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
 
-			if (DiscStatus.cmd == 0x2A && (disc->Sector.ChNum[1] & 0x24) && (ACHAN >> disc->Sector.ChNum[1] & 0b01)) {
-				// Audio selected
-				adpcm_selected = true;
+			bool use_adpcm = false;
+			if (use_adpcm) {
 				DBUF |= 0x0024; // audio index
 				memory[0x30280B + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
 			}
 
 			// Copy data/ADPCM buffer
 			for (int i = 0; i < 2328; i++) {
-				if (adpcm_selected)
+				if (use_adpcm)
 					memory[0x30280C+i + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][12+i] = disc->Sector.Data[i];
 				else
 					memory[0x30000C+i + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][12+i] = disc->Sector.Data[i];

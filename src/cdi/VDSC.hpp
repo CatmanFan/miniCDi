@@ -452,6 +452,9 @@ public:
 	template <size_t Path>
 	uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 	{
+		// reset matte flag for plane
+		Matte.reset();
+
 		if (reg.Icm[Path] == Off) {
 			memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));
 			return 0;
@@ -522,10 +525,6 @@ public:
 					continue;
 			}
 		}
-
-		// reset matte flag for plane
-		Matte.reset();
-		MF[0] = MF[1] = 0;
 
 		return vsr;
 	}

@@ -16,7 +16,6 @@ class MCD212
 	SCC68070 *cpu;
 	uint8_t* memory;
 
-	int cycles;
 	VDSC::Decoder vdsc;
 
 	size_t linesV, line;
@@ -65,7 +64,7 @@ class MCD212
 	{
 		uint32_t addr = SM && !PA ? (Path ? 0x200404 : 0x404) : (Path ? 0x200400 : 0x400);
 
-		for (int cycles = 0; cycles < MCD212_HSYNC_CYCLES * MCD212_INACTIVE_VLINES; cycles++)
+		for (int i = 0; i < MCD212_HSYNC_CYCLES * MCD212_INACTIVE_VLINES; i++)
 		{
 			uint32_t inst = (memory[addr] << 24) | (memory[addr+1] << 16) | (memory[addr+2] << 8) | memory[addr+3];
 			addr += 4;
@@ -112,11 +111,11 @@ class MCD212
 					break;
 
 				case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
-					CM[Path] = (inst & 0x10) >> 4;
-					MF1[Path] = (inst & 0x08) >> 3;
-					MF2[Path] = (inst & 0x04) >> 2;
-					FT1[Path] = (inst & 0x02) >> 1;
-					FT2[Path] = inst & 0x01;
+					CM[Path] = inst >> 4 & 0b01u;
+					MF1[Path] = inst >> 3 & 0b01u;
+					MF2[Path] = inst >> 2 & 0b01u;
+					FT1[Path] = inst >> 1 & 0b01u;
+					FT2[Path] = inst & 0b01u;
 					vdsc.set_register<Path>(inst);
 					break;
 
@@ -130,7 +129,7 @@ class MCD212
 	template <size_t Path>
 	void DCA_execute()
 	{
-		for (size_t period = 0; period < (CF ? 16 : 8); period++)
+		for (int i = 0; i < (CF ? 16 : 8); i++)
 		{
 			uint32_t inst = (memory[DCP[Path]] << 24) | (memory[DCP[Path]+1] << 16) | (memory[DCP[Path]+2] << 8) | memory[DCP[Path]+3];
 			DCP[Path] += 4;
@@ -184,7 +183,7 @@ class MCD212
 public:
 	MCD212() {}
 
-	MCD212(SCC68070 *cpu, uint8_t *memory) : cpu(cpu), memory(memory), cycles(0)
+	MCD212(SCC68070 *cpu, uint8_t *memory) : cpu(cpu), memory(memory)
 	{
 		reset();
 	}
@@ -203,7 +202,7 @@ public:
 		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
 
 		// initialization
-		CF = FD = 1; // Hardcoded
+		CF = FD = MiniCDI::Config::PAL ? 0 : 1;
 		SM = /* to-do: interlace */ 0;
 
 		interlace = false;
@@ -298,42 +297,70 @@ public:
 		switch (addr)
 		{
 			case 0x4FFFF0: // CSR1W
-				BE[1] = value & 0b0000'0000'0000'0001u;
-				ST = (value & 0b0000'0000'0000'0010u) >> 1;
-				DD = (value & 0b0000'0000'0000'1000u) >> 3;
-				TD = (value & 0b0000'0000'0010'0000u) >> 5;
-				DD2 = (value & 0b0000'0001'0000'0000u) >> 8;
-				DD1 = (value & 0b0000'0010'0000'0000u) >> 9;
-				DI[0] = (value & 0b1000'0000'0000'0000u) >> 15;
+				BE[1] = value & 0b01u;
+				ST = value >> 1 & 0b01u;
+				DD = value >> 3 & 0b01u;
+				TD = value >> 5 & 0b01u;
+				DD2 = value >> 8 & 0b01u;
+				DD1 = value >> 9 & 0b01u;
+				DI[0] = value >> 15 & 0b01u;
 				break;
 			case 0x4FFFE0: // CSR2W
-				DI[1] = (value & 0b1000'0000'0000'0000u) >> 15;
+				DI[1] = value >> 15 & 0b01u;
 				break;
 			case 0x4FFFF2: // DCR1
-				DC[0] = (value & 0b0000'0000'1000'0000u) >> 7;
-				IC[0] = (value & 0b0000'0001'0000'0000u) >> 8;
-				CM[0] = (value & 0b0000'0100'0000'0000u) >> 10;
-				SM = (value & 0b0001'0000'0000'0000u) >> 12;
-				FD = (value & 0b0010'0000'0000'0000u) >> 13;
-				CF = (value & 0b0100'0000'0000'0000u) >> 14;
-				DE = (value & 0b1000'0000'0000'0000u) >> 15;
+				IC[0] = value >> 8 & 0b01u;
+				DC[0] = IC[0] ? value >> 7 & 0b01u : 0;
+				CM[0] = value >> 10 & 0b01u;
+				SM = value >> 12 & 0b01u;
+				FD = value >> 13 & 0b01u;
+				CF = value >> 14 & 0b01u;
+				DE = value >> 15 & 0b01u;
+
+				VSR[0] &= 0x0000FFFFu;
+				VSR[0] |= (value & 0x3Fu) << 8;
 				break;
 			case 0x4FFFE2: // DCR2
-				DC[1] = (value & 0b0000'0000'1000'0000u) >> 7;
-				IC[1] = (value & 0b0000'0001'0000'0000u) >> 8;
-				CM[1] = (value & 0b0000'0100'0000'0000u) >> 10;
+				IC[1] = value >> 8 & 0b01u;
+				DC[1] = IC[1] ? value >> 7 & 0b01u : 0;
+				CM[1] = value >> 10 & 0b01u;
+
+				VSR[1] &= 0x0000FFFFu;
+				VSR[1] |= (value & 0x3Fu) << 8;
+				break;
+			case 0x4FFFF4: // VSR1
+				VSR[0] &= 0xFFFF00000u;
+				VSR[0] |= value;
+				break;
+			case 0x4FFFE4: // VSR2
+				VSR[1] &= 0xFFFF00000u;
+				VSR[1] |= value;
 				break;
 			case 0x4FFFF8: // DDR1
-				FT2[0] = (value & 0b0000'0000'1000'0000u) >> 7;
-				FT1[0] = (value & 0b0000'0001'0000'0000u) >> 8;
-				MF2[0] = (value & 0b0000'0010'0000'0000u) >> 9;
-				MF1[0] = (value & 0b0000'0100'0000'0000u) >> 10;
+				FT2[0] = value >> 7 & 0b01u;
+				FT1[0] = value >> 8 & 0b01u;
+				MF2[0] = value >> 9 & 0b01u;
+				MF1[0] = value >> 10 & 0b01u;
+
+				DCP[0] &= 0x0000FFFFu;
+				DCP[0] |= (value & 0x3Fu) << 8;
 				break;
 			case 0x4FFFE8: // DDR2
-				FT2[1] = (value & 0b0000'0000'1000'0000u) >> 7;
-				FT1[1] = (value & 0b0000'0001'0000'0000u) >> 8;
-				MF2[1] = (value & 0b0000'0010'0000'0000u) >> 9;
-				MF1[1] = (value & 0b0000'0100'0000'0000u) >> 10;
+				FT2[1] = value >> 7 & 0b01u;
+				FT1[1] = value >> 8 & 0b01u;
+				MF2[1] = value >> 9 & 0b01u;
+				MF1[1] = value >> 10 & 0b01u;
+
+				DCP[1] &= 0x0000FFFFu;
+				DCP[1] |= (value & 0x3Fu) << 8;
+				break;
+			case 0x4FFFFA: // DCP1
+				DCP[0] &= 0xFFFF00000u;
+				DCP[0] |= value;
+				break;
+			case 0x4FFFEA: // DCP2
+				DCP[1] &= 0xFFFF00000u;
+				DCP[1] |= value;
 				break;
 		}
 	}

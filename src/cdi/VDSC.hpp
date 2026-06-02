@@ -260,24 +260,34 @@ class Decoder
 	template <size_t Path>
 	uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 	{
-		int Y = reg.ColorDYUV[Path] >> 16 & 0xFF;
-		int U = reg.ColorDYUV[Path] >> 8 & 0xFF;
-		int V = reg.ColorDYUV[Path] & 0xFF;
+		char dequantizer[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
+		int U2 = ((*src & 0xF0) >> 4);
+		int Y1 = (*src & 0x0F);
+		int V2 = ((*(src+1) & 0xF0) >> 4);
+		int Y2 = (*(src+1) & 0x0F);
 
-		// Y += *src & 0x0F;
-		// U += (*src >> 4) & 0x0F;
-		// V += (*(src+1) >> 4) & 0x0F;
+		int start_Y = (reg.ColorDYUV[Path] >> 16 & 0xFF);
+		int start_U = (reg.ColorDYUV[Path] >> 8 & 0xFF);
+		int start_V = (reg.ColorDYUV[Path] & 0xFF);
+		Y2 = start_Y + dequantizer[Y2];
+		U2 = start_U + dequantizer[U2];
+		V2 = start_V + dequantizer[V2];
+		Y1 = start_Y + dequantizer[Y1];
+		int U1 = (start_U + U2) >> 1;
+		int V1 = (start_V + V2) >> 1;
 
-		int r = std::floor((Y*256 + 351*(V-128) ) / 256 );
-		int g = std::floor(((Y*256)*(86*(U-128) + 179*(V-128))) / 256 );
-		int b = std::floor(( Y*256 + 444*(U-128) ) / 256);
+		int r1 = V1;
+		int g1 = V1;
+		int b1 = V1;
 
-		*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
-				(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
-				(b > 255 ? 255 : b < 0 ? 0 : b) << 8 |
-				0xff);
+		int r2 = V2;
+		int g2 = V2;
+		int b2 = V2;
 
-		return 1;
+		*dst	 = (r1 << 24) | (g1 << 24) | (b1 << 8) | 0xff;
+		*(dst+1) = (r2 << 24) | (g2 << 24) | (b2 << 8) | 0xff;
+
+		return 2;
 	}
 
 	template <size_t Path>
@@ -348,15 +358,15 @@ public:
 		reg = {0};
 	}
 
-	void set_mode(enum Type type, bool hRes = false, bool vRes = false)
+	void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
 	{
-		FG[1].width = FG[0].width = (type == NTSCMonitor ? 360 : 384) * (hRes || vRes ? 2 : 1);
-		FG[1].height = FG[0].height = (type == PAL ? 280 : 240) * (vRes ? 2 : 1);
+		FG[1].width = FG[0].width = hRes * (hDouble || vDouble ? 2 : 1);
+		FG[1].height = FG[0].height = vRes * (vDouble ? 2 : 1);
 
 		FG[0].decoded.assign(FG[0].width * FG[0].height, 0);
 		FG[1].decoded.assign(FG[1].width * FG[1].height, 0);
 
-		output.assign(FG[0].width * FG[0].height, 0);
+		output.assign(FG[0].width * 280, 0x000000FF); // max bounds
 	}
 
 	/**
@@ -498,8 +508,8 @@ public:
 					switch (reg.Icm[Path])
 					{
 						default:
-						case CLUT4:
-						case CLUT7:
+						case CLUT4: // RL3
+						case CLUT7: // RL7
 							if (*src & 0x80) {
 								int length = *(src+1);
 								++vsr;

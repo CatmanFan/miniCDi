@@ -194,7 +194,7 @@ public:
 	void reset()
 	{
 		// clear write bits
-		DI[0] = DD1 = DD2 = TD = DD = ST = BE[0] = BE[1] = 0;
+		DI[0] = DD1 = DD2 = TD = DD = ST = BE[0] = 0;
 		DI[1] = 0;
 		DE = CF = FD = SM = CM[0] = IC[0] = DC[0] = 0;
 		CM[1] = IC[1] = DC[1] = 0;
@@ -229,9 +229,8 @@ public:
 		PA = SM ? (interlace ? 0 : 1) : 1;
 
 		if (line == 0) {
-			vdsc.set_mode(VDSC::PAL, CM[0]); // Hardcoded
-			if (interlace && SM)
-				line = 1;
+			if (interlace && SM) line = 1;
+			if (!skip_draw) vdsc.set_mode(!CF || ST ? 360 : 384, FD ? 240 : 280, CM[0]);
 		}
 
 		if (DE) {

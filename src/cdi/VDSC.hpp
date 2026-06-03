@@ -342,8 +342,8 @@ class Decoder
 
 			case CLUT4:
 				if (!isTransparent<Path>(src)) *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
-				// if (!isTransparent<Path>(src)) *(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
-				return 1;
+				if (!isTransparent<Path>(src)) *(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
+				return 2;
 		}
 	}
 
@@ -366,7 +366,7 @@ public:
 
 	int get_display_width()
 	{
-		return FG[0].width;
+		return 384;
 	}
 
 	void reset()
@@ -377,13 +377,15 @@ public:
 
 	void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
 	{
+		if (reg.Icm[0] == CLUT4 || reg.Icm[1] == CLUT4) hDouble = true;
+
 		FG[1].width = FG[0].width = hRes * (hDouble || vDouble ? 2 : 1);
 		FG[1].height = FG[0].height = vRes * (vDouble ? 2 : 1);
 
 		FG[0].decoded.assign(FG[0].width * FG[0].height, 0);
 		FG[1].decoded.assign(FG[1].width * FG[1].height, 0);
 
-		output.assign(FG[0].width * 280, 0x000000FF); // max bounds
+		output.assign(384 * 280, 0x000000FF); // max bounds
 	}
 
 	/**
@@ -406,10 +408,10 @@ public:
 											  * ((float)reg.ICF[WF ? (reg.PlaneOrder ? 1 : 0) : (reg.PlaneOrder ? 0 : 1)] \
 											  /64.0f) + 16.0f)), 0, 255)
 
-		for (int x = 0; x < FG[0].width; x++) {
+		for (int x = 0; x < 384; x++) {
 			int PIXELA = (y*PLANEA.width) + x;
 			int PIXELB = (y*PLANEB.width) + x;
-			int outputPixel = ((FG[0].height == 240 ? y+20 : FG[0].height == 480 ? y+40 : y)*FG[0].width) + x;
+			int outputPixel = (FG[0].height == 240 ? y+20 : FG[0].height == 480 ? y+40 : y) * 384 + x;
 
 			uint8_t rA = GET_R(PLANEA.decoded[PIXELA]),
 					gA = GET_G(PLANEA.decoded[PIXELA]),
@@ -446,16 +448,23 @@ public:
 			 && reg.CursorEnable)
 			{
 				switch (reg.CursorColor & 0x07) {
-					default: output[outputPixel] = 0x000000ff; continue;
-					case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; continue;
-					case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; continue;
-					case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; continue;
-					case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; continue;
-					case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; continue;
-					case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; continue;
-					case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; continue;
+					default: output[outputPixel] = 0x000000ff; break;
+					case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
+					case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
+					case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
+					case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
+					case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
+					case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
+					case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
 				}
 			}
+
+			/*if (FG[0].width < 400) {
+				output[outputPixel+1] = output[outputPixel];
+				outputPixel += 2;
+			} else {
+				outputPixel++;
+			}*/
 		}
 
 		#undef PLANEA

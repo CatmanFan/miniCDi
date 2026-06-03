@@ -100,12 +100,12 @@ public:
 		copy_sector:
 		if (selected)
 		{
-			MiniCDI::Log("[CDIC] read sector %X (%02X:%02X:%02X) (MODE:%d)",
-				DiscStatus.LBA, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame, disc->Sector.Mode);
+			MiniCDI::Log("[CDIC] read sector %X %02X:%02X:%02X",
+				DiscStatus.LBA, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 			disc->read_sector_data(DiscStatus.LBA);
 
 			// Switch DBUF index and reset audio
-			DBUF &= ~0x0024; DBUF ^= 0x0001;
+			DBUF &= ~0x0004; DBUF ^= 0x0001;
 
 			memory[0x300000 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][0] = disc->Sector.Min;
 			memory[0x300001 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][1] = disc->Sector.Sec;
@@ -120,16 +120,15 @@ public:
 			memory[0x30000A + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][10] = disc->Sector.Submode[1];
 			memory[0x30000B + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
 
-			bool use_adpcm = false;
-			if (use_adpcm) {
-				DBUF |= 0x0024; // audio index
-				memory[0x30280B + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
-			}
-
 			// Copy data/ADPCM buffer
+			if (disc->Sector.CodingInfo[1] == 0xFF) exit(0);
+			bool use_adpcm = (disc->Sector.Submode[1] & 0x04) && (ACHAN >> disc->Sector.ChNum[1] & 0b01);
 			if (use_adpcm) {
+				DBUF |= 0x0004; // audio index
+				if (disc->Sector.CodingInfo[1] == 0xFF) { AUDCTL |= 0x0001; }
 				memcpy(&memory[0x30280C+((DBUF & 0x01)*0xA00)], &disc->Sector.Data[0], 2328*sizeof(char));
 				memcpy(&ADPCM[DBUF & 0x01][12], &disc->Sector.Data[0], 2328*sizeof(char));
+				memory[0x30280B + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
 			} else {
 				memcpy(&memory[0x30000C+((DBUF & 0x01)*0xA00)], &disc->Sector.Data[0], 2328*sizeof(char));
 				memcpy(&DATA[DBUF & 0x01][12], &disc->Sector.Data[0], 2328*sizeof(char));
@@ -205,7 +204,7 @@ public:
 			}
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC => %04X", IVEC); return IVEC;
 			case 0x303FFE: {
-				MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
+				//MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
 				uint16_t value = DBUF;
 				if (DBUF & 0x0080) { // reset subQ CRC error bit
 					DBUF &= 0xFF7F;

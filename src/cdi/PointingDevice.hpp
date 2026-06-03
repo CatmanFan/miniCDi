@@ -62,7 +62,6 @@ public:
 						(uint8_t)(y >> 7 & 0x07),
 						(uint8_t)(y & 0x7f)
 					};
-					MiniCDI::Log("[PD] x=%d,y=%d", x, y);
 					m68k_set_irq(2);
 				}
 			}
@@ -108,6 +107,7 @@ public:
 			y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
 															  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
 															  : 0), 0, 559);
+			//MiniCDI::Log("[PD] x=%d,y=%d", x, y);
 		}
 
 		if ((b == Button1 || b == Button2) && this->buttons[(int)b] != value) {

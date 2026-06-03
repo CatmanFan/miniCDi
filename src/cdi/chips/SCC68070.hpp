@@ -44,8 +44,8 @@ class SCC68070
 	{
 		if (DMA[index].CCR & 0x80) {
 			DMA[index].CCR &= ~0x80; // START unset
-			DMA[index].CSR &= 0x0F; // COC, NDT and ERR unset
-			DMA[index].CSR |= 0x08; // Channel Active set
+			DMA[index].CSR &= 0b01001111; // COC, NDT and ERR unset
+			DMA[index].CSR |= 0b00001000; // Channel Active set
 			DMA[index].CER = 0;
 
 			if (index == 1)
@@ -62,8 +62,8 @@ class SCC68070
 			while (DMA[index].MTC > 0) {
 				if (DMA[index].CCR & 0x10) {
 					MiniCDI::Log("[SCC68070:DMA%d] transfer aborted", index+1);
-					DMA[index].CSR |= 0x90; // COC and ERR set
-					DMA[index].CSR &= 0xF7; // Channel Active unset
+					DMA[index].CSR |= 0b10010000; // COC and ERR set
+					DMA[index].CSR &= 0b11110111; // Channel Active unset
 					DMA[index].CER = 0b10001u; // Abort Error
 					return;
 				}
@@ -86,8 +86,8 @@ class SCC68070
 				DMA[index].MTC--;
 			}
 
-			DMA[index].CSR &= 0xF7; // Channel Active unset
-			DMA[index].CSR |= 0x80; // COC set
+			DMA[index].CSR |= 0b10000000; // COC set
+			DMA[index].CSR &= 0b11110111; // Channel Active unset
 			interrupt(0);
 		}
 	}
@@ -141,7 +141,9 @@ public:
 
 		PICR[0] = PICR[1] = 0;
 		TSR = TCR = RR = T[0] = T[1] = T[2] = 0;
-		DMA[0].CSR = DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
+		DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
+		DMA[1].CER = DMA[1].DCR = DMA[1].OCR = DMA[1].SCR = DMA[1].CCR = 0;
+		DMA[0].CSR = DMA[1].CSR = 0x01;
 		IDR = IAR = ISR = ICR = ICCR = 0;
 
 		// Clear DRAM banks
@@ -315,37 +317,35 @@ public:
 				break;
 
 			/** DMA (ch1) **/
-			case 0x80004000: DMA[0].CSR = (DMA[0].CSR & 0x08) | (value & 0xF7); interrupt(0); break;
-			case 0x80004001: /*DMA[0].CER = value;*/ break; // cannot be written per datasheet
+			case 0x80004000: DMA[0].CSR = 0x01; break;
 			case 0x80004004: DMA[0].DCR = value; break;
 			case 0x80004005: DMA[0].OCR = value; break;
 			case 0x80004006: DMA[0].SCR = value; break;
-			case 0x80004007: DMA[0].CCR = value; { if (value & 0x80) DMA[0].CSR |= 0x80; } break;
+			case 0x80004007: DMA[0].CCR = value; break;
 			case 0x8000400a: DMA[0].MTC &= 0x00FF; DMA[0].MTC |= (value << 8); break;
 			case 0x8000400b: DMA[0].MTC &= 0xFF00; DMA[0].MTC |= value; break;
-			case 0x8000400c: DMA[0].MAC &= 0x00FFFFFF; /*DMA[0].MAC |= (value << 24);*/ break;
+			case 0x8000400c: DMA[0].MAC &= 0x00FFFFFF; DMA[0].MAC |= (value << 24); break;
 			case 0x8000400d: DMA[0].MAC &= 0xFF00FFFF; DMA[0].MAC |= (value << 16); break;
 			case 0x8000400e: DMA[0].MAC &= 0xFFFF00FF; DMA[0].MAC |= (value << 8); break;
 			case 0x8000400f: DMA[0].MAC &= 0xFFFFFF00; DMA[0].MAC |= value; break;
-			case 0x80004014: DMA[0].DAC &= 0x00FFFFFF; /*DMA[0].DAC |= (value << 24);*/ break;
+			case 0x80004014: DMA[0].DAC &= 0x00FFFFFF; DMA[0].DAC |= (value << 24); break;
 			case 0x80004015: DMA[0].DAC &= 0xFF00FFFF; DMA[0].DAC |= (value << 16); break;
 			case 0x80004016: DMA[0].DAC &= 0xFFFF00FF; DMA[0].DAC |= (value << 8); break;
 			case 0x80004017: DMA[0].DAC &= 0xFFFFFF00; DMA[0].DAC |= value; break;
 
 			/** DMA (ch2) **/
-			case 0x80004040: DMA[1].CSR = (DMA[1].CSR & 0x08) | (value & 0xF7); interrupt(0); break;
-			case 0x80004041: /*DMA[1].CER = value;*/ break; // cannot be written per datasheet
+			case 0x80004040: DMA[1].CSR = 0x01; break;
 			case 0x80004044: DMA[1].DCR = value; break;
 			case 0x80004045: DMA[1].OCR = value; break;
 			case 0x80004046: DMA[1].SCR = value; break;
-			case 0x80004047: DMA[1].CCR = value; { if (value & 0x80) DMA[1].CSR |= 0x80; } break;
+			case 0x80004047: DMA[1].CCR = value; break;
 			case 0x8000404a: DMA[1].MTC &= 0x00FF; DMA[1].MTC |= (value << 8); break;
 			case 0x8000404b: DMA[1].MTC &= 0xFF00; DMA[1].MTC |= value; break;
-			case 0x8000404c: DMA[1].MAC &= 0x00FFFFFF;/* DMA[1].MAC |= (value << 24);*/ break;
+			case 0x8000404c: DMA[1].MAC &= 0x00FFFFFF; DMA[1].MAC |= (value << 24); break;
 			case 0x8000404d: DMA[1].MAC &= 0xFF00FFFF; DMA[1].MAC |= (value << 16); break;
 			case 0x8000404e: DMA[1].MAC &= 0xFFFF00FF; DMA[1].MAC |= (value << 8); break;
 			case 0x8000404f: DMA[1].MAC &= 0xFFFFFF00; DMA[1].MAC |= value; break;
-			case 0x80004054: DMA[1].DAC &= 0x00FFFFFF; /*DMA[1].DAC |= (value << 24);*/ break;
+			case 0x80004054: DMA[1].DAC &= 0x00FFFFFF; DMA[1].DAC |= (value << 24); break;
 			case 0x80004055: DMA[1].DAC &= 0xFF00FFFF; DMA[1].DAC |= (value << 16); break;
 			case 0x80004056: DMA[1].DAC &= 0xFFFF00FF; DMA[1].DAC |= (value << 8); break;
 			case 0x80004057: DMA[1].DAC &= 0xFFFFFF00; DMA[1].DAC |= value; break;
@@ -370,13 +370,13 @@ public:
 		printf("\x1b[%d;%dH", 4, 0);
 		printf("PC: %08X SR: %s%s %s%s%s%s%s FC: %d\n",
 			m68k_get_reg(NULL, M68K_REG_PC),
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 15) & 0x01 ? "T" : " ",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 13) & 0x01 ? "S" : " ",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 4) & 0x01 ? "X" : " ",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 3) & 0x01 ? "N" : " ",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 2) & 0x01 ? "Z" : " ",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 1) & 0x01 ? "V" : " ",
-			m68k_get_reg(NULL, M68K_REG_SR) & 0x01 ? "C" : " ",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 15) & 0x01 ? "T" : "-",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 13) & 0x01 ? "S" : "-",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 4) & 0x01 ? "X" : "-",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 3) & 0x01 ? "N" : "-",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 2) & 0x01 ? "Z" : "-",
+			(m68k_get_reg(NULL, M68K_REG_SR) >> 1) & 0x01 ? "V" : "-",
+			m68k_get_reg(NULL, M68K_REG_SR) & 0x01 ? "C" : "-",
 			fc
 		);
 
@@ -385,6 +385,7 @@ public:
 			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_D0 + i)),
 			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
 
+		/// Timer ticks at an average of 6155 ns. One cycle takes about 64 ns (4 cycles = ~256 ns).
 		printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X\n", UCR, URH, USR, LIR);
 		#endif
 	}

@@ -1,0 +1,45 @@
+@0042A2CA(cdapdriv) CDIC FILE $0100
+@0042A2CE(cdapdriv) CDIC CHAN $00000003
+@0042A2DE(cdapdriv) CDIC ACHAN $0001
+@0042A33C(cdapdriv) CDIC MODE2 00323200
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0000
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0001
+!!!!!!!!!!!!! @0042ADE8(cdapdriv) CDIC AUDCTL => 0000 (occurs on MiniCDI, misaligns the AUDCTL counter!!!!)
+@0042AA00(cdapdriv) DMA1 BURST DEV => $0001B830 [$048A]
+@0042AA06(cdapdriv) CDIC DMACTL $800C = DMA @000C
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0000
+
+!!!!!!!!!!!!! BADAPPLE has to continuously transfer DMA, stops at sector 00:35:21 9C0 (DMA target: $00075B9C) with ACHAN set to 0
+
+cdiemu: g
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0001
+@0042AA00(cdapdriv) DMA1 BURST DEV => $00075288 [$048A]
+@0042AA06(cdapdriv) CDIC DMACTL $800C = DMA @000C
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0000
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0001
+@0042AA00(cdapdriv) DMA1 BURST DEV => $00075B9C [$048A]
+@0042AA06(cdapdriv) CDIC DMACTL $800C = DMA @000C
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0000
+@0042AA00(cdapdriv) DMA1 BURST DEV => $0001B830 [$048A]
+@0042AA06(cdapdriv) CDIC DMACTL $8A0C = DMA @0A0C
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0001
+@0042AA00(cdapdriv) DMA1 BURST DEV => $0001C144 [$048A]
+@0042AA06(cdapdriv) CDIC DMACTL $800C = DMA @000C
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0000
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0001
+@0042AA00(cdapdriv) DMA1 BURST DEV => $0001CA58 [$048A]
+@0042AA06(cdapdriv) CDIC DMACTL $800C = DMA @000C
+@0042ADE8(cdapdriv) CDIC AUDCTL => 0000
+@0042AA00(cdapdriv) DMA1 BURST DEV => $0001D36C [$048A]
+@0042AA06(cdapdriv) CDIC DMACTL $8A0C = DMA @0A0C
+1546716 clocks in 205 msecs = 7544 clocks/msec = 50% of 15Mhz
+kernel:0x407E9E     >4E73             rte
+dn: 00000006 FFFF0005  00000000 00000003   00000000 00000024  00001B00 00000000
+an: 0027C366 00000000  00D02AB4 00D02AA4   00D02AB8 00D02A70  00D08000 00DFD51C
+pc: 000005F0  sr:2210  (--S--2 ---X----)                  usp:00D029F4   ^ssp^
+0x5f0               >48780068         pea $68
+cdiemu: 
+
+Frog Feast stops at `@0042A460(cdapdriv) CDIC ABORT` (trace using cdiemu?)
+
+DMA mask is wrong???

@@ -37,9 +37,9 @@ public:
 
 			loops++;
 
-			// 1100 is arbitrary number, should check how many cycles is equal to a sector tick
-			// The speed in cycles has to be approximately equal to 75 sectors per sec, otherwise it will not work!!
-			if (loops % 1100 == 0) { cdic->tick(); }
+			// 1035 is arbitrary number, should check how many cycles is equal to a sector tick
+			// The speed MUST be at approximately 75 sectors per sec, otherwise it will not work!!
+			if (loops % /*(MiniCDI::Config::PAL ? 1035 : 830)*/1035 == 0) { cdic->tick(); }
 
 			// 15 MHz (not accurate) / 15625 Hz (line frequency) = 960 cycles
 			if (loops % 10 == 0) { if (vpu->tick(!draw)) break; }

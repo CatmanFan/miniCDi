@@ -146,10 +146,10 @@ static bool FAT_Init() {
 	return true;
 }
 
-static void RUN_CDI(const std::string &biosName)
+static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
-	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
-		printf("BIOS not found at %s, exiting", (appPath + "rom/" + biosName + ".rom").c_str());
+	if (access((appPath + "rom/" + biosName).c_str(), F_OK) != 0) {
+		printf("BIOS not found at %s, exiting", (appPath + "rom/" + biosName).c_str());
 		sleep(5);
 		exit(0);
 	}
@@ -166,11 +166,8 @@ static void RUN_CDI(const std::string &biosName)
 	MonoI cdi;
 	// MonoIV cdi;
 
-	cdi.init(appPath + "rom/" + biosName + ".rom");
-	// cdi.disc.open(appPath + "VALDISCE.BIN");
-	// cdi.disc.open(appPath + "DEBUGCTL.BIN");
-	// cdi.disc.open(appPath + "BADAPPLE.BIN");
-	cdi.disc.open(appPath + "HTLMARIO.BIN");
+	cdi.init(appPath + "rom/" + biosName);
+	cdi.disc.open(appPath + "discs/" + discName);
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;
@@ -179,7 +176,6 @@ static void RUN_CDI(const std::string &biosName)
 	#ifndef MINICDI_FRAMESKIP
 	cdi.do_frame(false); // Skip a frame anyway, to prevent crashing.
 	#endif
-	int skipThirdFrame = false;
 
 	while (SYS_MainLoop()) {
 		#ifdef HW_RVL
@@ -234,10 +230,8 @@ static void RUN_CDI(const std::string &biosName)
 			// TO-DO: Address crashing if doing do_frame(true) solo
 			#ifdef MINICDI_FRAMESKIP
 			cdi.do_frame(false);
-			if (skipThirdFrame == 0) { cdi.do_frame(false); }
 			cdi.do_frame(true);
-			fps.update(skipThirdFrame == 0 ? 3 : 2);
-			skipThirdFrame = (skipThirdFrame + 1) % 2;
+			fps.update(2);
 			#else
 			cdi.do_frame(true);
 			fps.update();
@@ -253,6 +247,100 @@ static void RUN_CDI(const std::string &biosName)
 
 	// if (config.log)
 		// fclose(config.log);
+}
+
+static std::string selectedDisc;
+#include <filesystem>
+
+static bool MINICDI_CLI_MENU() {
+	if (!std::filesystem::is_directory(appPath + "discs")) {
+		selectedDisc = "";
+		return true;
+	}
+	// Look for ROMs in directory
+	std::vector<std::string> discs;
+    for (const auto & disc : std::filesystem::directory_iterator(appPath + "discs")) {
+        if (!disc.path().extension().compare(".bin") || !disc.path().extension().compare(".BIN"))
+			discs.push_back(disc.path().filename());
+	}
+	if (discs.size() == 0) {
+		selectedDisc = "";
+		return true;
+	}
+
+	size_t selected = 0;
+	bool render = true;
+	while (SYS_MainLoop())
+	{
+		#ifdef HW_RVL
+		WPAD_ScanPads();
+		PAD_ScanPads();
+		#else
+		PAD_ScanPads();
+		#endif
+
+		#ifdef HW_RVL
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_HOME || WPAD_ButtonsDown(0) & WPAD_CLASSIC_BUTTON_HOME || PAD_ButtonsDown(0) & PAD_TRIGGER_Z) {
+		#else
+		if (PAD_ButtonsDown(0) & PAD_TRIGGER_Z) {
+		#endif
+			selected = (selected + 1) % discs.size();
+			render = true;
+		}
+
+		#ifdef HW_RVL
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_UP || WPAD_ButtonsDown(0) & WPAD_CLASSIC_BUTTON_UP || PAD_ButtonsDown(0) & PAD_BUTTON_UP) {
+		#else
+		if (PAD_ButtonsDown(0) & PAD_BUTTON_UP) {
+		#endif
+			selected = selected <= 0 ? discs.size() - 1 : selected - 1;
+			render = true;
+		}
+
+		#ifdef HW_RVL
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_DOWN || WPAD_ButtonsDown(0) & WPAD_CLASSIC_BUTTON_DOWN || PAD_ButtonsDown(0) & PAD_BUTTON_DOWN) {
+		#else
+		if (PAD_ButtonsDown(0) & PAD_BUTTON_DOWN) {
+		#endif
+			selected = (selected + 1) % discs.size();
+			render = true;
+		}
+
+		#ifdef HW_RVL
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A || WPAD_ButtonsDown(0) & WPAD_CLASSIC_BUTTON_A || PAD_ButtonsDown(0) & PAD_BUTTON_A) {
+		#else
+		if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
+		#endif
+			selectedDisc = discs[selected];
+			return true;
+		}
+
+		if (render) {
+			printf("\033[2J\033[H"); // Clear screen
+			#ifdef HW_RVL
+			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)                  Wii version\n");
+			#else
+			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)             GameCube version\n");
+			#endif
+			printf("___________________________________________________________________________\n\n");
+
+			#ifdef HW_RVL
+			printf("Up/Down to navigate, A to select, HOME (Wiimote) or Z (GC) to exit\n\n");
+			#else
+			printf("Up/Down to navigate, A to select, Z to exit\n\n");
+			#endif
+
+			for (size_t i = 0; i < discs.size(); i++) {
+				if (i == selected)	{ printf("> "); }
+				else					{ printf("  "); }
+
+				printf("%s\n", discs[i].c_str());
+			}
+			render = false;
+		}
+	}
+
+	return false;
 }
 
 int main(int argc, char **argv) {
@@ -286,9 +374,12 @@ int main(int argc, char **argv) {
 		exit(0);
 	}
 
-	printf("Loading\n");
-	RUN_CDI("cdi220b");
-	// RUN_CDI("cdi490a");
+	if (MINICDI_CLI_MENU()) {
+		printf("\033[2J\033[H"); // Clear screen
+		printf("miniCDi - Philips CD-i emulator\nLoading\n");
+		RUN_CDI("cdi220b.rom", selectedDisc);
+		// RUN_CDI("cdi490a");
+	}
 
 	VIDEO_SetBlack(true);
 	return 0;

@@ -12,6 +12,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 - [ ] Proper reset sequence
 - [ ] Emulator CPU/chip timing
 - [ ] LibRetro API compatibility?
+- [ ] Address DMA bug
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS).

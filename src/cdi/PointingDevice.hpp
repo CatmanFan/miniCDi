@@ -5,7 +5,7 @@ class PointingDevice
 {
 	static constexpr int MAX_POINTER_X = 768;
 	static constexpr int MAX_POINTER_Y = 560;
-	static constexpr int POINTER_ADVANCE = 4;
+	static constexpr int POINTER_ADVANCE = 1;
 
 public:
 	enum Buttons
@@ -53,15 +53,6 @@ public:
 					#endif
 
 					if (changed_Face) { changed_Face = false; }
-					if (changed_DPad)
-					{
-						x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
-																			 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
-																			 : 0), 0, 767);
-						y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
-																		  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
-																		  : 0), 0, 559);
-					}
 
 					// Convert to SLAVE response (allowed coord bounds: 54x97 to 704x679?)
 					IO.slave->Ch[0].Out =
@@ -80,15 +71,6 @@ public:
 		else if (IO.ikat) {
 			if (IO.ikat->has_pointer && (changed_Face || changed_DPad)) {
 				if (changed_Face) { changed_Face = false; }
-				if (changed_DPad)
-				{
-					x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
-																		 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
-																		 : 0), 0, 1023);
-					y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
-																	  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
-																	  : 0), 0, 1023);
-				}
 
 				IO.ikat->Ch[1].Out =
 				{
@@ -118,10 +100,29 @@ public:
 			changed_DPad = this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up];
 		}
 
+		if (changed_DPad)
+		{
+			x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
+																 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
+																 : 0), 0, 767);
+			y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
+															  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
+															  : 0), 0, 559);
+		}
+
 		if ((b == Button1 || b == Button2) && this->buttons[(int)b] != value) {
 			this->buttons[(int)b] = value;
 			changed_Face = true;
 		}
+	}
+
+	void set_coord(float x, float y)
+	{
+		if (x < 0 || y < 0 || x > 1 || y > 1) return;
+
+		this->x = (int)(x*768.0f);
+		this->y = (int)(y*560.0f);
+		changed_DPad = true;
 	}
 };
 

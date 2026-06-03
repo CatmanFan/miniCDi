@@ -122,6 +122,9 @@ int main(int argc, char* argv[])
 	C2D_Prepare();
 	romfsInit();
 
+	// Make use of N3DS clock speed
+	osSetSpeedupEnable(true);
+
 	C3D_RenderTarget* top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
 	consoleInit(GFX_BOTTOM, NULL);
 	printf("miniCDi\n");
@@ -141,7 +144,7 @@ int main(int argc, char* argv[])
 
 	EmulatorWindow TOPSCREEN(384,280);
 	MonoI cdi;
-	cdi.Init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
+	cdi.init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
 	// MonoIV cdi;
 
     bool has_quit = false;
@@ -167,16 +170,8 @@ int main(int argc, char* argv[])
 		// Ensure that drawing is done at 30fps
 		#ifdef MINICDI_FRAMESKIP
 		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
-		cdi.do_frame(false);
 		cdi.do_frame(true);
-		fps.update(10);
+		fps.update(2);
 		#else
 		cdi.do_frame(true);
 		fps.update(1);

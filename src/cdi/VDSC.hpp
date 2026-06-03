@@ -3,7 +3,7 @@
 
 /*****
   DISCLAIMER:
-  Sourced partially from official documentation of MCD212 by Motorola and
+  Partially sourced from official documentation of MCD212 by Motorola and
   MAME CD-i driver by Ryan Holtz and Vincent Halver (licensed under BSD-3-Clause).
  *****/
 
@@ -257,37 +257,54 @@ class Decoder
 		}
 	}
 
+	struct
+	{
+		int Y;
+		int U;
+		int V;
+		char LUT_deq[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
+	} DYUVDecoder;
+
 	template <size_t Path>
 	uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 	{
-		char dequantizer[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
-		int U2 = ((*src & 0xF0) >> 4);
-		int Y1 = (*src & 0x0F);
-		int V2 = ((*(src+1) & 0xF0) >> 4);
-		int Y2 = (*(src+1) & 0x0F);
+		#define V_TO_R(V) (351.0f * ((float)V - 128.0f))
+		#define V_TO_G(V) (179.0f * ((float)V - 128.0f))
+		#define U_TO_G(U) (86.0f * ((float)U - 128.0f))
+		#define U_TO_B(U) (444.0f * ((float)U - 128.0f))
 
-		int start_Y = (reg.ColorDYUV[Path] >> 16 & 0xFF);
-		int start_U = (reg.ColorDYUV[Path] >> 8 & 0xFF);
-		int start_V = (reg.ColorDYUV[Path] & 0xFF);
-		Y2 = start_Y + dequantizer[Y2];
-		U2 = start_U + dequantizer[U2];
-		V2 = start_V + dequantizer[V2];
-		Y1 = start_Y + dequantizer[Y1];
-		int U1 = (start_U + U2) >> 1;
-		int V1 = (start_V + V2) >> 1;
+		int Y1 = (*src) & 0x0F;
+		int Y2 = (*(src+1)) & 0x0F;
+		int U2 = ((*src) >> 4) & 0x0F;
+		int V2 = ((*(src+1)) >> 4) & 0x0F;
 
-		int r1 = V1;
-		int g1 = V1;
-		int b1 = V1;
+		Y1 = DYUVDecoder.LUT_deq[Y1];
+		Y2 = DYUVDecoder.LUT_deq[Y2];
+		U2 = DYUVDecoder.LUT_deq[U2];
+		V2 = DYUVDecoder.LUT_deq[V2];
+		int U1 = (DYUVDecoder.U + U2) / 2;
+		int V1 = (DYUVDecoder.V + V2) / 2;
 
-		int r2 = V2;
-		int g2 = V2;
-		int b2 = V2;
+		uint8_t r1 = std::clamp((int)std::floor((((float)Y1*256.0f) + V_TO_R(V1)) / 256.0f), 0, 255),
+				g1 = std::clamp((int)std::floor((((float)Y1*256.0f) + V_TO_G(V1) + U_TO_G(U1)) / 256.0f), 0, 255),
+				b1 = std::clamp((int)std::floor((((float)Y1*256.0f) + U_TO_B(U1)) / 256.0f), 0, 255),
+				r2 = std::clamp((int)std::floor((((float)Y2*256.0f) + V_TO_R(V2)) / 256.0f), 0, 255),
+				g2 = std::clamp((int)std::floor((((float)Y2*256.0f) + V_TO_G(V2) + U_TO_G(U2)) / 256.0f), 0, 255),
+				b2 = std::clamp((int)std::floor((((float)Y2*256.0f) + U_TO_B(U2)) / 256.0f), 0, 255);
 
-		*dst	 = (r1 << 24) | (g1 << 24) | (b1 << 8) | 0xff;
-		*(dst+1) = (r2 << 24) | (g2 << 24) | (b2 << 8) | 0xff;
+		DYUVDecoder.Y = Y2;
+		DYUVDecoder.U = U2;
+		DYUVDecoder.V = V2;
+
+		*dst	 = (r1 << 24) | (g1 << 16) | (b1 << 8) | 0xff;
+		*(dst+1) = (r2 << 24) | (g2 << 16) | (b2 << 8) | 0xff;
 
 		return 2;
+
+		#undef V_TO_R
+		#undef V_TO_G
+		#undef U_TO_G
+		#undef U_TO_B
 	}
 
 	template <size_t Path>
@@ -325,8 +342,8 @@ class Decoder
 
 			case CLUT4:
 				if (!isTransparent<Path>(src)) *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
-				if (!isTransparent<Path>(src)) *(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
-				return 2;
+				// if (!isTransparent<Path>(src)) *(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
+				return 1;
 		}
 	}
 
@@ -392,7 +409,7 @@ public:
 		for (int x = 0; x < FG[0].width; x++) {
 			int PIXELA = (y*PLANEA.width) + x;
 			int PIXELB = (y*PLANEB.width) + x;
-			int outputPixel = ((FG[0].height == 240 ? y+20 : y)*FG[0].width) + x;
+			int outputPixel = ((FG[0].height == 240 ? y+20 : FG[0].height == 480 ? y+40 : y)*FG[0].width) + x;
 
 			uint8_t rA = GET_R(PLANEA.decoded[PIXELA]),
 					gA = GET_G(PLANEA.decoded[PIXELA]),
@@ -464,6 +481,11 @@ public:
 	{
 		// reset matte flag for plane
 		Matte.reset();
+
+		// reset DYUV to initial values
+		DYUVDecoder.Y = (reg.ColorDYUV[Path] >> 16 & 0xFF);
+		DYUVDecoder.U = (reg.ColorDYUV[Path] >> 8 & 0xFF);
+		DYUVDecoder.V = (reg.ColorDYUV[Path] & 0xFF);
 
 		if (reg.Icm[Path] == Off) {
 			memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));

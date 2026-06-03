@@ -5,13 +5,11 @@ class CDiDisc
 {
 	std::ifstream disc;
 
-	/**
-	The sector is structured as follows:
-	* Sync field (12 bytes)
-	* Header field (4 bytes)
-	* Subheader field (8 bytes)
-	* Data field (2328 bytes)
-	**/
+	/// The sector is structured as follows (Green Book 5/1994 II.4.1.1):
+	/// Sync field (12 bytes)
+	/// Header field (4 bytes)
+	/// Subheader field (8 bytes)
+	/// Data field (2328 bytes)
 
 	/** Byteswap code:
 		char temp;
@@ -182,7 +180,7 @@ class CDiDisc
 	};
 
 	struct {
-		// Sync field is 00FFFFFFFFFFFFFFFFFFFF00, can be ignored(?)
+		// Sync field is 00FFFFFFFFFFFFFFFFFFFF00 and is unscrambled, can be ignored(?)
 
 		// Header, contains address and mode
 		char Min;
@@ -196,7 +194,7 @@ class CDiDisc
 		char Submode[2];
 		char CodingInfo[2];
 
-		/// Subheader codes:
+		/// Subheader codes (Green Book 5/1994 II.4.5.3):
 		/// 0x01 = EOR
 		/// 0x02 = Video
 		/// 0x04 = Audio

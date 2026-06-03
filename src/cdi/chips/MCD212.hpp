@@ -3,8 +3,7 @@
 
 /*****
   DISCLAIMER:
-  Sourced partially from official documentation of MCD212 by Motorola, as
-  well as the specifications of the Green Book.
+  Sourced from official documentation of MCD212 by Motorola.
  *****/
 
 #define MCD212_VSYNC_LINES		(FD ? 262 : 312)
@@ -230,7 +229,7 @@ public:
 
 		if (line == 0) {
 			if (interlace && SM) line = 1;
-			if (!skip_draw) vdsc.set_mode(!CF || ST ? 360 : 384, FD ? 240 : 280, CM[0]);
+			if (!skip_draw) vdsc.set_mode(!CF || ST ? 360 : 384, FD ? 240 : 280, CM[1]);
 		}
 
 		if (DE) {

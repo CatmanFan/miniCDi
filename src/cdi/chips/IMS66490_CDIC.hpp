@@ -3,7 +3,7 @@
 
 /*****
   DISCLAIMER:
-  Sourced partially from the MAME CDIC driver and documentation by Slamy.
+  Partially sourced from the MAME CDIC driver and documentation by Slamy.
  *****/
 
 class CDIC
@@ -127,11 +127,12 @@ public:
 			}
 
 			// Copy data/ADPCM buffer
-			for (int i = 0; i < 2328; i++) {
-				if (use_adpcm)
-					memory[0x30280C+i + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][12+i] = disc->Sector.Data[i];
-				else
-					memory[0x30000C+i + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][12+i] = disc->Sector.Data[i];
+			if (use_adpcm) {
+				memcpy(&memory[0x30280C+((DBUF & 0x01)*0xA00)], &disc->Sector.Data[0], 2328*sizeof(char));
+				memcpy(&ADPCM[DBUF & 0x01][12], &disc->Sector.Data[0], 2328*sizeof(char));
+			} else {
+				memcpy(&memory[0x30000C+((DBUF & 0x01)*0xA00)], &disc->Sector.Data[0], 2328*sizeof(char));
+				memcpy(&DATA[DBUF & 0x01][12], &disc->Sector.Data[0], 2328*sizeof(char));
 			}
 			// memory[DBUF & 0x01 ? 0x301324 : 0x300924] = DATA[DBUF & 0x01][0x924] = 0xff; // 0x00
 

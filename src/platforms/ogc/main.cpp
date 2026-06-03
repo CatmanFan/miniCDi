@@ -68,7 +68,7 @@ public:
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
 			#ifdef MINICDI_NATIVERES
-			SDL_Rect dest = {384/3, 280/3, 384, 280};
+			SDL_Rect dest = {width/3, 280/3, width, 280};
 			SDL_RenderCopy(this->renderer, this->texture, NULL, &dest);
 			#else
 			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
@@ -155,10 +155,11 @@ static void RUN_CDI(const std::string &biosName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL ? true : false;
+	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
 	MiniCDI::Config::ShowLCD = true;
 
 	bool paused = false;
+	bool usePointer = true;
 
 	// config.log = fopen((appPath + "log.txt").c_str(), "wt");
 
@@ -166,6 +167,7 @@ static void RUN_CDI(const std::string &biosName)
 	// MonoIV cdi;
 
 	cdi.init(appPath + "rom/" + biosName + ".rom");
+	// cdi.disc.open(appPath + "VALDISCE.BIN");
 	// cdi.disc.open(appPath + "DEBUGCTL.BIN");
 	// cdi.disc.open(appPath + "BADAPPLE.BIN");
 	cdi.disc.open(appPath + "HTLMARIO.BIN");
@@ -177,21 +179,26 @@ static void RUN_CDI(const std::string &biosName)
 	#ifndef MINICDI_FRAMESKIP
 	cdi.do_frame(false); // Skip a frame anyway, to prevent crashing.
 	#endif
+	int skipThirdFrame = false;
 
 	while (SYS_MainLoop()) {
-	#ifdef HW_RVL
+		#ifdef HW_RVL
 		WPAD_ScanPads();
+		WPADData* data = WPAD_Data(0);
 		uint32_t down = WPAD_ButtonsDown(0);
 		uint32_t held = WPAD_ButtonsHeld(0);
 
 		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
 			break;
 
-		if (down & WPAD_BUTTON_PLUS)
+		if (down & WPAD_BUTTON_MINUS)
 			cdi.reset();
 
+		if (down & WPAD_BUTTON_PLUS)
+			usePointer = !usePointer;
+
 		// if (down & WPAD_BUTTON_B) {
-	#else // HW_DOL
+		#else // HW_DOL
 		PAD_ScanPads();
 		uint32_t down = PAD_ButtonsDown(0);
 		// uint32_t held = PAD_ButtonsHeld(0);
@@ -200,18 +207,25 @@ static void RUN_CDI(const std::string &biosName)
 			break;
 
 		// if (down & PAD_BUTTON_B) {
-	#endif
+		#endif
 			// paused = !paused;
 		// }
 
 		if (!paused)
 		{
-			cdi.pd.set_button(PointingDevice::Left, (held & WPAD_BUTTON_UP) || (held & WPAD_CLASSIC_BUTTON_LEFT));
-			cdi.pd.set_button(PointingDevice::Right, (held & WPAD_BUTTON_DOWN) || (held & WPAD_CLASSIC_BUTTON_RIGHT));
-			cdi.pd.set_button(PointingDevice::Down, (held & WPAD_BUTTON_LEFT) || (held & WPAD_CLASSIC_BUTTON_DOWN));
-			cdi.pd.set_button(PointingDevice::Up, (held & WPAD_BUTTON_RIGHT) || (held & WPAD_CLASSIC_BUTTON_UP));
-			cdi.pd.set_button(PointingDevice::Button1, (held & WPAD_BUTTON_1) || (held & WPAD_CLASSIC_BUTTON_A));
-			cdi.pd.set_button(PointingDevice::Button2, (held & WPAD_BUTTON_2) || (held & WPAD_CLASSIC_BUTTON_B));
+			if (usePointer && data->ir.valid) {
+				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
+				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
+				cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);
+			} else {
+				cdi.pd.set_button(PointingDevice::Button1, (held & WPAD_BUTTON_1) || (held & WPAD_CLASSIC_BUTTON_A));
+				cdi.pd.set_button(PointingDevice::Button2, (held & WPAD_BUTTON_2) || (held & WPAD_CLASSIC_BUTTON_B));
+				cdi.pd.set_button(PointingDevice::Left, (held & WPAD_BUTTON_UP) || (held & WPAD_CLASSIC_BUTTON_LEFT));
+				cdi.pd.set_button(PointingDevice::Right, (held & WPAD_BUTTON_DOWN) || (held & WPAD_CLASSIC_BUTTON_RIGHT));
+				cdi.pd.set_button(PointingDevice::Down, (held & WPAD_BUTTON_LEFT) || (held & WPAD_CLASSIC_BUTTON_DOWN));
+				cdi.pd.set_button(PointingDevice::Up, (held & WPAD_BUTTON_RIGHT) || (held & WPAD_CLASSIC_BUTTON_UP));
+			}
+
 			cdi.pd.send();
 
 			static FPS fps;
@@ -220,8 +234,10 @@ static void RUN_CDI(const std::string &biosName)
 			// TO-DO: Address crashing if doing do_frame(true) solo
 			#ifdef MINICDI_FRAMESKIP
 			cdi.do_frame(false);
+			if (skipThirdFrame == 0) { cdi.do_frame(false); }
 			cdi.do_frame(true);
-			fps.update(2);
+			fps.update(skipThirdFrame == 0 ? 3 : 2);
+			skipThirdFrame = (skipThirdFrame + 1) % 2;
 			#else
 			cdi.do_frame(true);
 			fps.update();

@@ -41,7 +41,7 @@ public:
 		}
 
 		// Update LCD display
-		lcd.update_IKAT(ikat);
+		// lcd.update_IKAT(ikat);
 		pd.send();
 	}
 
@@ -54,7 +54,7 @@ public:
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
-	inline uint32_t* get_lcd() override { return &lcd.display[0]; }
+	inline uint32_t* get_lcd() override { return nullptr; } // Not implemented
 };
 
 #endif

@@ -9,10 +9,13 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 * ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (partial, no audio), IKAT
 
 ## To-Do
+### Bugs
+- [ ] Weight Factor on Mixing mode (cf. second player shell, does not occur on Mono-I)
+- [ ] Address DMA bug which causes CD-i applications to eventually halt
+### Other
 - [ ] Proper reset sequence
-- [ ] Emulator CPU/chip timing
+- [ ] Address emulator CPU/chip timing
 - [ ] LibRetro API compatibility?
-- [ ] Address DMA bug
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS).

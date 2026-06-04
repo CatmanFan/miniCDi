@@ -21,28 +21,34 @@ private:
 	PlayerLCD lcd;
 
 public:
-	MonoIV() : CDi() {}
-
 	bool init(const std::string &bios) override;
 
-	inline void do_frame(bool draw = true) override {
-		cpu.print();
+	inline void run(bool skip_draw = false) override {
+		// Tick pointing device
+		pd.send();
 
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		int loops = 0;
-		while (1)
-		{
+		bool VBLANK = false;
+		do {
 			cpu.run(96);
 			cpu.tick_timer();
 
 			loops++;
-			if (loops % 10 == 0) { if (vpu->tick(!draw)) break; }
-			// if (loops % 1100 == 0) { ciap->tick(); } // 1100 is arbitrary number, should check how many cycles is equal to a sector tick
-		}
+
+			// 1035 is arbitrary number, should check how many cycles is equal to a sector tick
+			// The speed MUST be at approximately 75 sectors per sec, otherwise it will not work!!
+			if (loops % /*(MiniCDI::Config::PAL ? 1035 : 830)*/1035 == 0) { ciap->tick(); }
+
+			// 15 MHz (not accurate) / 15625 Hz (line frequency) = 960 cycles
+			if (loops % 10 == 0) { VBLANK = vpu->tick(skip_draw); }
+		} while (!VBLANK);
 
 		// Update LCD display
 		// lcd.update_IKAT(ikat);
-		pd.send();
+
+		// Print verbose CPU
+		cpu.print();
 	}
 
 	inline void reset() override {

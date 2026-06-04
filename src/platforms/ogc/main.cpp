@@ -155,16 +155,17 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
+	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = true;
 
 	bool paused = false;
-	bool usePointer = true;
 
 	// config.log = fopen((appPath + "log.txt").c_str(), "wt");
 
 	MonoI cdi;
+	// MonoIII cdi;
 	// MonoIV cdi;
+	// Robocon cdi;
 
 	cdi.init(appPath + "rom/" + biosName);
 	cdi.disc.open(appPath + "discs/" + discName);
@@ -174,7 +175,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	#endif
 
 	#ifndef MINICDI_FRAMESKIP
-	cdi.do_frame(false); // Skip a frame anyway, to prevent crashing.
+	cdi.run(true); // Skip a frame anyway, to prevent crashing.
 	#endif
 
 	while (SYS_MainLoop()) {
@@ -182,58 +183,61 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		WPAD_ScanPads();
 		WPADData* data = WPAD_Data(0);
 		uint32_t down = WPAD_ButtonsDown(0);
-		uint32_t held = WPAD_ButtonsHeld(0);
-
-		if (down & WPAD_BUTTON_HOME || down & WPAD_CLASSIC_BUTTON_HOME)
-			break;
-
-		if (down & WPAD_BUTTON_MINUS)
-			cdi.reset();
-
-		if (down & WPAD_BUTTON_PLUS)
-			usePointer = !usePointer;
-
-		// if (down & WPAD_BUTTON_B) {
 		#else // HW_DOL
 		PAD_ScanPads();
 		uint32_t down = PAD_ButtonsDown(0);
-		// uint32_t held = PAD_ButtonsHeld(0);
-
-		if (down & PAD_BUTTON_Z)
-			break;
-
-		// if (down & PAD_BUTTON_B) {
 		#endif
-			// paused = !paused;
-		// }
 
 		if (!paused)
 		{
-			if (usePointer && data->ir.valid) {
-				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
-				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
+			#ifdef HW_RVL
+			if (data->exp.type == WPAD_EXP_CLASSIC) {
+				if (down & WPAD_CLASSIC_BUTTON_HOME) break;
+
+				cdi.pd.set_button(PointingDevice::Button1, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_A);
+				cdi.pd.set_button(PointingDevice::Button2, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_B);
+				cdi.pd.set_button(PointingDevice::Left, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_LEFT);
+				cdi.pd.set_button(PointingDevice::Right, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_RIGHT);
+				cdi.pd.set_button(PointingDevice::Down, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_DOWN);
+				cdi.pd.set_button(PointingDevice::Up, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_UP);
+			}
+			if (data->ir.valid && data->exp.type != WPAD_EXP_CLASSIC) {
+				if (down & WPAD_BUTTON_HOME) break;
+
+				cdi.pd.set_button(PointingDevice::Button1, WPAD_ButtonsHeld(0) & WPAD_BUTTON_A);
+				cdi.pd.set_button(PointingDevice::Button2, WPAD_ButtonsHeld(0) & WPAD_BUTTON_B);
 				cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);
 			} else {
-				cdi.pd.set_button(PointingDevice::Button1, (held & WPAD_BUTTON_1) || (held & WPAD_CLASSIC_BUTTON_A));
-				cdi.pd.set_button(PointingDevice::Button2, (held & WPAD_BUTTON_2) || (held & WPAD_CLASSIC_BUTTON_B));
-				cdi.pd.set_button(PointingDevice::Left, (held & WPAD_BUTTON_UP) || (held & WPAD_CLASSIC_BUTTON_LEFT));
-				cdi.pd.set_button(PointingDevice::Right, (held & WPAD_BUTTON_DOWN) || (held & WPAD_CLASSIC_BUTTON_RIGHT));
-				cdi.pd.set_button(PointingDevice::Down, (held & WPAD_BUTTON_LEFT) || (held & WPAD_CLASSIC_BUTTON_DOWN));
-				cdi.pd.set_button(PointingDevice::Up, (held & WPAD_BUTTON_RIGHT) || (held & WPAD_CLASSIC_BUTTON_UP));
-			}
+				if (down & WPAD_BUTTON_HOME) break;
 
-			cdi.pd.send();
+				cdi.pd.set_button(PointingDevice::Button1, WPAD_ButtonsHeld(0) & WPAD_BUTTON_1);
+				cdi.pd.set_button(PointingDevice::Button2, WPAD_ButtonsHeld(0) & WPAD_BUTTON_2);
+				cdi.pd.set_button(PointingDevice::Left, WPAD_ButtonsHeld(0) & WPAD_BUTTON_UP);
+				cdi.pd.set_button(PointingDevice::Right, WPAD_ButtonsHeld(0) & WPAD_BUTTON_DOWN);
+				cdi.pd.set_button(PointingDevice::Down, WPAD_ButtonsHeld(0) & WPAD_BUTTON_LEFT);
+				cdi.pd.set_button(PointingDevice::Up, WPAD_ButtonsHeld(0) & WPAD_BUTTON_RIGHT);
+			}
+			#else // HW_DOL
+			if (down & PAD_BUTTON_Z) break;
+
+			cdi.pd.set_button(PointingDevice::Button1, PAD_ButtonsHeld(0) & PAD_BUTTON_A);
+			cdi.pd.set_button(PointingDevice::Button2, PAD_ButtonsHeld(0) & PAD_BUTTON_B);
+			cdi.pd.set_button(PointingDevice::Left, PAD_ButtonsHeld(0) & PAD_BUTTON_LEFT);
+			cdi.pd.set_button(PointingDevice::Right, PAD_ButtonsHeld(0) & PAD_BUTTON_RIGHT);
+			cdi.pd.set_button(PointingDevice::Down, PAD_ButtonsHeld(0) & PAD_BUTTON_DOWN);
+			cdi.pd.set_button(PointingDevice::Up, PAD_ButtonsHeld(0) & PAD_BUTTON_UP);
+			#endif
 
 			static FPS fps;
 
 			// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode (likely because emulated machine is configured to use 60Hz?).
 			// TO-DO: Address crashing if doing do_frame(true) solo
 			#ifdef MINICDI_FRAMESKIP
-			cdi.do_frame(false);
-			cdi.do_frame(true);
+			cdi.run();
+			cdi.run(true);
 			fps.update(2);
 			#else
-			cdi.do_frame(true);
+			cdi.run();
 			fps.update();
 			#endif
 
@@ -250,6 +254,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 }
 
 static std::string selectedDisc;
+static int boardType;
 #include <filesystem>
 
 static bool MINICDI_CLI_MENU() {
@@ -312,6 +317,17 @@ static bool MINICDI_CLI_MENU() {
 		if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
 		#endif
 			selectedDisc = discs[selected];
+			boardType = 0;
+			return true;
+		}
+
+		#ifdef HW_RVL
+		if (WPAD_ButtonsDown(0) & WPAD_BUTTON_B || WPAD_ButtonsDown(0) & WPAD_CLASSIC_BUTTON_B || PAD_ButtonsDown(0) & PAD_BUTTON_B) {
+		#else
+		if (PAD_ButtonsDown(0) & PAD_BUTTON_B) {
+		#endif
+			selectedDisc = discs[selected];
+			boardType = 1;
 			return true;
 		}
 
@@ -378,7 +394,7 @@ int main(int argc, char **argv) {
 		printf("\033[2J\033[H"); // Clear screen
 		printf("miniCDi - Philips CD-i emulator\nLoading\n");
 		RUN_CDI("cdi220b.rom", selectedDisc);
-		// RUN_CDI("cdi490a");
+		// RUN_CDI("cdi490a.rom", selectedDisc);
 	}
 
 	VIDEO_SetBlack(true);

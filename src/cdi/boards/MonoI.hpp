@@ -21,17 +21,16 @@ private:
 	PlayerLCD lcd;
 
 public:
-	MonoI() : CDi() {}
-
 	bool init(const std::string &bios) override;
 
-	inline void do_frame(bool draw = true) override {
-		cpu.print();
+	inline void run(bool skip_draw = false) override {
+		// Tick pointing device
+		pd.send();
 
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		int loops = 0;
-		while (1)
-		{
+		bool VBLANK = false;
+		do {
 			cpu.run(96);
 			cpu.tick_timer();
 
@@ -42,11 +41,14 @@ public:
 			if (loops % /*(MiniCDI::Config::PAL ? 1035 : 830)*/1035 == 0) { cdic->tick(); }
 
 			// 15 MHz (not accurate) / 15625 Hz (line frequency) = 960 cycles
-			if (loops % 10 == 0) { if (vpu->tick(!draw)) break; }
-		}
+			if (loops % 10 == 0) { VBLANK = vpu->tick(skip_draw); }
+		} while (!VBLANK);
 
 		// Update LCD display
 		lcd.update_SLAVE(slave);
+
+		// Print verbose CPU
+		cpu.print();
 	}
 
 	inline void reset() override {

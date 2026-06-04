@@ -400,8 +400,8 @@ public:
 		#define GET_B(V) ((V) >> 8 & 0xFF)
 		#define GET_A(V) ((V) & 0xFF)
 
-		#define WF_MIX(V1, V2) std::clamp((int)((std::clamp(V1-16, 0, 255) * ((float)reg.ICF[reg.PlaneOrder ? 0 : 1]/64.0f)) \
-											  + (std::clamp(V2-16, 0, 255) * ((float)reg.ICF[reg.PlaneOrder ? 1 : 0]/64.0f)) \
+		#define WF_MIX(V1, V2) std::clamp((int)((std::clamp(V1-16, 0, 255) * ((float)reg.ICF[reg.PlaneOrder ? 0 : 1]/64.0f) * 0.5f) \
+											  + (std::clamp(V2-16, 0, 255) * ((float)reg.ICF[reg.PlaneOrder ? 1 : 0]/64.0f) * 0.5f) \
 											  + 16.0f), 0, 255)
 
 		#define WF_MIX_SINGLE(V1, WF) std::clamp((int)((std::clamp(V1-16, 0, 255) \

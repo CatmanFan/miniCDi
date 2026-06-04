@@ -39,11 +39,127 @@ class CIAP
 	uint16_t DMACTL;
 	uint16_t DLOAD;
 
+	void set_isr(uint16_t value)
+	{
+		ISR = value;
+		if (((ISR & 0x01) && (IER & 0x01))
+		|| ((ISR & 0x04) && (IER & 0x04))
+		|| ((ISR & 0x08) && (IER & 0x08))
+		|| ((ISR & 0x0800) && (IER & 0x0800))) {
+			MiniCDI::Log("[CIAP] INT %s", (ISR & 0x01) && (IER & 0x01) ? "data"
+										: (ISR & 0x04) && (IER & 0x04) ? "subcode"
+										: (ISR & 0x08) && (IER & 0x08) ? "audio"
+										: (ISR & 0x0800) && (IER & 0x0800) ? "qerror"
+										: "unknown");
+			// m68k_set_irq(ICR & 0x07);
+		}
+	}
+
 	CDiDisc *disc;
+
+	/// From MAME CDIC driver
+	struct {
+		uint8_t cmd;
+		uint8_t mode; // mode1, mode2, cdda, toc
+		uint8_t spinup_counter;
+		int curr_lba;
+	} DiscStatus;
+
+	void disc_start_read(uint8_t mode)
+	{
+		DiscStatus.cmd = CCR;
+		DiscStatus.mode = mode;
+		DiscStatus.spinup_counter = 6;
+		DiscStatus.curr_lba = disc->get_lba_from_time(0);
+	}
+
+	void disc_stop_read()
+	{
+		DiscStatus.cmd = 0;
+		DiscStatus.mode = 0;
+		DiscStatus.spinup_counter = 0;
+		DiscStatus.curr_lba = 0;
+	}
 
 public:
 	CIAP(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc)
 	{
+	}
+
+	void tick()
+	{
+		if (DiscStatus.cmd == 0)
+			return;
+
+		if (DiscStatus.spinup_counter > 0) {
+			DiscStatus.spinup_counter--;
+			return;
+		}
+
+		disc->read_sector_header(DiscStatus.curr_lba);
+
+		// Additional MODE2 processing
+		bool selected = true;
+		if (disc->Sector.Mode == 2)
+		{
+			if (FILE != disc->Sector.FileNum[1]) {
+				// MiniCDI::Log("[CIAP] MODE2: sector file num does not match, skipping");
+				selected = false;
+				goto copy_sector;
+			}
+			if (disc->Sector.Submode[1] & 0x80) { // EOF
+				MiniCDI::Log("[CIAP] MODE2: reached EOF");
+				DiscStatus.cmd = 0;
+			}
+			if (disc->Sector.Submode[1] & (0x80 | 0x10 | 0x01)) { // EOF, TRIGGER, EOR
+				MiniCDI::Log("[CIAP] MODE2: sector automatically satisfied");
+				goto copy_sector;
+			}
+			if (!(disc->Sector.Submode[1] & (0x08 | 0x04 | 0x02))) { // DATA, VIDEO, AUDIO
+				// MiniCDI::Log("[CIAP] MODE2: sector is message, skipping");
+				selected = false;
+				goto copy_sector;
+			}
+			if (!(TCM1 >> disc->Sector.ChNum[1] & 0b01)) {
+				// MiniCDI::Log("[CIAP] MODE2: sector channel not satisfied, skipping");
+				selected = false;
+				goto copy_sector;
+			}
+		}
+
+		copy_sector:
+		if (selected)
+		{
+			MiniCDI::Log("[CIAP] read sector %X %02X:%02X:%02X",
+				DiscStatus.curr_lba, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			disc->read_sector_data(DiscStatus.curr_lba);
+
+			memory[0x301200 + ((0)*0xA00)] = Main[(0)][0] = disc->Sector.Min;
+			memory[0x301201 + ((0)*0xA00)] = Main[(0)][1] = disc->Sector.Sec;
+			memory[0x301202 + ((0)*0xA00)] = Main[(0)][2] = disc->Sector.Frame;
+			memory[0x301203 + ((0)*0xA00)] = Main[(0)][3] = disc->Sector.Mode;
+			memory[0x301204 + ((0)*0xA00)] = Main[(0)][4] = disc->Sector.FileNum[0];
+			memory[0x301205 + ((0)*0xA00)] = Main[(0)][5] = disc->Sector.ChNum[0];
+			memory[0x301206 + ((0)*0xA00)] = Main[(0)][6] = disc->Sector.Submode[0];
+			memory[0x301207 + ((0)*0xA00)] = Main[(0)][7] = disc->Sector.CodingInfo[0];
+			memory[0x301208 + ((0)*0xA00)] = Main[(0)][8] = disc->Sector.FileNum[1];
+			memory[0x301209 + ((0)*0xA00)] = Main[(0)][9] = disc->Sector.ChNum[1];
+			memory[0x30120A + ((0)*0xA00)] = Main[(0)][10] = disc->Sector.Submode[1];
+			memory[0x30120B + ((0)*0xA00)] = Main[(0)][11] = disc->Sector.CodingInfo[1];
+
+			memcpy(&memory[0x30120C+((0)*0xA00)], &disc->Sector.Data[0], 2328*sizeof(char));
+			memcpy(&Main[(0)][12], &disc->Sector.Data[0], 2328*sizeof(char));
+
+			BMAN |= 0b0000000000000100; // DATA0
+			set_isr(0x01); // DATA ISR
+		}
+
+		if (DiscStatus.cmd == 0) {
+			disc_stop_read();
+			return;
+		}
+
+		DiscStatus.curr_lba++;
 	}
 
 	uint16_t read16(uint32_t addr)
@@ -142,30 +258,12 @@ public:
 							break;
 						case 0x7000:
 							MiniCDI::Log("[CIAP] PREPD (0x%04X)", value);
-							disc->get_lba_from_time(0x000216);
-							disc->read_sector();
-							{
-								memory[0x301200] = Main[0][0] = disc->Sector.Min;
-								memory[0x301201] = Main[0][1] = disc->Sector.Sec;
-								memory[0x301202] = Main[0][2] = disc->Sector.Frame;
-								memory[0x301203] = Main[0][3] = disc->Sector.Mode;
-								memory[0x301204] = Main[0][4] = disc->Sector.FileNum[0];
-								memory[0x301205] = Main[0][5] = disc->Sector.ChNum[0];
-								memory[0x301206] = Main[0][6] = disc->Sector.Submode[0];
-								memory[0x301207] = Main[0][7] = disc->Sector.CodingInfo[0];
-								memory[0x301208] = Main[0][8] = disc->Sector.FileNum[1];
-								memory[0x301209] = Main[0][9] = disc->Sector.ChNum[1];
-								memory[0x30120A] = Main[0][10] = disc->Sector.Submode[1];
-								memory[0x30120B] = Main[0][11] = disc->Sector.CodingInfo[1];
-								for (int i = 0; i < 2328; i++) {
-									memory[0x30120C+i] = Main[0][12+i] = disc->Sector.Data[i];
-								}
-							}
-							set_isr(0x01);
+							disc_start_read(1);
 							break;
 						case 0x0094: // STARTA
 						case 0x00C4: // STARTD
 							MiniCDI::Log("[CIAP] START read (0x%04X)", value);
+							disc_start_read(1);
 							break;
 					}
 				}
@@ -180,22 +278,6 @@ public:
 			case 0x3025C0: MiniCDI::Log("[CIAP] ICR <= v=%d,l=%d", value >> 3 & 0xFF, value & 0x07); ICR = value; break;
 			case 0x3025C2: MiniCDI::Log("[CIAP] DMACTL <= %04X", value); DMACTL = value; break;
 			case 0x3025FE: DLOAD = value; break;
-		}
-	}
-
-	void set_isr(uint16_t value)
-	{
-		ISR = value;
-		if (((ISR & 0x01) && (IER & 0x01))
-		|| ((ISR & 0x04) && (IER & 0x04))
-		|| ((ISR & 0x08) && (IER & 0x08))
-		|| ((ISR & 0x0800) && (IER & 0x0800))) {
-			MiniCDI::Log("[CIAP] INT %s", (ISR & 0x01) && (IER & 0x01) ? "data"
-										: (ISR & 0x04) && (IER & 0x04) ? "subcode"
-										: (ISR & 0x08) && (IER & 0x08) ? "audio"
-										: (ISR & 0x0800) && (IER & 0x0800) ? "qerror"
-										: "unknown");
-			// m68k_set_irq(ICR & 0x07);
 		}
 	}
 };

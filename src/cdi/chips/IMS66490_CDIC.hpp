@@ -32,7 +32,7 @@ class CDIC
 		uint8_t cmd;
 		uint8_t mode; // mode1, mode2, cdda, toc
 		uint8_t spinup_counter;
-		int LBA;
+		int curr_lba;
 	} DiscStatus;
 
 	void disc_start_read(uint8_t mode)
@@ -40,7 +40,7 @@ class CDIC
 		DiscStatus.cmd = CMD;
 		DiscStatus.mode = mode;
 		DiscStatus.spinup_counter = 6;
-		DiscStatus.LBA = disc->get_lba_from_time(TIME);
+		DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
 	}
 
 	void disc_stop_read()
@@ -48,11 +48,11 @@ class CDIC
 		DiscStatus.cmd = 0;
 		DiscStatus.mode = 0;
 		DiscStatus.spinup_counter = 0;
-		DiscStatus.LBA = 0;
+		DiscStatus.curr_lba = 0;
 	}
 
 public:
-	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc)
+	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc), DiscStatus({0})
 	{
 	}
 
@@ -66,7 +66,7 @@ public:
 			return;
 		}
 
-		disc->read_sector_header(DiscStatus.LBA);
+		disc->read_sector_header(DiscStatus.curr_lba);
 
 		// Additional MODE2 processing
 		bool selected = true;
@@ -101,8 +101,8 @@ public:
 		if (selected)
 		{
 			MiniCDI::Log("[CDIC] read sector %X %02X:%02X:%02X",
-				DiscStatus.LBA, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
-			disc->read_sector_data(DiscStatus.LBA);
+				DiscStatus.curr_lba, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			disc->read_sector_data(DiscStatus.curr_lba);
 
 			// Switch DBUF index and reset audio
 			DBUF &= ~0x0004; DBUF ^= 0x0001;
@@ -145,7 +145,7 @@ public:
 			return;
 		}
 
-		DiscStatus.LBA++;
+		DiscStatus.curr_lba++;
 	}
 
 	uint16_t read16(uint32_t addr)

@@ -259,52 +259,65 @@ class Decoder
 
 	struct
 	{
-		int Y;
-		int U;
-		int V;
-		char LUT_deq[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
+		uint8_t Y;
+		uint8_t U;
+		uint8_t V;
+
+		// Use only ONE LUT, for the dequantizer (small enough to fit in host memory, unlike a 16-million RGB LUT).
+		// The RGB color is generated dynamically so as to prevent crashing from full RAM usage.
+		uint8_t LUT_deq[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
 	} DYUVDecoder;
 
 	template <size_t Path>
 	uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 	{
-		#define V_TO_R(V) (351.0f * ((float)V - 128.0f))
-		#define V_TO_G(V) (179.0f * ((float)V - 128.0f))
-		#define U_TO_G(U) (86.0f * ((float)U - 128.0f))
-		#define U_TO_B(U) (444.0f * ((float)U - 128.0f))
+		uint8_t Y[2], U[2], V[2];
 
-		int Y1 = (*src) & 0x0F;
-		int Y2 = (*(src+1)) & 0x0F;
-		int U2 = ((*src) >> 4) & 0x0F;
-		int V2 = ((*(src+1)) >> 4) & 0x0F;
+		Y[0] = (*src) & 0x0F;
+		Y[1] = (*(src+1)) & 0x0F;
+		U[1] = ((*src) >> 4) & 0x0F;
+		V[1] = ((*(src+1)) >> 4) & 0x0F;
 
-		Y1 = DYUVDecoder.LUT_deq[Y1];
-		Y2 = DYUVDecoder.LUT_deq[Y2];
-		U2 = DYUVDecoder.LUT_deq[U2];
-		V2 = DYUVDecoder.LUT_deq[V2];
-		int U1 = (DYUVDecoder.U + U2) / 2;
-		int V1 = (DYUVDecoder.V + V2) / 2;
+		/// Formula taken from CeDImu video decoder.
 
-		uint8_t r1 = std::clamp((int)std::floor((((float)Y1*256.0f) + V_TO_R(V1)) / 256.0f), 0, 255),
-				g1 = std::clamp((int)std::floor((((float)Y1*256.0f) + V_TO_G(V1) + U_TO_G(U1)) / 256.0f), 0, 255),
-				b1 = std::clamp((int)std::floor((((float)Y1*256.0f) + U_TO_B(U1)) / 256.0f), 0, 255),
-				r2 = std::clamp((int)std::floor((((float)Y2*256.0f) + V_TO_R(V2)) / 256.0f), 0, 255),
-				g2 = std::clamp((int)std::floor((((float)Y2*256.0f) + V_TO_G(V2) + U_TO_G(U2)) / 256.0f), 0, 255),
-				b2 = std::clamp((int)std::floor((((float)Y2*256.0f) + U_TO_B(U2)) / 256.0f), 0, 255);
+		Y[0] = DYUVDecoder.Y + DYUVDecoder.LUT_deq[Y[0]];
+		Y[1] = Y[0] + DYUVDecoder.LUT_deq[Y[1]];
+		U[1] = DYUVDecoder.U + DYUVDecoder.LUT_deq[U[1]];
+		V[1] = DYUVDecoder.V + DYUVDecoder.LUT_deq[V[1]];
+		U[0] = (DYUVDecoder.U + U[1]) / 2;
+		V[0] = (DYUVDecoder.V + V[1]) / 2;
 
-		DYUVDecoder.Y = Y2;
-		DYUVDecoder.U = U2;
-		DYUVDecoder.V = V2;
+		DYUVDecoder.Y = Y[1];
+		DYUVDecoder.U = U[1];
+		DYUVDecoder.V = V[1];
 
-		*dst	 = (r1 << 24) | (g1 << 16) | (b1 << 8) | 0xff;
-		*(dst+1) = (r2 << 24) | (g2 << 16) | (b2 << 8) | 0xff;
+		#define DYUV_V_TO_R(v) (int)std::floor((351.0f * (v - 128.0f)) / 256.0f)
+		#define DYUV_V_TO_G(v) (int)std::floor((179.0f * (v - 128.0f)) / 256.0f)
+		#define DYUV_U_TO_G(u) (int)std::floor((86.0f * (u - 128.0f)) / 256.0f)
+		#define DYUV_U_TO_B(u) (int)std::floor((444.0f * (u - 128.0f)) / 256.0f)
+
+		for (int i = 0; i < 2; i++) {
+			int R = Y[0] + DYUV_V_TO_R(V[0]);
+			int G = Y[0] - DYUV_U_TO_G(U[0]) + DYUV_V_TO_G(V[0]);
+			int B = Y[0] + DYUV_U_TO_B(U[0]);
+
+			if (R < 0x100) {R = 0;} else if (R < 0x200) {R -= 0x100;} else {R = 0xFF;}
+			if (G < 0x100) {G = 0;} else if (G < 0x200) {G -= 0x100;} else {G = 0xFF;}
+			if (B < 0x100) {B = 0;} else if (B < 0x200) {B -= 0x100;} else {B = 0xFF;}
+
+			R = std::clamp(R*2, 0, 255);
+			G = std::clamp(G*2, 0, 255);
+			B = std::clamp(B*2, 0, 255);
+
+			*(dst+i) = (G << 24) | (B << 16) | (R << 8) | 0xFF;
+		}
+
+		#undef DYUV_V_TO_R
+		#undef DYUV_V_TO_G
+		#undef DYUV_U_TO_G
+		#undef DYUV_U_TO_B
 
 		return 2;
-
-		#undef V_TO_R
-		#undef V_TO_G
-		#undef U_TO_G
-		#undef U_TO_B
 	}
 
 	template <size_t Path>
@@ -315,10 +328,10 @@ class Decoder
 			uint8_t g = ((*src >> 5) & 0x1F) << 3;
 			uint8_t b = (*src & 0x1F) << 3;
 
-			*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24 |
-					(g > 255 ? 255 : g < 0 ? 0 : g) << 16 |
-					(b > 255 ? 255 : b < 0 ? 0 : b) << 8 |
-					0xFF);
+			*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24) |
+				   ((g > 255 ? 255 : g < 0 ? 0 : g) << 16) |
+				   ((b > 255 ? 255 : b < 0 ? 0 : b) << 8) |
+				   0xFF;
 		}
 
 		return 1;

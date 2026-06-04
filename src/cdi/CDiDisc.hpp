@@ -243,6 +243,43 @@ class CDiDisc
 		return lba;
 	}
 
+	bool is_byteswapped(int lba)
+	{
+		char sync[2];
+		disc.seekg(lba*2352, std::ios::beg);
+		disc.read(&sync[0], 2);
+
+		return sync[0] == 0xFF && sync[1] == 0x00;
+	}
+
+	/// Taken from MAME CDIC driver source code.
+	bool is_valid_sector(int lba)
+	{
+		char raw[12];
+		disc.seekg(lba*2352+12, std::ios::beg);
+		disc.read(&raw[0], 12);
+
+		const uint8_t mins = (lba+150) / (60 * 75);
+		const uint8_t secs = ((lba+150) / 75) % 60;
+		const uint8_t frac = (lba+150) % 75;
+		const uint8_t mins_bcd = ((mins / 10) << 4) | (mins % 10);
+		const uint8_t secs_bcd = ((secs / 10) << 4) | (secs % 10);
+		const uint8_t frac_bcd = ((frac / 10) << 4) | (frac % 10);
+
+		if (mins_bcd != raw[0] || secs_bcd != raw[1] || frac_bcd != raw[2])
+			return false;
+
+		if (raw[3] != 1 && raw[3] != 2)
+			return false;
+
+		if (raw[4] != raw[8])	return false;
+		if (raw[5] != raw[9])	return false;
+		if (raw[6] != raw[10])	return false;
+		if (raw[7] != raw[11])	return false;
+
+		return true;
+	}
+
 	void read_sector_header(int lba = 0)
 	{
 		// seek and skip sync field
@@ -260,6 +297,33 @@ class CDiDisc
 		disc.get(Sector.ChNum[1]);
 		disc.get(Sector.Submode[1]);
 		disc.get(Sector.CodingInfo[1]);
+
+		if (is_byteswapped(lba))
+		{
+			char temp;
+			temp = Sector.Min; Sector.Min = Sector.Sec; Sector.Sec = temp;
+			temp = Sector.Frame; Sector.Frame = Sector.Mode; Sector.Mode = temp;
+			temp = Sector.FileNum[0]; Sector.FileNum[0] = Sector.ChNum[0]; Sector.ChNum[0] = temp;
+			temp = Sector.Submode[0]; Sector.Submode[0] = Sector.CodingInfo[0]; Sector.CodingInfo[0] = temp;
+			temp = Sector.FileNum[1]; Sector.FileNum[1] = Sector.ChNum[1]; Sector.ChNum[1] = temp;
+			temp = Sector.Submode[1]; Sector.Submode[1] = Sector.CodingInfo[1]; Sector.CodingInfo[1] = temp;
+		}
+
+		if (!is_valid_sector(lba))
+		{
+			Sector.Min ^= scramble_data[0];
+			Sector.Sec ^= scramble_data[1];
+			Sector.Frame ^= scramble_data[2];
+			Sector.Mode ^= scramble_data[3];
+			Sector.FileNum[0] ^= scramble_data[4];
+			Sector.ChNum[0] ^= scramble_data[5];
+			Sector.Submode[0] ^= scramble_data[6];
+			Sector.CodingInfo[0] ^= scramble_data[7];
+			Sector.FileNum[1] ^= scramble_data[8];
+			Sector.ChNum[1] ^= scramble_data[9];
+			Sector.Submode[1] ^= scramble_data[10];
+			Sector.CodingInfo[1] ^= scramble_data[11];
+		}
 	}
 
 	void read_sector_data(int lba = 0)
@@ -268,6 +332,21 @@ class CDiDisc
 		disc.seekg(lba*2352+24, std::ios::beg);
 
 		disc.read(&Sector.Data[0], 2328);
+
+		if (is_byteswapped(lba))
+		{
+			for (int i = 0; i < 2328; i+=2) {
+				char temp = Sector.Data[i];
+				Sector.Data[i] = Sector.Data[i+1];
+				Sector.Data[i+1] = temp;
+			}
+		}
+
+		if (!is_valid_sector(lba))
+		{
+			for (int i = 0; i < 2328; i++)
+				Sector.Data[i] ^= scramble_data[i+12];
+		}
 	}
 
 	void read_sector(int lba = 0)
@@ -288,6 +367,42 @@ class CDiDisc
 		disc.get(Sector.Submode[1]);
 		disc.get(Sector.CodingInfo[1]);
 		disc.read(&Sector.Data[0], 2328);
+
+		if (is_byteswapped(lba))
+		{
+			char temp;
+			temp = Sector.Min; Sector.Min = Sector.Sec; Sector.Sec = temp;
+			temp = Sector.Frame; Sector.Frame = Sector.Mode; Sector.Mode = temp;
+			temp = Sector.FileNum[0]; Sector.FileNum[0] = Sector.ChNum[0]; Sector.ChNum[0] = temp;
+			temp = Sector.Submode[0]; Sector.Submode[0] = Sector.CodingInfo[0]; Sector.CodingInfo[0] = temp;
+			temp = Sector.FileNum[1]; Sector.FileNum[1] = Sector.ChNum[1]; Sector.ChNum[1] = temp;
+			temp = Sector.Submode[1]; Sector.Submode[1] = Sector.CodingInfo[1]; Sector.CodingInfo[1] = temp;
+
+			for (int i = 0; i < 2328; i+=2) {
+				temp = Sector.Data[i];
+				Sector.Data[i] = Sector.Data[i+1];
+				Sector.Data[i+1] = temp;
+			}
+		}
+
+		if (!is_valid_sector(lba))
+		{
+			Sector.Min ^= scramble_data[0];
+			Sector.Sec ^= scramble_data[1];
+			Sector.Frame ^= scramble_data[2];
+			Sector.Mode ^= scramble_data[3];
+			Sector.FileNum[0] ^= scramble_data[4];
+			Sector.ChNum[0] ^= scramble_data[5];
+			Sector.Submode[0] ^= scramble_data[6];
+			Sector.CodingInfo[0] ^= scramble_data[7];
+			Sector.FileNum[1] ^= scramble_data[8];
+			Sector.ChNum[1] ^= scramble_data[9];
+			Sector.Submode[1] ^= scramble_data[10];
+			Sector.CodingInfo[1] ^= scramble_data[11];
+
+			for (int i = 0; i < 2328; i++)
+				Sector.Data[i] ^= scramble_data[i+12];
+		}
 	}
 
 public:

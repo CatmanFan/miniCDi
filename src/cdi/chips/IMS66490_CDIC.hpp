@@ -27,6 +27,23 @@ class CDIC
 
 	CDiDisc *disc;
 
+	struct {
+		bool decoding;
+		uint16_t decode_addr;
+		int sectors;
+	} AudioStatus;
+
+	void audio_process()
+	{
+		if (AudioStatus.decode_addr == 0xFFFF) {
+			AudioStatus.sectors = 0;
+			AudioStatus.decoding = false;
+			return;
+		}
+
+		// TO-DO
+	}
+
 	/// From MAME CDIC driver
 	struct {
 		uint8_t cmd;
@@ -51,12 +68,7 @@ class CDIC
 		DiscStatus.curr_lba = 0;
 	}
 
-public:
-	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc), DiscStatus({0})
-	{
-	}
-
-	void tick()
+	void disc_process_sector()
 	{
 		if (DiscStatus.cmd == 0)
 			return;
@@ -123,12 +135,19 @@ public:
 			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
 			// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
 
-			bool use_adpcm = (disc->Sector.Submode[1] & 0x04) && (ACHAN >> disc->Sector.ChNum[1] & 0b01);
+			bool use_adpcm = disc->Sector.Mode == 2 && DiscStatus.mode == 2
+						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN >> disc->Sector.ChNum[1] & 0b01);
+
 			if (use_adpcm) {
+				AudioStatus.decoding = false;
+
 				DBUF |= 0x0004; // audio index
 				if (disc->Sector.CodingInfo[1] == 0xFF) { AUDCTL |= 0x0001; }
 				targetAddr = 0x302808 + ((DBUF & 0x01)*0xA00); // ADPCM + 8
 				targetBuf = &ADPCM[DBUF & 0x01][8];
+			}
+			if (DiscStatus.mode == 3) { // CDDA
+				AudioStatus.decoding = false;
 			}
 
 			memory[targetAddr++] = *(targetBuf++) = disc->Sector.FileNum[1];
@@ -167,6 +186,19 @@ public:
 		}
 
 		DiscStatus.curr_lba++;
+	}
+
+public:
+	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc), AudioStatus({0}), DiscStatus({0})
+	{
+	}
+
+	void tick()
+	{
+		if (AudioStatus.sectors > 0) AudioStatus.sectors--;
+		if (AudioStatus.decoding) audio_process();
+
+		disc_process_sector();
 	}
 
 	uint16_t read16(uint32_t addr)
@@ -219,7 +251,7 @@ public:
 				return DMACTL;
 			}
 			case 0x303FFA: {
-				AUDCTL ^= 0x0001; // reset ADPCM playback stopped bit
+				if (!AudioStatus.decoding) { AUDCTL ^= 0x0001; } // reset ADPCM playback stopped bit
 				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
 				return AUDCTL;
 			}
@@ -283,7 +315,13 @@ public:
 				if (value & 0x8000) cpu->dma_call(0, 0x300000 + (value & 0x3FFF));
 				break;
 			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value;
-				if (value & 0x0800) MiniCDI::Log("[CDIC] audio playback start");
+				if (!(value & 0x2000)) {
+					AudioStatus.decode_addr = 0xFFFF;
+				} else if (!AudioStatus.decoding) {
+					AudioStatus.decode_addr = value & 0x3A00;
+					AudioStatus.sectors = 1;
+					AudioStatus.decoding = true;
+				}
 				break;
 			case 0x303FFC: MiniCDI::Log("[CDIC] IVEC <= %04X", value); memory[addr] = IVEC = value; break;
 			case 0x303FFE: /*MiniCDI::Log("[CDIC] DBUF <= %04X", value);*/ DBUF = value;

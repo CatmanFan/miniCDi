@@ -207,6 +207,15 @@ class CDiDisc
 		char Data[2328];
 	} Sector; // CD-i, not CD-DA*/
 
+	std::string Label;
+
+	/**
+	 * @brief  Decodes a time value to an LBA and automatically seeks the disc filestream to that address.
+	 *
+	 * @param  time:  Time value in unsigned long form (e.g. `00'02'16'00`).
+	 *
+	 * @return The LBA address, subtracted by 150.
+	 */
 	uint32_t get_lba_from_time(uint32_t time)
 	{
 		/** Copied from MAME source code of CD-i CDIC driver **/
@@ -292,6 +301,25 @@ public:
 			if (disc.is_open()) {
 				MiniCDI::Config::HasDisc = true;
 				MiniCDI::Log("[CDI] loaded disc image (%s)", path.c_str());
+
+				disc.seekg(0x9340, std::ios::beg); // 00'02'16 LBA, address of title
+				char c;
+				for (int i = 0; i < 32; i++) {
+					disc.get(c);
+					Label += c;
+					if (i == 31 && c == 0x20) {
+						// Trim ending space characters
+						int j = Label.length() - 1;
+						while (std::isspace(Label[j]) != 0) j--;
+						Label = Label.substr(0,j+1);
+
+						MiniCDI::Log("[Disc] label: %s", Label.c_str());
+					} else if (i == 31) {
+						Label.clear();
+
+						MiniCDI::Log("[Disc] label not found at LBA $9300");
+					}
+				}
 			} else {
 				MiniCDI::Log("[CDI] failed to load disc image (%s)", path.c_str());
 			}

@@ -137,25 +137,28 @@ int main(int argc, char* argv[])
 		exit(0);
 	}
 
+	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::FrameSkip = 1;
 
 	// config.log = fopen("miniCDi_log.txt", "wt");
 
-	EmulatorWindow TOPSCREEN(384,280);
 	MonoI cdi;
-	cdi.init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
+	// MonoIII cdi;
 	// MonoIV cdi;
+	// Robocon cdi;
 
-    bool has_quit = false;
-    while (aptMainLoop() && !has_quit)
+	cdi.init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
+
+	EmulatorWindow TOPSCREEN(384,280);
+
+    while (aptMainLoop())
 	{
-		// Your code goes here
 		hidScanInput();
 		u32 kDown = hidKeysDown();
 		u32 kHeld = hidKeysHeld();
-		if (kDown & KEY_ZR)
-			break; // break in order to return to hbmenu
+		if (kDown & KEY_ZR) break; // break in order to return to hbmenu
 
 		cdi.pd.set_button(PointingDevice::Left, kHeld & KEY_LEFT);
 		cdi.pd.set_button(PointingDevice::Right, kHeld & KEY_RIGHT);
@@ -168,16 +171,16 @@ int main(int argc, char* argv[])
 		static FPS fps;
 
 		// Ensure that drawing is done at 30fps
-		#ifdef MINICDI_FRAMESKIP
-		cdi.do_frame(false);
-		cdi.do_frame(true);
-		fps.update(2);
-		#else
-		cdi.do_frame(true);
-		fps.update(1);
-		#endif
-		TOPSCREEN.Update(cdi.get_display(), cdi.get_display_width());
+		if (MiniCDI::Config::FrameSkip > 0) {
+			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
+			cdi.run();
+			fps.update(MiniCDI::Config::FrameSkip+1);
+		} else {
+			cdi.run();
+			fps.update();
+		}
 
+		TOPSCREEN.Update(cdi.get_display(), cdi.get_display_width());
 		C3D_FrameBegin(C3D_FRAME_NONBLOCK);
 		C2D_TargetClear(top, C2D_Color32(0x00, 0x00, 0x00, 0xFF));
 		C2D_SceneBegin(top);
@@ -185,8 +188,7 @@ int main(int argc, char* argv[])
 		C3D_FrameEnd(0);
 	}
 
-	// if (config.log)
-		// fclose(config.log);
+	// if (config.log) fclose(config.log);
 
 	/// TO-DO: Properly free memory to prevent crash on exit.
 	///        Address slowdown when CD-i screen display is enabled.

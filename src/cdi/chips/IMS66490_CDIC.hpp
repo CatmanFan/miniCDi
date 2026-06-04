@@ -73,7 +73,7 @@ public:
 		if (disc->Sector.Mode == 2 && DiscStatus.mode == 2)
 		{
 			if ((FILE >> 8 & 0x00FF) != disc->Sector.FileNum[1]) {
-				// MiniCDI::Log("[CDIC] MODE2: sector file num does not match, skipping");
+				//MiniCDI::Log("[CDIC] MODE2: sector file num does not match, skipping");
 				selected = false;
 				goto copy_sector;
 			}
@@ -82,16 +82,16 @@ public:
 				DiscStatus.cmd = 0;
 			}
 			if (disc->Sector.Submode[1] & (0x80 | 0x10 | 0x01)) { // EOF, TRIGGER, EOR
-				MiniCDI::Log("[CDIC] MODE2: sector automatically satisfied");
+				//MiniCDI::Log("[CDIC] MODE2: sector automatically satisfied");
 				goto copy_sector;
 			}
 			if (!(disc->Sector.Submode[1] & (0x08 | 0x04 | 0x02))) { // DATA, VIDEO, AUDIO
-				// MiniCDI::Log("[CDIC] MODE2: sector is message, skipping");
+				//MiniCDI::Log("[CDIC] MODE2: sector is message, skipping");
 				selected = false;
 				goto copy_sector;
 			}
 			if (!(CHAN >> disc->Sector.ChNum[1] & 0b01)) {
-				// MiniCDI::Log("[CDIC] MODE2: sector channel not satisfied, skipping");
+				//MiniCDI::Log("[CDIC] MODE2: sector channel not satisfied, skipping");
 				selected = false;
 				goto copy_sector;
 			}
@@ -106,34 +106,55 @@ public:
 
 			// Switch DBUF index and reset audio
 			DBUF &= ~0x0004; DBUF ^= 0x0001;
+			uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
+			uint8_t* targetBuf = &DATA[DBUF & 0x01][0];
 
-			memory[0x300000 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][0] = disc->Sector.Min;
-			memory[0x300001 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][1] = disc->Sector.Sec;
-			memory[0x300002 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][2] = disc->Sector.Frame;
-			memory[0x300003 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][3] = disc->Sector.Mode;
-			memory[0x300004 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][4] = disc->Sector.FileNum[0];
-			memory[0x300005 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][5] = disc->Sector.ChNum[0];
-			memory[0x300006 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][6] = disc->Sector.Submode[0];
-			memory[0x300007 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][7] = disc->Sector.CodingInfo[0];
-			memory[0x300008 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][8] = disc->Sector.FileNum[1];
-			memory[0x300009 + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][9] = disc->Sector.ChNum[1];
-			memory[0x30000A + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][10] = disc->Sector.Submode[1];
-			memory[0x30000B + ((DBUF & 0x01)*0xA00)] = DATA[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
+			// Copy sector header as normal
 
-			// Copy data/ADPCM buffer
-			if (disc->Sector.CodingInfo[1] == 0xFF) exit(0);
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Min;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Sec;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Frame;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Mode;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.FileNum[0];
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.ChNum[0];
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Submode[0];
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.CodingInfo[0];
+
+			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
+			// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
+
 			bool use_adpcm = (disc->Sector.Submode[1] & 0x04) && (ACHAN >> disc->Sector.ChNum[1] & 0b01);
 			if (use_adpcm) {
 				DBUF |= 0x0004; // audio index
 				if (disc->Sector.CodingInfo[1] == 0xFF) { AUDCTL |= 0x0001; }
-				memcpy(&memory[0x30280C+((DBUF & 0x01)*0xA00)], &disc->Sector.Data[0], 2328*sizeof(char));
-				memcpy(&ADPCM[DBUF & 0x01][12], &disc->Sector.Data[0], 2328*sizeof(char));
-				memory[0x30280B + ((DBUF & 0x01)*0xA00)] = ADPCM[DBUF & 0x01][11] = disc->Sector.CodingInfo[1];
-			} else {
-				memcpy(&memory[0x30000C+((DBUF & 0x01)*0xA00)], &disc->Sector.Data[0], 2328*sizeof(char));
-				memcpy(&DATA[DBUF & 0x01][12], &disc->Sector.Data[0], 2328*sizeof(char));
+				targetAddr = 0x302808 + ((DBUF & 0x01)*0xA00); // ADPCM + 8
+				targetBuf = &ADPCM[DBUF & 0x01][8];
 			}
-			// memory[DBUF & 0x01 ? 0x301324 : 0x300924] = DATA[DBUF & 0x01][0x924] = 0xff; // 0x00
+
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.FileNum[1];
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.ChNum[1];
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Submode[1];
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.CodingInfo[1];
+
+			memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
+			memcpy(targetBuf, &disc->Sector.Data[0], 2328*sizeof(char));
+			targetAddr += 2328;
+			targetBuf += 2328;
+
+			// TO-DO: TOC subchannel data ??
+
+			memory[targetAddr++] = *(targetBuf++) = DiscStatus.mode == 3 ? 0x01 : 0x41; // Control
+			memory[targetAddr++] = *(targetBuf++) = 0x01; // Track
+			memory[targetAddr++] = *(targetBuf++) = 0x01; // Index
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Min;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Sec;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Frame;
+			memory[targetAddr++] = *(targetBuf++) = 0x00;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Min;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Sec;
+			memory[targetAddr++] = *(targetBuf++) = disc->Sector.Frame;
+			memory[targetAddr++] = *(targetBuf++) = 0xFF; // CRC
+			memory[targetAddr++] = *(targetBuf++) = 0xFF; // CRC
 
 			XBUF |= 0x8000; // sector filled for processing
 			DBUF |= 0x4000; // send DATA to CPU
@@ -303,7 +324,7 @@ public:
 							disc_start_read(1);
 							break;
 						case 0x2E:
-							MiniCDI::Log("[CDIC] continue (0x%02X)", CMD);
+							MiniCDI::Log("[CDIC] update Mode2 filter (0x%02X)", CMD);
 							break;
 					}
 					DBUF &= 0x7FFF;

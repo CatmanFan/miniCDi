@@ -9,6 +9,7 @@ namespace MiniCDI
 		bool PAL = true;
 		bool ShowLCD = false;
 		bool HasDisc = false;
+		size_t FrameSkip = 0;
 		// FILE* LogFile = nullptr;
 	}
 

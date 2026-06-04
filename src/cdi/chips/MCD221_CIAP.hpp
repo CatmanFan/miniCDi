@@ -70,7 +70,7 @@ class CIAP
 		DiscStatus.cmd = CCR;
 		DiscStatus.mode = mode;
 		DiscStatus.spinup_counter = 6;
-		DiscStatus.curr_lba = disc->get_lba_from_time(0);
+		DiscStatus.curr_lba = disc->get_lba_from_time(0x000216);
 	}
 
 	void disc_stop_read()

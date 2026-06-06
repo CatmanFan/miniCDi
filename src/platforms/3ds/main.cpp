@@ -190,8 +190,6 @@ int main(int argc, char* argv[])
 
 	// if (config.log) fclose(config.log);
 
-	/// TO-DO: Properly free memory to prevent crash on exit.
-	///        Address slowdown when CD-i screen display is enabled.
 	C2D_Fini();
 	C3D_Fini();
 	gfxExit();

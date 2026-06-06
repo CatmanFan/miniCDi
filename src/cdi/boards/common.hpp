@@ -44,12 +44,7 @@ public:
 
 	CDi() : memory(nullptr), cpu(memory) {}
 
-	virtual ~CDi()
-	{
-		if (memory) {
-			free(memory);
-		}
-	}
+	virtual ~CDi();
 
 	/**
 	 * @brief  Runs until VSync signal on video driver (i.e. a frame).

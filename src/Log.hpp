@@ -7,31 +7,30 @@ namespace MiniCDI
 {
 	static void Log(const char* txt, ...)
 	{
-		#if defined(MINICDI_DEBUG) || defined(__3DS__)
-		// #ifndef MINICDI_DEBUG_CPU
+		#if defined(MINICDI_DEBUG) || defined(MINICDI_LOGFILE)
+
+		// Copy arguments to string and allocate buffer
 		va_list arg1, arg2;
-
 		va_start(arg1, txt);
-
-		// Search the total length
 		va_copy(arg2, arg1);
 		va_end(arg2);
-
 		char *szBuff = new char[1024];
-
-		// Format the string
 		vsnprintf(szBuff, 1024, txt, arg1);
-
 		va_end(arg1);
 
 		#ifdef __WIIU__
 		WHBLogPrintf(szBuff);
 		#else
-		printf("%s\n", szBuff);
+			#if defined(MINICDI_DEBUG) || defined(__3DS__)
+			printf("%s\n", szBuff);
+			#endif
 		#endif
 
+		if (MiniCDI::Config::LogFile)
+			fprintf(MiniCDI::Config::LogFile, "%s\n", szBuff);
+
 		delete[] szBuff;
-		// #endif // MINICDI_DEBUG_CPU
+
 		#endif
 	}
 }

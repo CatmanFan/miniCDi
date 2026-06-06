@@ -10,7 +10,7 @@ namespace MiniCDI
 		bool ShowLCD = false;
 		bool HasDisc = false;
 		size_t FrameSkip = 0;
-		// FILE* LogFile = nullptr;
+		FILE* LogFile = nullptr;
 	}
 
 	static struct
@@ -105,6 +105,13 @@ void m68k_write_memory_32(unsigned int address, unsigned int value) {
 }
 
 /** @brief Contains initialization functions for boards. **/
+
+CDi::~CDi()
+{
+	// Avoid exception crash
+	MiniCDI::Player = {nullptr};
+	m68k_pulse_halt();
+}
 
 bool MonoI::init(const std::string &bios)
 {

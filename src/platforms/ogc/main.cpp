@@ -96,7 +96,7 @@ public:
 	{
 		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == 0) {
 			// atexit(SDL_Quit);
-			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+			// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 			SDL_ShowCursor(SDL_DISABLE);
 
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -157,7 +157,8 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
 	MiniCDI::Config::ShowLCD = true;
-	MiniCDI::Config::FrameSkip = 1;
+	MiniCDI::Config::FrameSkip = 0;
+	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 
 	MonoI cdi;
 	// MonoIII cdi;
@@ -221,7 +222,6 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		static FPS fps;
 
 		// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode). Slightly slower on 50fps mode (likely because emulated machine is configured to use 60Hz?).
-		// TO-DO: Address crashing if doing do_frame(true) solo
 		if (MiniCDI::Config::FrameSkip > 0) {
 			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
 			cdi.run();
@@ -237,6 +237,9 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 		#endif
 	}
+
+	if (MiniCDI::Config::LogFile)
+		fclose(MiniCDI::Config::LogFile);
 }
 
 static std::string selectedDisc;

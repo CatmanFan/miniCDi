@@ -9,11 +9,16 @@ add_executable(${PROJECT_NAME})
 dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
-option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR." OFF)
-option(MINICDI_ENABLE_DEBUG_CPU "Debug CPU information (PC, SR, FC, D*, A*)." OFF)
-option(MINICDI_ENABLE_DEBUG_OS9 "Debug OS-9 syscall information." OFF)
-option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode." OFF)
+# Debug options
+option(MINICDI_ENABLE_DEBUG "Output debug information instead of VDSR."				OFF)
+option(MINICDI_ENABLE_DEBUG_CPU "Debug CPU information (PC, SR, FC, D*, A*)."		OFF)
+option(MINICDI_ENABLE_DEBUG_OS9 "Debug OS-9 syscall information."					OFF)
+option(MINICDI_ENABLE_LOGFILE "Log debug information to a text file if it exists."	ON)
+
+# Emulation options
+option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper (breaks player shell if no NVRAM settings data exists)." OFF)
+# -------------------------------------------
 
 if (MINICDI_ENABLE_DEBUG)
 	MESSAGE(STATUS "MINICDI_ENABLE_DEBUG")
@@ -24,6 +29,10 @@ if (MINICDI_ENABLE_DEBUG)
 	if (MINICDI_ENABLE_DEBUG_OS9)
 		target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG_OS9)
 	endif()
+endif()
+if (MINICDI_ENABLE_LOGFILE)
+	MESSAGE(STATUS "MINICDI_ENABLE_LOGFILE")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_LOGFILE)
 endif()
 if (MINICDI_ENABLE_NATIVERES)
 	MESSAGE(STATUS "MINICDI_ENABLE_NATIVERES")

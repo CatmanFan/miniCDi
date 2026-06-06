@@ -10,7 +10,7 @@ namespace MiniCDI
 		extern bool ShowLCD;
 		extern bool HasDisc;
 		extern size_t FrameSkip;
-		// extern FILE* LogFile = nullptr;
+		extern FILE* LogFile;
 	}
 }
 

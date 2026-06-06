@@ -271,19 +271,21 @@ class Decoder
 	template <size_t Path>
 	uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 	{
+		uint8_t DYUV_Y1, DYUV_Y2, DYUV_U2, DYUV_V2;
+
+		DYUV_Y1 = (*src) & 0x0F;
+		DYUV_Y2 = (*(src+1)) & 0x0F;
+		DYUV_U2 = ((*src) & 0xF0) >> 4;
+		DYUV_V2 = ((*(src+1)) & 0xF0) >> 4;
+
+		/// Formula adapted from ogarvey's CD-i Image Parser (licensed under MIT).
+		/// https://github.com/ogarvey/CD-i-Image-Parser/blob/main/CD-i%20Image%20Parser/Helpers/ImageFormatHelper.cs#L119
+
 		uint8_t Y[2], U[2], V[2];
-
-		Y[0] = (*src) & 0x0F;
-		Y[1] = (*(src+1)) & 0x0F;
-		U[1] = ((*src) >> 4) & 0x0F;
-		V[1] = ((*(src+1)) >> 4) & 0x0F;
-
-		/// Formula taken from CeDImu video decoder.
-
-		Y[0] = DYUVDecoder.Y + DYUVDecoder.LUT_deq[Y[0]];
-		Y[1] = Y[0] + DYUVDecoder.LUT_deq[Y[1]];
-		U[1] = DYUVDecoder.U + DYUVDecoder.LUT_deq[U[1]];
-		V[1] = DYUVDecoder.V + DYUVDecoder.LUT_deq[V[1]];
+		Y[0] = (DYUVDecoder.Y + DYUVDecoder.LUT_deq[DYUV_Y1]) % 256;
+		Y[1] = (Y[0] + DYUVDecoder.LUT_deq[DYUV_Y2]) % 256;
+		U[1] = (DYUVDecoder.U + DYUVDecoder.LUT_deq[DYUV_U2]) % 256;
+		V[1] = (DYUVDecoder.V + DYUVDecoder.LUT_deq[DYUV_V2]) % 256;
 		U[0] = (DYUVDecoder.U + U[1]) / 2;
 		V[0] = (DYUVDecoder.V + V[1]) / 2;
 
@@ -291,31 +293,13 @@ class Decoder
 		DYUVDecoder.U = U[1];
 		DYUVDecoder.V = V[1];
 
-		#define DYUV_V_TO_R(v) (int)std::floor((351.0f * (v - 128.0f)) / 256.0f)
-		#define DYUV_V_TO_G(v) (int)std::floor((179.0f * (v - 128.0f)) / 256.0f)
-		#define DYUV_U_TO_G(u) (int)std::floor((86.0f * (u - 128.0f)) / 256.0f)
-		#define DYUV_U_TO_B(u) (int)std::floor((444.0f * (u - 128.0f)) / 256.0f)
-
-		for (int i = 0; i < 2; i++) {
-			int R = Y[0] + DYUV_V_TO_R(V[0]);
-			int G = Y[0] - DYUV_U_TO_G(U[0]) + DYUV_V_TO_G(V[0]);
-			int B = Y[0] + DYUV_U_TO_B(U[0]);
-
-			if (R < 0x100) {R = 0;} else if (R < 0x200) {R -= 0x100;} else {R = 0xFF;}
-			if (G < 0x100) {G = 0;} else if (G < 0x200) {G -= 0x100;} else {G = 0xFF;}
-			if (B < 0x100) {B = 0;} else if (B < 0x200) {B -= 0x100;} else {B = 0xFF;}
-
-			R = std::clamp(R*2, 0, 255);
-			G = std::clamp(G*2, 0, 255);
-			B = std::clamp(B*2, 0, 255);
+		for (size_t i = 0; i < 2; i++) {
+			int R = std::clamp((Y[i] * 256 + 351 * (V[i] - 128)) / 256, 0, 255);
+			int G = std::clamp(((Y[i] * 256) - (86 * (U[i] - 128) + 179 * (V[i] - 128))) / 256, 0, 255);
+			int B = std::clamp((Y[i] * 256 + 444 * (U[i] - 128)) / 256, 0, 255);
 
 			*(dst+i) = (G << 24) | (B << 16) | (R << 8) | 0xFF;
 		}
-
-		#undef DYUV_V_TO_R
-		#undef DYUV_V_TO_G
-		#undef DYUV_U_TO_G
-		#undef DYUV_U_TO_B
 
 		return 2;
 	}
@@ -434,6 +418,7 @@ public:
 					bB = GET_B(PLANEB.decoded[PIXELB]);
 
 			if (reg.Mixing) {
+				// output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | 0xFF;
 				output[outputPixel] = (WF_MIX(rA, rB) << 24) | (WF_MIX(gA, gB) << 16) | (WF_MIX(bA, bB) << 8) | 0xFF;
 			} else {
 				if (PLANEB.decoded[PIXELB])
@@ -505,9 +490,9 @@ public:
 		Matte.reset();
 
 		// reset DYUV to initial values
-		DYUVDecoder.Y = (reg.ColorDYUV[Path] >> 16 & 0xFF);
-		DYUVDecoder.U = (reg.ColorDYUV[Path] >> 8 & 0xFF);
-		DYUVDecoder.V = (reg.ColorDYUV[Path] & 0xFF);
+		DYUVDecoder.Y = 0;
+		DYUVDecoder.U = reg.ColorDYUV[Path] >> 8 & 0xFF;
+		DYUVDecoder.V = reg.ColorDYUV[Path] & 0xFF;
 
 		if (reg.Icm[Path] == Off) {
 			memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));

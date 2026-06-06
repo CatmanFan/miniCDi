@@ -160,7 +160,7 @@ class CDIC
 			targetAddr += 2328;
 			targetBuf += 2328;
 
-			// TO-DO: TOC subchannel data ??
+			// TO-DO: TOC mode - subchannel data ??
 
 			memory[targetAddr++] = *(targetBuf++) = DiscStatus.mode == 3 ? 0x01 : 0x41; // Control
 			memory[targetAddr++] = *(targetBuf++) = 0x01; // Track

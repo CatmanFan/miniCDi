@@ -51,7 +51,8 @@ class SCC68070
 			if (index == 1)
 				start_address = DMA[1].DAC;
 
-			MiniCDI::Log("[SCC68070:DMA%d] transferring %d %s %s $%08X %s $%08X", index+1,
+			MiniCDI::Log("[SCC68070:DMA%d] %s transfer: %d %s %s $%08X %s $%08X", index+1,
+						 DMA[index].DCR & 0x80 ? "cycle-steal" : "burst",
 						 DMA[index].MTC,
 						 DMA[index].OCR & 0x10 ? "words" : "bytes",
 						 DMA[index].OCR & 0x80 ? "from" : "to",
@@ -68,22 +69,39 @@ class SCC68070
 					return;
 				}
 
-				if (DMA[index].OCR & 0x80) {
-					memory[DMA[index].MAC] = memory[start_address++];
-					if (DMA[index].OCR & 0x10) memory[DMA[index].MAC+1] = memory[start_address++];
+				if (DMA[index].DCR & 0x80) {
+					if (DMA[index].OCR & 0x80) {
+						memory[DMA[index].MAC] = memory[start_address++];
+						if (DMA[index].OCR & 0x10) memory[DMA[index].MAC+1] = memory[start_address++];
+					} else {
+						memory[start_address++] = memory[DMA[index].MAC];
+						if (DMA[index].OCR & 0x10) memory[start_address++] = memory[DMA[index].MAC+1];
+					}
+
+					if (index == 1 && (DMA[index].SCR & 0x04)) {
+						DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
+						DMA[index].DAC += DMA[index].OCR & 0x10 ? 2 : 1;
+					} else if (index == 0) {
+						DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
+					}
+
+					DMA[index].MTC--;
 				} else {
-					memory[start_address++] = memory[DMA[index].MAC];
-					if (DMA[index].OCR & 0x10) memory[start_address++] = memory[DMA[index].MAC+1];
-				}
+					if (DMA[index].OCR & 0x80) {
+						memcpy(&memory[DMA[index].MAC], &memory[start_address], DMA[index].OCR & 0x10 ? DMA[index].MTC*2 : DMA[index].MTC);
+					} else {
+						memcpy(&memory[start_address], &memory[DMA[index].MAC], DMA[index].OCR & 0x10 ? DMA[index].MTC*2 : DMA[index].MTC);
+					}
 
-				if (index == 1 && (DMA[index].SCR & 0x04)) {
-					DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
-					DMA[index].DAC += DMA[index].OCR & 0x10 ? 2 : 1;
-				} else if (index == 0) {
-					DMA[index].MAC += DMA[index].OCR & 0x10 ? 2 : 1;
-				}
+					if (index == 1 && (DMA[index].SCR & 0x04)) {
+						DMA[index].MAC += DMA[index].OCR & 0x10 ? DMA[index].MTC*2 : DMA[index].MTC;
+						DMA[index].DAC += DMA[index].OCR & 0x10 ? DMA[index].MTC*2 : DMA[index].MTC;
+					} else if (index == 0) {
+						DMA[index].MAC += DMA[index].OCR & 0x10 ? DMA[index].MTC*2 : DMA[index].MTC;
+					}
 
-				DMA[index].MTC--;
+					DMA[index].MTC = 0;
+				}
 			}
 
 			DMA[index].CSR |= 0b10000000; // COC set
@@ -318,8 +336,8 @@ public:
 
 			/** DMA (ch1) **/
 			case 0x80004000: DMA[0].CSR = 0x01; break;
-			case 0x80004004: DMA[0].DCR = value; break;
-			case 0x80004005: DMA[0].OCR = value; break;
+			case 0x80004004: DMA[0].DCR &= 0x08; DMA[0].DCR |= (value & 0xF7); break;
+			case 0x80004005: DMA[0].OCR = value; DMA[0].DCR &= 0xF7; DMA[0].DCR |= ((value >> 1) & 0x08); break;
 			case 0x80004006: DMA[0].SCR = value; break;
 			case 0x80004007: DMA[0].CCR = value; break;
 			case 0x8000400a: DMA[0].MTC &= 0x00FF; DMA[0].MTC |= (value << 8); break;
@@ -335,8 +353,8 @@ public:
 
 			/** DMA (ch2) **/
 			case 0x80004040: DMA[1].CSR = 0x01; break;
-			case 0x80004044: DMA[1].DCR = value; break;
-			case 0x80004045: DMA[1].OCR = value; break;
+			case 0x80004044: DMA[1].DCR &= 0x08; DMA[1].DCR |= (value & 0xF7); break;
+			case 0x80004045: DMA[1].OCR = value; DMA[1].DCR &= 0xF7; DMA[1].DCR |= ((value >> 1) & 0x08); break;
 			case 0x80004046: DMA[1].SCR = value; break;
 			case 0x80004047: DMA[1].CCR = value; break;
 			case 0x8000404a: DMA[1].MTC &= 0x00FF; DMA[1].MTC |= (value << 8); break;

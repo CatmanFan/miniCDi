@@ -1,10 +1,11 @@
 name: Build (Wii)
 
-on: [workflow_dispatch]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
 
   build-wii:
+    name: Build (Wii)
     runs-on: ubuntu-latest
     container: devkitpro/devkitppc:latest
     
@@ -16,8 +17,10 @@ jobs:
     
     - name: Install Wii packages
       run: |
-        dkp-pacman -Syu --noconfirm
-        dkp-pacman -S --needed --noconfirm wii-sdl2 wii-sdl2_image
+        sudo dkp-pacman-key --recv-keys C8A2759C315CFBC3429CC2E422B803BA8AA3D7CE --keyserver keyserver.ubuntu.com
+        sudo dkp-pacman-key --lsign-key C8A2759C315CFBC3429CC2E422B803BA8AA3D7CE
+        sudo dkp-pacman -Syu --noconfirm
+        sudo dkp-pacman -S --needed --noconfirm wii-sdl2 wii-sdl2_image
     
     - name: Create build directory
       run: mkdir -p build

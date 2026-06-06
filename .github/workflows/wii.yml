@@ -11,16 +11,14 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: recursive
     
     - name: Install Wii packages
       run: |
-        sudo dkp-pacman-key --recv-keys C8A2759C315CFBC3429CC2E422B803BA8AA3D7CE --keyserver keyserver.ubuntu.com
-        sudo dkp-pacman-key --lsign-key C8A2759C315CFBC3429CC2E422B803BA8AA3D7CE
-        sudo dkp-pacman -Syu --noconfirm
-        sudo dkp-pacman -S --needed --noconfirm wii-sdl2 wii-sdl2_image
+        dkp-pacman -Syu --noconfirm
+        dkp-pacman -S --needed --noconfirm wii-sdl2 wii-sdl2_image
     
     - name: Create build directory
       run: mkdir -p build
@@ -32,9 +30,11 @@ jobs:
     - name: Build
       run: |
         /opt/devkitpro/portlibs/wii/bin/powerpc-eabi-cmake --build build
+        cp ./build/miniCDi.dol ./build/res/wii/boot.dol
+        cp ./res/wii/icon.png ./build/res/wii/icon.png
     
-    # - name: Upload artifact
-      # uses: actions/upload-artifact@v4
-      # with:
-        # name: miniCDi
-        # path: /
+    - name: Upload artifact
+      uses: actions/upload-artifact@v5
+      with:
+        name: miniCDi (Wii)
+        path: ./build/res/wii/

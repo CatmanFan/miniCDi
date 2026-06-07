@@ -116,6 +116,12 @@ CDi::~CDi()
 bool MonoI::init(const std::string &bios)
 {
 	if (CDi::init(bios)) {
+		std::ifstream romStream(bios);
+		std::vector<char> rom(
+		 (std::istreambuf_iterator<char>(romStream)),
+		 (std::istreambuf_iterator<char>()));
+		romStream.close();
+
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
 		this->cdic = new CDIC(&this->disc, this->memory);
@@ -133,8 +139,12 @@ bool MonoI::init(const std::string &bios)
 
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-		this->cpu.load_rom(bios.c_str(), 0x400000);
+		this->cpu.load_rom(rom, 0x400000);
 		this->cpu.reset();
+
+		#ifdef MINICDI_DEBUG_OS9
+		MiniCDI::OS9Disassembler.list_modules(rom);
+		#endif
 
 		return true;
 	}
@@ -145,6 +155,12 @@ bool MonoI::init(const std::string &bios)
 bool MonoIV::init(const std::string &bios)
 {
 	if (CDi::init(bios)) {
+		std::ifstream romStream(bios);
+		std::vector<char> rom(
+		 (std::istreambuf_iterator<char>(romStream)),
+		 (std::istreambuf_iterator<char>()));
+		romStream.close();
+
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
 		this->ciap = new CIAP(&this->disc, this->memory);
@@ -162,8 +178,12 @@ bool MonoIV::init(const std::string &bios)
 
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-		this->cpu.load_rom(bios.c_str(), 0x400000);
+		this->cpu.load_rom(rom, 0x400000);
 		this->cpu.reset();
+
+		#ifdef MINICDI_DEBUG_OS9
+		MiniCDI::OS9Disassembler.list_modules(rom);
+		#endif
 
 		return true;
 	}

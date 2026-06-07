@@ -126,19 +126,11 @@ public:
 	{
 	}
 
-	void load_rom(const char* romPath, size_t romAddr)
+	void load_rom(std::vector<char> &rom, size_t romAddr)
 	{
-		std::ifstream romStream(romPath);
-		std::vector<char> rom(
-		 (std::istreambuf_iterator<char>(romStream)),
-		 (std::istreambuf_iterator<char>()));
-		romStream.close();
-
 		if (rom[4] != 0x00) { // byteswap
 			for (size_t i = 0; i < rom.size(); i+=2) {
-				uint8_t byte = rom[i];
-				rom[i] = rom[i+1];
-				rom[i+1] = byte;
+				std::swap(rom[i], rom[i+1]);
 			}
 		}
 

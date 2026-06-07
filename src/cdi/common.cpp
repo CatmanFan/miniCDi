@@ -36,7 +36,7 @@ unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read
 int  MiniCDI_op_trap_handler(int trap) {
 	#ifdef MINICDI_DEBUG_OS9
 	if (trap == 0) {
-		MiniCDI::OS9Disassembler.log();
+		MiniCDI::OS9Disassembler.log(MiniCDI::Player.memory);
 	}
 	#endif
 

@@ -161,7 +161,7 @@ public:
 		TSR = TCR = RR = T[0] = T[1] = T[2] = 0;
 		DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
 		DMA[1].CER = DMA[1].DCR = DMA[1].OCR = DMA[1].SCR = DMA[1].CCR = 0;
-		DMA[0].CSR = DMA[1].CSR = 0x01;
+		DMA[0].CSR = DMA[1].CSR = 0;
 		IDR = IAR = ISR = ICR = ICCR = 0;
 
 		// Clear DRAM banks
@@ -335,7 +335,7 @@ public:
 				break;
 
 			/** DMA (ch1) **/
-			case 0x80004000: DMA[0].CSR = 0x01; break;
+			case 0x80004000: DMA[0].CSR &= 0x08; break;
 			case 0x80004004: DMA[0].DCR &= 0x08; DMA[0].DCR |= (value & 0xF7); break;
 			case 0x80004005: DMA[0].OCR = value; DMA[0].DCR &= 0xF7; DMA[0].DCR |= ((value >> 1) & 0x08); break;
 			case 0x80004006: DMA[0].SCR = value; break;
@@ -352,7 +352,7 @@ public:
 			case 0x80004017: DMA[0].DAC &= 0xFFFFFF00; DMA[0].DAC |= value; break;
 
 			/** DMA (ch2) **/
-			case 0x80004040: DMA[1].CSR = 0x01; break;
+			case 0x80004040: DMA[1].CSR &= 0x08; break;
 			case 0x80004044: DMA[1].DCR &= 0x08; DMA[1].DCR |= (value & 0xF7); break;
 			case 0x80004045: DMA[1].OCR = value; DMA[1].DCR &= 0xF7; DMA[1].DCR |= ((value >> 1) & 0x08); break;
 			case 0x80004046: DMA[1].SCR = value; break;
@@ -386,7 +386,7 @@ public:
 	{
 		#ifdef MINICDI_DEBUG_CPU
 		printf("\x1b[%d;%dH", 4, 0);
-		printf("PC: %08X SR: %s%s %s%s%s%s%s FC: %d\n",
+		printf("PC: %08X SR: %s%s-%s%s%s%s%s FC: %d\n",
 			m68k_get_reg(NULL, M68K_REG_PC),
 			(m68k_get_reg(NULL, M68K_REG_SR) >> 15) & 0x01 ? "T" : "-",
 			(m68k_get_reg(NULL, M68K_REG_SR) >> 13) & 0x01 ? "S" : "-",
@@ -404,7 +404,10 @@ public:
 			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
 
 		/// Timer ticks at an average of 6155 ns. One cycle takes about 64 ns (4 cycles = ~256 ns).
-		printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X\n", UCR, URH, USR, LIR);
+		printf("                                             ");
+		// printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X\n", UCR, URH, USR, LIR);
+		printf("\n[DMA1] CSR: %02X MTC: %04X MAC: %08X\n", DMA[0].CSR, DMA[0].MTC, DMA[0].MAC);
+		printf("\x1b[%d;%dH", 16, 0);
 		#endif
 	}
 

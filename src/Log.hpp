@@ -2,6 +2,7 @@
 #define MINICDI_LOG
 
 #include <stdarg.h>
+#include "cdi/Musashi/m68k.h"
 
 namespace MiniCDI
 {
@@ -22,12 +23,12 @@ namespace MiniCDI
 		WHBLogPrintf(szBuff);
 		#else
 			#if defined(MINICDI_DEBUG) || defined(__3DS__)
-			printf("%s\n", szBuff);
+			printf("@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
 			#endif
 		#endif
 
 		if (MiniCDI::Config::LogFile)
-			fprintf(MiniCDI::Config::LogFile, "%s\n", szBuff);
+			fprintf(MiniCDI::Config::LogFile, "@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
 
 		delete[] szBuff;
 

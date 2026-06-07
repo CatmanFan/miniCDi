@@ -107,13 +107,15 @@ class OS9
 			MiniCDI::Log("[OS9] ROM contains %d modules", modules.size());
 		}
 
-		void log()
+		void log(uint8_t* memory)
 		{
-			switch (m68k_get_reg(NULL, M68K_REG_PC)) {
-				default: MiniCDI::Log("[OS9] %X", m68k_get_reg(NULL, M68K_REG_PC)); return;
-				case 0x00: MiniCDI::Log("[OS9] F$SRqMem  d0.l=%08X d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D0), m68k_get_reg(NULL, M68K_REG_D1)); return;
-				case 0x28: MiniCDI::Log("[OS9] F$SRqMem  d0.l=%08X d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D0), m68k_get_reg(NULL, M68K_REG_D1)); return;
-				case 0x52: MiniCDI::Log("[OS9] F$SysDbg  d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D1)); return;
+			if (memory) {
+				switch (memory[m68k_get_reg(NULL, M68K_REG_PC)]) {
+					default: MiniCDI::Log("[OS9] %X", memory[m68k_get_reg(NULL, M68K_REG_PC)]); return;
+					// case 0x00: MiniCDI::Log("[OS9] F$SRqMem  d0.l=%08X d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D0), m68k_get_reg(NULL, M68K_REG_D1)); return;
+					// case 0x28: MiniCDI::Log("[OS9] F$SRqMem  d0.l=%08X d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D0), m68k_get_reg(NULL, M68K_REG_D1)); return;
+					case 0x52: MiniCDI::Log("[OS9] F$SysDbg  d1.w=%04X", m68k_get_reg(NULL, M68K_REG_D1)); return;
+				}
 			}
 		}
 };

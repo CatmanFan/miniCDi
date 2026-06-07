@@ -112,8 +112,7 @@ class CDIC
 		copy_sector:
 		if (selected)
 		{
-			MiniCDI::Log("[CDIC] read sector %X %02X:%02X:%02X",
-				DiscStatus.curr_lba, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			// MiniCDI::Log("[CDIC] read sector %X %02X:%02X:%02X", DiscStatus.curr_lba, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 			disc->read_sector_data(DiscStatus.curr_lba);
 
 			// Switch DBUF index and reset audio
@@ -226,14 +225,15 @@ public:
 			case 0x303C06: MiniCDI::Log("[CDIC] FILE => %04X", FILE); return FILE;
 			case 0x303C08: MiniCDI::Log("[CDIC] CHAN (upper) => %04X", CHAN >> 16 & 0xFF); return CHAN >> 16 & 0xFF;
 			case 0x303C0A: MiniCDI::Log("[CDIC] CHAN (lower) => %04X", CHAN & 0xFF); return CHAN & 0xFF;
-			case 0x303C0C: MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN); return ACHAN;
+			case 0x303C0C: /*MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN);*/ return ACHAN;
 			case 0x303C80: MiniCDI::Log("[CDIC] DSEL => %04X", DSEL); return DSEL;
 			case 0x303FF4: {
 				MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
 				uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
-					if (AUDCTL & 0x2000) { MiniCDI::Log("[CDIC] audio IRQ"); m68k_set_irq(4); }
+					if (AUDCTL & 0x2000)
+						m68k_set_irq(4);
 				}
 				return value;
 			}
@@ -242,7 +242,8 @@ public:
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
-					if (DBUF & 0x4000) { MiniCDI::Log("[CDIC] sector read IRQ"); m68k_set_irq(4); }
+					if (DBUF & 0x4000)
+						m68k_set_irq(4);
 				}
 				return value;
 			}

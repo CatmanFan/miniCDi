@@ -24,7 +24,6 @@
 #include "os9/OS9.hpp"
 
 // Other cores
-#include "cdi/VDSC.hpp"
 #include "cdi/chips/MCD212.hpp"
 #include "cdi/chips/MC6805_SLAVE.hpp"
 #include "cdi/chips/MC6805_IKAT.hpp"

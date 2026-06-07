@@ -11,22 +11,6 @@ class CDiDisc
 	/// Subheader field (8 bytes)
 	/// Data field (2328 bytes)
 
-	/** Byteswap code:
-		char temp;
-		temp = Sector.Min; Sector.Min = Sector.Sec; Sector.Sec = temp;
-		temp = Sector.Frame; Sector.Frame = Sector.Mode; Sector.Mode = temp;
-		temp = Sector.FileNum[0]; Sector.FileNum[0] = Sector.ChNum[0]; Sector.ChNum[0] = temp;
-		temp = Sector.Submode[0]; Sector.Submode[0] = Sector.CodingInfo[0]; Sector.CodingInfo[0] = temp;
-		temp = Sector.FileNum[1]; Sector.FileNum[1] = Sector.ChNum[1]; Sector.ChNum[1] = temp;
-		temp = Sector.Submode[1]; Sector.Submode[1] = Sector.CodingInfo[1]; Sector.CodingInfo[1] = temp;
-
-		for (int i = 0; i < 2328; i+=2) {
-			char temp = Sector.Data[i];
-			Sector.Data[i] = Sector.Data[i+1];
-			Sector.Data[i+1] = temp;
-		}
-	**/
-
 	/// Taken from MAME CDIC driver source code.
 	const uint8_t scramble_data[2436] =
 	{
@@ -300,13 +284,12 @@ class CDiDisc
 
 		if (is_byteswapped(lba))
 		{
-			char temp;
-			temp = Sector.Min; Sector.Min = Sector.Sec; Sector.Sec = temp;
-			temp = Sector.Frame; Sector.Frame = Sector.Mode; Sector.Mode = temp;
-			temp = Sector.FileNum[0]; Sector.FileNum[0] = Sector.ChNum[0]; Sector.ChNum[0] = temp;
-			temp = Sector.Submode[0]; Sector.Submode[0] = Sector.CodingInfo[0]; Sector.CodingInfo[0] = temp;
-			temp = Sector.FileNum[1]; Sector.FileNum[1] = Sector.ChNum[1]; Sector.ChNum[1] = temp;
-			temp = Sector.Submode[1]; Sector.Submode[1] = Sector.CodingInfo[1]; Sector.CodingInfo[1] = temp;
+			std::swap(Sector.Min, Sector.Sec);
+			std::swap(Sector.Frame, Sector.Mode);
+			std::swap(Sector.FileNum[0], Sector.ChNum[0]);
+			std::swap(Sector.Submode[0], Sector.CodingInfo[0]);
+			std::swap(Sector.FileNum[1], Sector.ChNum[1]);
+			std::swap(Sector.Submode[1], Sector.CodingInfo[1]);
 		}
 
 		if (!is_valid_sector(lba))
@@ -335,11 +318,8 @@ class CDiDisc
 
 		if (is_byteswapped(lba))
 		{
-			for (int i = 0; i < 2328; i+=2) {
-				char temp = Sector.Data[i];
-				Sector.Data[i] = Sector.Data[i+1];
-				Sector.Data[i+1] = temp;
-			}
+			for (int i = 0; i < 2328; i+=2)
+				std::swap(Sector.Data[i], Sector.Data[i+1]);
 		}
 
 		if (!is_valid_sector(lba))
@@ -370,19 +350,15 @@ class CDiDisc
 
 		if (is_byteswapped(lba))
 		{
-			char temp;
-			temp = Sector.Min; Sector.Min = Sector.Sec; Sector.Sec = temp;
-			temp = Sector.Frame; Sector.Frame = Sector.Mode; Sector.Mode = temp;
-			temp = Sector.FileNum[0]; Sector.FileNum[0] = Sector.ChNum[0]; Sector.ChNum[0] = temp;
-			temp = Sector.Submode[0]; Sector.Submode[0] = Sector.CodingInfo[0]; Sector.CodingInfo[0] = temp;
-			temp = Sector.FileNum[1]; Sector.FileNum[1] = Sector.ChNum[1]; Sector.ChNum[1] = temp;
-			temp = Sector.Submode[1]; Sector.Submode[1] = Sector.CodingInfo[1]; Sector.CodingInfo[1] = temp;
+			std::swap(Sector.Min, Sector.Sec);
+			std::swap(Sector.Frame, Sector.Mode);
+			std::swap(Sector.FileNum[0], Sector.ChNum[0]);
+			std::swap(Sector.Submode[0], Sector.CodingInfo[0]);
+			std::swap(Sector.FileNum[1], Sector.ChNum[1]);
+			std::swap(Sector.Submode[1], Sector.CodingInfo[1]);
 
-			for (int i = 0; i < 2328; i+=2) {
-				temp = Sector.Data[i];
-				Sector.Data[i] = Sector.Data[i+1];
-				Sector.Data[i+1] = temp;
-			}
+			for (int i = 0; i < 2328; i+=2)
+				std::swap(Sector.Data[i], Sector.Data[i+1]);
 		}
 
 		if (!is_valid_sector(lba))

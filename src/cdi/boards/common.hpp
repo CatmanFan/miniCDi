@@ -26,7 +26,7 @@ public:
 		8) Executing RAM/ROM search
 		9) Starting the kernel */
 
-		int memsize = 16*1024*1024;
+		int memsize = 8*1024*1024;
 		// TO-DO: reduce overhead ?
 		// The memory size is allocated this way to allow for addresses used by DMA transfer.
 		// In practice Mono-I only has 5.5 MB total (not including DVC RAM).

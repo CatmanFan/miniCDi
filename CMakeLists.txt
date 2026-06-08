@@ -12,7 +12,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 # Debug options
 option(MINICDI_ENABLE_DEBUG "Use verbose debug as output instead of VDSR."				OFF)
 option(MINICDI_ENABLE_DEBUG_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)."	OFF)
-option(MINICDI_ENABLE_DEBUG_OS9 "Print verbose OS-9 syscall information."				ON)
+option(MINICDI_ENABLE_DEBUG_OS9 "Print verbose OS-9 syscall information."				OFF)
 option(MINICDI_ENABLE_LOGFILE "Print debug information to a text file if it exists."	ON)
 
 # Emulation options

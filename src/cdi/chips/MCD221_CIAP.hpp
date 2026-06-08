@@ -96,7 +96,9 @@ public:
 			return;
 		}
 
-		disc->read_sector_header(DiscStatus.curr_lba);
+		disc->read_sector(DiscStatus.curr_lba);
+		MiniCDI::Log("[CIAP] read sector %X %02X:%02X:%02X",
+			DiscStatus.curr_lba, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 
 		// Additional MODE2 processing
 		bool selected = true;
@@ -130,10 +132,6 @@ public:
 		copy_sector:
 		if (selected)
 		{
-			MiniCDI::Log("[CIAP] read sector %X %02X:%02X:%02X",
-				DiscStatus.curr_lba, disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
-			disc->read_sector_data(DiscStatus.curr_lba);
-
 			memory[0x301200 + ((0)*0xA00)] = Main[(0)][0] = disc->Sector.Min;
 			memory[0x301201 + ((0)*0xA00)] = Main[(0)][1] = disc->Sector.Sec;
 			memory[0x301202 + ((0)*0xA00)] = Main[(0)][2] = disc->Sector.Frame;

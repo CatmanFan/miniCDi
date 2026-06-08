@@ -48,10 +48,6 @@ public:
 
 				else if (changed_Face || changed_DPad)
 				{
-					#ifdef MINICDI_DEBUG
-					x = 550; y = 306;
-					#endif
-
 					if (changed_Face) { changed_Face = false; }
 
 					// Convert to SLAVE response (allowed coord bounds: 54x97 to 704x679?)

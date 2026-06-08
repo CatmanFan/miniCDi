@@ -21,7 +21,7 @@ class SCC68070
 	uint8_t TSR;
 	uint8_t TCR;
 	uint16_t RR;
-	uint16_t T[3];
+	uint16_t T[3]; // only Timer 0 is used in practice.
 
 	/** DMA **/
 	struct {

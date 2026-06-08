@@ -264,71 +264,6 @@ class CDiDisc
 		return true;
 	}
 
-	void read_sector_header(int lba = 0)
-	{
-		// seek and skip sync field
-		disc.seekg(lba*2352+12, std::ios::beg);
-
-		disc.get(Sector.Min);
-		disc.get(Sector.Sec);
-		disc.get(Sector.Frame);
-		disc.get(Sector.Mode);
-		disc.get(Sector.FileNum[0]);
-		disc.get(Sector.ChNum[0]);
-		disc.get(Sector.Submode[0]);
-		disc.get(Sector.CodingInfo[0]);
-		disc.get(Sector.FileNum[1]);
-		disc.get(Sector.ChNum[1]);
-		disc.get(Sector.Submode[1]);
-		disc.get(Sector.CodingInfo[1]);
-
-		if (is_byteswapped(lba))
-		{
-			std::swap(Sector.Min, Sector.Sec);
-			std::swap(Sector.Frame, Sector.Mode);
-			std::swap(Sector.FileNum[0], Sector.ChNum[0]);
-			std::swap(Sector.Submode[0], Sector.CodingInfo[0]);
-			std::swap(Sector.FileNum[1], Sector.ChNum[1]);
-			std::swap(Sector.Submode[1], Sector.CodingInfo[1]);
-		}
-
-		if (!is_valid_sector(lba))
-		{
-			Sector.Min ^= scramble_data[0];
-			Sector.Sec ^= scramble_data[1];
-			Sector.Frame ^= scramble_data[2];
-			Sector.Mode ^= scramble_data[3];
-			Sector.FileNum[0] ^= scramble_data[4];
-			Sector.ChNum[0] ^= scramble_data[5];
-			Sector.Submode[0] ^= scramble_data[6];
-			Sector.CodingInfo[0] ^= scramble_data[7];
-			Sector.FileNum[1] ^= scramble_data[8];
-			Sector.ChNum[1] ^= scramble_data[9];
-			Sector.Submode[1] ^= scramble_data[10];
-			Sector.CodingInfo[1] ^= scramble_data[11];
-		}
-	}
-
-	void read_sector_data(int lba = 0)
-	{
-		// seek and skip sync field + header
-		disc.seekg(lba*2352+24, std::ios::beg);
-
-		disc.read(&Sector.Data[0], 2328);
-
-		if (is_byteswapped(lba))
-		{
-			for (int i = 0; i < 2328; i+=2)
-				std::swap(Sector.Data[i], Sector.Data[i+1]);
-		}
-
-		if (!is_valid_sector(lba))
-		{
-			for (int i = 0; i < 2328; i++)
-				Sector.Data[i] ^= scramble_data[i+12];
-		}
-	}
-
 	void read_sector(int lba = 0)
 	{
 		// seek and skip sync field
@@ -346,7 +281,7 @@ class CDiDisc
 		disc.get(Sector.ChNum[1]);
 		disc.get(Sector.Submode[1]);
 		disc.get(Sector.CodingInfo[1]);
-		disc.read(&Sector.Data[0], 2328);
+		disc.read(&Sector.Data[0], sizeof(Sector.Data) / sizeof(char));
 
 		if (is_byteswapped(lba))
 		{
@@ -357,7 +292,7 @@ class CDiDisc
 			std::swap(Sector.FileNum[1], Sector.ChNum[1]);
 			std::swap(Sector.Submode[1], Sector.CodingInfo[1]);
 
-			for (int i = 0; i < 2328; i+=2)
+			for (size_t i = 0; i < sizeof(Sector.Data) / sizeof(char); i+=2)
 				std::swap(Sector.Data[i], Sector.Data[i+1]);
 		}
 
@@ -376,7 +311,7 @@ class CDiDisc
 			Sector.Submode[1] ^= scramble_data[10];
 			Sector.CodingInfo[1] ^= scramble_data[11];
 
-			for (int i = 0; i < 2328; i++)
+			for (size_t i = 0; i < sizeof(Sector.Data) / sizeof(char); i++)
 				Sector.Data[i] ^= scramble_data[i+12];
 		}
 	}

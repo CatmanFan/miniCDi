@@ -43,6 +43,10 @@ int  MiniCDI_op_trap_handler(int trap) {
 	return 0; // unhandled, generate exception.
 }
 
+void MiniCDI_reset_handler() {
+	if (MiniCDI::Player.scc68070) MiniCDI::Player.scc68070->reset_internal();
+}
+
 void MiniCDI_set_fc(unsigned int new_fc) {
 	if (MiniCDI::Player.scc68070) {
 		MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);

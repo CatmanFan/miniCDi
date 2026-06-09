@@ -133,8 +133,8 @@
  * instruction.
  */
 #ifndef M68K_EMULATE_RESET
-#define M68K_EMULATE_RESET          M68K_OPT_OFF
-#define M68K_RESET_CALLBACK()       your_reset_handler_function()
+#define M68K_EMULATE_RESET          M68K_OPT_SPECIFY_HANDLER
+#define M68K_RESET_CALLBACK()       MiniCDI_reset_handler()
 #endif
 
 /* If ON, CPU will call the callback when it encounters a cmpi.l #v, dn
@@ -252,7 +252,7 @@
  * if it's useful.
  */
 #ifndef M68K_EMULATE_PMMU
-#define M68K_EMULATE_PMMU           M68K_OPT_OFF
+#define M68K_EMULATE_PMMU           M68K_OPT_ON
 #endif
 
 /* ----------------------------- COMPATIBILITY ---------------------------- */

@@ -7,7 +7,7 @@
 #include <3ds.h>
 #include <citro2d.h>
 
-class FPS
+/*class FPS
 {
 	int8_t aggregate;
 	int8_t incremented;
@@ -33,7 +33,7 @@ public:
 			printf("FPS: %2d\n", aggregate);
 		}
 	}
-};
+};*/
 
 class EmulatorWindow
 {
@@ -98,8 +98,8 @@ public:
 			memset(this->tex.data, 0, this->tex.width * this->tex.height * sizeof(u32));
 
 			// Process the pixel data to convert it to the correct format and swizzle it
-			for (int i = 0; i < this->height; i++) {
-				for (int j = 0; j < this->width; j++) {
+			for (int i = 0; i < this->width; i++) {
+				for (int j = 0; j < this->height; j++) {
 					// Swizzle magic to convert into a t3x format
 					u32 dst_ptr_offset = ((((j >> 3) * (this->tex.width >> 3) + (i >> 3)) << 6) +
 						((i & 1) | ((j & 1) << 1) | ((i & 2) << 1) |
@@ -141,8 +141,7 @@ int main(int argc, char* argv[])
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::FrameSkip = 1;
-
-	// config.log = fopen("miniCDi_log.txt", "wt");
+	MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
 
 	MonoI cdi;
 	// MonoIII cdi;
@@ -150,8 +149,10 @@ int main(int argc, char* argv[])
 	// Robocon cdi;
 
 	cdi.init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
+	cdi.disc.open("sdmc:/3ds/miniCDi/discs/FROG.BIN");
+	// cdi.disc.open("sdmc:/3ds/miniCDi/discs/ZELDA.bin");
 
-	EmulatorWindow TOPSCREEN(384,280);
+	EmulatorWindow TOPSCREEN(768,280);
 
     while (aptMainLoop())
 	{
@@ -168,16 +169,16 @@ int main(int argc, char* argv[])
 		cdi.pd.set_button(PointingDevice::Button2, kHeld & KEY_B);
 		cdi.pd.send();
 
-		static FPS fps;
+		// static FPS fps;
 
 		// Ensure that drawing is done at 30fps
 		if (MiniCDI::Config::FrameSkip > 0) {
 			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
 			cdi.run();
-			fps.update(MiniCDI::Config::FrameSkip+1);
+			// fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
 			cdi.run();
-			fps.update();
+			// fps.update();
 		}
 
 		TOPSCREEN.Update(cdi.get_display(), cdi.get_display_width());
@@ -188,7 +189,8 @@ int main(int argc, char* argv[])
 		C3D_FrameEnd(0);
 	}
 
-	// if (config.log) fclose(config.log);
+	if (MiniCDI::Config::LogFile)
+		fclose(MiniCDI::Config::LogFile);
 
 	C2D_Fini();
 	C3D_Fini();

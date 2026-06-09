@@ -29,39 +29,34 @@ class CDIC
 
 	/// From MAME CDIC driver
 	struct {
+		int spin_counter;
 		bool reading;
 		bool is_mode2;
-		int16_t spin_counter;
-		int64_t curr_lba;
-
-		void clear()
-		{
-			reading = false;
-			is_mode2 = false;
-			spin_counter = -1;
-			curr_lba = 0;
-		}
+		bool is_toc;
+		int curr_lba;
 	} DiscStatus;
+
+	struct {
+		bool active;
+	} AudioStatus;
 
 	void disc_process_sector()
 	{
-		/// Synchronous with SS_Play ??
-
-		if (DiscStatus.spin_counter != 0) {
-			DiscStatus.spin_counter = DiscStatus.spin_counter < 0 ? DiscStatus.spin_counter - 1 : DiscStatus.spin_counter + 1;
-			if (DiscStatus.spin_counter <= -6) {
+		if (DiscStatus.spin_counter > 0) {
+			DiscStatus.spin_counter--;
+			if (DiscStatus.spin_counter <= 0) {
+				MiniCDI::Log("[CDIC] waited for disc spin");
+				DiscStatus.spin_counter = 0;
 				XBUF |= 0x8000;
-				DiscStatus.spin_counter = 0;
-			}
-			if (DiscStatus.spin_counter >= 6) {
-				DiscStatus.spin_counter = 0;
 			}
 			return;
 		}
 
+		/// Synchronous with SS_Play ??
+
 		if (DiscStatus.reading)
 		{
-			disc->read_sector(DiscStatus.curr_lba);
+			disc->read_sector(DiscStatus.curr_lba++);
 
 			// Additional MODE2 processing
 			bool selected = true;
@@ -72,24 +67,23 @@ class CDIC
 				 || (disc->Sector.Submode[1] & 0b00010000) /* Trigger */
 				 ) {
 					if (disc->Sector.Submode[1] & 0b10000000) {
-						DiscStatus.reading = false;
+						// DiscStatus.reading = false;
 						MiniCDI::Log("[CDIC] MODE2: reached EOF");
 					}
 					MiniCDI::Log("[CDIC] MODE2 autoread");
 					goto copy_sector;
 				}
 
-				selected = ((CHAN & (1<<disc->Sector.ChNum[0])) || (CHAN & (1<<disc->Sector.ChNum[1])))
-					&& ((disc->Sector.FileNum[0] << 8) == FILE || (disc->Sector.FileNum[1] << 8) == FILE);
+				selected = (CHAN & (1<<disc->Sector.ChNum[1])) && ((disc->Sector.FileNum[1] << 8) == FILE);
 				if (!selected) {
-					MiniCDI::Log("[CDIC] MODE2 skip: CHAN %X != %02X/%02X, FILE %X != %02X/%02X", CHAN, disc->Sector.ChNum[0], disc->Sector.ChNum[1]
-																								, FILE, disc->Sector.FileNum[0], disc->Sector.FileNum[1]);
+					MiniCDI::Log("[CDIC] MODE2 skip: CHAN %X != %02X or FILE %X != %02X",
+								CHAN, disc->Sector.ChNum[1], FILE, disc->Sector.FileNum[1]);
 					goto copy_sector;
 				}
 
 				if (!(disc->Sector.Submode[1] & 0b00001110)) {
 					// Either message or empty sector (Green Book II.4.9.1)
-					MiniCDI::Log("[CDIC] MODE2 skip: data not applicable");
+					//MiniCDI::Log("[CDIC] MODE2 skip: data not applicable");
 					selected = false;
 					goto copy_sector;
 				}
@@ -106,11 +100,6 @@ class CDIC
 
 				// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
 				// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
-
-				bool use_adpcm = DiscStatus.is_mode2 && disc->Sector.Mode == 2 && (disc->Sector.Submode[1] & 0x04)
-							  && ((ACHAN & (1<<disc->Sector.ChNum[0])) || (ACHAN & (1<<disc->Sector.ChNum[1])));
-
-				if (use_adpcm) { DBUF |= 0x0004; } // audio index
 
 				uint8_t sector_data[0xA00];
 				// Copy sector header as normal
@@ -188,23 +177,34 @@ class CDIC
 
 				memcpy(&sector_data[2340], &subchannel_data[0], sizeof(subchannel_data));
 
-				memcpy(&memory[(use_adpcm ? 0x302800 : 0x300000) + ((DBUF & 0x01)*0xA00)], &sector_data[0], 0xA00*sizeof(char));
-				memcpy(use_adpcm ? &ADPCM[DBUF & 0x01][0] : &DATA[DBUF & 0x01][0], &sector_data[0], 0xA00*sizeof(char));
-				MiniCDI::Log("[CDIC] %s %02X:%02X:%02X (%lld)", use_adpcm ? "ADPCM" : "DATA", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame, DiscStatus.curr_lba);
+				bool use_adpcm = DiscStatus.is_mode2 && disc->Sector.Mode == 2 && (disc->Sector.Submode[1] & 0x04)
+							  && (ACHAN & (1<<disc->Sector.ChNum[1]));
 
-				XBUF |= 0x8000; // sector filled for processing
-				if (!use_adpcm) {
+				MiniCDI::Log("[CDIC] %s %02X:%02X:%02X", use_adpcm ? "ADPCM" : "DATA", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+				if (use_adpcm) {
+					// Copy first eight bytes of header first...
+					memcpy(&memory[0x300000 + ((DBUF & 0x01)*0xA00)], &sector_data[0], 8*sizeof(char));
+					memcpy(&DATA[DBUF & 0x01][0], &sector_data[0], 8*sizeof(char));
+
+					// ...and then switch to ADPCM buffer
+					memcpy(&memory[0x302808 + ((DBUF & 0x01)*0xA00)], &sector_data[8], (0xA00-8)*sizeof(char));
+					memcpy(&ADPCM[DBUF & 0x01][8], &sector_data[8], (0xA00-8)*sizeof(char));
+
+					DBUF |= 0x0004; // audio index
+				} else {
+					memcpy(&memory[0x300000 + ((DBUF & 0x01)*0xA00)], &sector_data[0], 0xA00*sizeof(char));
+					memcpy(&DATA[DBUF & 0x01][0], &sector_data[0], 0xA00*sizeof(char));
+
 					DBUF |= 0x4000; // send DATA to CPU
+					XBUF |= 0x8000; // sector filled for processing
 					m68k_set_irq(4);
 				}
 			}
-
-			DiscStatus.curr_lba++;
 		}
 	}
 
 public:
-	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc), DiscStatus({0})
+	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc), DiscStatus({0}), AudioStatus({0})
 	{
 	}
 
@@ -321,7 +321,7 @@ public:
 	{
 		switch (addr)
 		{
-			// default: return (read16(addr) << 16) | read16(addr+2);
+			default: return (read16(addr) << 16) | read16(addr+2);
 			case 0x303C02: return TIME;
 			case 0x303C08: return CHAN;
 		}
@@ -410,7 +410,14 @@ public:
 
 			case 0x303FFA: MiniCDI::Log("[CDIC] AUDCTL <= %04X", value); AUDCTL = value;
 				if (value & 0x0800) {
-					// start playback : TO-DO
+					if (!AudioStatus.active) {
+						// start playback : TO-DO
+						AudioStatus.active = true;
+					}
+				} else {
+					if (AudioStatus.active) {
+						AudioStatus.active = false;
+					}
 				}
 				/*if (!(value & 0x2000)) {
 					AudioStatus.decode_addr = 0xFFFF;
@@ -431,62 +438,82 @@ public:
 				DBUF = value;
 				if (DBUF & 0x8000)
 				{
-					DBUF &= 0x7FFF;
 					switch (CMD)
 					{
+						default:
+							assert(0);
+							break;
+
 						case 0x23:
-							MiniCDI::Log("[CDIC] stop disc rotation (0x%02X)", CMD);
-							DiscStatus.clear();
+							DBUF &= 0x7FFF;
+							MiniCDI::Log("[CDIC] stop disc (0x%02X)", CMD);
+							DiscStatus.spin_counter = 6;
+							DiscStatus.reading = false;
+							DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
+							DiscStatus.is_mode2 = false;
+							DiscStatus.is_toc = false;
 							break;
 
 						case 0x24:
-							MiniCDI::Log("[CDIC] stop reading (0x%02X)", CMD);
+							DBUF &= 0x7FFF;
+							MiniCDI::Log("[CDIC] reset (MODE2) (0x%02X)", CMD);
 							DiscStatus.reading = false;
+							DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
+							DiscStatus.is_mode2 = true;
+							DiscStatus.is_toc = false;
 							break;
 
 						case 0x27:
+							DBUF &= 0x7FFF;
 							MiniCDI::Log("[CDIC] fetch TOC (0x%02X)", CMD);
+							DiscStatus.reading = true;
+							DiscStatus.curr_lba = 0xFFFF0000;
+							DiscStatus.is_mode2 = false;
+							DiscStatus.is_toc = true;
 							exit(0);
 							break;
 
 						case 0x28:
+							DBUF &= 0x7FFF;
 							MiniCDI::Log("[CDIC] play CDDA (0x%02X)", CMD);
 							DiscStatus.reading = true;
+							DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
+							DiscStatus.is_mode2 = false;
+							DiscStatus.is_toc = false;
 							exit(0);
 							break;
 
 						case 0x29:
 						case 0x2A:
-							MiniCDI::Log("[CDIC] start CD-i dataread from $%08X (mode%d) (0x%02X)", TIME, CMD - 0x28, CMD);
-							DiscStatus.is_mode2 = CMD == 0x2A;
-							DiscStatus.spin_counter = 1;
-							DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
+							DBUF &= 0x7FFF;
+							MiniCDI::Log("[CDIC] start CD-i dataread from $%08X (MODE%d) (0x%02X)", TIME, CMD - 0x28, CMD);
+							DiscStatus.spin_counter = 6;
 							DiscStatus.reading = true;
+							DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
+							DiscStatus.is_mode2 = CMD == 0x2A;
+							DiscStatus.is_toc = false;
 							break;
 
 						case 0x2B:
+							DBUF &= 0x7FFF;
 							MiniCDI::Log("[CDIC] stop CDDA ? (0x%02X)", CMD);
-							exit(0);
 							break;
 
 						case 0x2C:
+							DBUF &= 0x7FFF;
 							MiniCDI::Log("[CDIC] seek ? (0x%02X)", CMD);
+							DiscStatus.reading = true;
 							DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
+							DiscStatus.is_mode2 = false;
+							DiscStatus.is_toc = false;
 							break;
 
 						case 0x2E:
+							DBUF &= 0x7FFF;
 							MiniCDI::Log("[CDIC] continue / update Mode2 filter (0x%02X)", CMD);
-							DiscStatus.is_mode2 = true;
-							DiscStatus.spin_counter = 0;
-							DiscStatus.curr_lba = disc->get_lba_from_time(TIME);
-							DiscStatus.reading = true;
 							break;
 					}
 				}
-				// if (!(DBUF & 0x4000))
-				// {
-					// DiscStatus.reading = false;
-				// }
 				return;
 		}
 	}

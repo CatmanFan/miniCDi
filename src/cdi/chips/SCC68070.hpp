@@ -138,32 +138,45 @@ public:
 		memcpy(&memory[romAddr], &rom[0], 512*1024*sizeof(char));
 	}
 
-	void reset()
+	void reset_internal()
 	{
-		// Reset onchip peripherals
 		fc = 0;
 
+		// Reset UART
 		UMR = 0x20; // unused bit
-		USR = 0b0000'0110; // TX ready and unused bit
+		USR = 0x06; // TX ready and unused bit
 		UCS = 0x08; // unused bit
 		UCR = 0x80; // unused bit
 		UTH = URH = 0;
 
 		PICR[0] = PICR[1] = 0;
+
+		// Reset timer
 		TSR = TCR = RR = T[0] = T[1] = T[2] = 0;
-		DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
-		DMA[1].CER = DMA[1].DCR = DMA[1].OCR = DMA[1].SCR = DMA[1].CCR = 0;
-		DMA[0].CSR = DMA[1].CSR = 0;
+
+		// Reset DMA
+		// DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
+		// DMA[1].CER = DMA[1].DCR = DMA[1].OCR = DMA[1].SCR = DMA[1].CCR = 0;
+		// DMA[0].CSR = DMA[1].CSR = 0;
+		DMA[0] = {0};
+		DMA[1] = {0};
+
+		// Reset I²C
 		IDR = IAR = ISR = ICR = ICCR = 0;
+	}
+
+	void reset()
+	{
+		reset_internal();
 
 		// Clear DRAM banks
-		for (int i = 0x000000; i < 0x07ffff; i++) { memory[i] = 0; }
-		for (int i = 0x240000; i < 0x27ffff; i++) { memory[i] = 0; }
+		// for (int i = 0x000000; i < 0x07ffff; i++) { memory[i] = 0; }
+		// for (int i = 0x240000; i < 0x27ffff; i++) { memory[i] = 0; }
 		memcpy(&memory[0], &memory[0x400000], 0x8); // contains initial SSP and PC
 
 		// Reset Musashi processor
 		m68k_pulse_reset();
-		// for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
+		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 	}
 
 	void interrupt(size_t ch)

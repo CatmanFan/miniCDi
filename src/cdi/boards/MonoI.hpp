@@ -29,6 +29,7 @@ public:
 
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		int loops = 0;
+
 		bool VBLANK = false;
 		do {
 			cpu.run(96);
@@ -38,7 +39,7 @@ public:
 
 			// 1035 is arbitrary number, should check how many cycles is equal to a sector tick
 			// The speed MUST be at approximately 75 sectors per sec, otherwise it will not work!!
-			if (loops % /*(MiniCDI::Config::PAL ? 1035 : 830)*/1035 == 0) { cdic->tick(); }
+			if (loops % /*(MiniCDI::Config::PAL ? 1035 : 830)*/1040 == 0) { cdic->tick(); }
 
 			// 15 MHz (not accurate) / 15625 Hz (line frequency) = 960 cycles
 			if (loops % 10 == 0) { VBLANK = vpu->tick(skip_draw); }

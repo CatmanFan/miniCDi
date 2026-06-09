@@ -499,6 +499,7 @@ typedef uint32 uint64;
 #if M68K_EMULATE_RESET
 	#if M68K_EMULATE_RESET == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_output_reset() M68K_RESET_CALLBACK()
+		extern void m68ki_output_reset();
 	#else
 		#define m68ki_output_reset() CALLBACK_RESET_INSTR()
 	#endif

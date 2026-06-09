@@ -37,12 +37,12 @@ class CDIC
 	{
 		if (disc->Sector.Mode == 2 && CdReader.is_mode2)
 		{
-			if ((disc->Sector.Submode[1] & 0b10000000) /* EOF */
-			 || (disc->Sector.Submode[1] & 0b00000001) /* EOR */
-			 || (disc->Sector.Submode[1] & 0b00010000) /* Trigger */
+			if ((disc->Sector.Submode[1] & 0b10000000) // EOF
+			 || (disc->Sector.Submode[1] & 0b00000001) // EOR
+			 || (disc->Sector.Submode[1] & 0b00010000) // Trigger
 			 ) {
 				if (disc->Sector.Submode[1] & 0b10000000) {
-					CdReader.active = false;
+					CdReader.curr_lba = -1;
 					MiniCDI::Log("[CDIC] MODE2: reached EOF");
 				}
 				MiniCDI::Log("[CDIC] MODE2 autoread");
@@ -59,11 +59,11 @@ class CDIC
 				return false;
 			}
 
-			// if (!(disc->Sector.Submode[1] & 0b00001110)) {
+			if (!(disc->Sector.Submode[1] & 0b00001110)) {
 				// Either message or empty sector (Green Book II.4.9.1)
-				// MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
-				// return false;
-			// }
+				MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
+				return false;
+			}
 		}
 
 		return true;
@@ -135,12 +135,19 @@ class CDIC
 
 				XBUF |= 0x8000; // sector filled for processing
 				DBUF |= 0x4000; // send DATA to CPU
-				m68k_set_irq(4);
 			}
 
-			// Continue to next sector
-			if (CdReader.active)
-				disc->read_sector(CdReader.curr_lba++);
+			if (CdReader.active) {
+				if (CdReader.curr_lba >= 0) {
+					// Continue to next sector
+					disc->read_sector(CdReader.curr_lba++);
+				} else {
+					CdReader.is_mode2 = false;
+					CdReader.active = false;
+					CdReader.curr_lba = 0;
+				}
+				m68k_set_irq(4);
+			}
 		}
 	}
 
@@ -162,40 +169,40 @@ public:
 				return (memory[addr] << 8) | memory[addr+1];
 
 			case 0x303C00: case 0x303C01:
-				// MiniCDI::Log("[CDIC] CMD => %04X", CMD);
+				MiniCDI::Log("[CDIC] CMD => %04X", CMD);
 				return CMD;
 
 			case 0x303C02: case 0x303C03:
-				// MiniCDI::Log("[CDIC] TIME (upper) => %04X", TIME >> 16 & 0x0000FFFF);
+				MiniCDI::Log("[CDIC] TIME (upper) => %04X", TIME >> 16 & 0x0000FFFF);
 				return TIME >> 16 & 0x0000FFFF;
 
 			case 0x303C04: case 0x303C05:
-				// MiniCDI::Log("[CDIC] TIME (lower) => %04X", TIME & 0x0000FFFF);
+				MiniCDI::Log("[CDIC] TIME (lower) => %04X", TIME & 0x0000FFFF);
 				return TIME & 0x0000FFFF;
 
 			case 0x303C06: case 0x303C07:
-				// MiniCDI::Log("[CDIC] FILE => %04X", FILE);
+				MiniCDI::Log("[CDIC] FILE => %04X", FILE);
 				return FILE;
 
 			case 0x303C08: case 0x303C09:
-				// MiniCDI::Log("[CDIC] CHAN (upper) => %04X", CHAN >> 16 & 0x0000FFFF);
+				MiniCDI::Log("[CDIC] CHAN (upper) => %04X", CHAN >> 16 & 0x0000FFFF);
 				return CHAN >> 16 & 0x0000FFFF;
 
 			case 0x303C0A: case 0x303C0B:
-				// MiniCDI::Log("[CDIC] CHAN (lower) => %04X", CHAN & 0x0000FFFF);
+				MiniCDI::Log("[CDIC] CHAN (lower) => %04X", CHAN & 0x0000FFFF);
 				return CHAN & 0x0000FFFF;
 
 			case 0x303C0C: case 0x303C0D:
-				// MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN);
+				MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN);
 				return ACHAN;
 
 			case 0x303C80: case 0x303C81:
-				// MiniCDI::Log("[CDIC] DSEL => %04X", DSEL);
+				MiniCDI::Log("[CDIC] DSEL => %04X", DSEL);
 				return DSEL;
 
 			case 0x303FF4: case 0x303FF5:
 			{
-				MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
+				//MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
 				uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
@@ -207,7 +214,7 @@ public:
 
 			case 0x303FF6: case 0x303FF7:
 			{
-				// MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
+				//MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
@@ -231,7 +238,7 @@ public:
 				return IVEC;
 
 			case 0x303FFE: case 0x303FFF:
-				// MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
+				//MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
 				return DBUF;
 		}
 	}
@@ -246,6 +253,7 @@ public:
 				break;
 
 			case 0x303C00: case 0x303C01:
+				MiniCDI::Log("[CDIC] CMD <= %04X", value);
 				CMD = value;
 				break;
 
@@ -284,7 +292,7 @@ public:
 				break;
 
 			case 0x303C80: case 0x303C81:
-				// MiniCDI::Log("[CDIC] DSEL <= %04X", value);
+				MiniCDI::Log("[CDIC] DSEL <= %04X", value);
 				DSEL = value;
 				break;
 
@@ -317,7 +325,7 @@ public:
 			case 0x303FFE: case 0x303FFF:
 				MiniCDI::Log("[CDIC] DBUF <= %04X", value);
 				DBUF = value;
-				if (DBUF & 0x8000)
+				if (value & 0x8000)
 				{
 					DBUF &= ~0x8000;
 					switch (CMD)
@@ -371,8 +379,16 @@ public:
 
 						case 0x2E:
 							MiniCDI::Log("[CDIC] update MODE2 filter (0x%02X)", CMD);
+							CMD = 0;
 							break;
 					}
+				}
+
+				if (!(value & 0x4000))
+				{
+					MiniCDI::Log("[CDIC] abort");
+					CdReader.active = false;
+					CdReader.curr_lba = 0;
 				}
 				break;
 		}
@@ -386,11 +402,11 @@ public:
 				return (read16(addr) << 16) | read16(addr+2);
 
 				case 0x303C02:
-					// MiniCDI::Log("[CDIC] TIME => %08X", TIME);
+					MiniCDI::Log("[CDIC] TIME => %08X", TIME);
 					return TIME;
 
 				case 0x303C08:
-					// MiniCDI::Log("[CDIC] CHAN => %08X", CHAN);
+					MiniCDI::Log("[CDIC] CHAN => %08X", CHAN);
 					return CHAN;
 		}
 	}

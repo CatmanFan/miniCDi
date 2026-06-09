@@ -29,11 +29,13 @@ class CDIC
 
 	/// From MAME CDIC driver
 	struct {
-		int spin_counter;
+		int curr_lba;
+
 		bool reading;
 		bool is_mode2;
 		bool is_toc;
-		int curr_lba;
+
+		int spin_counter;
 	} DiscStatus;
 
 	struct {
@@ -42,20 +44,17 @@ class CDIC
 
 	void disc_process_sector()
 	{
-		if (DiscStatus.spin_counter > 0) {
-			DiscStatus.spin_counter--;
-			if (DiscStatus.spin_counter <= 0) {
-				MiniCDI::Log("[CDIC] waited for disc spin");
-				DiscStatus.spin_counter = 0;
-				XBUF |= 0x8000;
-			}
-			return;
-		}
-
 		/// Synchronous with SS_Play ??
 
 		if (DiscStatus.reading)
 		{
+			if (DiscStatus.spin_counter > 0) {
+				MiniCDI::Log("[CDIC] waiting for disc spin %d", DiscStatus.spin_counter);
+				DiscStatus.spin_counter--;
+				if (DiscStatus.spin_counter <= 0) XBUF |= 0x8000;
+				return;
+			}
+
 			disc->read_sector(DiscStatus.curr_lba++);
 
 			// Additional MODE2 processing
@@ -67,36 +66,37 @@ class CDIC
 				 || (disc->Sector.Submode[1] & 0b00010000) /* Trigger */
 				 ) {
 					if (disc->Sector.Submode[1] & 0b10000000) {
-						// DiscStatus.reading = false;
+						DiscStatus.reading = false;
 						MiniCDI::Log("[CDIC] MODE2: reached EOF");
 					}
 					MiniCDI::Log("[CDIC] MODE2 autoread");
 					goto copy_sector;
 				}
 
-				selected = (CHAN & (1<<disc->Sector.ChNum[1])) && ((disc->Sector.FileNum[1] << 8) == FILE);
-				if (!selected) {
-					MiniCDI::Log("[CDIC] MODE2 skip: CHAN %X != %02X or FILE %X != %02X",
-								CHAN, disc->Sector.ChNum[1], FILE, disc->Sector.FileNum[1]);
+				if ((disc->Sector.FileNum[1] << 8) != FILE) {
+					MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector.FileNum[1]);
+					selected = false;
+					goto copy_sector;
+				}
+				if (!(CHAN & (1<<disc->Sector.ChNum[1]))) {
+					MiniCDI::Log("[CDIC] MODE2 skip: CHAN %08X is not AND (1 << %d)", CHAN, disc->Sector.ChNum[1]);
+					selected = false;
 					goto copy_sector;
 				}
 
 				if (!(disc->Sector.Submode[1] & 0b00001110)) {
 					// Either message or empty sector (Green Book II.4.9.1)
-					//MiniCDI::Log("[CDIC] MODE2 skip: data not applicable");
+					MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
 					selected = false;
 					goto copy_sector;
 				}
-
-				// if ((disc->Sector.Submode[1] & 0b00010000) && (disc->Sector.Submode[1] & 0b00000001))
-					// disc->Sector.Submode[1] &= ~0b00000001;
 			}
 
 			copy_sector:
 			if (selected)
 			{
 				// Switch DBUF index and reset audio
-				DBUF &= ~0x0004; DBUF ^= 0x0001;
+				DBUF &= 0b01111011; DBUF ^= 0x0001;
 
 				// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
 				// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
@@ -511,8 +511,19 @@ public:
 						case 0x2E:
 							DBUF &= 0x7FFF;
 							MiniCDI::Log("[CDIC] continue / update Mode2 filter (0x%02X)", CMD);
+							DiscStatus.reading = true;
 							break;
 					}
+				}
+
+				if (!(DBUF & 0x4000))
+				{
+					MiniCDI::Log("[CDIC] abort");
+					DiscStatus.spin_counter = 0;
+					DiscStatus.reading = false;
+					DiscStatus.curr_lba = 0;
+					DiscStatus.is_mode2 = false;
+					DiscStatus.is_toc = false;
 				}
 				return;
 		}

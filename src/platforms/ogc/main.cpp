@@ -179,44 +179,45 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 			WPAD_ScanPads();
 			WPADData* data = WPAD_Data(0);
 			uint32_t down = WPAD_ButtonsDown(0);
+			uint32_t held = WPAD_ButtonsHeld(0);
 
-			if (data->exp.type == WPAD_EXP_CLASSIC) {
+			if (data->exp.type & WPAD_EXP_CLASSIC) {
 				if (down & WPAD_CLASSIC_BUTTON_HOME) break;
 
-				cdi.pd.set_button(PointingDevice::Button1, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_A);
-				cdi.pd.set_button(PointingDevice::Button2, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_B);
-				cdi.pd.set_button(PointingDevice::Left, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_LEFT);
-				cdi.pd.set_button(PointingDevice::Right, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_RIGHT);
-				cdi.pd.set_button(PointingDevice::Down, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_DOWN);
-				cdi.pd.set_button(PointingDevice::Up, WPAD_ButtonsHeld(0) & WPAD_CLASSIC_BUTTON_UP);
-			}
-			if (data->ir.valid && data->exp.type != WPAD_EXP_CLASSIC) {
+				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_CLASSIC_BUTTON_A);
+				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_CLASSIC_BUTTON_B);
+				cdi.pd.set_button(PointingDevice::Left, held & WPAD_CLASSIC_BUTTON_LEFT);
+				cdi.pd.set_button(PointingDevice::Right, held & WPAD_CLASSIC_BUTTON_RIGHT);
+				cdi.pd.set_button(PointingDevice::Down, held & WPAD_CLASSIC_BUTTON_DOWN);
+				cdi.pd.set_button(PointingDevice::Up, held & WPAD_CLASSIC_BUTTON_UP);
+			} else if (data->ir.valid) {
 				if (down & WPAD_BUTTON_HOME) break;
 
-				cdi.pd.set_button(PointingDevice::Button1, WPAD_ButtonsHeld(0) & WPAD_BUTTON_A);
-				cdi.pd.set_button(PointingDevice::Button2, WPAD_ButtonsHeld(0) & WPAD_BUTTON_B);
+				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
+				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
 				cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);
 			} else {
 				if (down & WPAD_BUTTON_HOME) break;
 
-				cdi.pd.set_button(PointingDevice::Button1, WPAD_ButtonsHeld(0) & WPAD_BUTTON_1);
-				cdi.pd.set_button(PointingDevice::Button2, WPAD_ButtonsHeld(0) & WPAD_BUTTON_2);
-				cdi.pd.set_button(PointingDevice::Left, WPAD_ButtonsHeld(0) & WPAD_BUTTON_UP);
-				cdi.pd.set_button(PointingDevice::Right, WPAD_ButtonsHeld(0) & WPAD_BUTTON_DOWN);
-				cdi.pd.set_button(PointingDevice::Down, WPAD_ButtonsHeld(0) & WPAD_BUTTON_LEFT);
-				cdi.pd.set_button(PointingDevice::Up, WPAD_ButtonsHeld(0) & WPAD_BUTTON_RIGHT);
+				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_1);
+				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_2);
+				cdi.pd.set_button(PointingDevice::Left, held & WPAD_BUTTON_UP);
+				cdi.pd.set_button(PointingDevice::Right, held & WPAD_BUTTON_DOWN);
+				cdi.pd.set_button(PointingDevice::Down, held & WPAD_BUTTON_LEFT);
+				cdi.pd.set_button(PointingDevice::Up, held & WPAD_BUTTON_RIGHT);
 			}
 		#else // HW_DOL
 			PAD_ScanPads();
 			uint32_t down = PAD_ButtonsDown(0);
+			uint32_t held = PAD_ButtonsHeld(0);
 
 			if (down & PAD_BUTTON_Z) break;
-			cdi.pd.set_button(PointingDevice::Button1, PAD_ButtonsHeld(0) & PAD_BUTTON_A);
-			cdi.pd.set_button(PointingDevice::Button2, PAD_ButtonsHeld(0) & PAD_BUTTON_B);
-			cdi.pd.set_button(PointingDevice::Left, PAD_ButtonsHeld(0) & PAD_BUTTON_LEFT);
-			cdi.pd.set_button(PointingDevice::Right, PAD_ButtonsHeld(0) & PAD_BUTTON_RIGHT);
-			cdi.pd.set_button(PointingDevice::Down, PAD_ButtonsHeld(0) & PAD_BUTTON_DOWN);
-			cdi.pd.set_button(PointingDevice::Up, PAD_ButtonsHeld(0) & PAD_BUTTON_UP);
+			cdi.pd.set_button(PointingDevice::Button1, held & PAD_BUTTON_A);
+			cdi.pd.set_button(PointingDevice::Button2, held & PAD_BUTTON_B);
+			cdi.pd.set_button(PointingDevice::Left, held & PAD_BUTTON_LEFT);
+			cdi.pd.set_button(PointingDevice::Right, held & PAD_BUTTON_RIGHT);
+			cdi.pd.set_button(PointingDevice::Down, held & PAD_BUTTON_DOWN);
+			cdi.pd.set_button(PointingDevice::Up, held & PAD_BUTTON_UP);
 		#endif
 
 		static FPS fps;

@@ -329,23 +329,17 @@ public:
 				MiniCDI::Log("[CDI] loaded disc image (%s)", path.c_str());
 
 				disc.seekg(0x9340, std::ios::beg); // 00'02'16 LBA, address of title
-				char c;
-				for (int i = 0; i < 32; i++) {
-					disc.get(c);
-					Label += c;
-					if (i == 31 && c == 0x20) {
-						// Trim ending space characters
-						int j = Label.length() - 1;
-						while (std::isspace(Label[j]) != 0) j--;
-						Label = Label.substr(0,j+1);
 
-						MiniCDI::Log("[Disc] label: %s", Label.c_str());
-					} else if (i == 31) {
-						Label.clear();
+				char labelChars[32];
+				memset(&labelChars[0], 0, sizeof(labelChars));
+				disc.read(&labelChars[0], 32);
 
-						MiniCDI::Log("[Disc] label not found at LBA $9300");
-					}
-				}
+				Label += labelChars;
+
+				if (Label.empty())
+					MiniCDI::Log("[Disc] label not found at LBA $9300");
+				else
+					MiniCDI::Log("[Disc] label: %s", Label.c_str());
 			} else {
 				MiniCDI::Log("[CDI] failed to load disc image (%s)", path.c_str());
 			}

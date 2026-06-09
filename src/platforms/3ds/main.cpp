@@ -151,6 +151,8 @@ int main(int argc, char* argv[])
 	cdi.init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
 	cdi.disc.open("sdmc:/3ds/miniCDi/discs/FROG.BIN");
 	// cdi.disc.open("sdmc:/3ds/miniCDi/discs/ZELDA.bin");
+	// cdi.disc.open("sdmc:/3ds/miniCDi/discs/HTLMARIO.bin");
+	// cdi.disc.open("sdmc:/3ds/miniCDi/discs/guignols0_03.bin");
 
 	EmulatorWindow TOPSCREEN(768,280);
 

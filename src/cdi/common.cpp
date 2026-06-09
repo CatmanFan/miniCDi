@@ -69,13 +69,13 @@ unsigned int  m68k_read_memory_8(unsigned int address) {
 
 unsigned int  m68k_read_memory_16(unsigned int address) {
 	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)	return MiniCDI::Player.mcd212->read16(address);
-	if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000)	return MiniCDI::Player.cdic->read16(address);
-	if (MiniCDI::Player.ciap && (address & 0x00FF0000) == 0x00300000)	return MiniCDI::Player.ciap->read16(address);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)	return MiniCDI::Player.cdic->read16(address);
+	if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF)	return MiniCDI::Player.ciap->read16(address);
 	return (uint16_t)((m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1));
 }
 
 unsigned int  m68k_read_memory_32(unsigned int address) {
-	if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000) return MiniCDI::Player.cdic->read32(address);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) return MiniCDI::Player.cdic->read32(address);
 	return ((uint32_t)m68k_read_memory_16(address) << 16) | m68k_read_memory_16(address+2);
 }
 
@@ -92,8 +92,8 @@ void m68k_write_memory_8(unsigned int address, unsigned int value) {
 
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
 	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) MiniCDI::Player.mcd212->write16(address, value);
-	else if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.cdic->write16(address, value, MiniCDI::Player.scc68070);
-	else if (MiniCDI::Player.ciap && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.ciap->write16(address, value);
+	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write16(address, value, MiniCDI::Player.scc68070);
+	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.ciap->write16(address, value);
 	else {
 		m68k_write_memory_8(address, (uint8_t)(value >> 8 & 0x00FF));
 		m68k_write_memory_8(address + 1, (uint8_t)(value & 0x00FF));
@@ -101,7 +101,7 @@ void m68k_write_memory_16(unsigned int address, unsigned int value) {
 }
 
 void m68k_write_memory_32(unsigned int address, unsigned int value) {
-	if (MiniCDI::Player.cdic && (address & 0x00FF0000) == 0x00300000) MiniCDI::Player.cdic->write32(address, value, MiniCDI::Player.scc68070);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write32(address, value, MiniCDI::Player.scc68070);
 	else {
 		m68k_write_memory_16(address, (uint16_t)(value >> 16 & 0x0000FFFF));
 		m68k_write_memory_16(address + 2, (uint16_t)(value & 0x0000FFFF));

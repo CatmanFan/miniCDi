@@ -42,8 +42,8 @@ class CDIC
 			 || (disc->Sector.Submode[1] & 0b00010000) // Trigger
 			 ) {
 				if (disc->Sector.Submode[1] & 0b10000000) {
-					CdReader.curr_lba = -1;
 					MiniCDI::Log("[CDIC] MODE2: reached EOF");
+					CdReader.active = false;
 				}
 				MiniCDI::Log("[CDIC] MODE2 autoread");
 				return true;
@@ -135,24 +135,17 @@ class CDIC
 
 				XBUF |= 0x8000; // sector filled for processing
 				DBUF |= 0x4000; // send DATA to CPU
-			}
-
-			if (CdReader.active) {
-				if (CdReader.curr_lba >= 0) {
-					// Continue to next sector
-					disc->read_sector(CdReader.curr_lba++);
-				} else {
-					CdReader.is_mode2 = false;
-					CdReader.active = false;
-					CdReader.curr_lba = 0;
-				}
 				m68k_set_irq(4);
 			}
+
+			// Continue to next sector
+			if (CdReader.active)
+				disc->read_sector(CdReader.curr_lba++);
 		}
 	}
 
 public:
-	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc),  CdReader({0})
+	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), XBUF(0), disc(disc), CdReader({0})
 	{
 	}
 
@@ -172,25 +165,9 @@ public:
 				MiniCDI::Log("[CDIC] CMD => %04X", CMD);
 				return CMD;
 
-			case 0x303C02: case 0x303C03:
-				MiniCDI::Log("[CDIC] TIME (upper) => %04X", TIME >> 16 & 0x0000FFFF);
-				return TIME >> 16 & 0x0000FFFF;
-
-			case 0x303C04: case 0x303C05:
-				MiniCDI::Log("[CDIC] TIME (lower) => %04X", TIME & 0x0000FFFF);
-				return TIME & 0x0000FFFF;
-
 			case 0x303C06: case 0x303C07:
 				MiniCDI::Log("[CDIC] FILE => %04X", FILE);
 				return FILE;
-
-			case 0x303C08: case 0x303C09:
-				MiniCDI::Log("[CDIC] CHAN (upper) => %04X", CHAN >> 16 & 0x0000FFFF);
-				return CHAN >> 16 & 0x0000FFFF;
-
-			case 0x303C0A: case 0x303C0B:
-				MiniCDI::Log("[CDIC] CHAN (lower) => %04X", CHAN & 0x0000FFFF);
-				return CHAN & 0x0000FFFF;
 
 			case 0x303C0C: case 0x303C0D:
 				MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN);
@@ -202,25 +179,25 @@ public:
 
 			case 0x303FF4: case 0x303FF5:
 			{
-				//MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
 				uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
 					if (AUDCTL & 0x2000)
 						m68k_set_irq(4);
 				}
+				MiniCDI::Log("[CDIC] ABUF => %04X", value);
 				return value;
 			}
 
 			case 0x303FF6: case 0x303FF7:
 			{
-				//MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
 					if (DBUF & 0x4000)
 						m68k_set_irq(4);
 				}
+				MiniCDI::Log("[CDIC] XBUF => %04X", value);
 				return value;
 			}
 
@@ -238,7 +215,7 @@ public:
 				return IVEC;
 
 			case 0x303FFE: case 0x303FFF:
-				//MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
+				MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
 				return DBUF;
 		}
 	}
@@ -257,33 +234,9 @@ public:
 				CMD = value;
 				break;
 
-			case 0x303C02: case 0x303C03:
-				MiniCDI::Log("[CDIC] TIME (upper) <= %04X", value);
-				TIME &= 0x0000FFFF;
-				TIME |= (value << 16);
-				break;
-
-			case 0x303C04: case 0x303C05:
-				MiniCDI::Log("[CDIC] TIME (lower) <= %04X", value);
-				TIME &= 0xFFFF0000;
-				TIME |= value;
-				break;
-
 			case 0x303C06: case 0x303C07:
 				MiniCDI::Log("[CDIC] FILE <= %04X", value);
 				FILE = value;
-				break;
-
-			case 0x303C08: case 0x303C09:
-				MiniCDI::Log("[CDIC] CHAN (upper) <= %04X", value);
-				CHAN &= 0x0000FFFF;
-				CHAN |= (value << 16);
-				break;
-
-			case 0x303C0A: case 0x303C0B:
-				MiniCDI::Log("[CDIC] CHAN (lower) <= %04X", value);
-				CHAN &= 0xFFFF0000;
-				CHAN |= value;
 				break;
 
 			case 0x303C0C: case 0x303C0D:
@@ -379,7 +332,6 @@ public:
 
 						case 0x2E:
 							MiniCDI::Log("[CDIC] update MODE2 filter (0x%02X)", CMD);
-							CMD = 0;
 							break;
 					}
 				}

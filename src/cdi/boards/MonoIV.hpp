@@ -49,6 +49,7 @@ public:
 
 		// Print verbose CPU
 		cpu.print();
+		MiniCDI::OS9::scan_modules(memory);
 	}
 
 	inline void reset() override {

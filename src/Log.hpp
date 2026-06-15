@@ -19,19 +19,30 @@ namespace MiniCDI
 		vsnprintf(szBuff, 1024, txt, arg1);
 		va_end(arg1);
 
+		MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module(m68k_get_reg(NULL, M68K_REG_PC));
+
 		#ifdef __WIIU__
-		WHBLogPrintf(szBuff);
+		if (module)
+			WHBLogPrintf("@%08X(%s) %s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+		else
+			WHBLogPrintf("@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
 		#else
 			#if defined(MINICDI_DEBUG) || defined(__3DS__)
-			printf("%s\n", szBuff);
+			// printf("%s\n", szBuff);
 			// printf("@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+			if (module)
+				printf("@%08X(%s) %s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+			else
+				printf("@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
 			#endif
 		#endif
 
-		#ifdef MINICDI_LOGFILE
-		if (MiniCDI::Config::LogFile)
-			fprintf(MiniCDI::Config::LogFile, "@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
-		#endif
+		if (MiniCDI::Config::LogFile) {
+			if (module)
+				fprintf(MiniCDI::Config::LogFile, "@%08X(%s) %s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+			else
+				fprintf(MiniCDI::Config::LogFile, "@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+		}
 
 		delete[] szBuff;
 

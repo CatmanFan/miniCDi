@@ -1,11 +1,11 @@
-name: Build (Nintendo Wii)
+name: Build (Nintendo GameCube)
 
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
 
-  build-wii:
-    name: Build (Nintendo Wii)
+  build-ngc:
+    name: Build (Nintendo GameCube)
     runs-on: ubuntu-latest
     container: devkitpro/devkitppc:latest
     
@@ -18,27 +18,25 @@ jobs:
     - name: Install devkit packages
       run: |
         dkp-pacman -Syu --noconfirm
-        dkp-pacman -S --needed --noconfirm wii-sdl2 wii-sdl2_image
+        dkp-pacman -S --needed --noconfirm gamecube-sdl2 gamecube-sdl2_image
     
     - name: Create build directory
       run: mkdir -p build
     
     - name: Configure with CMake
-      run: /opt/devkitpro/portlibs/wii/bin/powerpc-eabi-cmake -S. -B build
+      run: /opt/devkitpro/portlibs/gamecube/bin/powerpc-eabi-cmake -S. -B build
     
     - name: Build
-      run: /opt/devkitpro/portlibs/wii/bin/powerpc-eabi-cmake --build build
+      run: /opt/devkitpro/portlibs/gamecube/bin/powerpc-eabi-cmake --build build
     
     - name: Prepare structure
       run: |
-        mkdir -p pkg/wii/apps/miniCDi
-        mkdir -p pkg/wii/apps/miniCDi/rom
-        cp ./build/miniCDi.dol ./pkg/wii/apps/miniCDi/boot.dol
-        cp ./res/wii/icon.png ./pkg/wii/apps/miniCDi/icon.png
-        cp ./build/res/wii/meta.xml ./pkg/wii/apps/miniCDi/meta.xml
+        mkdir -p pkg/ngc/miniCDi
+        mkdir -p pkg/ngc/miniCDi/rom
+        cp ./build/miniCDi.dol ./pkg/ngc/miniCDi/boot.dol
     
     - name: Upload artifact
       uses: actions/upload-artifact@v5
       with:
         name: miniCDi
-        path: ./pkg/wii/
+        path: ./pkg/ngc/

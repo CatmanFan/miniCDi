@@ -51,6 +51,7 @@ set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 target_include_directories(${PROJECT_NAME} PRIVATE src src/cdi/Musashi)
 target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/common.cpp
+	src/os9/OS9.cpp
 
 	# Musashi core
 	src/cdi/Musashi/m68k.h
@@ -85,7 +86,6 @@ if (NINTENDO_3DS)
 
 	ctr_create_3dsx(${PROJECT_NAME}
 		SMDH ${PROJECT_NAME}.smdh
-		# ROMFS res/3ds/romfs
 	)
 endif()
 

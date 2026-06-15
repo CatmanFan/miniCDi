@@ -23,10 +23,6 @@ namespace MiniCDI
 		CDIC* cdic;
 		CIAP* ciap;
 	} Player;
-
-	#ifdef MINICDI_DEBUG_OS9
-	static OS9 OS9Disassembler;
-	#endif
 }
 
 unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_memory_8(address); }
@@ -35,9 +31,7 @@ unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read
 
 int  MiniCDI_op_trap_handler(int trap) {
 	#ifdef MINICDI_DEBUG_OS9
-	if (trap == 0) {
-		MiniCDI::OS9Disassembler.log(MiniCDI::Player.memory);
-	}
+	if (trap == 0) MiniCDI::OS9::log(MiniCDI::Player.memory);
 	#endif
 
 	return 0; // unhandled, generate exception.
@@ -55,7 +49,7 @@ void MiniCDI_set_fc(unsigned int new_fc) {
 
 int  MiniCDI_int_ack_handler(int int_level) {
 	m68k_set_irq(0); // resets IRQ
-	return MiniCDI::Player.ciap && int_level == 4 ? 0x3C
+	return MiniCDI::Player.ciap && int_level == 4 ? (MiniCDI::Player.memory[0x3025C0] >> 3) & 0xFF
 		 : MiniCDI::Player.cdic && int_level == 4 ? MiniCDI::Player.memory[0x303FFC] : M68K_INT_ACK_AUTOVECTOR;
 }
 
@@ -86,14 +80,14 @@ void m68k_write_memory_8(unsigned int address, unsigned int value) {
 
 	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000 && FLAG_S) MiniCDI::Player.scc68070->write8(address, value);
 	else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000) MiniCDI::Player.slave->write8(address, value);
-	else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000) MiniCDI::Player.ikat->write8(address, value);
+	else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000) MiniCDI::Player.ikat->write8(address, value, MiniCDI::Player.ciap);
 	else MiniCDI::Player.memory[address & 0x00ffffff] = value;
 }
 
 void m68k_write_memory_16(unsigned int address, unsigned int value) {
 	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) MiniCDI::Player.mcd212->write16(address, value);
 	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write16(address, value, MiniCDI::Player.scc68070);
-	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.ciap->write16(address, value);
+	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.ciap->write16(address, value, MiniCDI::Player.scc68070);
 	else {
 		m68k_write_memory_8(address, (uint8_t)(value >> 8 & 0x00FF));
 		m68k_write_memory_8(address + 1, (uint8_t)(value & 0x00FF));
@@ -147,7 +141,7 @@ bool MonoI::init(const std::string &bios)
 		this->cpu.reset();
 
 		#ifdef MINICDI_DEBUG_OS9
-		MiniCDI::OS9Disassembler.list_modules(rom);
+		MiniCDI::OS9::scan_modules(this->memory);
 		#endif
 
 		return true;
@@ -186,7 +180,7 @@ bool MonoIV::init(const std::string &bios)
 		this->cpu.reset();
 
 		#ifdef MINICDI_DEBUG_OS9
-		MiniCDI::OS9Disassembler.list_modules(rom);
+		MiniCDI::OS9::scan_modules(this->memory);
 		#endif
 
 		return true;

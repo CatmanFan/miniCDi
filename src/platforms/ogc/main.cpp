@@ -155,14 +155,14 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
+	MiniCDI::Config::PAL = /*VIDEO_GetCurrentTvMode() == VI_PAL*/ true;
 	MiniCDI::Config::ShowLCD = true;
 	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 
 	MonoI cdi;
-	// MonoIII cdi;
 	// MonoIV cdi;
+	// MonoIII cdi;
 	// Robocon cdi;
 
 	cdi.init(appPath + "rom/" + biosName);

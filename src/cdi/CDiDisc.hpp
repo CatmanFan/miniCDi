@@ -329,12 +329,14 @@ public:
 				MiniCDI::Log("[CDI] loaded disc image (%s)", path.c_str());
 
 				disc.seekg(0x9340, std::ios::beg); // 00'02'16 LBA, address of title
-
-				char labelChars[32];
-				memset(&labelChars[0], 0, sizeof(labelChars));
-				disc.read(&labelChars[0], 32);
-
-				Label += labelChars;
+				for (int i = 0; i < 32; i++) {
+					char c;
+					disc.get(c);
+					if (c)
+						Label += c;
+					else
+						break;
+				}
 
 				if (Label.empty())
 					MiniCDI::Log("[Disc] label not found at LBA $9300");

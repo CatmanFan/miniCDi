@@ -1,0 +1,43 @@
+name: Build (Nintendo 3DS)
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+
+  build-3ds:
+    name: Build (Nintendo 3DS)
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        submodules: recursive
+    
+    - name: Install devkit packages
+      run: |
+        dkp-pacman -Syu --noconfirm
+        dkp-pacman -S --needed --noconfirm 3ds-dev
+        dkp-pacman -S --needed --noconfirm libctru citro3d citro2d
+    
+    - name: Create build directory
+      run: mkdir -p build
+    
+    - name: Configure with CMake
+      run: /opt/devkitpro/portlibs/3ds/bin/arm-none-eabi-cmake -S. -B build
+    
+    - name: Build
+      run: /opt/devkitpro/portlibs/3ds/bin/arm-none-eabi-cmake --build build
+    
+    - name: Prepare structure
+      run: |
+        mkdir -p pkg/3ds/3ds/miniCDi
+        mkdir -p pkg/3ds/3ds/miniCDi/rom
+        cp ./build/miniCDi.3dsx ./pkg/3ds/3ds/miniCDi/boot.3dsx
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v5
+      with:
+        name: miniCDi
+        path: ./pkg/3ds/

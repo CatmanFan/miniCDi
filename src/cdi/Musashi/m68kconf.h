@@ -252,7 +252,7 @@
  * if it's useful.
  */
 #ifndef M68K_EMULATE_PMMU
-#define M68K_EMULATE_PMMU           M68K_OPT_ON
+#define M68K_EMULATE_PMMU           M68K_OPT_OFF
 #endif
 
 /* ----------------------------- COMPATIBILITY ---------------------------- */

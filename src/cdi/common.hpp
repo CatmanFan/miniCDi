@@ -14,21 +14,19 @@
 #include <cmath>
 #include <algorithm>
 
-// Main namespace defs
+// Global defs
+#include "cdi/Musashi/m68k.h"
+#include "os9/OS9.hpp"
 #include "../Config.hpp"
 #include "../Log.hpp"
+#include "cdi/CDiDisc.hpp"
 
-// 68K processor
-#include "cdi/Musashi/m68k.h"
+// Cores
 #include "cdi/chips/SCC68070.hpp"
-#include "os9/OS9.hpp"
-
-// Other cores
 #include "cdi/chips/MCD212.hpp"
 #include "cdi/chips/MC6805_SLAVE.hpp"
 #include "cdi/chips/MC6805_IKAT.hpp"
 #include "cdi/PointingDevice.hpp"
-#include "cdi/CDiDisc.hpp"
 #include "cdi/chips/IMS66490_CDIC.hpp"
 #include "cdi/chips/MCD221_CIAP.hpp"
 

@@ -2,6 +2,7 @@
 #define MINICDI_MC6805_IKAT
 
 #include <deque>
+#include "cdi/chips/MCD221_CIAP.hpp"
 
 /// HLE implementation of IKAT as found in Mono-III & Mono-IV.
 class IKAT
@@ -134,7 +135,7 @@ public:
 		}
 	}
 
-	void write8(uint32_t addr, uint8_t value)
+	void write8(uint32_t addr, uint8_t value, CIAP *ciap)
 	{
 		switch (addr)
 		{
@@ -216,6 +217,23 @@ public:
 					case 3:
 						switch (value)
 						{
+							default:
+								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
+									switch (Ch[c].In[0]) {
+										case 0xE0:
+											MiniCDI::Log("[SLAVE] start CD-DA playback (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
+											break;
+										case 0xE1:
+											MiniCDI::Log("[SLAVE] start CD sector read (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
+											if (ciap) { ciap->disc_set_lba(Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]); }
+											break;
+									}
+									Ch[c].In.clear();
+									Ch[c].InSize = 0;
+									set_int(c);
+								}
+								break;
+
 							/** Disc Status **/
 							case 0xB0:
 								MiniCDI::Log("[IKAT] report disc status (0x%02X)", value);
@@ -248,15 +266,8 @@ public:
 								set_int(c);
 								break;
 
-							/** Start CDDA playback **/
-							case 0xE0:
-								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-									Ch[c].InSize = 4;
-								}
-								break;
-
-							/** Start CDDA sector read **/
-							case 0xE1:
+							case 0xE0: /** Start CDDA playback **/
+							case 0xE1: /** Start CDDA sector read **/
 								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
 									Ch[c].InSize = 4;
 								}

@@ -75,7 +75,10 @@ if (NINTENDO_3DS)
 	target_link_libraries(${PROJECT_NAME} -lcitro2d -lcitro3d)
 	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
-	target_sources(${PROJECT_NAME} PRIVATE src/platforms/3ds/main.cpp)
+	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/3ds)
+	target_sources(${PROJECT_NAME} PRIVATE
+		src/platforms/3ds/main.cpp
+	)
 
 	ctr_generate_smdh(${PROJECT_NAME}.smdh
 		NAME "${PROJECT_NAME} v${PROJECT_VERSION}"
@@ -88,14 +91,17 @@ if (NINTENDO_3DS)
 		SMDH ${PROJECT_NAME}.smdh
 	)
 endif()
-
+# -------------------------------------------
 if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 	# Libraries
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} -laesnd -lfat)
 
-	target_sources(${PROJECT_NAME} PRIVATE src/platforms/ogc/main.cpp)
+	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/ogc)
+	target_sources(${PROJECT_NAME} PRIVATE
+		src/platforms/ogc/main.cpp
+	)
 
 	ogc_create_dol(${PROJECT_NAME})
 
@@ -104,14 +110,21 @@ if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 		configure_file(res/wii/meta.xml.in res/wii/meta.xml @ONLY)
 	endif()
 endif()
-
+# -------------------------------------------
 if (NINTENDO_WIIU)
 	# Libraries
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
 
-	target_sources(${PROJECT_NAME} PRIVATE src/platforms/wiiu/main.cpp)
+	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/wiiu)
+	target_sources(${PROJECT_NAME} PRIVATE
+		src/platforms/wiiu/main.cpp
+		# src/platforms/wiiu/Gfx.cpp
+		# src/platforms/wiiu/SDL_FontCache.c
+		# src/platforms/wiiu/Screen.cpp
+		# src/platforms/wiiu/screens/MainScreen.cpp
+	)
 
 	wut_create_rpx(${PROJECT_NAME})
 	wut_create_wuhb(${PROJECT_NAME}
@@ -123,9 +136,11 @@ if (NINTENDO_WIIU)
 		DRCSPLASH res/wiiu/bootDrcTex.png
 	)
 endif()
-
+# -------------------------------------------
 # if (NINTENDO_SWITCH)
-	# target_sources(${PROJECT_NAME} PRIVATE src/platforms/nx/main.cpp)
+	# target_sources(${PROJECT_NAME} PRIVATE
+		# src/platforms/nx/main.cpp
+	# )
 
 	# nx_generate_nacp(${PROJECT_NAME}.nacp
 		# NAME "${PROJECT_NAME}"

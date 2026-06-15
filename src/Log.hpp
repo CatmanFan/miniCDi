@@ -4,6 +4,12 @@
 #include <stdarg.h>
 #include "cdi/Musashi/m68k.h"
 
+#ifdef __WIIU__
+#include <whb/log_cafe.h>
+#include <whb/log_udp.h>
+#include <whb/log.h>
+#endif
+
 namespace MiniCDI
 {
 	static void Log(const char* txt, ...)

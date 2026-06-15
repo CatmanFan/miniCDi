@@ -169,7 +169,6 @@ int main(int argc, char* argv[])
 		cdi.pd.set_button(PointingDevice::Up, kHeld & KEY_UP);
 		cdi.pd.set_button(PointingDevice::Button1, kHeld & KEY_A);
 		cdi.pd.set_button(PointingDevice::Button2, kHeld & KEY_B);
-		cdi.pd.send();
 
 		// static FPS fps;
 

@@ -38,7 +38,7 @@ jobs:
         cp ./build/res/wii/meta.xml ./pkg/wii/apps/miniCDi/meta.xml
     
     - name: Upload artifact
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: miniCDi
         path: ./pkg/wii/

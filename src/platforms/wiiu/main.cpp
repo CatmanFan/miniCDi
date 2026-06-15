@@ -96,7 +96,7 @@ static std::string devicePrefix;
 
 static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
-	if (access((devicePrefix + "apps/miniCDi/rom/" + biosName).c_str(), F_OK) != 0) {
+	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str(), F_OK) != 0) {
 		WHBLogPrintf("[miniCDi] error: BIOS not found in required path");
 		PrintToScreen(0,1, "BIOS not found, exiting", true);
 		OSSleepTicks(OSSecondsToTicks(5));
@@ -105,16 +105,17 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	PrintToScreen(0,1, "Loading", true);
 	OSScreenShutdown();
 
+	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::PAL = true;
-	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::ShowLCD = true;
 
 	MonoI cdi;
 	// MonoIII cdi;
 	// MonoIV cdi;
 	// Robocon cdi;
 
-	cdi.init((devicePrefix + "apps/miniCDi/rom/" + biosName).c_str());
-	cdi.disc.open((devicePrefix + "apps/miniCDi/discs/" + discName).c_str());
+	cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str());
+	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
 
 	VPADStatus status;
 	VPADReadError error;
@@ -141,12 +142,12 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		if (vpad_fatal) break;
 
 		VPADRead(VPAD_CHAN_0, &status, 1, &error);
-		cdi.pd.set_button(PointingDevice::Button1, status.trigger & VPAD_BUTTON_A);
-		cdi.pd.set_button(PointingDevice::Button2, status.trigger & VPAD_BUTTON_B);
-		cdi.pd.set_button(PointingDevice::Left, status.trigger & (VPAD_BUTTON_LEFT | VPAD_STICK_L_EMULATION_LEFT | VPAD_STICK_R_EMULATION_LEFT));
-		cdi.pd.set_button(PointingDevice::Right, status.trigger & (VPAD_BUTTON_RIGHT | VPAD_STICK_L_EMULATION_RIGHT | VPAD_STICK_R_EMULATION_RIGHT));
-		cdi.pd.set_button(PointingDevice::Down, status.trigger & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
-		cdi.pd.set_button(PointingDevice::Up, status.trigger & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
+		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
+		cdi.pd.set_button(PointingDevice::Button2, status.hold & VPAD_BUTTON_B);
+		cdi.pd.set_button(PointingDevice::Left, status.hold & (VPAD_BUTTON_LEFT | VPAD_STICK_L_EMULATION_LEFT | VPAD_STICK_R_EMULATION_LEFT));
+		cdi.pd.set_button(PointingDevice::Right, status.hold & (VPAD_BUTTON_RIGHT | VPAD_STICK_L_EMULATION_RIGHT | VPAD_STICK_R_EMULATION_RIGHT));
+		cdi.pd.set_button(PointingDevice::Down, status.hold & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
+		cdi.pd.set_button(PointingDevice::Up, status.hold & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
 
 		// static FPS fps;
 
@@ -159,6 +160,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 			// fps.update();
 		}
 
+		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 	}
 

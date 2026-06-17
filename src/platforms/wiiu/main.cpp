@@ -5,6 +5,10 @@
 
 // Console-specific libraries
 #include <SDL2/SDL.h>
+#include "SDL_FontCache.h"
+#include <map>
+#include <coreinit/memory.h>
+
 #include <whb/log_cafe.h>
 #include <whb/log_udp.h>
 #include <whb/log.h>
@@ -12,79 +16,127 @@
 #include <whb/sdcard.h>
 #include <vpad/input.h>
 
-class SDL
+static SDL_Window* SDL_window = nullptr;
+static SDL_Renderer* SDL_renderer = nullptr;
+
+static void* SDL_fontData = nullptr;
+static uint32_t SDL_fontSize = 0;
+static std::map<int, FC_Font*> SDL_fontMap;
+
+static bool SDL_init()
 {
-	SDL_Window* window = nullptr;
-	SDL_Renderer* renderer = nullptr;
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
+		WHBLogPrintf("[miniCDi] Failed to init SDL, exiting");
+		return false;
+	}
+
+	// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+
+	SDL_window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1920, 1080, 0);
+	if (!SDL_window) {
+		WHBLogPrintf("[miniCDi] Failed to init SDL window, exiting");
+		return false;
+	}
+
+	SDL_renderer = SDL_CreateRenderer(SDL_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	if (!SDL_renderer) {
+		SDL_DestroyWindow(SDL_window);
+		SDL_window = nullptr;
+		WHBLogPrintf("[miniCDi] Failed to init SDL renderer, exiting");
+		return false;
+	}
+
+    if (!OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, &SDL_fontData, &SDL_fontSize)) {
+        WHBLogPrintf("[miniCDi] OSGetSharedData failed\n");
+        return false;
+    }
+
+	SDL_SetRenderDrawBlendMode(SDL_renderer, SDL_BLENDMODE_BLEND);
+	return true;
+}
+
+static FC_Font* GetFontForSize(int size)
+{
+    if (SDL_fontMap.count(size)) {
+        return SDL_fontMap[size];
+    }
+
+    FC_Font* font = FC_CreateFont();
+    if (!font) {
+        return font;
+    }
+
+    if (!FC_LoadFont_RW(font, SDL_renderer, SDL_RWFromMem(SDL_fontData, SDL_fontSize), 1, size, {255,255,255,255}, TTF_STYLE_NORMAL)) {
+        FC_FreeFont(font);
+        return nullptr;
+    }
+
+    SDL_fontMap.insert({size, font});
+    return font;
+}
+
+static void SDL_print(int x, int y, int size, SDL_Color color, std::string text)
+{
+    FC_Font* font = GetFontForSize(size);
+    if (!font) { return; }
+
+    FC_Effect effect;
+    effect.color = color;
+    effect.scale = FC_MakeScale(1,1);
+    effect.alignment = FC_ALIGN_LEFT;
+
+	x -= FC_GetWidth(font, "%s", text.c_str()) / 2;
+	y -= FC_GetHeight(font, "%s", text.c_str()) / 2;
+
+    FC_DrawEffect(font, SDL_renderer, x, y, effect, "%s", text.c_str());
+}
+
+class EmuDisplay
+{
 	SDL_Texture* texture = nullptr;
 	SDL_Texture* lcd = nullptr;
 
 public:
-	bool valid;
-
 	void update(void* display_output, size_t width, void* lcd_output)
 	{
 		if (display_output) {
-			// Clear screen
-			SDL_SetRenderDrawColor(this->renderer, 0, 0, 0, 255);
-			SDL_RenderClear(this->renderer);
-
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
-			SDL_Rect dest = {96, -90, 1728, 1260};
-			SDL_RenderCopy(this->renderer, this->texture, NULL, &dest);
 
 			// Draw LCD if available
 			if (lcd_output)
 			{
 				SDL_UpdateTexture(this->lcd, NULL, lcd_output, (20*7)*sizeof(uint32_t));
-				dest = {1920-(20*7), 0, (20*7), 22};
-				SDL_RenderCopy(this->renderer, this->lcd, NULL, &dest);
 			}
-
-			SDL_RenderPresent(this->renderer);
 		}
 	}
 
-	SDL()
+	void draw()
 	{
-		valid = false;
-		if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-			return;
-		}
+		SDL_Rect dest = {96, -90, 1728, 1260};
+		SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 
-		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-		this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1920, 1080, 0);
-		if (!this->window) {
-			return;
+		if (MiniCDI::Config::ShowLCD)
+		{
+			dest = {1920-(20*7), 0, (20*7), 22};
+			SDL_RenderCopy(SDL_renderer, this->lcd, NULL, &dest);
 		}
-
-		this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-		if (!renderer) {
-			SDL_DestroyWindow(this->window);
-			this->window = nullptr;
-			return;
-		}
-
-		this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 384, 280);
-		this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
-		valid = true;
 	}
 
-	~SDL()
+	EmuDisplay()
+	{
+		this->texture = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 384, 280);
+		this->lcd = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
+	}
+
+	~EmuDisplay()
 	{
 		if (this->texture) SDL_DestroyTexture(this->texture);
 		if (this->lcd) SDL_DestroyTexture(this->lcd);
-		if (this->renderer) SDL_DestroyRenderer(this->renderer);
-		if (this->window) SDL_DestroyWindow(this->window);
-
-		SDL_Quit();
-		valid = false;
 	}
 };
 
 static std::string devicePrefix;
-
 static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
 	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str(), F_OK) != 0) {
@@ -93,9 +145,10 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		return;
 	}
 
-	MiniCDI::Config::FrameSkip = 0;
+	MiniCDI::Config::FrameSkip = 1;
 	MiniCDI::Config::PAL = false;
 	MiniCDI::Config::ShowLCD = true;
+	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
 	// MonoIII cdi;
@@ -105,36 +158,102 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str());
 	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
 
-	SDL screen;
-
-	if (!screen.valid) {
-		WHBLogPrintf("[miniCDi] error: SDL init failed");
-		return;
-	}
+	EmuDisplay screen;
+	bool paused = false;
+	bool touchDown = false;
 
 	while (WHBProcIsRunning()) {
 		VPADStatus status{};
 		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
-		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
-		cdi.pd.set_button(PointingDevice::Button2, status.hold & VPAD_BUTTON_B);
-		cdi.pd.set_button(PointingDevice::Left, status.hold & (VPAD_BUTTON_LEFT | VPAD_STICK_L_EMULATION_LEFT | VPAD_STICK_R_EMULATION_LEFT));
-		cdi.pd.set_button(PointingDevice::Right, status.hold & (VPAD_BUTTON_RIGHT | VPAD_STICK_L_EMULATION_RIGHT | VPAD_STICK_R_EMULATION_RIGHT));
-		cdi.pd.set_button(PointingDevice::Down, status.hold & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
-		cdi.pd.set_button(PointingDevice::Up, status.hold & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
 
-		// static FPS fps;
+		if (!paused) {
+			cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
+			cdi.pd.set_button(PointingDevice::Button2, status.hold & VPAD_BUTTON_B);
+			cdi.pd.set_button(PointingDevice::Left, status.hold & (VPAD_BUTTON_LEFT | VPAD_STICK_L_EMULATION_LEFT | VPAD_STICK_R_EMULATION_LEFT));
+			cdi.pd.set_button(PointingDevice::Right, status.hold & (VPAD_BUTTON_RIGHT | VPAD_STICK_L_EMULATION_RIGHT | VPAD_STICK_R_EMULATION_RIGHT));
+			cdi.pd.set_button(PointingDevice::Down, status.hold & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
+			cdi.pd.set_button(PointingDevice::Up, status.hold & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
 
-		if (MiniCDI::Config::FrameSkip > 0) {
-			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
-			cdi.run();
-			// fps.update(MiniCDI::Config::FrameSkip+1);
-		} else {
-			cdi.run();
-			// fps.update();
+			// static FPS fps;
+
+			if (MiniCDI::Config::FrameSkip > 0) {
+				for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
+				cdi.run();
+				// fps.update(MiniCDI::Config::FrameSkip+1);
+			} else {
+				cdi.run();
+				// fps.update();
+			}
+
+			screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 		}
 
-		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
+		if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
+		if (!status.tpNormal.touched && touchDown) { touchDown = false; }
+
+		// Clear screen
+		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
+		SDL_RenderClear(SDL_renderer);
+		screen.draw();
+		if (paused) {
+			SDL_Rect rect{0, 0, 1920, 1080};
+			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
+			SDL_RenderFillRect(SDL_renderer, &rect);
+			SDL_print(1920/2,1080/2,48,{255,255,255,255},"Paused, touch to resume");
+		}
+		SDL_RenderPresent(SDL_renderer);
 	}
+
+	if (MiniCDI::Config::LogFile)
+		fclose(MiniCDI::Config::LogFile);
+}
+
+#include <filesystem>
+static std::string RUN_MENU()
+{
+	if (!std::filesystem::is_directory(devicePrefix + "wiiu/apps/miniCDi/discs/")) {
+		return "";
+	}
+	// Look for ROMs in directory
+	std::vector<std::string> discs;
+    for (const auto & disc : std::filesystem::directory_iterator(devicePrefix + "wiiu/apps/miniCDi/discs/")) {
+        if (!disc.path().extension().compare(".bin") || !disc.path().extension().compare(".BIN"))
+			discs.push_back(disc.path().filename());
+	}
+	if (discs.size() == 0) {
+		return "";
+	}
+
+	size_t selected = 0;
+
+	while (WHBProcIsRunning()) {
+		VPADStatus status{};
+		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
+
+		if (status.trigger & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN)) {
+			selected = (selected + 1) % discs.size();
+		}
+		if (status.trigger & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP)) {
+			if (selected == 0) { selected = discs.size() - 1; }
+			else selected--;
+		}
+		if (status.trigger & VPAD_BUTTON_A) {
+			return discs[selected];
+		}
+		if (status.trigger & VPAD_BUTTON_B) {
+			break;
+		}
+
+		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
+		SDL_RenderClear(SDL_renderer);
+		SDL_print(1920/2,180,36,{255,255,255,255},"Select a disc");
+		for (size_t i = 0; i < discs.size(); i++) {
+			SDL_print(1920/2,240+(i*50),24,{255,255,i == selected ? 0 : 255,255},discs[i]);
+		}
+		SDL_RenderPresent(SDL_renderer);
+	}
+
+	return "";
 }
 
 int main(int argc, char **argv) {
@@ -144,19 +263,22 @@ int main(int argc, char **argv) {
 	WHBLogUdpInit();
 	WHBLogPrintf("[miniCDi] logging initialized");
 
-    // call AXInit to stop already playing sounds
-    // AXInit();
-
     VPADInit();
-
 	bool mounted = WHBMountSdCard();
 	if (mounted) { WHBLogPrintf("[miniCDi] mounted SD card"); }
 	devicePrefix = mounted ? "fs:/vol/external01/" : "/vol/external01/";
-	RUN_CDI("cdi220b.rom", "FROG.BIN");
+
+	if (!SDL_init()) goto exit;
+
+	RUN_CDI("cdi220b.rom", RUN_MENU());
+
+	// Deinit SDL
+	if (SDL_renderer) SDL_DestroyRenderer(SDL_renderer);
+	if (SDL_window) SDL_DestroyWindow(SDL_window);
+	SDL_Quit();
+
+	exit:
 	if (mounted) { WHBUnmountSdCard(); }
-
-    // AXQuit();
-
 	WHBProcShutdown();
 	WHBLogPrintf("[miniCDi] The End");
 	WHBLogCafeDeinit();

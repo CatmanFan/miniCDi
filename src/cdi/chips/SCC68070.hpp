@@ -127,7 +127,7 @@ public:
 	{
 	}
 
-	void load_rom(std::vector<char> &rom, size_t romAddr)
+	void load_rom(std::vector<char> &rom)
 	{
 		if (rom[4] != 0x00) { // byteswap
 			for (size_t i = 0; i < rom.size(); i+=2) {
@@ -136,14 +136,17 @@ public:
 		}
 
 		// memcpy(&memory[0], &rom[0], 0x8); // contains initial SSP and PC
-		memcpy(&memory[romAddr], &rom[0], 512*1024*sizeof(char));
+		memcpy(&memory[0x400000], &rom[0], 512*1024*sizeof(char));
 	}
 
 	void reset_internal()
 	{
 		fc = 0;
 
-		// Reset UART
+		// LIR
+		LIR = 0;
+
+		// UART
 		UMR = 0x20; // unused bit
 		USR = 0x06; // TX ready and unused bit
 		UCS = 0x08; // unused bit
@@ -152,17 +155,17 @@ public:
 
 		PICR[0] = PICR[1] = 0;
 
-		// Reset timer
+		// Timer(s)
 		TSR = TCR = RR = T[0] = T[1] = T[2] = 0;
 
-		// Reset DMA
-		// DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
-		// DMA[1].CER = DMA[1].DCR = DMA[1].OCR = DMA[1].SCR = DMA[1].CCR = 0;
-		// DMA[0].CSR = DMA[1].CSR = 0;
-		DMA[0] = {0};
-		DMA[1] = {0};
+		// DMA
+		DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
+		DMA[1].CER = DMA[1].DCR = DMA[1].OCR = DMA[1].SCR = DMA[1].CCR = 0;
+		DMA[0].CSR = DMA[1].CSR = 0;
+		// DMA[0] = {0};
+		// DMA[1] = {0};
 
-		// Reset I²C
+		// I²C
 		IDR = IAR = ISR = ICR = ICCR = 0;
 	}
 
@@ -171,13 +174,14 @@ public:
 		reset_internal();
 
 		// Clear DRAM banks
-		// for (int i = 0x000000; i < 0x07ffff; i++) { memory[i] = 0; }
-		// for (int i = 0x240000; i < 0x27ffff; i++) { memory[i] = 0; }
-		memcpy(&memory[0], &memory[0x400000], 0x8); // contains initial SSP and PC
+		memset(&memory[0x000000], 0, 0x080000 * sizeof(char));
+		memset(&memory[0x240000], 0, 0x080000 * sizeof(char));
 
 		// Reset Musashi processor
 		m68k_pulse_reset();
 		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
+		m68k_set_reg(M68K_REG_A7, (memory[0x400000] << 24) | (memory[0x400001] << 16) | (memory[0x400002] << 8) | memory[0x400003]);
+		m68k_set_reg(M68K_REG_PC, (memory[0x400004] << 24) | (memory[0x400005] << 16) | (memory[0x400006] << 8) | memory[0x400007]);
 	}
 
 	void interrupt(size_t ch)

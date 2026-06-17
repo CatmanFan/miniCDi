@@ -76,80 +76,229 @@ namespace MiniCDI
 
 		void log(uint8_t* memory)
 		{
-			if (memory) {
-				const uint32_t addr = m68k_get_reg(NULL, M68K_REG_PC) + 1;
-				switch (memory[addr]) {
-					// Should return INPUT values
+			if (!memory) return;
 
-					default:
-						return;
-
-					// case 0x00:
-						// MiniCDI::Log("[OS9] F$Link    d0.w=%X", m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF);
-						// break;
-
-					case 0x06:
-						MiniCDI::Log("[OS9] F$Exit    d1.w=%X", m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF);
-						break;
-
-					case 0x08:
-						MiniCDI::Log("[OS9] F$Send    d0.w=%d d1.w=%d <%s>",
-											m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
-											m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF,
-											get_signal_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF));
-						break;
-
-					// case 0x0A:
-						// MiniCDI::Log("[OS9] F$Sleep   d0.l=%d", m68k_get_reg(NULL, M68K_REG_D0));
-						// break;
-
-					// case 0x1D:
-						// MiniCDI::Log("[OS9] F$UnLoad  a2.l=%X", m68k_get_reg(NULL, M68K_REG_A2));
-						// break;
-
-					case 0x1E:
-						MiniCDI::Log("[OS9] F$RTE");
-						break;
-
-					// case 0x28:
-						// MiniCDI::Log("[OS9] F$SRqMem  d0.l=%X", m68k_get_reg(NULL, M68K_REG_D0));
-						// break;
-
-					// case 0x33:
-						// MiniCDI::Log("[OS9] F$IODel   a0.l=%X", m68k_get_reg(NULL, M68K_REG_A0));
-						// break;
-
-					// case 0x52:
-						// MiniCDI::Log("[OS9] F$SysDbg  d1.w=%X", m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF);
-						// break;
-
-					case 0x53:
-						MiniCDI::Log("[OS9] F$Event   d0.l=$%X d1.w=%s d2.l=%X d3.l=%X",
-											m68k_get_reg(NULL, M68K_REG_D1),
-											get_event_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF),
-											m68k_get_reg(NULL, M68K_REG_D2),
-											m68k_get_reg(NULL, M68K_REG_D3));
-						break;
-
-					case 0x84:
-						MiniCDI::Log("[OS9] I$Open    d0.w=%d a0=$%X",
-											m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
-											m68k_get_reg(NULL, M68K_REG_A0));
-						break;
-
-					case 0x89:
-						MiniCDI::Log("[OS9] I$Read    d0.w=%d d1.l=$%X a0=$%X",
-											m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
-											m68k_get_reg(NULL, M68K_REG_D1),
-											m68k_get_reg(NULL, M68K_REG_A0));
-						break;
-
-					case 0x8E:
-						MiniCDI::Log("[OS9] I$SetStt  d0.w=%d d1.w=%s",
-											m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
-											get_function_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF));
-						break;
+			// ************************************
+			// Should return INPUT values
+			// ************************************
+			switch (memory[m68k_get_reg(NULL, M68K_REG_PC) + 1])
+			{
+				case 0x00: {
+					std::string name;
+					for (uint32_t i = m68k_get_reg(NULL, M68K_REG_A0); i < m68k_get_reg(NULL, M68K_REG_A0)+40; i++) {
+						char c = memory[i];
+						if (c == 0)
+							break;
+						name += c;
+					}
+					MiniCDI::Log("[OS9] F$Link    d0.w=%X (a0)=$%X(%s)",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_A0),
+										name.c_str());
+					break;
 				}
+
+				case 0x01: {
+					std::string name;
+					for (uint32_t i = m68k_get_reg(NULL, M68K_REG_A0); i < m68k_get_reg(NULL, M68K_REG_A0)+40; i++) {
+						char c = memory[i];
+						if (c == 0)
+							break;
+						name += c;
+					}
+					MiniCDI::Log("[OS9] F$Load    d0.b=%X d1.l=%X (a0)=$%X(%s)",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFF,
+										m68k_get_reg(NULL, M68K_REG_D1),
+										m68k_get_reg(NULL, M68K_REG_A0),
+										name.c_str());
+					break;
+				}
+
+				case 0x02:
+					MiniCDI::Log("[OS9] F$UnLink  (a2)=$%X",
+										m68k_get_reg(NULL, M68K_REG_A2));
+					break;
+
+				case 0x03: {
+					std::string name;
+					for (uint32_t i = m68k_get_reg(NULL, M68K_REG_A0); i < m68k_get_reg(NULL, M68K_REG_A0)+40; i++) {
+						char c = memory[i];
+						if (c == 0)
+							break;
+						name += c;
+					}
+					MiniCDI::Log("[OS9] F$Load    d0.w=%X d1.l=%X d2.l=%X d3.w=%X d4.w=%X (a0)=$%X(%s) (a1)=$%X",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D1),
+										m68k_get_reg(NULL, M68K_REG_D2),
+										m68k_get_reg(NULL, M68K_REG_D3) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D4) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_A0),
+										name.c_str(),
+										m68k_get_reg(NULL, M68K_REG_A1));
+					break;
+				}
+
+				case 0x04:
+					MiniCDI::Log("[OS9] F$Wait");
+					break;
+
+				case 0x06:
+					MiniCDI::Log("[OS9] F$Exit    d1.w=%X",
+										m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF);
+					break;
+
+				case 0x08:
+					MiniCDI::Log("[OS9] F$Send    d0.w=%d d1.w=%d <%s>",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF,
+										get_signal_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF));
+					break;
+
+				case 0x0A:
+					MiniCDI::Log("[OS9] F$Sleep   d0.l=%d",
+										m68k_get_reg(NULL, M68K_REG_D0));
+					break;
+
+				case 0x1D: {
+					std::string name;
+					for (uint32_t i = m68k_get_reg(NULL, M68K_REG_A0); i < m68k_get_reg(NULL, M68K_REG_A0)+40; i++) {
+						char c = memory[i];
+						if (c == 0)
+							break;
+						name += c;
+					}
+					MiniCDI::Log("[OS9] F$UnLoad  d0.w=%d (a0)=$%X(%s)",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_A0),
+										name.c_str());
+					break;
+				}
+
+				case 0x1E:
+					MiniCDI::Log("[OS9] F$RTE");
+					break;
+
+				case 0x28:
+					MiniCDI::Log("[OS9] F$SRqMem  d0.l=%X",
+										m68k_get_reg(NULL, M68K_REG_D0));
+					break;
+
+				case 0x29:
+					MiniCDI::Log("[OS9] F$SRtMem  d0.l=%X (a2)=$%X",
+										m68k_get_reg(NULL, M68K_REG_D0),
+										m68k_get_reg(NULL, M68K_REG_A2));
+					break;
+
+				case 0x2A:
+					MiniCDI::Log("[OS9] F$IRQ     d0.b=%X d1.b=%X (a0)=$%X (a2)=$%X (a3)=$%X",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFF,
+										m68k_get_reg(NULL, M68K_REG_D1) & 0xFF,
+										m68k_get_reg(NULL, M68K_REG_A0),
+										m68k_get_reg(NULL, M68K_REG_A2),
+										m68k_get_reg(NULL, M68K_REG_A3));
+					break;
+
+				case 0x33:
+					MiniCDI::Log("[OS9] F$IODel   a0.l=%X",
+										m68k_get_reg(NULL, M68K_REG_A0));
+					break;
+
+				case 0x52:
+					MiniCDI::Log("[OS9] F$SysDbg  d1.w=%X",
+										m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF);
+					break;
+
+				case 0x53:
+					MiniCDI::Log("[OS9] F$Event   d0.l=$%X d1.w=%s d2.l=%X d3.l=%X",
+										m68k_get_reg(NULL, M68K_REG_D0),
+										get_event_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF),
+										m68k_get_reg(NULL, M68K_REG_D2),
+										m68k_get_reg(NULL, M68K_REG_D3));
+					break;
+
+				case 0x54:
+					MiniCDI::Log("[OS9] F$Gregor  d0.l=%X d1.l=%X",
+										m68k_get_reg(NULL, M68K_REG_D0),
+										m68k_get_reg(NULL, M68K_REG_D1));
+					break;
+
+				case 0x56:
+					MiniCDI::Log("[OS9] F$Alarm   d0.l=%X d1.w=%X d2.l=%X d3.l=%X d4.l=%X",
+										m68k_get_reg(NULL, M68K_REG_D0),
+										m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D2),
+										m68k_get_reg(NULL, M68K_REG_D3),
+										m68k_get_reg(NULL, M68K_REG_D4));
+					break;
+
+				case 0x81:
+					MiniCDI::Log("[OS9] I$Detach  (a2)=$%X",
+										m68k_get_reg(NULL, M68K_REG_A2));
+					break;
+
+				case 0x83: {
+					std::string name;
+					for (uint32_t i = m68k_get_reg(NULL, M68K_REG_A0); i < m68k_get_reg(NULL, M68K_REG_A0)+40; i++) {
+						char c = memory[i];
+						if (c == 0)
+							break;
+						name += c;
+					}
+					MiniCDI::Log("[OS9] I$Create  d0.b=%d d1.w=%x d2.l=%x (a0)=$%X(%s)",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFF,
+										m68k_get_reg(NULL, M68K_REG_D1) & 0xFF,
+										m68k_get_reg(NULL, M68K_REG_D2),
+										m68k_get_reg(NULL, M68K_REG_A0),
+										name.c_str());
+					break;
+				}
+
+				case 0x84: {
+					std::string name;
+					for (uint32_t i = m68k_get_reg(NULL, M68K_REG_A0); i < m68k_get_reg(NULL, M68K_REG_A0)+40; i++) {
+						char c = memory[i];
+						if (c == 0)
+							break;
+						name += c;
+					}
+					MiniCDI::Log("[OS9] I$Open    d0.w=%d (a0)=$%X(%s)",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_A0),
+										name.c_str());
+					break;
+				}
+
+				case 0x88:
+					MiniCDI::Log("[OS9] I$Seek    d0.w=%d d1.l=%X",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D1));
+					break;
+
+				case 0x89:
+					MiniCDI::Log("[OS9] I$Read    d0.w=%d d1.l=$%X (a0)=$%X",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D1),
+										m68k_get_reg(NULL, M68K_REG_A0));
+					break;
+
+				case 0x8A:
+					MiniCDI::Log("[OS9] I$Write   d0.w=%d d1.l=%X (a0)=$%X",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D1),
+										m68k_get_reg(NULL, M68K_REG_A0));
+					break;
+
+				case 0x8E:
+					MiniCDI::Log("[OS9] I$SetStt  d0.w=%d d1.w=%s",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										get_function_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF));
+					break;
+
+				case 0x8F:
+					MiniCDI::Log("[OS9] I$Close   d0.w=%d",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF);
+					break;
 			}
 		}
 	};

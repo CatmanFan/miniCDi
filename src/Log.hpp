@@ -29,9 +29,9 @@ namespace MiniCDI
 
 		#ifdef __WIIU__
 		if (module)
-			WHBLogPrintf("@%08X(%s) %s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+			WHBLogPrintf("@%08X(%s) %s", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
 		else
-			WHBLogPrintf("@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+			WHBLogPrintf("@%08X %s", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
 		#else
 			#if defined(MINICDI_DEBUG) || defined(__3DS__)
 			// printf("%s\n", szBuff);

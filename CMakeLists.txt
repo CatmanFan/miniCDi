@@ -10,7 +10,7 @@ dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
 # Debug options
-option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			ON)
+option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)."	OFF)
 option(MINICDI_ENABLE_VERBOSE_OS9 "Print verbose OS-9 syscall information."						OFF)
 option(MINICDI_ENABLE_VERBOSE_LOGFILE "Print debug information to a text file if it exists."	OFF)

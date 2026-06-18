@@ -7,7 +7,8 @@ class SCC68070
 
 	// Interrupt data model
 	uint8_t IPL;
-	uint8_t IPL_assert[7];
+	bool IRQ_assert[8];
+	int IRQ_vector;
 
 	// On-chip peripherals
 	uint8_t LIR;
@@ -110,7 +111,7 @@ class SCC68070
 
 			DMA[index].CSR |= 0b10000000; // COC set
 			DMA[index].CSR &= 0b11110111; // Channel Active unset
-			generate_onchip_irq(0);
+			check_irq(0);
 		}
 	}
 
@@ -143,17 +144,23 @@ public:
 		memcpy(&memory[0x400000], &rom[0], 512*1024*sizeof(char));
 	}
 
+	uint8_t get_irq_vector()
+	{
+		return IRQ_vector;
+	}
+
 	void reset_internal()
 	{
 		fc = 0;
 		IPL = 0;
-		IPL_assert[0] = 0;
-		IPL_assert[1] = 0;
-		IPL_assert[2] = 0;
-		IPL_assert[3] = 0;
-		IPL_assert[4] = 0;
-		IPL_assert[5] = 0;
-		IPL_assert[6] = 0;
+		IRQ_assert[0] = 0;
+		IRQ_assert[1] = 0;
+		IRQ_assert[2] = 0;
+		IRQ_assert[3] = 0;
+		IRQ_assert[4] = 0;
+		IRQ_assert[5] = 0;
+		IRQ_assert[6] = 0;
+		IRQ_vector = 0;
 
 		// LIR
 		LIR = 0;
@@ -196,55 +203,69 @@ public:
 		m68k_set_reg(M68K_REG_PC, (memory[0x400004] << 24) | (memory[0x400005] << 16) | (memory[0x400006] << 8) | memory[0x400007]);
 	}
 
-	void generate_irq(size_t lvl, bool assert = true)
+	void assert_irq(size_t lvl, bool value)
 	{
 		if (lvl == 0) return;
-		IPL_assert[lvl-1] = assert ? lvl : 0;
-
-		int new_IPL = std::max({
-			IPL_assert[6],
-			IPL_assert[5],
-			IPL_assert[4],
-			IPL_assert[3],
-			IPL_assert[2],
-			IPL_assert[1],
-			IPL_assert[0]
-		});
-
-		MiniCDI::Log("[SCC68070] IRQ lvl=%d, max=%d, curr=%d", lvl, new_IPL, IPL);
-
-		if (IPL != new_IPL)
-		{
-			if (IPL == 0) m68k_set_irq(new_IPL);
-			if (new_IPL == 0) m68k_set_irq(0);
-			IPL = new_IPL;
-		}
+		IRQ_assert[lvl] = value;
+		check_irq();
 	}
 
-	void generate_onchip_irq(size_t ch)
+	void check_irq(size_t ch = 2)
 	{
-		uint8_t level_lir = (ch == 1 ? LIR : (LIR >> 4)) & 0x07;
-		uint8_t level_timer = PICR[0] & 0x07;
-		uint8_t level_uart_rx = PICR[1] >> 4 & 0x70;
-		uint8_t level_uart_tx = PICR[1] & 0x07;
+		uint8_t level_extern = IRQ_assert[1] ? 1
+							 : IRQ_assert[2] ? 2
+							 : IRQ_assert[3] ? 3
+							 : IRQ_assert[4] ? 4
+							 : IRQ_assert[5] ? 5
+							 : IRQ_assert[6] ? 6
+							 : IRQ_assert[7] ? 7
+							 : 0;
+		uint8_t level_lir1 = ch != 1 ? (LIR >> 4) & 0x07 : 0;
+		uint8_t level_lir2 = ch != 0 ? LIR & 0x07 : 0;
 		uint8_t level_i2c = PICR[0] >> 4 & 0x07;
+		uint8_t level_timer = PICR[0] & 0x07;
+		uint8_t level_uart_rx = PICR[1] >> 4 & 0x07;
+		uint8_t level_uart_tx = PICR[1] & 0x07;
 		uint8_t level_dma1 = (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0;
 		uint8_t level_dma2 = (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0;
 
-		int level = std::max({
-			level_lir,
-			level_timer,
-			level_uart_rx,
-			level_uart_tx,
-			level_i2c,
-			level_dma1,
-			level_dma2
-		});
+		uint8_t IPL_new = 0;
+		bool IPL_onchip = false;
 
-		if (level)
+		// Per datasheet: external interrupt takes precedence
+		if (level_extern)
 		{
-			MiniCDI::Log("[SCC68070] IRQ (onchip) lvl=%d", level);
-			m68k_set_irq(level+32);
+			IPL_new = level_extern;
+		}
+		else
+		{
+			IPL_new = std::max
+			({
+				level_lir1,
+				level_lir2,
+				level_timer,
+				level_uart_rx,
+				level_uart_tx,
+				level_i2c,
+				level_dma1,
+				level_dma2
+			});
+			IPL_onchip = true;
+		}
+
+		if (IPL != IPL_new)
+		{
+			if (IPL != 0) {
+				MiniCDI::Log("[SCC68070] IRQ reset");
+				IRQ_vector = 0;
+				m68k_set_irq(0);
+			}
+			if (IPL_new != 0) {
+				MiniCDI::Log("[SCC68070] IRQ lvl=%d(%s)", IPL_new, IPL_onchip ? "onchip" : "extern");
+				IRQ_vector = IPL_new == 4 && !IPL_onchip ? 0x80 : 0;
+				m68k_set_irq(IPL_onchip ? IPL_new+32 : IPL_new);
+			}
+			IPL = IPL_new;
 		}
 	}
 
@@ -330,11 +351,9 @@ public:
 		switch (addr)
 		{
 			/** LIR **/
-			case 0x80001001:
-				if ((value & 0x88) && (LIR & 0x88)) LIR &= 0x77;
-				else if ((value & 0x80) && (LIR & 0x80)) LIR &= 0x7F;
-				else if ((value & 0x08) && (LIR & 0x08)) LIR &= 0xF7;
-				LIR = (LIR & 0x88) | (value & 0x77);
+			case 0x80001001: LIR = value;
+				if (LIR & 0x80) LIR &= 0x0F;
+				if (LIR & 0x08) LIR &= 0xF0;
 				break;
 
 			/** I²C **/
@@ -382,12 +401,12 @@ public:
 
 			/** PICR **/
 			case 0x80002045: PICR[0] = value;
-				if (PICR[0] & 0x80) PICR[0] &= 0x7F;
-				if (PICR[0] & 0x08) PICR[0] &= 0xF7;
+				if (PICR[0] & 0x80) PICR[0] &= 0x0F;
+				if (PICR[0] & 0x08) PICR[0] &= 0xF0;
 				break;
 			case 0x80002047: PICR[1] = value;
-				if (PICR[1] & 0x80) PICR[1] &= 0x7F;
-				if (PICR[1] & 0x08) PICR[1] &= 0xF7;
+				if (PICR[1] & 0x80) PICR[1] &= 0x0F;
+				if (PICR[1] & 0x08) PICR[1] &= 0xF0;
 				break;
 
 			/** DMA (ch1) **/
@@ -433,7 +452,7 @@ public:
 			//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
 			TSR |= 0x80; // OV in T0
 			T[0] = RR;
-			generate_onchip_irq(0);
+			check_irq(0);
 		}
 		T[0]++;
 	}

@@ -27,7 +27,7 @@ class SLAVE
 
 	uint8_t LCD[16];
 
-	void assert_irq() { _68070->generate_irq(2); }
+	void assert_irq() { _68070->assert_irq(2, true); }
 
 public:
 	friend class PlayerLCD;
@@ -57,12 +57,12 @@ public:
 		{
 			size_t c = (addr - DR[0]) / 2;
 
+			// deassert IRQ
+			_68070->assert_irq(2, false);
+
 			if (Ch[c].Out.size() > 0)
 			{
 				//MiniCDI::Log("[SLAVE] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].Out[0]);
-
-				// deassert IRQ
-				if (Ch[c].ReadSize == 0) _68070->generate_irq(2, false);
 
 				memory[DR[c]] = Ch[c].Out[0];
 				Ch[c].Out.pop_front();

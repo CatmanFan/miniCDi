@@ -78,7 +78,7 @@ public:
 				// REMTY OFF + INT
 				IO.ikat->Ch[1].SR &= ~(0x10);
 				IO.ikat->ISR |= 0x08;
-				if (IO.ikat->IMR & 0x08) m68k_set_irq(2);
+				if (IO.ikat->IMR & 0x08) m68k_set_irq(2); // CONVERT TO SCC68070 CLASS
 			}
 		}
 	}

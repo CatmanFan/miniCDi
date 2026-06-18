@@ -136,7 +136,7 @@ class CDIC
 
 				XBUF |= 0x8000; // sector filled for processing
 				DBUF |= 0x4000; // send DATA to CPU
-				_68070->generate_irq(4, true);
+				_68070->assert_irq(4, true);
 			}
 
 			// Continue to next sector
@@ -183,7 +183,7 @@ public:
 				uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
-					if (AUDCTL & 0x2000) _68070->generate_irq(4, true);
+					if (AUDCTL & 0x2000) _68070->assert_irq(4, true);
 				}
 				MiniCDI::Log("[CDIC] ABUF => %04X", value);
 				return value;
@@ -194,7 +194,7 @@ public:
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
-					if (DBUF & 0x4000) _68070->generate_irq(4, true);
+					if (DBUF & 0x4000) _68070->assert_irq(4, true);
 				}
 				MiniCDI::Log("[CDIC] XBUF => %04X", value);
 				return value;

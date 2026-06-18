@@ -65,7 +65,7 @@ public:
 
 		if (IMR & INT) {
 			MiniCDI::Log("[IKAT] INT %d", c);
-			m68k_set_irq(2);
+			m68k_set_irq(2); // CONVERT TO SCC68070 CLASS
 		}
 	}
 

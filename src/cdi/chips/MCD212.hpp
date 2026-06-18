@@ -829,7 +829,7 @@ class MCD212
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
 					IT[Path] = 1;
-					if (!DI[Path]) { cpu->generate_onchip_irq(Path); }
+					if (!DI[Path]) { cpu->check_irq(Path); }
 					break;
 
 				case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
@@ -892,7 +892,7 @@ class MCD212
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
 					IT[Path] = 1;
-					if (!DI[Path]) { cpu->generate_onchip_irq(Path); }
+					if (!DI[Path]) { cpu->check_irq(Path); }
 					break;
 
 				default:

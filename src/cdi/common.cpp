@@ -52,13 +52,13 @@ void MiniCDI_set_fc(unsigned int new_fc)
 
 int  MiniCDI_int_ack_handler(int int_level)
 {
-	int vector = MiniCDI::Player.cdic && int_level == 4 ? 0x80
-			   : M68K_INT_ACK_AUTOVECTOR;
+	m68k_set_irq(0);
+	if (MiniCDI::Player.scc68070) {
+		int vector = MiniCDI::Player.scc68070->get_irq_vector();
+		return vector > 0 ? vector : M68K_INT_ACK_AUTOVECTOR;
+	}
 
-	if (int_level == 0 || int_level == 32)
-		m68k_set_irq(0); // resets IRQ
-
-	return vector;
+	return M68K_INT_ACK_AUTOVECTOR;
 }
 
 unsigned int  m68k_read_memory_8(unsigned int address)

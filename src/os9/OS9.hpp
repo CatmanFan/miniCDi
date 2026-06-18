@@ -32,6 +32,43 @@ namespace MiniCDI
 		static inline std::vector<Module> modules; // "module directory"
 		// std::vector<Process> processes;
 
+		static inline const char* get_SSDC_sub_name(uint32_t code) {
+			switch (code & 0x000F) {
+				default: return "undefined";
+
+				case 0x0000: return "DC_CrFCT";
+				case 0x0001: return "DC_RdFCT";
+				case 0x0002: return "DC_WrFCT";
+				case 0x0003: return "DC_RdFI";
+				case 0x0004: return "DC_WrFI";
+				case 0x0005: return "DC_DlFCT";
+				case 0x0006: return "DC_CrLCT";
+				case 0x0007: return "DC_RdLCT";
+				case 0x0008: return "DC_WrLCT";
+				case 0x0009: return "DC_RdLI";
+				case 0x000A: return "DC_WrLI";
+				case 0x000B: return "DC_DlLCT";
+				case 0x000C: return "DC_FLnk";
+				case 0x000D: return "DC_LLnk";
+				case 0x000E: return "DC_Exec";
+				case 0x000F: return "DC_Intl";
+				case 0x0010: return "DC_NOP";
+				case 0x0011: return "DC_SSig";
+				case 0x0012: return "DC_Relea";
+				case 0x0013: return "DC_SetCmp";
+				case 0x0014: return "DC_DsplSiz";
+				case 0x0015: return "DC_GetClut";
+				case 0x0016: return "DC_GetCluts";
+				case 0x0017: return "DC_SetClut";
+				case 0x0018: return "DC_SetCluts";
+				case 0x0019: return "DC_MapDM";
+				case 0x001A: return "DC_Off";
+				case 0x001B: return "DC_PRdLCT";
+				case 0x001C: return "DC_PWrLCT";
+				case 0x0020: return "DC_SetAR";
+			}
+		}
+
 		static inline const char* get_signal_name(uint32_t code) {
 			switch (code & 0x000F) {
 				default: return "undefined";

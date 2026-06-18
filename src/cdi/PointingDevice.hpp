@@ -43,7 +43,7 @@ public:
 				{
 					IO.slave->Ch[0].Out = {'M'};
 					IO.slave->pointer = true;
-					m68k_set_irq(2);
+					IO.slave->assert_irq();
 				}
 
 				else if (changed_Face || changed_DPad)
@@ -58,7 +58,7 @@ public:
 						(uint8_t)(y >> 7 & 0x07),
 						(uint8_t)(y & 0x7f)
 					};
-					m68k_set_irq(2);
+					IO.slave->assert_irq();
 				}
 			}
 		}

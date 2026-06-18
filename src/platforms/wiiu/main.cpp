@@ -113,7 +113,8 @@ public:
 
 	void draw()
 	{
-		SDL_Rect dest = {96, -90, 1728, 1260};
+		SDL_Rect dest = {219, 0, 1481, 1080};
+		// SDL_Rect dest = {96, -90, 1728, 1260};
 		SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 
 		if (MiniCDI::Config::ShowLCD)
@@ -146,7 +147,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::FrameSkip = 1;
-	MiniCDI::Config::PAL = false;
+	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = true;
 	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
@@ -246,9 +247,20 @@ static std::string RUN_MENU()
 
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
-		SDL_print(1920/2,180,36,{255,255,255,255},"Select a disc");
+
+		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
+
+		// SDL_print(1920/2,150,37,{255,255,255,255},"Select a disc or press \ue001 to boot without disc"); // en
+		// SDL_print(1920/2,150,34,{255,255,255,255},"ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。"); // ja
+		SDL_print(1920/2,150,34,{255,255,255,255},"Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001."); // fr
+		// SDL_print(1920/2,150,37,{255,255,255,255},"Elige una imagen de disco u oprime \ue001 para comenzar sin disco"); // es
+		// SDL_print(1920/2,150,37,{255,255,255,255},"Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001"); // pt-PT
+		// SDL_print(1920/2,150,37,{255,255,255,255},"Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren."); // de
+		// SDL_print(1920/2,150,37,{255,255,255,255},"Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın"); // tr
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001"); // ca
+
 		for (size_t i = 0; i < discs.size(); i++) {
-			SDL_print(1920/2,240+(i*50),24,{255,255,i == selected ? 0 : 255,255},discs[i]);
+			SDL_print(1920/2,250+(i*40),24,{255,255,i == selected ? 0 : 255,255},discs[i]);
 		}
 		SDL_RenderPresent(SDL_renderer);
 	}
@@ -269,17 +281,18 @@ int main(int argc, char **argv) {
 	devicePrefix = mounted ? "fs:/vol/external01/" : "/vol/external01/";
 
 	if (!SDL_init()) goto exit;
+	atexit(SDL_Quit);
 
 	RUN_CDI("cdi220b.rom", RUN_MENU());
 
 	// Deinit SDL
 	if (SDL_renderer) SDL_DestroyRenderer(SDL_renderer);
 	if (SDL_window) SDL_DestroyWindow(SDL_window);
-	SDL_Quit();
 
 	exit:
 	if (mounted) { WHBUnmountSdCard(); }
-	WHBProcShutdown();
+	SDL_Quit();
+	// WHBProcShutdown();
 	WHBLogPrintf("[miniCDi] The End");
 	WHBLogCafeDeinit();
 	WHBLogUdpDeinit();

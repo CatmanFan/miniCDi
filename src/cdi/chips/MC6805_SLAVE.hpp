@@ -6,6 +6,7 @@
 /// HLE implementation of SLAVE as found in MiniMMC & Mono-I.
 class SLAVE
 {
+	SCC68070* _68070;
 	uint8_t* memory;
 
 	struct
@@ -13,6 +14,7 @@ class SLAVE
 		std::deque<uint8_t> In;
 		std::deque<uint8_t> Out;
 		size_t InSize;
+		size_t ReadSize;
 	} Ch[4];
 
 	bool pointer_used;
@@ -25,11 +27,13 @@ class SLAVE
 
 	uint8_t LCD[16];
 
+	void assert_irq() { _68070->generate_irq(2); }
+
 public:
 	friend class PlayerLCD;
 	friend class PointingDevice;
 
-	SLAVE(uint8_t* memory, uint32_t start) : memory(memory), pointer_used(false), polling(false), pointer(false)
+	SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start) : _68070(_68070), memory(memory), pointer_used(false), polling(false), pointer(false)
 	{
 		DR[0] = start + 0x01; // ADR
 		DR[1] = start + 0x03; // BDR
@@ -56,8 +60,13 @@ public:
 			if (Ch[c].Out.size() > 0)
 			{
 				//MiniCDI::Log("[SLAVE] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].Out[0]);
+
+				// deassert IRQ
+				if (Ch[c].ReadSize == 0) _68070->generate_irq(2, false);
+
 				memory[DR[c]] = Ch[c].Out[0];
 				Ch[c].Out.pop_front();
+				Ch[c].ReadSize++;
 			}
 			else
 				memory[DR[c]] = 0xFF;
@@ -89,6 +98,7 @@ public:
 								//MiniCDI::Log("[SLAVE] pointer x=%d,y=%d", pointer_x, pointer_y);
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
+								Ch[c].ReadSize = 0;
 							} else {
 								/** Set Pointer Pos **/
 								if (pointer_used && value >= 0xC0 && value <= 0xFF
@@ -124,6 +134,7 @@ public:
 									if (Ch[c].In.size() >= Ch[c].InSize) {
 										Ch[c].In.clear();
 										Ch[c].InSize = 0;
+										Ch[c].ReadSize = 0;
 									}
 									break;
 							}
@@ -162,16 +173,17 @@ public:
 										MiniCDI::Log("[SLAVE] get disc status (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
 										if (MiniCDI::Config::HasDisc) Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
 										else Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
-										m68k_set_irq(2);
+										assert_irq();
 										break;
 									case 0xB1:
 										MiniCDI::Log("[SLAVE] get disc base (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
 										Ch[c].Out = { 0xB1, 0x00, 0x00, 0x00 }; // use response data from MAME
-										m68k_set_irq(2);
+										assert_irq();
 										break;
 								}
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
+								Ch[c].ReadSize = 0;
 							}
 							break;
 
@@ -193,28 +205,28 @@ public:
 						case 0xF0:
 							MiniCDI::Log("[SLAVE] get SLAVE revision (0x%02X)", value);
 							Ch[2].Out = { 0xF0, 0x32 }; // use response data from MAME
-							m68k_set_irq(2);
+							assert_irq();
 							break;
 
 						/** Pointer Type **/
 						case 0xF3:
 							MiniCDI::Log("[SLAVE] get pointer type (0x%02X)", value);
 							Ch[2].Out = { 0xF3, 0x01 }; /** cdifan: 1 => CL="c"; 2 => CL="d"; 3 => CL="b"; 4 => CL="a"; 5 => CL="c" + /kb1 **/
-							m68k_set_irq(2);
+							assert_irq();
 							break;
 
 						/** Boot Mode **/
 						case 0xF4:
 							MiniCDI::Log("[SLAVE] get test plug status (0x%02X)", value);
 							Ch[2].Out = { 0xF4, (uint8_t)(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
-							m68k_set_irq(2);
+							assert_irq();
 							break;
 
 						/** Video Mode **/
 						case 0xF6:
 							MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
 							Ch[2].Out = { 0xF6, (uint8_t)(MiniCDI::Config::PAL ? 0x02 : 0x01) };
-							m68k_set_irq(2);
+							assert_irq();
 							break;
 
 						/** Enable Polling **/
@@ -232,8 +244,10 @@ public:
 					break;
 			}
 
-			if (Ch[c].InSize == 0)
+			if (Ch[c].InSize == 0) {
 				Ch[c].In.clear();
+				Ch[c].ReadSize = 0;
+			}
 		}
 	}
 };

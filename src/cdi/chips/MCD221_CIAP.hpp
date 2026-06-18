@@ -233,7 +233,7 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint16_t value, SCC68070* cpu)
+	void write16(uint32_t addr, uint16_t value)
 	{
 		switch (addr)
 		{
@@ -326,7 +326,7 @@ public:
 			case 0x3025AA: MiniCDI::Log("[CIAP] ASTAT <= %04X", value); ASTAT = value; break;
 			case 0x3025C0: MiniCDI::Log("[CIAP] ICR <= v=%d,l=%d", value >> 3 & 0xFF, value & 0x07); memory[addr] = ICR = value; break;
 			case 0x3025C2: MiniCDI::Log("[CIAP] DMACTL <= %04X", value); DMACTL = value;
-				if (value & 0x4000) cpu->dma_call(0, 0x300000 + (value & 0x1FFF));
+				// if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF));
 				break;
 			case 0x3025FE: DLOAD = value; break;
 		}

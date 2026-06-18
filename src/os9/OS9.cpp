@@ -18,6 +18,7 @@ namespace MiniCDI
 		/// https://github.com/Slamy/CDi_MiSTer/blob/11ee3eeceeec0f26c50afd392743eb79bc9152db/sim2/sim_top.cpp#L565
 		void scan_modules(uint8_t* memory)
 		{
+			const std::vector<Module> prevModules = modules;
 			modules.clear();
 
 			uint32_t offsets[][2] = 
@@ -64,7 +65,16 @@ namespace MiniCDI
 					}
 
 					modules.push_back(m);
-					//MiniCDI::Log("[OS9] found module \"%s\" (name address: %08X) at address %08X of size %X bytes", m.name.c_str(), name_addr, m.address, m.size);
+
+					bool exists = false;
+					for (size_t j = 0; j < prevModules.size(); j++) {
+						if (prevModules[j].size == m.size && prevModules[j].address == m.address) {
+							exists = true;
+						}
+					}
+
+					if (!exists)
+						MiniCDI::Log("[OS9] found new module \"%s\" (address: $%X, size: $%X)", m.name.c_str(), name_addr, m.address, m.size);
 
 					// Skip module area
 					i += m.size - 2;
@@ -77,6 +87,7 @@ namespace MiniCDI
 		void log(uint8_t* memory)
 		{
 			if (!memory) return;
+			return; ///!\\\
 
 			// ************************************
 			// Should return INPUT values
@@ -149,7 +160,7 @@ namespace MiniCDI
 					break;
 
 				case 0x08:
-					MiniCDI::Log("[OS9] F$Send    d0.w=%d d1.w=%d <%s>",
+					MiniCDI::Log("[OS9] F$Send    d0.w=%d d1.w=$%X <%s>",
 										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
 										m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF,
 										get_signal_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF));
@@ -269,6 +280,21 @@ namespace MiniCDI
 					break;
 				}
 
+				case 0x87: {
+					std::string name;
+					for (uint32_t i = m68k_get_reg(NULL, M68K_REG_A0); i < m68k_get_reg(NULL, M68K_REG_A0)+40; i++) {
+						char c = memory[i];
+						if (c == 0)
+							break;
+						name += c;
+					}
+					MiniCDI::Log("[OS9] I$Delete  d0.b=%d (a0)=$%X(%s)",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFF,
+										m68k_get_reg(NULL, M68K_REG_A0),
+										name.c_str());
+					break;
+				}
+
 				case 0x88:
 					MiniCDI::Log("[OS9] I$Seek    d0.w=%d d1.l=%X",
 										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
@@ -289,10 +315,51 @@ namespace MiniCDI
 										m68k_get_reg(NULL, M68K_REG_A0));
 					break;
 
-				case 0x8E:
-					MiniCDI::Log("[OS9] I$SetStt  d0.w=%d d1.w=%s",
+				case 0x8B:
+					MiniCDI::Log("[OS9] I$ReadLn  d0.w=%d d1.l=$%X (a0)=$%X",
 										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
-										get_function_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF));
+										m68k_get_reg(NULL, M68K_REG_D1),
+										m68k_get_reg(NULL, M68K_REG_A0));
+					break;
+
+				case 0x8C: {
+					std::string name;
+					for (uint32_t i = 0; i < m68k_get_reg(NULL, M68K_REG_D1); i++) {
+						char c = memory[i+m68k_get_reg(NULL, M68K_REG_A0)];
+						name += c;
+					}
+					MiniCDI::Log("[OS9] I$WritLn  d0.w=%d d1.l=$%X (a0)=\"%s\"",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D1),
+										name.c_str());
+					break;
+				}
+
+				case 0x8D:
+					MiniCDI::Log("[OS9] I$GetStt  d0.w=%d d1.l=$%X",
+										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+										m68k_get_reg(NULL, M68K_REG_D1));
+					break;
+
+				case 0x8E:
+					switch (m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF)
+					{
+						default:
+							MiniCDI::Log("[OS9] I$SetStt  d0.w=%d d1.w=%s",
+												m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+												get_function_name(m68k_get_reg(NULL, M68K_REG_D1) & 0xFFFF));
+							break;
+
+						case 0x56:
+							MiniCDI::Log("[OS9] I$SetStt  d0.w=%d d1.w=SS_DC d2.w=%s d3.w=%d d4.w=%d d5.w=$%X d2.l=$%X",
+												m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF,
+												get_SSDC_sub_name(m68k_get_reg(NULL, M68K_REG_D2) & 0xFFFF),
+												m68k_get_reg(NULL, M68K_REG_D3) & 0xFFFF,
+												m68k_get_reg(NULL, M68K_REG_D4) & 0xFFFF,
+												m68k_get_reg(NULL, M68K_REG_D5) & 0xFFFF,
+												m68k_get_reg(NULL, M68K_REG_D6));
+							break;
+					}
 					break;
 
 				case 0x8F:

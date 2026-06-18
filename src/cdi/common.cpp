@@ -52,9 +52,13 @@ void MiniCDI_set_fc(unsigned int new_fc)
 
 int  MiniCDI_int_ack_handler(int int_level)
 {
-	m68k_set_irq(0); // resets IRQ
-	return MiniCDI::Player.ciap && int_level == 4 ? (MiniCDI::Player.memory[0x3025C0] >> 3) & 0xFF
-		 : MiniCDI::Player.cdic && int_level == 4 ? MiniCDI::Player.memory[0x303FFC] : M68K_INT_ACK_AUTOVECTOR;
+	int vector = MiniCDI::Player.cdic && int_level == 4 ? 0x80
+			   : M68K_INT_ACK_AUTOVECTOR;
+
+	if (int_level == 0 || int_level == 32)
+		m68k_set_irq(0); // resets IRQ
+
+	return vector;
 }
 
 unsigned int  m68k_read_memory_8(unsigned int address)
@@ -110,8 +114,8 @@ void m68k_write_memory_16(unsigned int address, unsigned int value)
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
 	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) MiniCDI::Player.mcd212->write16(address, value);
-	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write16(address, value, MiniCDI::Player.scc68070);
-	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.ciap->write16(address, value, MiniCDI::Player.scc68070);
+	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write16(address, value);
+	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.ciap->write16(address, value);
 	else {
 		m68k_write_memory_8(address, (uint8_t)(value >> 8 & 0x00FF));
 		m68k_write_memory_8(address + 1, (uint8_t)(value & 0x00FF));
@@ -123,7 +127,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write32(address, value, MiniCDI::Player.scc68070);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write32(address, value);
 	else {
 		m68k_write_memory_16(address, (uint16_t)(value >> 16 & 0x0000FFFF));
 		m68k_write_memory_16(address + 2, (uint16_t)(value & 0x0000FFFF));
@@ -150,8 +154,8 @@ bool MonoI::init(const std::string &bios)
 
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
-		this->cdic = new CDIC(&this->disc, this->memory);
-		this->slave = new SLAVE(this->memory, 0x00310000);
+		this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
+		this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
 		this->pd.IO.slave = this->slave;
 
 		MiniCDI::Player =

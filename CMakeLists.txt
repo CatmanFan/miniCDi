@@ -10,10 +10,10 @@ dkp_target_generate_symbol_list(${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
 # Debug options
-option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)
+option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			ON)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)."	OFF)
-option(MINICDI_ENABLE_VERBOSE_OS9 "Print verbose OS-9 syscall information."						ON)
-option(MINICDI_ENABLE_VERBOSE_LOGFILE "Print debug information to a text file if it exists."	ON)
+option(MINICDI_ENABLE_VERBOSE_OS9 "Print verbose OS-9 syscall information."						OFF)
+option(MINICDI_ENABLE_VERBOSE_LOGFILE "Print debug information to a text file if it exists."	OFF)
 
 # Emulation options
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
@@ -73,14 +73,19 @@ target_sources(${PROJECT_NAME} PRIVATE
 
 if (NINTENDO_3DS)
 	# Libraries
+	# ************
 	target_link_libraries(${PROJECT_NAME} -lcitro2d -lcitro3d)
 	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
+	# Source files/directories
+	# ************
 	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/3ds)
 	target_sources(${PROJECT_NAME} PRIVATE
 		src/platforms/3ds/main.cpp
 	)
 
+	# Build package
+	# ************
 	ctr_generate_smdh(${PROJECT_NAME}.smdh
 		NAME "${PROJECT_NAME} v${PROJECT_VERSION}"
 		DESCRIPTION "${APP_DESCRIPTION}"
@@ -97,19 +102,20 @@ endif()
 if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 # -------------------------------------------
 	# Libraries
+	# ************
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
-	target_link_libraries(${PROJECT_NAME}
-		SDL2
-		aesnd
-		fat
-	)
+	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} -laesnd -lfat)
 
+	# Source files/directories
+	# ************
 	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/ogc)
 	target_sources(${PROJECT_NAME} PRIVATE
 		src/platforms/ogc/main.cpp
 	)
 
+	# Build package
+	# ************
 	ogc_create_dol(${PROJECT_NAME})
 
 	if (NINTENDO_WII)
@@ -123,30 +129,23 @@ endif()
 if (NINTENDO_WIIU)
 # -------------------------------------------
 	# Libraries
+	# ************
 	find_package(SDL2 REQUIRED)
 	find_package(SDL2_ttf REQUIRED)
     find_package(Freetype REQUIRED)
 	include_directories(${DEVKITPRO}/portlibs/wiiu/include ${FREETYPE_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2TTF_INCLUDE_DIRS})
-	target_link_libraries(${PROJECT_NAME}
-		SDL2
-		SDL2_ttf
-		freetype
-		png
-		z
-		m
-		harfbuzz
-		brotlidec
-		brotlicommon
-		bz2
-		wut
-	)
+	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} -lSDL2_ttf -lfreetype -lpng -lz -lm -lharfbuzz -lbrotlidec -lbrotlicommon -lbz2 -lwut)
 
+	# Source files/directories
+	# ************
 	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/wiiu)
 	target_sources(${PROJECT_NAME} PRIVATE
-		src/platforms/wiiu/main.cpp
 		src/platforms/wiiu/SDL_FontCache.c
+		src/platforms/wiiu/main.cpp
 	)
 
+	# Build package
+	# ************
 	wut_create_rpx(${PROJECT_NAME})
 	wut_create_wuhb(${PROJECT_NAME}
 		NAME "${PROJECT_NAME} v${PROJECT_VERSION}"
@@ -162,16 +161,20 @@ endif()
 
 # if (NINTENDO_SWITCH)
 # -------------------------------------------
+	## Source files/directories
+	## ************
 	# target_sources(${PROJECT_NAME} PRIVATE
 		# src/platforms/nx/main.cpp
 	# )
 
+	## Build package
+	## ************
 	# nx_generate_nacp(${PROJECT_NAME}.nacp
 		# NAME "${PROJECT_NAME}"
 		# AUTHOR "${APP_AUTHOR}"
 		# VERSION ${PROJECT_VERSION}
 	# )
-	 
+
 	# nx_create_nro(${PROJECT_NAME}
 		# NACP ${PROJECT_NAME}.nacp
 		# ICON res/nx/icon.png

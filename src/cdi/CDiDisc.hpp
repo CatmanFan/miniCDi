@@ -326,7 +326,7 @@ public:
 			disc.open(path, std::ios::in | std::ios::binary);
 			if (disc.is_open()) {
 				MiniCDI::Config::HasDisc = true;
-				MiniCDI::Log("[CDI] loaded disc image (%s)", path.c_str());
+				MiniCDI::Log("[Disc] Inserted disc: %s", path.c_str());
 
 				disc.seekg(0x9340, std::ios::beg); // 00'02'16 LBA, address of title
 				for (int i = 0; i < 32; i++) {
@@ -339,14 +339,14 @@ public:
 				}
 
 				if (Label.empty())
-					MiniCDI::Log("[Disc] label not found at LBA $9300");
+					MiniCDI::Log("[Disc] Label not found at LBA $9300");
 				else
-					MiniCDI::Log("[Disc] label: %s", Label.c_str());
+					MiniCDI::Log("[Disc] Label: %s", Label.c_str());
 			} else {
-				MiniCDI::Log("[CDI] failed to load disc image (%s)", path.c_str());
+				MiniCDI::Log("[Disc] Failed to open %s", path.c_str());
 			}
 		} else {
-			MiniCDI::Log("[CDI] requested disc image not found (%s)", path.c_str());
+			MiniCDI::Log("[Disc] File not found at %s", path.c_str());
 		}
 	}
 
@@ -355,7 +355,7 @@ public:
 		if (disc.is_open()) {
 			disc.close();
 			MiniCDI::Config::HasDisc = false;
-			MiniCDI::Log("[CDI] unloaded disc image");
+			MiniCDI::Log("[Disc] Ejected");
 		}
 	}
 };

@@ -8,6 +8,7 @@
 
 class CDIC
 {
+	SCC68070* _68070;
 	uint8_t* memory;
 
 	uint16_t CMD; // 0x3C00
@@ -135,7 +136,7 @@ class CDIC
 
 				XBUF |= 0x8000; // sector filled for processing
 				DBUF |= 0x4000; // send DATA to CPU
-				m68k_set_irq(4);
+				_68070->generate_irq(4, true);
 			}
 
 			// Continue to next sector
@@ -145,7 +146,7 @@ class CDIC
 	}
 
 public:
-	CDIC(CDiDisc *disc, uint8_t* memory) : memory(memory), XBUF(0), disc(disc), CdReader({0})
+	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), disc(disc), CdReader({0})
 	{
 	}
 
@@ -182,8 +183,7 @@ public:
 				uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
-					if (AUDCTL & 0x2000)
-						m68k_set_irq(4);
+					if (AUDCTL & 0x2000) _68070->generate_irq(4, true);
 				}
 				MiniCDI::Log("[CDIC] ABUF => %04X", value);
 				return value;
@@ -194,8 +194,7 @@ public:
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
-					if (DBUF & 0x4000)
-						m68k_set_irq(4);
+					if (DBUF & 0x4000) _68070->generate_irq(4, true);
 				}
 				MiniCDI::Log("[CDIC] XBUF => %04X", value);
 				return value;
@@ -220,7 +219,7 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint16_t value, SCC68070* cpu)
+	void write16(uint32_t addr, uint16_t value)
 	{
 		switch (addr)
 		{
@@ -262,7 +261,7 @@ public:
 			case 0x303FF8: case 0x303FF9:
 				MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
 				DMACTL = value;
-				if (value & 0x8000) cpu->dma_call(0, 0x300000 + (value & 0x3FFF));
+				if (value & 0x8000) _68070->dma_call(0, 0x300000 + (value & 0x3FFF));
 				break;
 
 			case 0x303FFA: case 0x303FFB:
@@ -363,13 +362,13 @@ public:
 		}
 	}
 
-	void write32(uint32_t addr, uint32_t value, SCC68070* cpu)
+	void write32(uint32_t addr, uint32_t value)
 	{
 		switch (addr)
 		{
 			default:
-				write16(addr, value >> 16 & 0xFFFF, cpu);
-				write16(addr+2, value & 0xFFFF, cpu);
+				write16(addr, value >> 16 & 0xFFFF);
+				write16(addr+2, value & 0xFFFF);
 				break;
 
 			case 0x303C02:

@@ -91,7 +91,7 @@ namespace MiniCDI
 			// ************************************
 			// Should return INPUT values
 			// ************************************
-			/*switch (memory[m68k_get_reg(NULL, M68K_REG_PC) + 1])
+			switch (memory[m68k_get_reg(NULL, M68K_REG_PC) + 1])
 			{
 				case 0x00: {
 					std::string name;
@@ -365,7 +365,7 @@ namespace MiniCDI
 					MiniCDI::Log("[OS9] I$Close   d0.w=%d",
 										m68k_get_reg(NULL, M68K_REG_D0) & 0xFFFF);
 					break;
-			}*/
+			}
 		}
 	};
 };

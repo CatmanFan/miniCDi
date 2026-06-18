@@ -136,13 +136,21 @@ class CDIC
 
 				XBUF |= 0x8000; // sector filled for processing
 				DBUF |= 0x4000; // send DATA to CPU
-				_68070->assert_irq(4, true);
+				assert_irq();
 			}
 
 			// Continue to next sector
 			if (CdReader.active)
 				disc->read_sector(CdReader.curr_lba++);
 		}
+	}
+
+	void assert_irq()
+	{
+		bool int_active = XBUF & 0x8000 ? true : false;
+		_68070->interrupt_vector = 1; // indicates originating from CDIC
+		_68070->assert_irq(4, int_active);
+		MiniCDI::Log("[CDIC] IRQ = %d", int_active);
 	}
 
 public:
@@ -183,7 +191,7 @@ public:
 				uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
-					if (AUDCTL & 0x2000) _68070->assert_irq(4, true);
+					assert_irq();
 				}
 				MiniCDI::Log("[CDIC] ABUF => %04X", value);
 				return value;
@@ -194,7 +202,7 @@ public:
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
-					if (DBUF & 0x4000) _68070->assert_irq(4, true);
+					assert_irq();
 				}
 				MiniCDI::Log("[CDIC] XBUF => %04X", value);
 				return value;
@@ -271,7 +279,9 @@ public:
 
 			case 0x303FFC: case 0x303FFD:
 				MiniCDI::Log("[CDIC] IVEC <= %04X", value);
-				memory[addr] = IVEC = value;
+				memory[addr] = value >> 8 & 0xFF;
+				memory[addr+1] = value & 0xFF;
+				IVEC = value;
 				break;
 
 			case 0x303FFE: case 0x303FFF:

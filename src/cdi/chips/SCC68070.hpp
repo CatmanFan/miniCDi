@@ -7,8 +7,7 @@ class SCC68070
 
 	// Interrupt data model
 	uint8_t IPL;
-	bool IRQ_assert[8];
-	int IRQ_vector;
+	bool IRQ_assert[7];
 
 	// On-chip peripherals
 	uint8_t LIR;
@@ -124,6 +123,7 @@ class SCC68070
 
 public:
 	uint8_t fc; // used for FC/address space callback
+	int interrupt_vector;
 	friend class PointingDevice;
 	friend class CDIC;
 	friend class CIAP;
@@ -144,14 +144,10 @@ public:
 		memcpy(&memory[0x400000], &rom[0], 512*1024*sizeof(char));
 	}
 
-	uint8_t get_irq_vector()
-	{
-		return IRQ_vector;
-	}
-
 	void reset_internal()
 	{
 		fc = 0;
+		interrupt_vector = 0;
 		IPL = 0;
 		IRQ_assert[0] = 0;
 		IRQ_assert[1] = 0;
@@ -160,7 +156,6 @@ public:
 		IRQ_assert[4] = 0;
 		IRQ_assert[5] = 0;
 		IRQ_assert[6] = 0;
-		IRQ_vector = 0;
 
 		// LIR
 		LIR = 0;
@@ -198,6 +193,7 @@ public:
 
 		// Reset Musashi processor
 		m68k_pulse_reset();
+		m68k_set_irq(0);
 		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 		m68k_set_reg(M68K_REG_A7, (memory[0x400000] << 24) | (memory[0x400001] << 16) | (memory[0x400002] << 8) | memory[0x400003]);
 		m68k_set_reg(M68K_REG_PC, (memory[0x400004] << 24) | (memory[0x400005] << 16) | (memory[0x400006] << 8) | memory[0x400007]);
@@ -206,63 +202,51 @@ public:
 	void assert_irq(size_t lvl, bool value)
 	{
 		if (lvl == 0) return;
-		IRQ_assert[lvl] = value;
+		IRQ_assert[lvl-1] = value;
 		check_irq();
 	}
 
 	void check_irq(size_t ch = 2)
 	{
-		uint8_t level_extern = IRQ_assert[1] ? 1
-							 : IRQ_assert[2] ? 2
-							 : IRQ_assert[3] ? 3
-							 : IRQ_assert[4] ? 4
-							 : IRQ_assert[5] ? 5
-							 : IRQ_assert[6] ? 6
-							 : IRQ_assert[7] ? 7
+		uint8_t level_extern = IRQ_assert[6] ? 7
+							 : IRQ_assert[5] ? 6
+							 : IRQ_assert[4] ? 5
+							 : IRQ_assert[3] ? 4
+							 : IRQ_assert[2] ? 3
+							 : IRQ_assert[1] ? 2
+							 : IRQ_assert[0] ? 1
 							 : 0;
-		uint8_t level_lir1 = ch != 1 ? (LIR >> 4) & 0x07 : 0;
-		uint8_t level_lir2 = ch != 0 ? LIR & 0x07 : 0;
-		uint8_t level_i2c = PICR[0] >> 4 & 0x07;
-		uint8_t level_timer = PICR[0] & 0x07;
-		uint8_t level_uart_rx = PICR[1] >> 4 & 0x07;
-		uint8_t level_uart_tx = PICR[1] & 0x07;
-		uint8_t level_dma1 = (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0;
-		uint8_t level_dma2 = (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0;
+		uint8_t level_lir1 = ch == 1 ? 0 : (LIR >> 4) & 7;
+		uint8_t level_lir2 = ch == 0 ? 0 : LIR & 7;
+		uint8_t level_i2c = PICR[0] >> 4 & 7;
+		uint8_t level_timer = PICR[0] & 7;
+		uint8_t level_uart_rx = PICR[1] >> 4 & 7;
+		uint8_t level_uart_tx = PICR[1] & 7;
+		uint8_t level_dma1 = (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 7 : 0;
+		uint8_t level_dma2 = (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 7 : 0;
 
 		uint8_t IPL_new = 0;
 		bool IPL_onchip = false;
 
 		// Per datasheet: external interrupt takes precedence
-		if (level_extern)
-		{
-			IPL_new = level_extern;
-		}
-		else
-		{
-			IPL_new = std::max
-			({
-				level_lir1,
-				level_lir2,
-				level_timer,
-				level_uart_rx,
-				level_uart_tx,
-				level_i2c,
-				level_dma1,
-				level_dma2
-			});
-			IPL_onchip = true;
-		}
+		if (level_dma2)		{ IPL_new = level_dma2;		IPL_onchip = true; }
+		if (level_dma1)		{ IPL_new = level_dma1;		IPL_onchip = true; }
+		if (level_i2c)		{ IPL_new = level_i2c;		IPL_onchip = true; }
+		if (level_uart_tx)	{ IPL_new = level_uart_tx;	IPL_onchip = true; }
+		if (level_uart_rx)	{ IPL_new = level_uart_rx;	IPL_onchip = true; }
+		if (level_timer)	{ IPL_new = level_timer;	IPL_onchip = true; }
+		if (level_lir2)		{ IPL_new = level_lir2;		IPL_onchip = true; }
+		if (level_lir1)		{ IPL_new = level_lir1;		IPL_onchip = true; }
+		if (level_extern)	{ IPL_new = level_extern;	IPL_onchip = false; }
 
 		if (IPL != IPL_new)
 		{
 			if (IPL != 0) {
 				MiniCDI::Log("[SCC68070] IRQ reset");
-				IRQ_vector = 0;
 				m68k_set_irq(0);
 			}
 			if (IPL_new != 0) {
 				MiniCDI::Log("[SCC68070] IRQ lvl=%d(%s)", IPL_new, IPL_onchip ? "onchip" : "extern");
-				IRQ_vector = IPL_new == 4 && !IPL_onchip ? 0x80 : 0;
 				m68k_set_irq(IPL_onchip ? IPL_new+32 : IPL_new);
 			}
 			IPL = IPL_new;

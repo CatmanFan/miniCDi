@@ -27,6 +27,7 @@ class SLAVE
 
 	uint8_t LCD[16];
 
+	// For PointingDevice !!
 	void assert_irq() { _68070->assert_irq(2, true); }
 
 public:

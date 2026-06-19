@@ -13,7 +13,7 @@
 
 class MCD212
 {
-	SCC68070 *cpu;
+	SCC68070 *_68070;
 	uint8_t* memory;
 
 	class VDSC
@@ -829,7 +829,7 @@ class MCD212
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
 					IT[Path] = 1;
-					if (!DI[Path]) { cpu->check_irq(Path); }
+					_68070->assert_irq_onchip(Path, !DI[Path] ? 1 : 0);
 					break;
 
 				case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
@@ -892,7 +892,7 @@ class MCD212
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
 					IT[Path] = 1;
-					if (!DI[Path]) { cpu->check_irq(Path); }
+					_68070->assert_irq_onchip(Path, !DI[Path] ? 1 : 0);
 					break;
 
 				default:
@@ -905,7 +905,7 @@ class MCD212
 public:
 	MCD212() {}
 
-	MCD212(SCC68070 *cpu, uint8_t *memory) : cpu(cpu), memory(memory)
+	MCD212(SCC68070 *_68070, uint8_t *memory) : _68070(_68070), memory(memory)
 	{
 		reset();
 	}
@@ -999,6 +999,8 @@ public:
 			case 0x4FFFE1: // CSR2R
 				uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
 				BE[0] = IT[1] = IT[0] = 0;
+				_68070->assert_irq_onchip(1, 0);
+				_68070->assert_irq_onchip(0, 0);
 				return value;
 		}
 	}

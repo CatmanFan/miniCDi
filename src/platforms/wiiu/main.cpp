@@ -252,11 +252,13 @@ static std::string RUN_MENU()
 
 		// SDL_print(1920/2,150,37,{255,255,255,255},"Select a disc or press \ue001 to boot without disc"); // en
 		// SDL_print(1920/2,150,34,{255,255,255,255},"ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。"); // ja
-		SDL_print(1920/2,150,34,{255,255,255,255},"Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001."); // fr
-		// SDL_print(1920/2,150,37,{255,255,255,255},"Elige una imagen de disco u oprime \ue001 para comenzar sin disco"); // es
-		// SDL_print(1920/2,150,37,{255,255,255,255},"Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001"); // pt-PT
-		// SDL_print(1920/2,150,37,{255,255,255,255},"Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren."); // de
-		// SDL_print(1920/2,150,37,{255,255,255,255},"Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın"); // tr
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001."); // fr
+		SDL_print(1920/2,150,37,{255,255,255,255},"Elige una imagen de disco u oprime \ue001 para comenzar sin disco"); // es-LA
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001"); // es-ES
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001"); // pt-PT
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren."); // de
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva."); // sv
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın"); // tr
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001"); // ca
 
 		for (size_t i = 0; i < discs.size(); i++) {

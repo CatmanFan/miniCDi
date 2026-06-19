@@ -53,13 +53,21 @@ void MiniCDI_set_fc(unsigned int new_fc)
 int  MiniCDI_int_ack_handler(int int_level)
 {
 	m68k_set_irq(0); // resets IRQ
-	if (MiniCDI::Player.scc68070) {
-		//MiniCDI::Log("[SCC68070] INTACK lvl=%X", int_level);
+
+	if (MiniCDI::Player.scc68070)
+	{
+		MiniCDI::Log("[SCC68070] INTACK lvl=%X", int_level);
+		if (MiniCDI::Player.scc68070->IPL.INxN[3] && int_level == 7) MiniCDI::Player.scc68070->IPL.INxN[3] = 0;
+		if (MiniCDI::Player.scc68070->IPL.INxN[2] && int_level == 5) MiniCDI::Player.scc68070->IPL.INxN[2] = 0;
+		if (MiniCDI::Player.scc68070->IPL.INxN[1] && int_level == 4) MiniCDI::Player.scc68070->IPL.INxN[1] = 0;
+		if (MiniCDI::Player.scc68070->IPL.INxN[0] && int_level == 2) MiniCDI::Player.scc68070->IPL.INxN[0] = 0;
+
 		if (MiniCDI::Player.cdic && MiniCDI::Player.scc68070->interrupt_vector == 1 && int_level == 4) {
 			MiniCDI::Player.scc68070->interrupt_vector = 0;
 			return MiniCDI::Player.memory[0x303FFD];
 		}
 	}
+
 	return M68K_INT_ACK_AUTOVECTOR;
 }
 

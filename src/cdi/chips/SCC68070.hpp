@@ -242,11 +242,11 @@ public:
 		if (IPL != IPL_new)
 		{
 			if (IPL != 0) {
-				MiniCDI::Log("[SCC68070] IRQ reset");
+				//MiniCDI::Log("[SCC68070] IRQ reset");
 				m68k_set_irq(0);
 			}
 			if (IPL_new != 0) {
-				MiniCDI::Log("[SCC68070] IRQ lvl=%d(%s)", IPL_new, IPL_onchip ? "onchip" : "extern");
+				//MiniCDI::Log("[SCC68070] IRQ lvl=%d(%s)", IPL_new, IPL_onchip ? "onchip" : "extern");
 				m68k_set_irq(IPL_onchip ? IPL_new+32 : IPL_new);
 			}
 			IPL = IPL_new;

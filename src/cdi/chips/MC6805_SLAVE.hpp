@@ -28,7 +28,7 @@ class SLAVE
 	uint8_t LCD[16];
 
 	// For PointingDevice !!
-	void assert_irq() { _68070->assert_irq(2, true); }
+	void assert_irq() { _68070->interrupt(SCC68070::IPL_IN2N, true); }
 
 public:
 	friend class PlayerLCD;
@@ -59,7 +59,7 @@ public:
 			size_t c = (addr - DR[0]) / 2;
 
 			// deassert IRQ
-			_68070->assert_irq(2, false);
+			_68070->interrupt(SCC68070::IPL_IN2N, false);
 
 			if (Ch[c].Out.size() > 0)
 			{

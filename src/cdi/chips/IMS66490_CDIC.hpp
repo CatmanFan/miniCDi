@@ -147,8 +147,7 @@ class CDIC
 	void assert_irq()
 	{
 		bool int_active = XBUF & 0x8000 ? true : false;
-		_68070->interrupt_vector = 1; // indicates originating from CDIC
-		_68070->assert_irq(4, int_active);
+		_68070->interrupt(SCC68070::IPL_IN4N, int_active);
 	}
 
 public:
@@ -277,9 +276,8 @@ public:
 
 			case 0x303FFC: case 0x303FFD:
 				MiniCDI::Log("[CDIC] IVEC <= %04X", value);
-				memory[addr] = value >> 8 & 0xFF;
-				memory[addr+1] = value & 0xFF;
 				IVEC = value;
+				_68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value & 0x00FF;
 				break;
 
 			case 0x303FFE: case 0x303FFF:

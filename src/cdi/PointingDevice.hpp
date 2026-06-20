@@ -32,17 +32,17 @@ public:
 	void send()
 	{
 		if (IO.slave) {
-			if (IO.slave->pointer_posChanged) {
-				x = IO.slave->pointer_x;
-				// y = IO.slave->pointer_y;
-				IO.slave->pointer_posChanged = false;
+			if (IO.slave->PointerInterface.posChanged) {
+				x = IO.slave->PointerInterface.x;
+				// y = IO.slave->PointerInterface.y;
+				IO.slave->PointerInterface.posChanged = false;
 			}
 
-			if (IO.slave->pointer_used) {
-				if (!IO.slave->pointer)
+			if (IO.slave->PointerInterface.enabled) {
+				if (!IO.slave->PointerInterface.connected)
 				{
 					IO.slave->Ch[0].Out = {'M'};
-					IO.slave->pointer = true;
+					IO.slave->PointerInterface.connected = true;
 					IO.slave->assert_irq();
 				}
 
@@ -64,22 +64,29 @@ public:
 		}
 
 		else if (IO.ikat) {
-			if (IO.ikat->has_pointer && (changed_Face || changed_DPad)) {
-				if (changed_Face) { changed_Face = false; }
-
-				IO.ikat->Ch[1].Out =
-				{
-					(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0x0F)),
-					(uint8_t)(0x10 | (y >> 6 & 0x0F)),
-					(uint8_t)(x & 0x3F),
-					(uint8_t)(0x80 | (y & 0x3F)),
-				};
-
-				// REMTY OFF + INT
-				IO.ikat->Ch[1].SR &= ~(0x10);
-				IO.ikat->ISR |= 0x08;
-				if (IO.ikat->IMR & 0x08) m68k_set_irq(2); // CONVERT TO SCC68070 CLASS
+			if (IO.ikat->PointerInterface.posChanged) {
+				x = IO.ikat->PointerInterface.x;
+				// y = IO.ikat->PointerInterface.y;
+				IO.ikat->PointerInterface.posChanged = false;
 			}
+
+			/*if (IO.ikat->PointerInterface.connected) {
+				if (changed_Face || changed_DPad)
+				{
+					if (changed_Face) { changed_Face = false; }
+
+					// Convert to IKAT response (absolute coordinates)
+					IO.ikat->Ch[1].Out =
+					{
+						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0x0F)),
+						(uint8_t)(0x10 | (y >> 6 & 0x0F)),
+						(uint8_t)(x & 0x3F),
+						(uint8_t)(0x80 | (y & 0x3F)),
+					};
+					// IO.ikat->Ch[1].SR &= ~0b00010000; // REMTY OFF
+					IO.ikat->poll_packet(1);
+				}
+			}*/
 		}
 	}
 

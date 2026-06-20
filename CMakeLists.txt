@@ -12,9 +12,9 @@ target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 # Debug options
 option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)."	OFF)
-option(MINICDI_ENABLE_VERBOSE_OS9 "Print verbose OS-9 syscall information."						OFF)
-option(MINICDI_ENABLE_VERBOSE_MODULE "Print modules issuing syscalls or write/read commands."	OFF)
-option(MINICDI_ENABLE_VERBOSE_LOGFILE "Print debug information to a text file if it exists."	ON)
+option(MINICDI_ENABLE_VERBOSE_OS9 "Print verbose OS-9 syscall information."						ON)
+option(MINICDI_ENABLE_VERBOSE_MODULE "Print modules issuing syscalls or write/read commands."	ON)
+option(MINICDI_ENABLE_VERBOSE_LOGFILE "Print debug information to a text file if it exists."	OFF)
 
 # Emulation options
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)

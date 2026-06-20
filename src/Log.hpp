@@ -21,8 +21,8 @@ namespace MiniCDI
 		va_start(arg1, txt);
 		va_copy(arg2, arg1);
 		va_end(arg2);
-		char szBuff[1024];
-		vsnprintf(szBuff, 1024, txt, arg1);
+		char szBuff[1280];
+		vsnprintf(szBuff, 1280, txt, arg1);
 		va_end(arg1);
 
 		#ifdef MINICDI_DEBUG_MODULE

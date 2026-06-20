@@ -17,11 +17,13 @@ class SLAVE
 		size_t ReadSize;
 	} Ch[4];
 
-	bool pointer_used;
-	bool polling;
-	bool pointer;
-	bool pointer_posChanged;
-	int pointer_x, pointer_y;
+	struct
+	{
+		bool connected;
+		bool enabled;
+		bool posChanged;
+		int x, y;
+	} PointerInterface;
 
 	uint32_t DR[4]; // addresses to data registers
 
@@ -34,7 +36,7 @@ public:
 	friend class PlayerLCD;
 	friend class PointingDevice;
 
-	SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start) : _68070(_68070), memory(memory), pointer_used(false), polling(false), pointer(false)
+	SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start) : _68070(_68070), memory(memory), PointerInterface({0})
 	{
 		DR[0] = start + 0x01; // ADR
 		DR[1] = start + 0x03; // BDR
@@ -93,16 +95,16 @@ public:
 					{
 						default:
 							if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
-								pointer_x = ((Ch[c].In[1] & 0x70) << 3) | (Ch[c].In[2] & 0x7F);
-								pointer_y = ((Ch[c].In[0] & 0x3F) << 4) | (Ch[c].In[1] & 0x0F);
-								pointer_posChanged = true;
-								//MiniCDI::Log("[SLAVE] pointer x=%d,y=%d", pointer_x, pointer_y);
+								PointerInterface.x = ((Ch[c].In[1] & 0x70) << 3) | (Ch[c].In[2] & 0x7F);
+								PointerInterface.y = ((Ch[c].In[0] & 0x3F) << 4) | (Ch[c].In[1] & 0x0F);
+								PointerInterface.posChanged = true;
+								//MiniCDI::Log("[SLAVE] pointer x=%d,y=%d", PointerInterface.x, PointerInterface.y);
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
 								Ch[c].ReadSize = 0;
 							} else {
 								/** Set Pointer Pos **/
-								if (pointer_used && value >= 0xC0 && value <= 0xFF
+								if (PointerInterface.enabled && value >= 0xC0 && value <= 0xFF
 								 && Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
 									Ch[c].InSize = 3;
 								}
@@ -112,13 +114,13 @@ public:
 						/** Enable Pointer Input **/
 						case 0x83:
 							MiniCDI::Log("[SLAVE] enable pointer input (0x%02X)", value);
-							pointer_used = true;
+							PointerInterface.enabled = true;
 							break;
 
 						/** Disable Pointer Input **/
 						case 0x84:
 							MiniCDI::Log("[SLAVE] disable pointer input (0x%02X)", value);
-							pointer_used = false;
+							PointerInterface.enabled = false;
 							break;
 					}
 					break;
@@ -233,7 +235,6 @@ public:
 						/** Enable Polling **/
 						case 0xF7:
 							MiniCDI::Log("[SLAVE] enable polling data (0x%02X)", value);
-							polling = true;
 							break;
 
 						/** Enable X-Bus **/

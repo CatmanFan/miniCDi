@@ -80,61 +80,69 @@ class CDIC
 			return;
 		}
 
-		disc->read_sector(CdicController.curr_lba++);
-
 		// Skip if MODE2 not satisfied
-		if (!disc_check_filter())
-			return;
+		if (disc_check_filter())
+		{
+			MiniCDI::Log("[CDIC] read sector %02X:%02X:%02X", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 
-		MiniCDI::Log("[CDIC] read sector %02X:%02X:%02X", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			// Switch DBUF index and reset audio
+			DBUF &= 0b01110001; DBUF ^= 0x0001;
+			uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
 
-		// Switch DBUF index and reset audio
-		DBUF &= 0b01110001; DBUF ^= 0x0001;
-		uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
+			// Copy sector header as normal
+			memory[targetAddr++] = disc->Sector.Min;
+			memory[targetAddr++] = disc->Sector.Sec;
+			memory[targetAddr++] = disc->Sector.Frame;
+			memory[targetAddr++] = disc->Sector.Mode;
+			memory[targetAddr++] = disc->Sector.FileNum[0];
+			memory[targetAddr++] = disc->Sector.ChNum[0];
+			memory[targetAddr++] = disc->Sector.Submode[0];
+			memory[targetAddr++] = disc->Sector.CodingInfo[0];
 
-		// Copy sector header as normal
-		memory[targetAddr++] = disc->Sector.Min;
-		memory[targetAddr++] = disc->Sector.Sec;
-		memory[targetAddr++] = disc->Sector.Frame;
-		memory[targetAddr++] = disc->Sector.Mode;
-		memory[targetAddr++] = disc->Sector.FileNum[0];
-		memory[targetAddr++] = disc->Sector.ChNum[0];
-		memory[targetAddr++] = disc->Sector.Submode[0];
-		memory[targetAddr++] = disc->Sector.CodingInfo[0];
+			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
+			// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
+			bool use_adpcm = disc->Sector.Mode == 2 && CdicController.is_mode2
+						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
+			if (use_adpcm) {
+				DBUF |= 0x0004; // audio index
+				targetAddr += 0x2800;
+			}
 
-		// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
-		// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
-		bool use_adpcm = disc->Sector.Mode == 2 && CdicController.is_mode2
-					  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
-		if (use_adpcm) {
-			DBUF |= 0x0004; // audio index
-			targetAddr += 0x2800;
+			memory[targetAddr++] = disc->Sector.FileNum[1];
+			memory[targetAddr++] = disc->Sector.ChNum[1];
+			memory[targetAddr++] = disc->Sector.Submode[1];
+			memory[targetAddr++] = disc->Sector.CodingInfo[1];
+			memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
+			targetAddr += 2328;
+
+			// switch (mode) default:
+			memory[targetAddr++] = 0x41; // Control
+			memory[targetAddr++] = 0x01; // Track
+			memory[targetAddr++] = 0x01; // Index
+			memory[targetAddr++] = disc->Sector.Min;
+			memory[targetAddr++] = disc->Sector.Sec;
+			memory[targetAddr++] = disc->Sector.Frame;
+			memory[targetAddr++] = 0x00;
+			memory[targetAddr++] = disc->Sector.Min;
+			memory[targetAddr++] = disc->Sector.Sec;
+			memory[targetAddr++] = disc->Sector.Frame;
+			memory[targetAddr++] = 0xFF; // CRC
+			memory[targetAddr++] = 0xFF; // CRC
+
+			XBUF |= 0x8000; // sector filled for processing
+			DBUF |= 0x4000; // send DATA to CPU
+			assert_irq();
 		}
 
-		memory[targetAddr++] = disc->Sector.FileNum[1];
-		memory[targetAddr++] = disc->Sector.ChNum[1];
-		memory[targetAddr++] = disc->Sector.Submode[1];
-		memory[targetAddr++] = disc->Sector.CodingInfo[1];
-		memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
-		targetAddr += 2328;
-
-		// switch (mode) default:
-		memory[targetAddr++] = 0x41; // Control
-		memory[targetAddr++] = 0x01; // Track
-		memory[targetAddr++] = 0x01; // Index
-		memory[targetAddr++] = disc->Sector.Min;
-		memory[targetAddr++] = disc->Sector.Sec;
-		memory[targetAddr++] = disc->Sector.Frame;
-		memory[targetAddr++] = 0x00;
-		memory[targetAddr++] = disc->Sector.Min;
-		memory[targetAddr++] = disc->Sector.Sec;
-		memory[targetAddr++] = disc->Sector.Frame;
-		memory[targetAddr++] = 0xFF; // CRC
-		memory[targetAddr++] = 0xFF; // CRC
-
-		XBUF |= 0x8000; // sector filled for processing
-		DBUF |= 0x4000; // send DATA to CPU
-		assert_irq();
+		if (CdicController.reading) {
+			CdicController.curr_lba++;
+			disc->read_sector(CdicController.curr_lba);
+		} else {
+			CdicController.reading = false;
+			CdicController.delayed_sectors = 0;
+			CdicController.curr_lba = 0;
+			CdicController.is_mode2 = false;
+		}
 	}
 
 	void assert_irq()
@@ -287,6 +295,7 @@ public:
 
 							// Set to MODE2 and stop
 							CdicController.reading = false;
+							CdicController.delayed_sectors = 6;
 							CdicController.curr_lba = 0;
 							CdicController.is_mode2 = false;
 							break;
@@ -296,6 +305,7 @@ public:
 
 							// Set to MODE2 and stop
 							CdicController.reading = false;
+							CdicController.delayed_sectors = 6;
 							CdicController.curr_lba = 0;
 							CdicController.is_mode2 = true;
 							break;
@@ -323,10 +333,11 @@ public:
 							}
 
 							// Start reading
+							CdicController.reading = true;
 							CdicController.delayed_sectors = 6;
 							CdicController.curr_lba = disc->get_lba_from_time(TIME);
 							CdicController.is_mode2 = CMD == 0x2A ? true : false;
-							CdicController.reading = true;
+							disc->read_sector(CdicController.curr_lba);
 							break;
 
 						case 0x2E:
@@ -339,6 +350,9 @@ public:
 				{
 					MiniCDI::Log("[CDIC] abort");
 					CdicController.reading = false;
+					CdicController.delayed_sectors = 0;
+					CdicController.curr_lba = 0;
+					CdicController.is_mode2 = false;
 				}
 				break;
 		}

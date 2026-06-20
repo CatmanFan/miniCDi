@@ -29,6 +29,7 @@ public:
 
 		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
 		int loops = 0;
+
 		bool VBLANK = false;
 		do {
 			cpu.run(96);

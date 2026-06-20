@@ -193,7 +193,7 @@ bool MonoIV::init(const std::string &bios)
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
 		this->ciap = new CIAP(&this->disc, this->memory);
-		this->ikat = new IKAT();
+		this->ikat = new IKAT(&this->cpu, this->memory);
 		this->pd.IO.ikat = this->ikat;
 
 		MiniCDI::Player =

@@ -119,22 +119,16 @@ class SCC68070
 
 	void check_interrupt_manager()
 	{
-		// To-do: INTxN bools trigger certain levels, and consider onchip levels
-		// calculate highest current interrupt level
-
-		// Calculate onchip interrupt levels
-
 		InterruptManager.cur_index = 11;
 		for (int i = 11; i >= 0; i--) {
 			if (InterruptManager.levels[i] >= InterruptManager.levels[InterruptManager.cur_index]) {
 				InterruptManager.cur_index = i;
 			}
 		}
-		uint8_t level = InterruptManager.levels[InterruptManager.cur_index];
+		uint8_t new_level = InterruptManager.levels[InterruptManager.cur_index];
 
-		if (level) {
-			//MiniCDI::Log("[SCC68070] on-chip INT%dN lvl %d", ch, level);
-			MiniCDI::Log("[SCC68070:IPL] IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
+		if (InterruptManager.cur_level != new_level) {
+			/*MiniCDI::Log("[SCC68070:IPL] IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
 						 InterruptManager.levels[IPL_IN7N],
 						 InterruptManager.levels[IPL_IN5N],
 						 InterruptManager.levels[IPL_IN4N],
@@ -146,12 +140,17 @@ class SCC68070
 						 InterruptManager.levels[IPL_UART_TX],
 						 InterruptManager.levels[IPL_I2C],
 						 InterruptManager.levels[IPL_DMA1],
-						 InterruptManager.levels[IPL_DMA2]);
-			// InterruptManager.levels[InterruptManager.cur_index] = 0;
-			m68k_set_irq(level >= IPL_INT1 ? level + 32 : level);
-		} else {
-			m68k_set_irq(0);
+						 InterruptManager.levels[IPL_DMA2]);*/
+
+			if (new_level != 0) {
+				m68k_set_irq(new_level >= IPL_INT1 ? new_level + 32 : new_level);
+				// InterruptManager.levels[InterruptManager.cur_index] = 0;
+			}
+			if (InterruptManager.cur_level != 0) {
+				m68k_set_irq(0);
+			}
 		}
+		InterruptManager.cur_level = new_level;
 	}
 
 public:
@@ -175,17 +174,15 @@ public:
 		IPL_DMA2
 	};
 	struct {
-		uint8_t levels[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
-		uint8_t vectors[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
-		int cur_index = 0;
+		int cur_index;
+		uint8_t cur_level;
+
+		uint8_t levels[12];
+		uint8_t vectors[12];
 	} InterruptManager;
 
 	void interrupt(size_t index, bool assert)
 	{
-		if ((assert && InterruptManager.levels[index] > 0)
-			|| (!assert && InterruptManager.levels[index] == 0))
-			return;
-
 		if (assert) {
 			switch (index)
 			{
@@ -254,8 +251,6 @@ public:
 
 	void reset_internal()
 	{
-		fc = 0;
-
 		// LIR
 		LIR = 0;
 
@@ -284,6 +279,8 @@ public:
 
 	void reset()
 	{
+		fc = 0;
+		InterruptManager = {0,0,{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
 		reset_internal();
 
 		// Clear DRAM banks
@@ -292,6 +289,7 @@ public:
 
 		// Reset Musashi processor
 		m68k_pulse_reset();
+		m68k_set_irq(0);
 		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
 		m68k_set_reg(M68K_REG_A7, (memory[0x400000] << 24) | (memory[0x400001] << 16) | (memory[0x400002] << 8) | memory[0x400003]);
 		m68k_set_reg(M68K_REG_PC, (memory[0x400004] << 24) | (memory[0x400005] << 16) | (memory[0x400006] << 8) | memory[0x400007]);

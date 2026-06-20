@@ -14,45 +14,57 @@ namespace MiniCDI
 {
 	static void Log(const char* txt, ...)
 	{
-		#if defined(MINICDI_DEBUG) || defined(MINICDI_LOGFILE) || defined(__3DS__)
+	#if defined(MINICDI_DEBUG) || defined(MINICDI_LOGFILE) || defined(__3DS__)
 
 		// Copy arguments to string and allocate buffer
 		va_list arg1, arg2;
 		va_start(arg1, txt);
 		va_copy(arg2, arg1);
 		va_end(arg2);
-		char *szBuff = new char[1024];
+		char szBuff[1024];
 		vsnprintf(szBuff, 1024, txt, arg1);
 		va_end(arg1);
 
+		#ifdef MINICDI_DEBUG_MODULE
 		MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module(m68k_get_reg(NULL, M68K_REG_PC));
-
-		#ifdef __WIIU__
-		if (module)
-			WHBLogPrintf("@%08X(%s) %s", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
-		else
-			WHBLogPrintf("@%08X %s", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
-		#else
-			#if defined(MINICDI_DEBUG) || defined(__3DS__)
-			// printf("%s\n", szBuff);
-			// printf("@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
-			if (module)
-				printf("@%08X(%s) %s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
-			else
-				printf("@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
-			#endif
 		#endif
 
+		// Print to logfile if available
 		if (MiniCDI::Config::LogFile) {
-			if (module)
-				fprintf(MiniCDI::Config::LogFile, "@%08X(%s) %s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+			#ifdef MINICDI_DEBUG_MODULE
+			if (module != nullptr)
+				fprintf(MiniCDI::Config::LogFile, "[@%08X(%s)]%s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
 			else
-				fprintf(MiniCDI::Config::LogFile, "@%08X %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+				fprintf(MiniCDI::Config::LogFile, "[@%08X]%s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+			#else
+			fprintf(MiniCDI::Config::LogFile, "%s\n", szBuff);
+			#endif
 		}
 
-		delete[] szBuff;
-
+		// Print to screen or other debug output
+		#ifdef __WIIU__
+			#ifdef MINICDI_DEBUG_MODULE
+			if (module != nullptr)
+				WHBLogPrintf("[@%08X(%s)]%s", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+			else
+				WHBLogPrintf("[@%08X]%s", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+			#else
+			WHBLogPrintf("%s", szBuff);
+			#endif
+		#else
+		#if defined(MINICDI_DEBUG) || defined(__3DS__)
+			#ifdef MINICDI_DEBUG_MODULE
+			if (module != nullptr)
+				printf("[@%08X(%s)]%s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+			else
+				printf("[@%08X]%s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+			#else
+			printf("%s\n", szBuff);
+			#endif
 		#endif
+		#endif
+
+	#endif
 	}
 }
 

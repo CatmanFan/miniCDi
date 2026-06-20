@@ -146,7 +146,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		return;
 	}
 
-	MiniCDI::Config::FrameSkip = 1;
+	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = true;
 	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
@@ -158,6 +158,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 
 	cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str());
 	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
+	cdi.run(true);
 
 	EmuDisplay screen;
 	bool paused = false;
@@ -250,14 +251,15 @@ static std::string RUN_MENU()
 
 		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
 
-		// SDL_print(1920/2,150,37,{255,255,255,255},"Select a disc or press \ue001 to boot without disc"); // en
+		SDL_print(1920/2,150,37,{255,255,255,255},"Select a disc or press \ue001 to boot without disc"); // en
 		// SDL_print(1920/2,150,34,{255,255,255,255},"ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。"); // ja
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001."); // fr
-		SDL_print(1920/2,150,37,{255,255,255,255},"Elige una imagen de disco u oprime \ue001 para comenzar sin disco"); // es-LA
+		// SDL_print(1920/2,150,37,{255,255,255,255},"Elige una imagen de disco u oprime \ue001 para comenzar sin disco"); // es-LA
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001"); // es-ES
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001"); // pt-PT
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren."); // de
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva."); // sv
+		// SDL_print(1920/2,150,37,{255,255,255,255},"Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva."); // sv
+		// SDL_print(1920/2,150,34,{255,255,255,255},"Velg en CD-fil.\nFor å starte uten en CD, trykk på \ue001."); // no
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın"); // tr
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001"); // ca
 

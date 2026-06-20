@@ -28,7 +28,7 @@ class CDIC
 	CDiDisc *disc;
 
 	struct {
-		bool active; // Whether is actively reading data
+		bool reading; // Whether is actively reading data
 		int delayed_sectors; // Number of sectors to delay for reading (e.g. to simulate discspin)
 		int curr_lba; // Taken from TIME register and then incremented
 		bool is_mode2; // Determines whether to apply MODE2 filter
@@ -44,7 +44,7 @@ class CDIC
 			 ) {
 				if (disc->Sector.Submode[1] & 0b10000000) {
 					MiniCDI::Log("[CDIC] MODE2: reached EOF");
-					CdicController.active = false;
+					CdicController.reading = false;
 				}
 				MiniCDI::Log("[CDIC] MODE2 autoread");
 				return true;
@@ -72,7 +72,7 @@ class CDIC
 
 	void disc_process_sector()
 	{
-		if (!CdicController.active)
+		if (!CdicController.reading)
 			return;
 
 		if (CdicController.delayed_sectors > 0) {
@@ -80,21 +80,19 @@ class CDIC
 			return;
 		}
 
-		disc->read_sector(CdicController.curr_lba);
+		disc->read_sector(CdicController.curr_lba++);
 
 		// Skip if MODE2 not satisfied
 		if (!disc_check_filter())
 			return;
 
 		MiniCDI::Log("[CDIC] read sector %02X:%02X:%02X", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
-		CdicController.curr_lba++;
 
 		// Switch DBUF index and reset audio
 		DBUF &= 0b01110001; DBUF ^= 0x0001;
 		uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
 
 		// Copy sector header as normal
-
 		memory[targetAddr++] = disc->Sector.Min;
 		memory[targetAddr++] = disc->Sector.Sec;
 		memory[targetAddr++] = disc->Sector.Frame;
@@ -106,26 +104,21 @@ class CDIC
 
 		// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
 		// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
-
 		bool use_adpcm = disc->Sector.Mode == 2 && CdicController.is_mode2
 					  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
-
 		if (use_adpcm) {
 			DBUF |= 0x0004; // audio index
-			if (disc->Sector.CodingInfo[1] == 0xFF) { AUDCTL |= 0x0001; }
-			targetAddr = 0x302808 + ((DBUF & 0x01)*0xA00); // ADPCM + 8
+			targetAddr += 0x2800;
 		}
 
 		memory[targetAddr++] = disc->Sector.FileNum[1];
 		memory[targetAddr++] = disc->Sector.ChNum[1];
 		memory[targetAddr++] = disc->Sector.Submode[1];
 		memory[targetAddr++] = disc->Sector.CodingInfo[1];
-
 		memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
 		targetAddr += 2328;
 
-		// TO-DO: TOC subchannel data ??
-
+		// switch (mode) default:
 		memory[targetAddr++] = 0x41; // Control
 		memory[targetAddr++] = 0x01; // Track
 		memory[targetAddr++] = 0x01; // Index
@@ -146,8 +139,9 @@ class CDIC
 
 	void assert_irq()
 	{
-		bool int_active = XBUF & 0x8000 ? true : false;
-		_68070->interrupt(SCC68070::IPL_IN4N, int_active);
+		bool xbuf_raised = XBUF & 0x8000 ? true : false;
+		bool abuf_raised = ABUF & 0x8000 ? true : false;
+		_68070->interrupt(SCC68070::IPL_IN4N, xbuf_raised || abuf_raised);
 	}
 
 public:
@@ -185,23 +179,23 @@ public:
 
 			case 0x303FF4: case 0x303FF5:
 			{
+				MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
 				uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
 					assert_irq();
 				}
-				MiniCDI::Log("[CDIC] ABUF => %04X", value);
 				return value;
 			}
 
 			case 0x303FF6: case 0x303FF7:
 			{
+				MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
 				uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
 					assert_irq();
 				}
-				MiniCDI::Log("[CDIC] XBUF => %04X", value);
 				return value;
 			}
 
@@ -289,21 +283,19 @@ public:
 					switch (CMD)
 					{
 						case 0x23:
-							MiniCDI::Log("[CDIC] stop disc, reset MODE1 (0x%02X)", CMD);
+							MiniCDI::Log("[CDIC] stop disc rotation (0x%02X)", CMD);
 
 							// Set to MODE2 and stop
-							CdicController.active = false;
-							CdicController.delayed_sectors = 6;
+							CdicController.reading = false;
 							CdicController.curr_lba = 0;
 							CdicController.is_mode2 = false;
 							break;
 
 						case 0x24:
-							MiniCDI::Log("[CDIC] stop read, reset MODE2 (0x%02X)", CMD);
+							MiniCDI::Log("[CDIC] stop data read (0x%02X)", CMD);
 
 							// Set to MODE2 and stop
-							CdicController.active = false;
-							CdicController.delayed_sectors = 6;
+							CdicController.reading = false;
 							CdicController.curr_lba = 0;
 							CdicController.is_mode2 = true;
 							break;
@@ -318,21 +310,23 @@ public:
 
 						case 0x2B:
 							MiniCDI::Log("[CDIC] stop CDDA ? (0x%02X)", CMD);
+							CdicController.reading = false;
 							break;
 
 						case 0x29:
 						case 0x2A:
 						case 0x2C:
 							switch (CMD) {
-								case 0x29: MiniCDI::Log("[CDIC] start CD-i dataread from $%08X (MODE1) (0x%02X)", TIME, CMD); break;
-								case 0x2A: MiniCDI::Log("[CDIC] start CD-i dataread from $%08X (MODE2) (0x%02X)", TIME, CMD); break;
+								case 0x29: MiniCDI::Log("[CDIC] read $%08X (MODE1) (0x%02X)", TIME, CMD); break;
+								case 0x2A: MiniCDI::Log("[CDIC] read $%08X (MODE2) (0x%02X)", TIME, CMD); break;
 								case 0x2C: MiniCDI::Log("[CDIC] seek ? (0x%02X)", CMD); break;
 							}
 
 							// Start reading
+							CdicController.delayed_sectors = 6;
 							CdicController.curr_lba = disc->get_lba_from_time(TIME);
 							CdicController.is_mode2 = CMD == 0x2A ? true : false;
-							CdicController.active = true;
+							CdicController.reading = true;
 							break;
 
 						case 0x2E:
@@ -344,8 +338,7 @@ public:
 				if (!(value & 0x4000))
 				{
 					MiniCDI::Log("[CDIC] abort");
-					CdicController.active = false;
-					CdicController.curr_lba = 0;
+					CdicController.reading = false;
 				}
 				break;
 		}

@@ -122,7 +122,7 @@ class SCC68070
 		// TO-DO: Cleaner way of iterating through priority list ?
 		for (InterruptManager.cur_index = 0; InterruptManager.cur_index < 12; InterruptManager.cur_index++) {
 			if (InterruptManager.levels[InterruptManager.cur_index] != 0) {
-				MiniCDI::Log("[SCC68070:IPL] IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
+				/*MiniCDI::Log("[SCC68070:IPL] IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
 							 InterruptManager.levels[IPL_IN7N],
 							 InterruptManager.levels[IPL_IN5N],
 							 InterruptManager.levels[IPL_IN4N],
@@ -134,7 +134,7 @@ class SCC68070
 							 InterruptManager.levels[IPL_UART_TX],
 							 InterruptManager.levels[IPL_I2C],
 							 InterruptManager.levels[IPL_DMA1],
-							 InterruptManager.levels[IPL_DMA2]);
+							 InterruptManager.levels[IPL_DMA2]);*/
 
 				uint8_t new_level = InterruptManager.levels[InterruptManager.cur_index];
 				if (InterruptManager.cur_level != new_level) {
@@ -144,7 +144,7 @@ class SCC68070
 							   && InterruptManager.cur_index != IPL_IN2N;
 					if (onchip) InterruptManager.levels[InterruptManager.cur_index] = 0;
 
-					switch (InterruptManager.cur_index) {
+					/*switch (InterruptManager.cur_index) {
 						default: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d", new_level); break;
 						case IPL_IN7N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN7N)", new_level); break;
 						case IPL_IN5N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN5N)", new_level); break;
@@ -158,7 +158,7 @@ class SCC68070
 						case IPL_I2C: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(I2C)", new_level); break;
 						case IPL_DMA1: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA1)", new_level); break;
 						case IPL_DMA2: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA2)", new_level); break;
-					}
+					}*/
 
 					m68k_set_irq(onchip ? new_level + 32 : new_level);
 					return;
@@ -168,7 +168,7 @@ class SCC68070
 
 		InterruptManager.cur_index = 0;
 		if (InterruptManager.cur_level != 0) {
-			MiniCDI::Log("[SCC68070:IPL] IRQ reset");
+			//MiniCDI::Log("[SCC68070:IPL] IRQ reset");
 			m68k_set_irq(0);
 			InterruptManager.cur_level = 0;
 		}

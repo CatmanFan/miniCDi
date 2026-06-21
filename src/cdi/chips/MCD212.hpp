@@ -410,10 +410,12 @@ class MCD212
 			#define ICF_APPLY(C, ICF) (int)(((float)(ICF) / 63.0f) * (float)((C)-16) + 16.0f)
 			#define ICF_MIX(C1, C2, ICF1, ICF2) std::clamp(ICF_APPLY(C1, ICF1) + ICF_APPLY(C2, ICF2) - 16, 0, 255)
 
+			int outputPixel = (FG[0].height == 240 ? y+20 : FG[0].height == 480 ? y+40 : y) * 384;
+
+			// Native plane X coords.
 			for (int x = 0; x < 384; x++) {
 				int PIXELA = (y*PLANEA.width) + x;
 				int PIXELB = (y*PLANEB.width) + x;
-				int outputPixel = (FG[0].height == 240 ? y+20 : FG[0].height == 480 ? y+40 : y) * 384 + x;
 
 				uint8_t rA = GET_R(PLANEA.decoded[PIXELA]),
 						gA = GET_G(PLANEA.decoded[PIXELA]),
@@ -468,6 +470,7 @@ class MCD212
 					}
 				}
 
+				outputPixel++;
 				/*if (FG[0].width < 400) {
 					output[outputPixel+1] = output[outputPixel];
 					outputPixel += 2;
@@ -482,8 +485,8 @@ class MCD212
 			#undef GET_G
 			#undef GET_B
 			#undef GET_A
-			#undef WF_MIX
-			#undef WF_MIX_SINGLE
+			#undef ICF_APPLY
+			#undef ICF_MIX
 		}
 
 		/**

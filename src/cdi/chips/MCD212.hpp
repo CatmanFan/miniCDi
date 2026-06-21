@@ -834,8 +834,7 @@ class MCD212
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
-					IT[Path] = 1;
-					if (IT[0] || IT[1]) { _68070->interrupt(SCC68070::IPL_INT1, true); }
+					IT[Path] = 0b01u; if (!DI[Path]) { _68070->interrupt(SCC68070::IPL_INT1, true); }
 					break;
 
 				case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
@@ -897,8 +896,7 @@ class MCD212
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
-					IT[Path] = 1;
-					if (IT[0] || IT[1]) { _68070->interrupt(SCC68070::IPL_INT1, true); }
+					IT[Path] = 0b01u; if (!DI[Path]) { _68070->interrupt(SCC68070::IPL_INT1, true); }
 					break;
 
 				default:
@@ -1038,9 +1036,11 @@ public:
 				DD2 = value >> 8 & 0b01u;
 				DD1 = value >> 9 & 0b01u;
 				DI[0] = value >> 15 & 0b01u;
+				if (DI[0] && IT[0]) _68070->interrupt(SCC68070::IPL_INT1, false);
 				break;
 			case 0x4FFFE0: // CSR2W
 				DI[1] = value >> 15 & 0b01u;
+				if (DI[1] && IT[1]) _68070->interrupt(SCC68070::IPL_INT1, false);
 				break;
 			case 0x4FFFF2: // DCR1
 				IC[0] = value >> 8 & 0b01u;

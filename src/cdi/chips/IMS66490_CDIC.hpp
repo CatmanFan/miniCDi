@@ -25,6 +25,14 @@ class CDIC
 	uint16_t IVEC; // 0x3FFC
 	uint16_t DBUF; // 0x3FFE
 
+	void audio_process()
+	{
+		// TO-DO
+		/*if (AUDCTL & 0x2000) {
+			assert_irq();
+		}*/
+	}
+
 	CDiDisc *disc;
 
 	struct {
@@ -105,6 +113,7 @@ class CDIC
 						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
 			if (use_adpcm) {
 				DBUF |= 0x0004; // audio index
+				if ((AUDCTL & 0x0800) == 0) AUDCTL |= 0x0800; // start playback
 				targetAddr += 0x2800;
 			}
 
@@ -160,6 +169,7 @@ public:
 	void tick()
 	{
 		disc_process_sector();
+		audio_process();
 	}
 
 	uint16_t read16(uint32_t addr)

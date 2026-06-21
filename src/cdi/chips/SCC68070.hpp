@@ -538,10 +538,8 @@ public:
 
 	int run(int cycles)
 	{
-		int ran = 0;
-
-		#ifdef MINICDI_DEBUG_CPU
-		/*if (MiniCDI::Config::LogFile != 0) {
+		/*#ifdef MINICDI_DEBUG_CPU
+		if (MiniCDI::Config::LogFile != 0) {
 			uint32_t pcLog;
 			pcLog = m68k_get_reg(NULL, M68K_REG_PC);
 			ran += m68k_execute(cycles);
@@ -551,11 +549,21 @@ public:
 				fprintf(MiniCDI::Config::LogFile, "[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
 				// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
 			}
-		} else*/
+		} else
 			ran += m68k_execute(cycles);
 		#else
 		ran += m68k_execute(cycles);
-		#endif
+		#endif*/
+
+		int ran = 0;
+		m68k_modify_timeslice(cycles);
+		while (m68k_cycles_remaining()) {
+			ran += m68k_execute(4);
+			if (ran >= cycles) {
+				m68k_end_timeslice();
+				break;
+			}
+		}
 
 		return ran;
 	}

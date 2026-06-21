@@ -246,13 +246,13 @@ class MCD212
 				case TcrIfTB:
 					return reg.Icm[Path] == RGB555 && Path && (*src & 0x8000);
 				case TcrIfMF0:
-					return !MF[0];
+					return MF[0];
 				case TcrIfMF1:
-					return !MF[1];
+					return MF[1];
 				case TcrIfCK_MF0:
-					return ColorKey || !MF[0];
+					return ColorKey || MF[0];
 				case TcrIfCK_MF1:
-					return ColorKey || !MF[1];
+					return ColorKey || MF[1];
 				case TcrNever:
 					return false;
 				case TcrIfNotCK:
@@ -260,13 +260,13 @@ class MCD212
 				case TcrIfNotTB:
 					return reg.Icm[Path] == RGB555 && Path && !(*src & 0x8000);
 				case TcrIfNotMF0:
-					return MF[0];
+					return !MF[0];
 				case TcrIfNotMF1:
-					return MF[1];
+					return !MF[1];
 				case TcrIfNotCK_MF0:
-					return !ColorKey && MF[0];
+					return !ColorKey && !MF[0];
 				case TcrIfNotCK_MF1:
-					return !ColorKey && MF[1];
+					return !ColorKey && !MF[1];
 			}
 		}
 
@@ -286,10 +286,10 @@ class MCD212
 		{
 			uint8_t DYUV_Y1, DYUV_Y2, DYUV_U2, DYUV_V2;
 
-			DYUV_Y1 = (*src) & 0x0F;
-			DYUV_Y2 = (*(src+1)) & 0x0F;
-			DYUV_U2 = ((*src) & 0xF0) >> 4;
-			DYUV_V2 = ((*(src+1)) & 0xF0) >> 4;
+			DYUV_Y1 = src[0] & 0x0F;
+			DYUV_Y2 = src[1] & 0x0F;
+			DYUV_U2 = src[0] & 0xF0 >> 4;
+			DYUV_V2 = src[1] & 0xF0 >> 4;
 
 			/// Formula adapted from ogarvey's CD-i Image Parser (licensed under MIT).
 			/// https://github.com/ogarvey/CD-i-Image-Parser/blob/main/CD-i%20Image%20Parser/Helpers/ImageFormatHelper.cs#L119
@@ -311,7 +311,7 @@ class MCD212
 				int G = std::clamp(((Y[i] * 256) - (86 * (U[i] - 128) + 179 * (V[i] - 128))) / 256, 0, 255);
 				int B = std::clamp((Y[i] * 256 + 444 * (U[i] - 128)) / 256, 0, 255);
 
-				*(dst+i) = (G << 24) | (B << 16) | (R << 8) | 0xFF;
+				dst[i] = (G << 24) | (B << 16) | (R << 8) | 0xFF;
 			}
 
 			return 2;
@@ -351,8 +351,8 @@ class MCD212
 					return 1;
 
 				case CLUT4:
-					if (!isTransparent<Path>(src)) *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
-					if (!isTransparent<Path>(src)) *(dst+1) = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
+					if (!isTransparent<Path>(src)) dst[0] = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
+					if (!isTransparent<Path>(src)) dst[1] = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
 					return 2;
 			}
 		}
@@ -368,7 +368,7 @@ class MCD212
 
 		int get_display_width()
 		{
-			return 384;
+			return 768;
 		}
 
 		void reset()
@@ -379,15 +379,13 @@ class MCD212
 
 		void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
 		{
-			if (reg.Icm[0] == CLUT4 || reg.Icm[1] == CLUT4) hDouble = true;
-
 			FG[1].width = FG[0].width = hRes * (hDouble || vDouble ? 2 : 1);
 			FG[1].height = FG[0].height = vRes * (vDouble ? 2 : 1);
 
 			FG[0].decoded.assign(FG[0].width * FG[0].height, 0);
 			FG[1].decoded.assign(FG[1].width * FG[1].height, 0);
 
-			output.assign(384 * 280, 0x000000FF); // max bounds
+			output.assign(768 * 280, 0x000000FF); // max bounds
 		}
 
 		/**
@@ -395,8 +393,8 @@ class MCD212
 		 */
 		void mix_to_frame(int y)
 		{
-			#define PLANEA FG[reg.PlaneOrder ? 0 : 1]
-			#define PLANEB FG[reg.PlaneOrder ? 1 : 0]
+			#define PLANEA reg.PlaneOrder ? 0 : 1
+			#define PLANEB reg.PlaneOrder ? 1 : 0
 			#define GET_R(V) ((V) >> 24 & 0xFF)
 			#define GET_G(V) ((V) >> 16 & 0xFF)
 			#define GET_B(V) ((V) >> 8 & 0xFF)
@@ -410,34 +408,33 @@ class MCD212
 			#define ICF_APPLY(C, ICF) (int)(((float)(ICF) / 63.0f) * (float)((C)-16) + 16.0f)
 			#define ICF_MIX(C1, C2, ICF1, ICF2) std::clamp(ICF_APPLY(C1, ICF1) + ICF_APPLY(C2, ICF2) - 16, 0, 255)
 
-			int outputPixel = (FG[0].height == 240 ? y+20 : FG[0].height == 480 ? y+40 : y) * 384;
+			// Output screen coords.
+			int outputPixel = y * 768;
+			for (int x = 0; x < 768; x++) {
+				int PIXELA = (y*FG[PLANEA].width) + x;
+				int PIXELB = (y*FG[PLANEB].width) + x;
 
-			// Native plane X coords.
-			for (int x = 0; x < 384; x++) {
-				int PIXELA = (y*PLANEA.width) + x;
-				int PIXELB = (y*PLANEB.width) + x;
+				uint8_t rA = GET_R(FG[PLANEA].decoded[PIXELA]),
+						gA = GET_G(FG[PLANEA].decoded[PIXELA]),
+						bA = GET_B(FG[PLANEA].decoded[PIXELA]),
+						rB = GET_R(FG[PLANEB].decoded[PIXELB]),
+						gB = GET_G(FG[PLANEB].decoded[PIXELB]),
+						bB = GET_B(FG[PLANEB].decoded[PIXELB]);
 
-				uint8_t rA = GET_R(PLANEA.decoded[PIXELA]),
-						gA = GET_G(PLANEA.decoded[PIXELA]),
-						bA = GET_B(PLANEA.decoded[PIXELA]),
-						rB = GET_R(PLANEB.decoded[PIXELB]),
-						gB = GET_G(PLANEB.decoded[PIXELB]),
-						bB = GET_B(PLANEB.decoded[PIXELB]);
-
-				if (reg.Mixing && PLANEB.decoded[PIXELB] && PLANEA.decoded[PIXELA])
-					output[outputPixel] = (ICF_MIX(rA, rB, reg.ICF[reg.PlaneOrder ? 0 : 1], reg.ICF[reg.PlaneOrder ? 1 : 0]) << 24)
-										| (ICF_MIX(gA, gB, reg.ICF[reg.PlaneOrder ? 0 : 1], reg.ICF[reg.PlaneOrder ? 1 : 0]) << 16)
-										| (ICF_MIX(bA, bB, reg.ICF[reg.PlaneOrder ? 0 : 1], reg.ICF[reg.PlaneOrder ? 1 : 0]) << 8)
+				if (reg.Mixing && FG[PLANEB].decoded[PIXELB] && FG[PLANEA].decoded[PIXELA])
+					output[outputPixel] = (ICF_MIX(rA, rB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 24)
+										| (ICF_MIX(gA, gB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 16)
+										| (ICF_MIX(bA, bB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 8)
 										| 0xFF;
-				else if (PLANEB.decoded[PIXELB])
-					output[outputPixel] = (ICF_APPLY(rB, reg.ICF[reg.PlaneOrder ? 1 : 0]) << 24)
-										| (ICF_APPLY(gB, reg.ICF[reg.PlaneOrder ? 1 : 0]) << 16)
-										| (ICF_APPLY(bB, reg.ICF[reg.PlaneOrder ? 1 : 0]) << 8)
+				else if (FG[PLANEB].decoded[PIXELB])
+					output[outputPixel] = (ICF_APPLY(rB, reg.ICF[PLANEB]) << 24)
+										| (ICF_APPLY(gB, reg.ICF[PLANEB]) << 16)
+										| (ICF_APPLY(bB, reg.ICF[PLANEB]) << 8)
 										| 0xFF;
-				else if (PLANEA.decoded[PIXELA])
-					output[outputPixel] = (ICF_APPLY(rA, reg.ICF[reg.PlaneOrder ? 0 : 1]) << 24)
-										| (ICF_APPLY(gA, reg.ICF[reg.PlaneOrder ? 0 : 1]) << 16)
-										| (ICF_APPLY(bA, reg.ICF[reg.PlaneOrder ? 0 : 1]) << 8)
+				else if (FG[PLANEA].decoded[PIXELA])
+					output[outputPixel] = (ICF_APPLY(rA, reg.ICF[PLANEA]) << 24)
+										| (ICF_APPLY(gA, reg.ICF[PLANEA]) << 16)
+										| (ICF_APPLY(bA, reg.ICF[PLANEA]) << 8)
 										| 0xFF;
 				else {
 					// Transparent, draw backdrop.
@@ -474,13 +471,12 @@ class MCD212
 					}
 				}
 
-				outputPixel++;
-				/*if (FG[0].width < 400) {
+				if (FG[PLANEA].width < 400) {
 					output[outputPixel+1] = output[outputPixel];
 					outputPixel += 2;
 				} else {
 					outputPixel++;
-				}*/
+				}
 			}
 
 			#undef PLANEA
@@ -558,8 +554,7 @@ class MCD212
 							case CLUT4: // RL3
 							case CLUT7: // RL7
 								if (*src & 0x80) {
-									int length = *(src+1);
-									++vsr;
+									int length = memory[++vsr];
 
 									if (length != 1) {
 										if (length == 0)

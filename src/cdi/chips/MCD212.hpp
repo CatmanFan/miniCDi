@@ -442,7 +442,7 @@ class MCD212
 				else {
 					// Transparent, draw backdrop.
 					if (reg.Icm[0] == Off && reg.Icm[1] == Off)
-						output[outputPixel] = 0x101010ff;
+						output[outputPixel] = 0x101010ff; // TO-DO: Cleaner way of doing this?
 					else {
 						switch (reg.BackdropColor & 0x07) {
 							default: output[outputPixel] = 0x101010ff; break;

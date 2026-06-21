@@ -14,6 +14,27 @@
 #include <cmath>
 #include <algorithm>
 
+// Time
+#ifndef MINICDI_GET_TIME
+#if defined(__WIIU__)
+	#include <coreinit/time.h>
+	#define MINICDI_GET_TIME (double)(OSTicksToNanoseconds(OSGetTick()))
+#endif
+#if defined(HW_RVL) || defined(HW_DOL)
+	#include <ogc/system.h>
+	#include <ogc/lwp_watchdog.h>
+	#define MINICDI_GET_TIME ticks_to_nanosecs((uint64_t)SYS_Time())
+#endif
+#if defined(__3DS__)
+	#include <3ds.h>
+	#define MINICDI_GET_TIME (double)(osGetTime() * 1000000)
+#endif
+#endif
+
+#ifndef MINICDI_GET_TIME
+	#define MINICDI_GET_TIME 0
+#endif
+
 // Global defs
 #include "cdi/Musashi/m68k.h"
 #include "os9/OS9.hpp"

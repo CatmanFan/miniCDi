@@ -909,6 +909,13 @@ public:
 		reset();
 	}
 
+	void assign(SCC68070 *_68070, uint8_t *memory)
+	{
+		this->_68070 = _68070;
+		this->memory = memory;
+		reset();
+	}
+
 	/**
 	 * @brief  Resets the chip.
 	 */

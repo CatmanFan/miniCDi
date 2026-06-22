@@ -15,9 +15,9 @@
 class MonoI : public CDi
 {
 private:
-	CDIC* cdic;
-	SLAVE* slave;
-	MCD212* vpu;
+	CDIC cdic;
+	SLAVE slave;
+	MCD212 vpu;
 	PlayerLCD lcd;
 
 public:
@@ -46,17 +46,17 @@ public:
 
 			if (cycles_left_cdic <= 0) {
 				cycles_left_cdic += disc_tick_rate;
-				cdic->tick();
+				cdic.tick();
 			}
 
 			if (cycles_left_vpu <= 0) {
 				cycles_left_vpu += line_tick_rate;
-				VBLANK = vpu->tick(skip_draw);
+				VBLANK = vpu.tick(skip_draw);
 			}
 		} while (!VBLANK);
 
 		// Update LCD display
-		lcd.get_from_slave(slave);
+		lcd.get_from_slave(&slave);
 
 		// Print verbose CPU
 		cpu.print();
@@ -65,12 +65,12 @@ public:
 
 	inline void reset() override {
 		cpu.reset();
-		slave->reset();
-		vpu->reset();
+		slave.reset();
+		vpu.reset();
 	}
 
-	inline uint32_t* get_display() override { return vpu->get_display(); }
-	inline size_t get_display_width() override { return vpu->get_display_width(); }
+	inline uint32_t* get_display() override { return vpu.get_display(); }
+	inline size_t get_display_width() override { return vpu.get_display_width(); }
 
 	inline uint32_t* get_lcd() override { return &lcd.display[0]; }
 };

@@ -50,6 +50,17 @@ public:
 		reset();
 	}
 
+	void assign(SCC68070* _68070, uint8_t* memory, uint32_t start)
+	{
+		this->_68070 = _68070;
+		this->memory = memory;
+		DR[0] = start + 0x01; // ADR
+		DR[1] = start + 0x03; // BDR
+		DR[2] = start + 0x05; // CDR
+		DR[3] = start + 0x07; // DDR
+		reset();
+	}
+
 	void reset()
 	{
 		memset(&LCD[0], 0, 16);

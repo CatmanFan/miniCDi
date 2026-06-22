@@ -17,7 +17,7 @@ class MonoIV : public CDi
 private:
 	CIAP* ciap;
 	IKAT* ikat;
-	MCD212* vpu;
+	MCD212 vpu;
 	PlayerLCD lcd;
 
 public:
@@ -42,7 +42,7 @@ public:
 			if (loops % /*(MiniCDI::Config::PAL ? 1035 : 830)*/1035 == 0) { ciap->tick(); }
 
 			// 15 MHz (not accurate) / 15625 Hz (line frequency) = 960 cycles
-			if (loops % 10 == 0) { VBLANK = vpu->tick(skip_draw); }
+			if (loops % 10 == 0) { VBLANK = vpu.tick(skip_draw); }
 		} while (!VBLANK);
 
 		// Update LCD display
@@ -56,11 +56,11 @@ public:
 	inline void reset() override {
 		cpu.reset();
 		ikat->reset();
-		vpu->reset();
+		vpu.reset();
 	}
 
-	inline uint32_t* get_display() override { return vpu->get_display(); }
-	inline size_t get_display_width() override { return vpu->get_display_width(); }
+	inline uint32_t* get_display() override { return vpu.get_display(); }
+	inline size_t get_display_width() override { return vpu.get_display_width(); }
 
 	inline uint32_t* get_lcd() override { return nullptr; } // Not implemented
 };

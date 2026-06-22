@@ -17,7 +17,7 @@ class MonoIV : public CDi
 private:
 	CIAP* ciap;
 	IKAT* ikat;
-	MCD212 vpu;
+	MCD212* vpu;
 	PlayerLCD lcd;
 
 public:
@@ -27,26 +27,36 @@ public:
 		// Tick pointing device
 		pd.send();
 
-		// Timer normally ticks at 96 cycles, line polling at 960 ? Should verify
-		int loops = 0;
+		const int disc_tick_rate = 15'000'000 / 75;
+		const int line_tick_rate = 15'000'000 / 15625;
+
+		int cycles_left_sector = disc_tick_rate;
+		int cycles_left_vpu = line_tick_rate;
 
 		bool VBLANK = false;
 		do {
-			cpu.run(96);
-			cpu.tick_timer();
+			int cycles = std::min({cycles_left_sector, cycles_left_vpu});
+			for (int i = 0; i < cycles; i += 96) {
+				m68k_execute(96);
+				cpu.tick_timer();
+			}
 
-			loops++;
+			cycles_left_sector -= cycles;
+			cycles_left_vpu -= cycles;
 
-			// 1035 is arbitrary number, should check how many cycles is equal to a sector tick
-			// The speed MUST be at approximately 75 sectors per sec, otherwise it will not work!!
-			if (loops % /*(MiniCDI::Config::PAL ? 1035 : 830)*/1035 == 0) { ciap->tick(); }
+			if (cycles_left_sector <= 0) {
+				cycles_left_sector += disc_tick_rate;
+				ciap->tick();
+			}
 
-			// 15 MHz (not accurate) / 15625 Hz (line frequency) = 960 cycles
-			if (loops % 10 == 0) { VBLANK = vpu.tick(skip_draw); }
+			if (cycles_left_vpu <= 0) {
+				cycles_left_vpu += line_tick_rate;
+				VBLANK = vpu->tick(skip_draw);
+			}
 		} while (!VBLANK);
 
 		// Update LCD display
-		// lcd.update_IKAT(ikat);
+		lcd.get_from_slave(slave);
 
 		// Print verbose CPU
 		cpu.print();
@@ -56,11 +66,11 @@ public:
 	inline void reset() override {
 		cpu.reset();
 		ikat->reset();
-		vpu.reset();
+		vpu->reset();
 	}
 
-	inline uint32_t* get_display() override { return vpu.get_display(); }
-	inline size_t get_display_width() override { return vpu.get_display_width(); }
+	inline uint32_t* get_display() override { return vpu->get_display(); }
+	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
 	inline uint32_t* get_lcd() override { return nullptr; } // Not implemented
 };

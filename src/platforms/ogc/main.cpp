@@ -146,6 +146,22 @@ static bool FAT_Init() {
 	return true;
 }
 
+static void FAT_Exit()
+{
+	#ifdef HW_RVL
+	if (!appPath.compare("sd:/apps/miniCDi/")) {
+		fatUnmount("sd:/");
+		__io_wiisd.shutdown();
+	}
+	else if (!appPath.compare("usb:/apps/miniCDi/")) {
+		fatUnmount("usb:/");
+		__io_usbstorage.shutdown();
+	}
+	#else // HW_DOL
+	fatDeinit();
+	#endif
+}
+
 static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
 	if (access((appPath + "rom/" + biosName).c_str(), F_OK) != 0) {
@@ -384,6 +400,7 @@ int main(int argc, char **argv) {
 		// RUN_CDI("cdi490a.rom", selectedDisc);
 	}
 
+	FAT_Exit();
 	VIDEO_SetBlack(true);
 	return 0;
 }

@@ -156,18 +156,18 @@ bool MonoI::init(const std::string &bios)
 		romStream.close();
 
 		this->cpu = SCC68070(this->memory);
-		this->vpu.assign(&this->cpu, this->memory);
-		this->cdic.assign(&this->cpu, this->memory, &this->disc);
-		this->slave.assign(&this->cpu, this->memory, 0x00310000);
-		this->pd.IO.slave = &this->slave;
+		this->vpu = new MCD212(&this->cpu, this->memory);
+		this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
+		this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+		this->pd.IO.slave = this->slave;
 
 		MiniCDI::Player =
 		{
 			.memory = this->memory,
 			.scc68070 = &this->cpu,
-			.mcd212 = &this->vpu,
-			.slave = &this->slave,
-			.cdic = &this->cdic
+			.mcd212 = this->vpu,
+			.slave = this->slave,
+			.cdic = this->cdic
 		};
 
 		m68k_init();
@@ -191,7 +191,7 @@ bool MonoIV::init(const std::string &bios)
 		romStream.close();
 
 		this->cpu = SCC68070(this->memory);
-		this->vpu.assign(&this->cpu, this->memory);
+		this->vpu = new MCD212(&this->cpu, this->memory);
 		this->ciap = new CIAP(&this->disc, this->memory);
 		this->ikat = new IKAT(&this->cpu, this->memory);
 		this->pd.IO.ikat = this->ikat;
@@ -200,7 +200,7 @@ bool MonoIV::init(const std::string &bios)
 		{
 			.memory = this->memory,
 			.scc68070 = &this->cpu,
-			.mcd212 = &this->vpu,
+			.mcd212 = this->vpu,
 			.ikat = this->ikat,
 			.ciap = this->ciap
 		};

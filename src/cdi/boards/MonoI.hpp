@@ -15,9 +15,9 @@
 class MonoI : public CDi
 {
 private:
-	CDIC cdic;
-	SLAVE slave;
-	MCD212 vpu;
+	CDIC* cdic;
+	SLAVE* slave;
+	MCD212* vpu;
 	PlayerLCD lcd;
 
 public:
@@ -30,33 +30,33 @@ public:
 		const int disc_tick_rate = 15'000'000 / 75;
 		const int line_tick_rate = 15'000'000 / 15625;
 
-		int cycles_left_cdic = disc_tick_rate;
+		int cycles_left_sector = disc_tick_rate;
 		int cycles_left_vpu = line_tick_rate;
 
 		bool VBLANK = false;
 		do {
-			int cycles = std::min({cycles_left_cdic, cycles_left_vpu});
+			int cycles = std::min({cycles_left_sector, cycles_left_vpu});
 			for (int i = 0; i < cycles; i += 96) {
 				m68k_execute(96);
 				cpu.tick_timer();
 			}
 
-			cycles_left_cdic -= cycles;
+			cycles_left_sector -= cycles;
 			cycles_left_vpu -= cycles;
 
-			if (cycles_left_cdic <= 0) {
-				cycles_left_cdic += disc_tick_rate;
-				cdic.tick();
+			if (cycles_left_sector <= 0) {
+				cycles_left_sector += disc_tick_rate;
+				cdic->tick();
 			}
 
 			if (cycles_left_vpu <= 0) {
 				cycles_left_vpu += line_tick_rate;
-				VBLANK = vpu.tick(skip_draw);
+				VBLANK = vpu->tick(skip_draw);
 			}
 		} while (!VBLANK);
 
 		// Update LCD display
-		lcd.get_from_slave(&slave);
+		lcd.get_from_slave(slave);
 
 		// Print verbose CPU
 		cpu.print();
@@ -65,12 +65,12 @@ public:
 
 	inline void reset() override {
 		cpu.reset();
-		slave.reset();
-		vpu.reset();
+		slave->reset();
+		vpu->reset();
 	}
 
-	inline uint32_t* get_display() override { return vpu.get_display(); }
-	inline size_t get_display_width() override { return vpu.get_display_width(); }
+	inline uint32_t* get_display() override { return vpu->get_display(); }
+	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
 	inline uint32_t* get_lcd() override { return &lcd.display[0]; }
 };

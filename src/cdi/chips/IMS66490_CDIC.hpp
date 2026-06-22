@@ -162,19 +162,8 @@ class CDIC
 	}
 
 public:
-	CDIC() : _68070(nullptr), memory(nullptr), XBUF(0), disc(nullptr), CdicController({0})
-	{
-	}
-
 	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), disc(disc), CdicController({0})
 	{
-	}
-
-	void assign(SCC68070* _68070, uint8_t* memory, CDiDisc *disc)
-	{
-		this->_68070 = _68070;
-		this->memory = memory;
-		this->disc = disc;
 	}
 
 	void tick()

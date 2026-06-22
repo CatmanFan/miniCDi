@@ -226,7 +226,8 @@ class MCD212
 		bool isTransparent(uint8_t* src, bool second = false)
 		{
 			bool ColorKey = (Path == 1 && reg.Icm[Path] == RGB555) || reg.Icm[Path] == DYUV ? false
-						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC) || (reg.MaskCol[Path] & 0xFCFCFC);
+						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC)
+							|| (reg.MaskCol[Path] & 0xFCFCFC);
 
 			switch (reg.Transparency[Path])
 			{
@@ -341,15 +342,12 @@ class MCD212
 		{
 			switch (reg.Icm[Path]) {
 				default:
-					if (!isTransparent<Path>(src))
-						*dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
+					if (!isTransparent<Path>(src)) *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
 					return 1;
 
 				case CLUT4:
-					if (!isTransparent<Path>(src))
-						dst[0] = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
-					if (!isTransparent<Path>(src, true))
-						dst[1] = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
+					if (!isTransparent<Path>(src)) dst[0] = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
+					if (!isTransparent<Path>(src)) dst[1] = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
 					return 2;
 			}
 		}
@@ -497,8 +495,6 @@ class MCD212
 		template <size_t Path>
 		uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 		{
-			if (!memory) return 0;
-
 			// reset matte flag for plane
 			Matte.p = 0;
 
@@ -517,7 +513,7 @@ class MCD212
 				uint8_t* src = &memory[++vsr];
 				uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
 
-				matteCheck(x);
+				matteCheck(FG[Path].width < 400 ? x*2 : x);
 
 				switch (reg.FT[Path]) {
 					default:
@@ -900,19 +896,10 @@ class MCD212
 	}
 
 public:
-	MCD212() : _68070(nullptr), memory(nullptr)
-	{
-	}
+	MCD212() {}
 
 	MCD212(SCC68070 *_68070, uint8_t *memory) : _68070(_68070), memory(memory)
 	{
-		reset();
-	}
-
-	void assign(SCC68070 *_68070, uint8_t *memory)
-	{
-		this->_68070 = _68070;
-		this->memory = memory;
 		reset();
 	}
 

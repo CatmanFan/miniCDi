@@ -36,24 +36,8 @@ public:
 	friend class PlayerLCD;
 	friend class PointingDevice;
 
-	SLAVE() : _68070(nullptr), memory(nullptr), PointerInterface({0})
-	{
-		reset();
-	}
-
 	SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start) : _68070(_68070), memory(memory), PointerInterface({0})
 	{
-		DR[0] = start + 0x01; // ADR
-		DR[1] = start + 0x03; // BDR
-		DR[2] = start + 0x05; // CDR
-		DR[3] = start + 0x07; // DDR
-		reset();
-	}
-
-	void assign(SCC68070* _68070, uint8_t* memory, uint32_t start)
-	{
-		this->_68070 = _68070;
-		this->memory = memory;
 		DR[0] = start + 0x01; // ADR
 		DR[1] = start + 0x03; // BDR
 		DR[2] = start + 0x05; // CDR

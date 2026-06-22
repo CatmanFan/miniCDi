@@ -171,20 +171,16 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = /*VIDEO_GetCurrentTvMode() == VI_PAL*/ true;
+	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
 	MiniCDI::Config::ShowLCD = true;
 	MiniCDI::Config::FrameSkip = 1;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 
 	MonoI cdi;
-	// MonoIV cdi;
-	// MonoIII cdi;
-	// Robocon cdi;
-
+	cdi.board = CDi::MonoI;
 	cdi.init(appPath + "rom/" + biosName);
 	cdi.disc.open(appPath + "discs/" + discName);
-	if (MiniCDI::Config::FrameSkip == 0)
-		cdi.run(true); // Skip a frame anyway, to prevent crashing.
+	// cdi.run(true); // Skip a frame anyway, to prevent crashing.
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;

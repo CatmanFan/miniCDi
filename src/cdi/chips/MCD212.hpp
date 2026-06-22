@@ -39,22 +39,20 @@ class MCD212
 
 		enum Tcr
 		{
-			TcrAlways = 0,
-			TcrIfCK = 1,
+			TcrAlways = 0x00,
+			TcrIfCK = 0x01,
 			TcrIfTB,
 			TcrIfMF0,
 			TcrIfMF1,
 			TcrIfCK_MF0,
 			TcrIfCK_MF1,
-			TcrUnusedA,
-			TcrNever,
+			TcrNever = 0x08,
 			TcrIfNotCK,
 			TcrIfNotTB,
 			TcrIfNotMF0,
 			TcrIfNotMF1,
 			TcrIfNotCK_MF0,
-			TcrIfNotCK_MF1,
-			TcrUnusedB
+			TcrIfNotCK_MF1
 		};
 
 		enum Type
@@ -108,7 +106,7 @@ class MCD212
 			/* 80 */ uint32_t ColorCLUT[256];
 			/* C0 */ enum Icm Icm[2];
 					 uint8_t IcmCS, MatteCount, ExternalVideo; // Dual CLUT bank select (0-1 or 2-3); enable external video
-			/* C1 */ enum Tcr Transparency[2]; uint8_t Mixing;
+			/* C1 */ uint8_t TransparencyCtrl[2]; uint8_t Mixing;
 			/* C2 */ uint8_t PlaneOrder;
 			/* C3 */ uint8_t BankCLUT;
 			/* C4 */ uint32_t TransparentCol[2];
@@ -140,63 +138,58 @@ class MCD212
 
 			// Current index
 			size_t p = 0;
-		} Matte;
+		} MatteCtrl;
 		bool MF[2];
 
+		template <size_t Path>
 		void matteCheck(int x)
 		{
-			if (Matte.x[Matte.p] != x) return;
+			if (MatteCtrl.p >= 8 || MatteCtrl.x[MatteCtrl.p] != x) return;
 
-			switch (Matte.opcode[Matte.p]) {
+			switch (MatteCtrl.opcode[MatteCtrl.p]) {
 				case 0x0: // end of matte control
-					Matte.p = 8;
+					MatteCtrl.p = 8;
 					//MiniCDI::Log("[VDSC] matte end");
-					break;
+					return;
 				case 0x4: // change weight of pA
-					reg.ICF[0] = Matte.icf[Matte.p];
+					reg.ICF[0] = MatteCtrl.icf[MatteCtrl.p];
 					//MiniCDI::Log("[VDSC] matte changed ICF for planeA: %.02f", reg.ICF[0]);
-					Matte.p = (Matte.p + 1) % 8;
 					break;
 				case 0x6: // change weight of pB
-					reg.ICF[1] = Matte.icf[Matte.p];
+					reg.ICF[1] = MatteCtrl.icf[MatteCtrl.p];
 					//MiniCDI::Log("[VDSC] matte changed ICF for planeB: %.02f", reg.ICF[0]);
-					Matte.p = (Matte.p + 1) % 8;
 					break;
 				case 0x8: // reset
-					MF[Matte.mf[Matte.p]] = false;
-					//MiniCDI::Log("[VDSC] matte flag %d unset", Matte.mf[Matte.p]);
-					Matte.p = (Matte.p + 1) % 8;
+					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = false;
+					//MiniCDI::Log("[VDSC] matte flag %d unset", MatteCtrl.mf[MatteCtrl.p]);
 					break;
 				case 0x9: // set
-					MF[Matte.mf[Matte.p]] = true;
-					//MiniCDI::Log("[VDSC] matte flag %d set", Matte.mf[Matte.p]);
-					Matte.p = (Matte.p + 1) % 8;
+					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = true;
+					//MiniCDI::Log("[VDSC] matte flag %d set", MatteCtrl.mf[MatteCtrl.p]);
 					break;
 				case 0xC: // reset & change weight of pA
-					MF[Matte.mf[Matte.p]] = false;
-					reg.ICF[0] = Matte.icf[Matte.p];
-					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeA: %.02f", Matte.mf[Matte.p], reg.ICF[0]);
-					Matte.p = (Matte.p + 1) % 8;
+					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = false;
+					reg.ICF[reg.PlaneOrder ? 0 : 1] = MatteCtrl.icf[MatteCtrl.p];
+					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeA: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[0]);
 					break;
 				case 0xD: // set & change weight of pA
-					MF[Matte.mf[Matte.p]] = true;
-					reg.ICF[0] = Matte.icf[Matte.p];
-					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeA: %.02f", Matte.mf[Matte.p], reg.ICF[0]);
-					Matte.p = (Matte.p + 1) % 8;
+					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = true;
+					reg.ICF[reg.PlaneOrder ? 0 : 1] = MatteCtrl.icf[MatteCtrl.p];
+					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeA: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[0]);
 					break;
 				case 0xE: // reset & change weight of pB
-					MF[Matte.mf[Matte.p]] = false;
-					reg.ICF[1] = Matte.icf[Matte.p];
-					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeB: %.02f", Matte.mf[Matte.p], reg.ICF[1]);
-					Matte.p = (Matte.p + 1) % 8;
+					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = false;
+					reg.ICF[reg.PlaneOrder ? 1 : 0] = MatteCtrl.icf[MatteCtrl.p];
+					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeB: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[1]);
 					break;
 				case 0xF: // set & change weight of pB
-					MF[Matte.mf[Matte.p]] = true;
-					reg.ICF[1] = Matte.icf[Matte.p];
-					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeB: %.02f", Matte.mf[Matte.p], reg.ICF[1]);
-					Matte.p = (Matte.p + 1) % 8;
+					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = true;
+					reg.ICF[reg.PlaneOrder ? 1 : 0] = MatteCtrl.icf[MatteCtrl.p];
+					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeB: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[1]);
 					break;
 			}
+
+			MatteCtrl.p++;
 		}
 
 		template <size_t Path>
@@ -227,12 +220,12 @@ class MCD212
 		{
 			bool ColorKey = (Path == 1 && reg.Icm[Path] == RGB555) || reg.Icm[Path] == DYUV ? false
 						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC)
-							|| (reg.MaskCol[Path] & 0xFCFCFC);
+						 || (reg.MaskCol[Path] & 0xFCFCFC);
 
-			switch (reg.Transparency[Path])
+			switch (reg.TransparencyCtrl[Path])
 			{
 				default:
-					assert(0);
+					// assert(0);
 					return false;
 				case TcrAlways:
 					return true;
@@ -241,27 +234,27 @@ class MCD212
 				case TcrIfTB:
 					return reg.Icm[Path] == RGB555 && Path && (*src & 0x8000);
 				case TcrIfMF0:
-					return MF[0];
+					return !MF[0];
 				case TcrIfMF1:
-					return MF[1];
+					return !MF[1];
 				case TcrIfCK_MF0:
-					return ColorKey || MF[0];
+					return ColorKey || !MF[0];
 				case TcrIfCK_MF1:
-					return ColorKey || MF[1];
+					return ColorKey || !MF[1];
 				case TcrNever:
 					return false;
 				case TcrIfNotCK:
 					return !ColorKey;
 				case TcrIfNotTB:
-					return reg.Icm[Path] == RGB555 && Path && !(*src & 0x8000);
+					return !(reg.Icm[Path] == RGB555 && Path && (*src & 0x8000));
 				case TcrIfNotMF0:
-					return !MF[0];
+					return MF[0];
 				case TcrIfNotMF1:
-					return !MF[1];
+					return MF[1];
 				case TcrIfNotCK_MF0:
-					return !ColorKey && !MF[0];
+					return !ColorKey || MF[0];
 				case TcrIfNotCK_MF1:
-					return !ColorKey && !MF[1];
+					return !ColorKey || MF[1];
 			}
 		}
 
@@ -404,8 +397,8 @@ class MCD212
 			#define ICF_MIX(C1, C2, ICF1, ICF2) std::clamp(ICF_APPLY(C1, ICF1) + ICF_APPLY(C2, ICF2) - 16, 0, 255)
 
 			// Output screen coords.
-			int outputPixel = y * 768;
-			for (int x = 0; x < 768; x++) {
+			int outputPixel = (FG[PLANEA].height == 240 ? y + 20 : y) * 768 + (FG[PLANEA].width % 360 == 0 ? 12 : 0);
+			for (int x = 0; x < FG[PLANEA].width; x++) {
 				int PIXELA = (y*FG[PLANEA].width) + x;
 				int PIXELB = (y*FG[PLANEB].width) + x;
 
@@ -421,12 +414,12 @@ class MCD212
 										| (ICF_MIX(gA, gB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 16)
 										| (ICF_MIX(bA, bB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 8)
 										| 0xFF;
-				else if (FG[PLANEB].decoded[PIXELB])
+				else if (FG[PLANEB].decoded[PIXELB] & 0x000000FF)
 					output[outputPixel] = (ICF_APPLY(rB, reg.ICF[PLANEB]) << 24)
 										| (ICF_APPLY(gB, reg.ICF[PLANEB]) << 16)
 										| (ICF_APPLY(bB, reg.ICF[PLANEB]) << 8)
 										| 0xFF;
-				else if (FG[PLANEA].decoded[PIXELA])
+				else if (FG[PLANEA].decoded[PIXELA] & 0x000000FF)
 					output[outputPixel] = (ICF_APPLY(rA, reg.ICF[PLANEA]) << 24)
 										| (ICF_APPLY(gA, reg.ICF[PLANEA]) << 16)
 										| (ICF_APPLY(bA, reg.ICF[PLANEA]) << 8)
@@ -495,25 +488,21 @@ class MCD212
 		template <size_t Path>
 		uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 		{
-			// reset matte flag for plane
-			Matte.p = 0;
-
 			// reset DYUV to initial values
 			DYUVDecoder.Y = 0;
 			DYUVDecoder.U = reg.ColorDYUV[Path] >> 8 & 0xFF;
 			DYUVDecoder.V = reg.ColorDYUV[Path] & 0xFF;
 
 			if (reg.Icm[Path] == Off) {
-				memset(&FG[Path].decoded[(y * FG[Path].width)], 0x00000000, FG[Path].width * sizeof(uint32_t));
+				memset(&FG[Path].decoded[(y * FG[Path].width)], 0, FG[Path].width * sizeof(uint32_t));
 				return 0;
 			}
 
 			for (int x = 0; x < FG[Path].width;)
 			{
+				matteCheck<Path>(FG[Path].width < 400 ? x*2 : x);
 				uint8_t* src = &memory[++vsr];
 				uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
-
-				matteCheck(FG[Path].width < 400 ? x*2 : x);
 
 				switch (reg.FT[Path]) {
 					default:
@@ -573,6 +562,9 @@ class MCD212
 				}
 			}
 
+			// reset matte flag for plane
+			MatteCtrl.p = 0;
+			MF[0] = MF[1] = false;
 			return vsr;
 		}
 
@@ -613,7 +605,6 @@ class MCD212
 						reg.ExternalVideo = inst >> 18 & 0x01u;
 						reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
 						reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
-						Matte.mf[4] = Matte.mf[5] = Matte.mf[6] = Matte.mf[7] = reg.MatteCount ? 1 : 0;
 						/*MiniCDI::Log("[VDSC] P%d icm cma=%s,cmb=%s,nr=%d,ev=%d,cs=%d", Path,
 								  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
 								: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
@@ -626,10 +617,10 @@ class MCD212
 
 				case 0xC1:
 					if (!Path) {
-						reg.Transparency[0] = (enum Tcr)(inst & 0x0Fu);
-						reg.Transparency[1] = (enum Tcr)(inst >> 8 & 0x0Fu);
+						reg.TransparencyCtrl[0] = inst & 0x0Fu;
+						reg.TransparencyCtrl[1] = inst >> 8 & 0x0Fu;
 						reg.Mixing = inst & 0x00800000u ? 0 : 1;
-						//MiniCDI::Log("[VDSC] P%d tctl mx=%d,tca=%02d,tcb=%02d", Path, reg.Mixing, reg.Transparency[0], reg.Transparency[1]);
+						//MiniCDI::Log("[VDSC] P%d tctl mx=%d,tca=%02d,tcb=%02d", Path, reg.Mixing, reg.TransparencyCtrl[0], reg.TransparencyCtrl[1]);
 					}
 					break;
 
@@ -707,10 +698,11 @@ class MCD212
 				case 0xD7:
 					{
 						uint8_t rIndex = (inst >> 24 & 0xFF) - 0xD0;
-						Matte.x[rIndex] = inst & 0x3FFu;
-						Matte.icf[rIndex] = inst >> 10 & 0x3Fu;
-						Matte.opcode[rIndex] = inst >> 20 & 0x0Fu;
-						//MiniCDI::Log("[VDSC] P%d rctl %d,op=%1X,rf=%d,wf=%d,x=%d", Path, rIndex, Matte.opcode[rIndex], Matte.mf[rIndex], Matte.icf[rIndex], Matte.x[rIndex]);
+						MatteCtrl.x[rIndex] = inst & 0x1FFu;
+						MatteCtrl.icf[rIndex] = inst >> 10 & 0x1Fu;
+						MatteCtrl.mf[rIndex] = reg.MatteCount ? (rIndex >= 4 ? 1 : 0) : inst >> 16 & 0x01u;
+						MatteCtrl.opcode[rIndex] = inst >> 20 & 0x0Fu;
+						//MiniCDI::Log("[VDSC] P%d rctl %d,op=%1X,rf=%d,wf=%d,x=%d", Path, rIndex, MatteCtrl.opcode[rIndex], MatteCtrl.mf[rIndex], MatteCtrl.icf[rIndex], MatteCtrl.x[rIndex]);
 					}
 					break;
 
@@ -947,7 +939,7 @@ public:
 				line = 1;
 
 			if (!skip_draw)
-				vdsc.set_mode(!CF || ST ? 360 : 384, FD ? 240 : 280, CM[1]);
+				vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
 		}
 
 		if (DE) {

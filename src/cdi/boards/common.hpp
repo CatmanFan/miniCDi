@@ -10,6 +10,12 @@ protected:
 	SCC68070 cpu;
 
 public:
+	enum BoardType {
+		MonoI = 0,
+		MonoIV
+	};
+	enum BoardType board;
+
 	PointingDevice pd;
 	CDiDisc disc;
 

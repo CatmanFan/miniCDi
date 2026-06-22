@@ -126,7 +126,7 @@ public:
 
 	EmuDisplay()
 	{
-		this->texture = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 384, 280);
+		this->texture = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 		this->lcd = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
 	}
 
@@ -152,13 +152,10 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
-	// MonoIII cdi;
-	// MonoIV cdi;
-	// Robocon cdi;
-
+	cdi.board = CDi::MonoI;
 	cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str());
 	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
-	cdi.run(true);
+	// cdi.run(true);
 
 	EmuDisplay screen;
 	bool paused = false;

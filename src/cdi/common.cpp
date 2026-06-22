@@ -144,6 +144,7 @@ CDi::~CDi()
 	// Avoid exception crash
 	MiniCDI::Player = {nullptr};
 	m68k_pulse_halt();
+	if (memory) delete[] memory;
 }
 
 bool MonoI::init(const std::string &bios)
@@ -157,9 +158,15 @@ bool MonoI::init(const std::string &bios)
 
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
-		this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
-		this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
-		this->pd.IO.slave = this->slave;
+		if (this->board == CDi::MonoIV) {
+			this->ciap = new CIAP(&this->disc, this->memory);
+			this->ikat = new IKAT(&this->cpu, this->memory);
+			this->pd.IO.ikat = this->ikat;
+		} else {
+			this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
+			this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+			this->pd.IO.slave = this->slave;
+		}
 
 		MiniCDI::Player =
 		{
@@ -167,41 +174,8 @@ bool MonoI::init(const std::string &bios)
 			.scc68070 = &this->cpu,
 			.mcd212 = this->vpu,
 			.slave = this->slave,
-			.cdic = this->cdic
-		};
-
-		m68k_init();
-		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-		this->cpu.load_rom(rom);
-		this->cpu.reset();
-
-		return true;
-	}
-
-	return false;
-}
-
-bool MonoIV::init(const std::string &bios)
-{
-	if (CDi::init(bios)) {
-		std::ifstream romStream(bios);
-		std::vector<char> rom(
-		 (std::istreambuf_iterator<char>(romStream)),
-		 (std::istreambuf_iterator<char>()));
-		romStream.close();
-
-		this->cpu = SCC68070(this->memory);
-		this->vpu = new MCD212(&this->cpu, this->memory);
-		this->ciap = new CIAP(&this->disc, this->memory);
-		this->ikat = new IKAT(&this->cpu, this->memory);
-		this->pd.IO.ikat = this->ikat;
-
-		MiniCDI::Player =
-		{
-			.memory = this->memory,
-			.scc68070 = &this->cpu,
-			.mcd212 = this->vpu,
 			.ikat = this->ikat,
+			.cdic = this->cdic,
 			.ciap = this->ciap
 		};
 

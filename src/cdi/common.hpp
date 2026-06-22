@@ -57,6 +57,5 @@
 // Boards
 #include "cdi/boards/common.hpp"
 #include "cdi/boards/MonoI.hpp"
-#include "cdi/boards/MonoIV.hpp"
 
 #endif

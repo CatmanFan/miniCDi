@@ -56,7 +56,7 @@ public:
 		} while (!VBLANK);
 
 		// Update LCD display
-		lcd.get_from_slave(slave);
+		// lcd.get_from_ikat(slave);
 
 		// Print verbose CPU
 		cpu.print();

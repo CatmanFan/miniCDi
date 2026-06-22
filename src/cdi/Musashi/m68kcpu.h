@@ -477,7 +477,6 @@ typedef uint32 uint64;
 #if M68K_EMULATE_INT_ACK
 	#if M68K_EMULATE_INT_ACK == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_int_ack(A) M68K_INT_ACK_CALLBACK(A)
-		extern int m68ki_int_ack(int int_level);
 	#else
 		#define m68ki_int_ack(A) CALLBACK_INT_ACK(A)
 	#endif
@@ -499,7 +498,6 @@ typedef uint32 uint64;
 #if M68K_EMULATE_RESET
 	#if M68K_EMULATE_RESET == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_output_reset() M68K_RESET_CALLBACK()
-		extern void m68ki_output_reset();
 	#else
 		#define m68ki_output_reset() CALLBACK_RESET_INSTR()
 	#endif
@@ -550,7 +548,6 @@ typedef uint32 uint64;
 #if M68K_TRAP_HAS_CALLBACK
 	#if M68K_TRAP_HAS_CALLBACK == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_trap_callback(trap) M68K_TRAP_CALLBACK(trap)
-		extern int m68ki_trap_callback(int trap);
 	#else
 		#define m68ki_trap_callback(trap) CALLBACK_TRAP_INSTR(trap)
 	#endif
@@ -583,7 +580,6 @@ typedef uint32 uint64;
 #if M68K_EMULATE_FC
 	#if M68K_EMULATE_FC == M68K_OPT_SPECIFY_HANDLER
 		#define m68ki_set_fc(A) M68K_SET_FC_CALLBACK(A)
-		extern void m68ki_set_fc(unsigned int new_fc);
 	#else
 		#define m68ki_set_fc(A) CALLBACK_SET_FC(A)
 	#endif

@@ -146,7 +146,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		return;
 	}
 
-	MiniCDI::Config::FrameSkip = 0;
+	MiniCDI::Config::FrameSkip = 1;
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = true;
 	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
@@ -165,28 +165,6 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		VPADStatus status{};
 		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
 
-		if (!paused) {
-			cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
-			cdi.pd.set_button(PointingDevice::Button2, status.hold & VPAD_BUTTON_B);
-			cdi.pd.set_button(PointingDevice::Left, status.hold & (VPAD_BUTTON_LEFT | VPAD_STICK_L_EMULATION_LEFT | VPAD_STICK_R_EMULATION_LEFT));
-			cdi.pd.set_button(PointingDevice::Right, status.hold & (VPAD_BUTTON_RIGHT | VPAD_STICK_L_EMULATION_RIGHT | VPAD_STICK_R_EMULATION_RIGHT));
-			cdi.pd.set_button(PointingDevice::Down, status.hold & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
-			cdi.pd.set_button(PointingDevice::Up, status.hold & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
-
-			// static FPS fps;
-
-			if (MiniCDI::Config::FrameSkip > 0) {
-				for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
-				cdi.run();
-				// fps.update(MiniCDI::Config::FrameSkip+1);
-			} else {
-				cdi.run();
-				// fps.update();
-			}
-
-			screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
-		}
-
 		if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
 		if (!status.tpNormal.touched && touchDown) { touchDown = false; }
 
@@ -199,8 +177,28 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
 			SDL_RenderFillRect(SDL_renderer, &rect);
 			SDL_print(1920/2,1080/2,48,{255,255,255,255},"Paused, touch to resume");
+			SDL_RenderPresent(SDL_renderer);
+			continue;
 		}
 		SDL_RenderPresent(SDL_renderer);
+
+		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
+		cdi.pd.set_button(PointingDevice::Button2, status.hold & VPAD_BUTTON_B);
+		cdi.pd.set_button(PointingDevice::Left, status.hold & (VPAD_BUTTON_LEFT | VPAD_STICK_L_EMULATION_LEFT | VPAD_STICK_R_EMULATION_LEFT));
+		cdi.pd.set_button(PointingDevice::Right, status.hold & (VPAD_BUTTON_RIGHT | VPAD_STICK_L_EMULATION_RIGHT | VPAD_STICK_R_EMULATION_RIGHT));
+		cdi.pd.set_button(PointingDevice::Down, status.hold & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
+		cdi.pd.set_button(PointingDevice::Up, status.hold & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
+
+		if (MiniCDI::Config::FrameSkip > 0) {
+			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
+			cdi.run();
+			// fps.update(MiniCDI::Config::FrameSkip+1);
+		} else {
+			cdi.run();
+			// fps.update();
+		}
+
+		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 	}
 
 	if (MiniCDI::Config::LogFile)

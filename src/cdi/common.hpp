@@ -18,7 +18,7 @@
 #ifndef MINICDI_GET_TIME
 #if defined(__WIIU__)
 	#include <coreinit/time.h>
-	#define MINICDI_GET_TIME (double)(OSTicksToNanoseconds(OSGetTick()))
+	#define MINICDI_GET_TIME OSTicksToNanoseconds(OSGetTick())
 #endif
 #if defined(HW_RVL) || defined(HW_DOL)
 	#include <ogc/system.h>
@@ -27,7 +27,7 @@
 #endif
 #if defined(__3DS__)
 	#include <3ds.h>
-	#define MINICDI_GET_TIME (double)(osGetTime() * 1000000)
+	#define MINICDI_GET_TIME (osGetTime() * 1000000)
 #endif
 #endif
 

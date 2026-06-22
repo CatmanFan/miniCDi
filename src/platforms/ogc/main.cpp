@@ -171,7 +171,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
+	MiniCDI::Config::PAL = /*VIDEO_GetCurrentTvMode() == VI_PAL*/true;
 	MiniCDI::Config::ShowLCD = true;
 	MiniCDI::Config::FrameSkip = 1;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
@@ -180,7 +180,6 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	cdi.board = CDi::MonoI;
 	cdi.init(appPath + "rom/" + biosName);
 	cdi.disc.open(appPath + "discs/" + discName);
-	// cdi.run(true); // Skip a frame anyway, to prevent crashing.
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;

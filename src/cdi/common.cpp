@@ -150,12 +150,12 @@ CDi::~CDi()
 bool MonoI::init(const std::string &bios)
 {
 	if (CDi::init(bios)) {
+		// Load system ROM data
 		std::ifstream romStream(bios);
-		std::vector<char> rom(
-		 (std::istreambuf_iterator<char>(romStream)),
-		 (std::istreambuf_iterator<char>()));
+		std::vector<char> rom((std::istreambuf_iterator<char>(romStream)),(std::istreambuf_iterator<char>()));
 		romStream.close();
 
+		// Setup peripherals
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
 		if (this->board == CDi::MonoIV) {
@@ -181,6 +181,10 @@ bool MonoI::init(const std::string &bios)
 
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
+		m68k_set_int_ack_callback(MiniCDI_int_ack_handler);
+		m68k_set_reset_instr_callback(MiniCDI_reset_handler);
+		m68k_set_trap_instr_callback(MiniCDI_op_trap_handler);
+		m68k_set_fc_callback(MiniCDI_set_fc);
 		this->cpu.load_rom(rom);
 		this->cpu.reset();
 

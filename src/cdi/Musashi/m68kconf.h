@@ -108,8 +108,8 @@
  * auto-clear when the interrupt is serviced.
  */
 #ifndef M68K_EMULATE_INT_ACK
-#define M68K_EMULATE_INT_ACK        M68K_OPT_SPECIFY_HANDLER
-#define M68K_INT_ACK_CALLBACK(A)    MiniCDI_int_ack_handler(A)
+#define M68K_EMULATE_INT_ACK        M68K_OPT_ON
+#define M68K_INT_ACK_CALLBACK(A)    cpu_irq_ack(A)
 #endif
 
 
@@ -133,8 +133,8 @@
  * instruction.
  */
 #ifndef M68K_EMULATE_RESET
-#define M68K_EMULATE_RESET          M68K_OPT_SPECIFY_HANDLER
-#define M68K_RESET_CALLBACK()       MiniCDI_reset_handler()
+#define M68K_EMULATE_RESET          M68K_OPT_ON
+#define M68K_RESET_CALLBACK()       cpu_pulse_reset()
 #endif
 
 /* If ON, CPU will call the callback when it encounters a cmpi.l #v, dn
@@ -186,8 +186,8 @@
  * m68k_set_trap_instr_callback explicitly.
  */
 #ifndef M68K_TRAP_HAS_CALLBACK
-#define M68K_TRAP_HAS_CALLBACK  	M68K_OPT_SPECIFY_HANDLER
-#define M68K_TRAP_CALLBACK(trap)	MiniCDI_op_trap_handler(trap)
+#define M68K_TRAP_HAS_CALLBACK  	M68K_OPT_ON
+#define M68K_TRAP_CALLBACK(trap)	your_op_trap_handler_function(trap)
 #endif
 
 /* If ON, CPU will call the set fc callback on every memory access to
@@ -197,8 +197,8 @@
  * to read/write data from different address spaces)
  */
 #ifndef M68K_EMULATE_FC
-#define M68K_EMULATE_FC             M68K_OPT_SPECIFY_HANDLER
-#define M68K_SET_FC_CALLBACK(A)     MiniCDI_set_fc(A)
+#define M68K_EMULATE_FC             M68K_OPT_ON
+#define M68K_SET_FC_CALLBACK(A)     cpu_set_fc(A)
 #endif
 
 /* If ON, CPU will call the pc changed callback when it changes the PC by a

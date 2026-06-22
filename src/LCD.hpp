@@ -44,7 +44,7 @@ public:
 		memset(display, 0x000000FF, sizeof(display));
 	}
 
-	void update_SLAVE(SLAVE *slave)
+	void get_from_slave(SLAVE *slave)
 	{
 		memset(display, 0x000000FF, sizeof(display));
 		if (slave)

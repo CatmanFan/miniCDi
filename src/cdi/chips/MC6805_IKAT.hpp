@@ -57,6 +57,11 @@ public:
 	friend class PlayerLCD;
 	friend class PointingDevice;
 
+	IKAT() : _68070(nullptr), memory(nullptr), PointerInterface({0})
+	{
+		reset();
+	}
+
 	IKAT(SCC68070* _68070, uint8_t* memory) : _68070(_68070), memory(memory), PointerInterface({0})
 	{
 		reset();

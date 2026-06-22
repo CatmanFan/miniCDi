@@ -194,15 +194,6 @@ public:
 		switch (addr)
 		{
 			default:
-				// if (addr >= 0x301200 && addr <= 0x301B22) {
-					// return (Main[0][addr - 0x301200] << 8) | Main[0][addr - 0x301200 + 1];
-				// } else if (addr >= 0x301BC2 && addr <= 0x3024E4) {
-					// return (Main[1][addr - 0x301BC2] << 8) | Main[1][addr - 0x301BC2 + 1];
-				// } else if (addr >= 0x300000 && addr <= 0x3008FE) {
-					// return (ADPCM[0][addr - 0x300000] << 8) | ADPCM[0][addr - 0x300000 + 1];
-				// } else if (addr >= 0x300900 && addr <= 0x3011FE) {
-					// return (ADPCM[1][addr - 0x300900] << 8) | ADPCM[1][addr - 0x300900 + 1];
-				// }
 				return (memory[addr] << 8) | memory[addr+1];
 
 			case 0x302584: return IER;
@@ -238,22 +229,8 @@ public:
 		switch (addr)
 		{
 			default:
-				/*if (addr >= 0x300000 && addr <= 0x3008FE) {
-					MiniCDI::Log("[CIAP] ADPCM1 %02X <= %04X", addr-0x300000, value);
-					// ADPCM[0][addr - 0x300000] = value;
-				} else if (addr >= 0x300900 && addr <= 0x3011FE) {
-					MiniCDI::Log("[CIAP] ADPCM2 %02X <= %04X", addr-0x300900, value);
-					// ADPCM[1][addr - 0x300900] = value;
-				} else if (addr >= 0x301200 && addr <= 0x301B22) {
-					MiniCDI::Log("[CIAP] Main1 %02X <= %04X", addr-0x301200, value);
-					// Main[0][addr - 0x301200] = value;
-				} else if (addr >= 0x301BC2 && addr <= 0x3024E4) {
-					MiniCDI::Log("[CIAP] Main2 %02X <= %04X", addr-0x301BC2, value);
-					// Main[1][addr - 0x301BC2] = value;
-				} else {*/
-					memory[addr] = value >> 8 & 0xFF;
-					memory[addr+1] = value & 0xFF;
-				// }
+				memory[addr] = value >> 8 & 0xFF;
+				memory[addr+1] = value & 0xFF;
 				break;
 
 			case 0x302584:

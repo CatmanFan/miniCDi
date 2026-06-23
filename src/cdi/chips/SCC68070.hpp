@@ -492,21 +492,6 @@ public:
 		}
 	}
 
-	void tick_timer()
-	{
-		if (T[0] == 0xFFFF)
-		{
-			//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
-			TSR |= 0x80; // OV in T0
-			T[0] = RR;
-			interrupt(IPL_TIMER, true);
-		}
-		else
-			interrupt(IPL_TIMER, false);
-
-		T[0]++;
-	}
-
 	void print()
 	{
 		#ifdef MINICDI_DEBUG_CPU
@@ -538,6 +523,8 @@ public:
 
 	int run(int cycles)
 	{
+		int ran = 0;
+
 		/*#ifdef MINICDI_DEBUG_CPU
 		if (MiniCDI::Config::LogFile != 0) {
 			uint32_t pcLog;
@@ -555,13 +542,19 @@ public:
 		ran += m68k_execute(cycles);
 		#endif*/
 
-		int ran = 0;
-		m68k_modify_timeslice(cycles);
-		while (m68k_cycles_remaining()) {
-			ran += m68k_execute(4);
-			if (ran >= cycles) {
-				m68k_end_timeslice();
-				break;
+		ran += m68k_execute(cycles);
+
+		// Poll timer.
+		while (cycles >= 96) {
+			cycles -= 96;
+			if (T[0] == 0xFFFF) {
+				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
+				TSR |= 0x80; // OV in T0
+				T[0] = RR;
+				interrupt(IPL_TIMER, true);
+			} else {
+				T[0]++;
+				interrupt(IPL_TIMER, false);
 			}
 		}
 

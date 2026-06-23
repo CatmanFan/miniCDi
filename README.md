@@ -9,10 +9,11 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 
 * ***Mono-I***: SCC68070, MCD212, CDIC (partial, no audio), SLAVE
 * ***Mono-II***: SCC68070, MCD212, ~~DSP~~, SLAVE
-* ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (dummy), IKAT
+* ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (stub), IKAT
 
 ## To-Do
 - [ ] Proper reset sequence
+- [ ] Fix VDSC rendering
 - [ ] LibRetro API compatibility?
 
 ## Building

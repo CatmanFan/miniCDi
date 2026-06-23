@@ -165,21 +165,21 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		VPADStatus status{};
 		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
 
-		if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
-		if (!status.tpNormal.touched && touchDown) { touchDown = false; }
+		/*if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
+		if (!status.tpNormal.touched && touchDown) { touchDown = false; }*/
 
 		// Clear screen
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
 		screen.draw();
-		if (paused) {
+		/*if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};
 			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
 			SDL_RenderFillRect(SDL_renderer, &rect);
 			SDL_print(1920/2,1080/2,48,{255,255,255,255},"Paused, touch to resume");
 			SDL_RenderPresent(SDL_renderer);
 			continue;
-		}
+		}*/
 		SDL_RenderPresent(SDL_renderer);
 
 		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);

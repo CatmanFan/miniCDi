@@ -38,20 +38,16 @@ public:
 		bool VBLANK = false;
 		do {
 			int cycles = std::min({cycles_left_sector, cycles_left_vpu});
-			for (int i = 0; i < cycles; i += 96) {
-				m68k_execute(96);
-				cpu.tick_timer();
-			}
+			cpu.run(cycles);
 
 			cycles_left_sector -= cycles;
-			cycles_left_vpu -= cycles;
-
 			if (cycles_left_sector <= 0) {
 				cycles_left_sector += disc_tick_rate;
 				if (cdic) cdic->tick();
 				else if (ciap) ciap->tick();
 			}
 
+			cycles_left_vpu -= cycles;
 			if (cycles_left_vpu <= 0) {
 				cycles_left_vpu += line_tick_rate;
 				VBLANK = vpu->tick(skip_draw);

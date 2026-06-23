@@ -8,7 +8,7 @@ Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://git
 The following boards and chips have been implemented. CD-i Fan has more information regarding hardware at [cdichips](https://github.com/cdifan/cdichips) repository.
 
 * ***Mono-I***: SCC68070, MCD212, CDIC (partial, no audio), SLAVE
-* ***Mono-II***: SCC68070, MCD212, ~~DSP~~, SLAVE
+* ***~~Mono-II~~***: SCC68070, MCD212, DSP (stub), SLAVE
 * ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (stub), IKAT
 
 ## To-Do

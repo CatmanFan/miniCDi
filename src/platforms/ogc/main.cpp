@@ -171,14 +171,14 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
+	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
-	MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
+	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
 
 	MonoI cdi;
-	cdi.board = CDi::MonoI;
+	cdi.board = CDi::MonoIV;
 	cdi.init(appPath + "rom/" + biosName + ".rom");
 	cdi.disc.open(appPath + "discs/" + discName);
 
@@ -391,8 +391,9 @@ int main(int argc, char **argv) {
 		printf("\033[2J\033[H"); // Clear screen
 		printf("miniCDi - Philips CD-i emulator\nLoading\n");
 
-		RUN_CDI("cdi220b", selectedDisc);
-		// RUN_CDI("cdi490a", selectedDisc);
+		// RUN_CDI("cdi220b", selectedDisc); // Mono-I
+		// RUN_CDI("cdi220c", selectedDisc); // Mono-II
+		RUN_CDI("cdi490a", selectedDisc); // Mono-IV
 	}
 
 	FAT_Exit();

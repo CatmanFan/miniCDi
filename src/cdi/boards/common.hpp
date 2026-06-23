@@ -12,13 +12,11 @@ protected:
 			return false;
 		}
 
-		uint32_t nvram_size = (8*1024);
+		uint32_t nvram_size = (board == CDi::MonoI ? 8 : 32) * 1024;
 		for (size_t i = 0; i < MiniCDI::OS9::modules.size(); i++) {
 			if (MiniCDI::OS9::modules[i].name.compare("nvr") == 0) {
-				if (MiniCDI::OS9::modules[i].size > nvram_size) {
-					MiniCDI::Log("[NVRAM] detected 32KB");
-					nvram_size = (32*1024);
-				}
+				MiniCDI::Log("[NVRAM] detected %dKB", MiniCDI::OS9::modules[i].size > nvram_size ? 32 : 8);
+				nvram_size = (MiniCDI::OS9::modules[i].size > nvram_size ? 32 : 8) * 1024;
 			}
 		}
 
@@ -35,7 +33,7 @@ protected:
 	}
 	void nvram_load() {
 		if (access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
-			MiniCDI::Log("[NVRAM] loading from %s", MiniCDI::Config::NvramFile.c_str());
+			MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
 			std::ifstream nvrStream(MiniCDI::Config::NvramFile);
 			std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
 			nvrStream.close();
@@ -50,6 +48,8 @@ protected:
 public:
 	enum BoardType {
 		MonoI = 0,
+		MonoII,
+		MonoIII,
 		MonoIV
 	};
 	enum BoardType board;

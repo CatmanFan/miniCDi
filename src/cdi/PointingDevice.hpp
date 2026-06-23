@@ -70,23 +70,34 @@ public:
 				IO.ikat->PointerInterface.posChanged = false;
 			}
 
-			/*if (IO.ikat->PointerInterface.connected) {
+			if (IO.ikat->PointerInterface.connected) {
 				if (changed_Face || changed_DPad)
 				{
 					if (changed_Face) { changed_Face = false; }
 
-					// Convert to IKAT response (absolute coordinates)
-					IO.ikat->Ch[1].Out =
-					{
-						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0x0F)),
-						(uint8_t)(0x10 | (y >> 6 & 0x0F)),
-						(uint8_t)(x & 0x3F),
-						(uint8_t)(0x80 | (y & 0x3F)),
-					};
-					// IO.ikat->Ch[1].SR &= ~0b00010000; // REMTY OFF
+					// Convert to IKAT response
+					/*if (x < 128 && x >= -128 && y < 128 && y >= -128) {
+						// Relative coordinates
+						IO.ikat->Ch[1].Out =
+						{
+							(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 4) | (y & 0b11000000 >> 6)),
+							(uint8_t)(x & 0b00111111),
+							(uint8_t)(y & 0b00111111),
+							0,
+						};
+					} else {*/
+						// Absolute coordinates
+						IO.ikat->Ch[1].Out =
+						{
+							(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b1111000000 >> 6)),
+							(uint8_t)(((changed_DPad || changed_Face ? 0x01 : 0x00) << 4) | (y & 0b1111000000 >> 6)),
+							(uint8_t)(x & 0b0000111111),
+							(uint8_t)(0x80 | (y & 0b0000111111)),
+						};
+					/*}*/
 					IO.ikat->poll_packet(1);
 				}
-			}*/
+			}
 		}
 	}
 
@@ -123,8 +134,8 @@ public:
 	{
 		if (x < 0 || y < 0 || x > 1 || y > 1) return;
 
-		this->x = (int)(x*768.0f);
-		this->y = (int)(y*560.0f);
+		this->x = (int)(x*(IO.ikat ? 16.0f : 768.0f));
+		this->y = (int)(y*(IO.ikat ? 16.0f : 560.0f));
 		changed_DPad = true;
 	}
 };

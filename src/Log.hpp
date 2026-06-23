@@ -14,7 +14,7 @@ namespace MiniCDI
 {
 	static void Log(const char* txt, ...)
 	{
-	#if defined(MINICDI_DEBUG) || defined(MINICDI_LOGFILE) || defined(__3DS__)
+	#if defined(MINICDI_DEBUG) || defined(MINICDI_LOGFILE)
 
 		// Copy arguments to string and allocate buffer
 		va_list arg1, arg2;
@@ -52,7 +52,7 @@ namespace MiniCDI
 			WHBLogPrintf("%s", szBuff);
 			#endif
 		#else
-		#if defined(MINICDI_DEBUG) || defined(__3DS__)
+		#ifdef MINICDI_DEBUG
 			#ifdef MINICDI_DEBUG_MODULE
 			if (module != nullptr)
 				printf("[@%08X(%s)]%s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);

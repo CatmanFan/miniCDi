@@ -361,6 +361,7 @@ class MCD212
 
 		void reset()
 		{
+			output.assign(768 * 280, 0x000000FF); // max bounds
 			memset(cursor, 0, sizeof(cursor));
 			reg = {0};
 		}

@@ -29,41 +29,6 @@ unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_
 unsigned int  m68k_read_disassembler_16(unsigned int address) { return m68k_read_memory_16(address); }
 unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read_memory_32(address); }
 
-int  MiniCDI_op_trap_handler(int trap)
-{
-	#ifdef MINICDI_DEBUG_OS9
-	if (trap == 0) MiniCDI::OS9::log(MiniCDI::Player.memory);
-	#endif
-
-	return 0; // unhandled, generate exception.
-}
-
-void MiniCDI_reset_handler()
-{
-	if (MiniCDI::Player.scc68070) MiniCDI::Player.scc68070->reset_internal();
-}
-
-void MiniCDI_set_fc(unsigned int new_fc)
-{
-	if (MiniCDI::Player.scc68070) {
-		MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
-	}
-}
-
-int  MiniCDI_int_ack_handler(int int_level)
-{
-	m68k_set_irq(0); // resets IRQ
-
-	if (MiniCDI::Player.scc68070)
-	{
-		//MiniCDI::Log("[SCC68070:IPL] acknowledge lvl=%X", int_level);
-		if (MiniCDI::Player.scc68070->InterruptManager.vectors[MiniCDI::Player.scc68070->InterruptManager.cur_index])
-			return MiniCDI::Player.scc68070->InterruptManager.vectors[MiniCDI::Player.scc68070->InterruptManager.cur_index];
-	}
-
-	return M68K_INT_ACK_AUTOVECTOR;
-}
-
 unsigned int  m68k_read_memory_8(unsigned int address)
 {
 	// Supervisor mode mask
@@ -137,6 +102,41 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
 	}
 }
 
+static int MiniCDI_op_trap_handler(int trap)
+{
+	#ifdef MINICDI_DEBUG_OS9
+	if (trap == 0) MiniCDI::OS9::log(MiniCDI::Player.memory);
+	#endif
+
+	return 0; // unhandled, generate exception.
+}
+
+static void MiniCDI_reset_handler()
+{
+	if (MiniCDI::Player.scc68070) MiniCDI::Player.scc68070->reset_internal();
+}
+
+static void MiniCDI_set_fc(unsigned int new_fc)
+{
+	if (MiniCDI::Player.scc68070) {
+		MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
+	}
+}
+
+static int MiniCDI_int_ack_handler(int int_level)
+{
+	m68k_set_irq(0); // resets IRQ
+
+	if (MiniCDI::Player.scc68070)
+	{
+		//MiniCDI::Log("[SCC68070:IPL] acknowledge lvl=%X", int_level);
+		if (MiniCDI::Player.scc68070->InterruptManager.vectors[MiniCDI::Player.scc68070->InterruptManager.cur_index])
+			return MiniCDI::Player.scc68070->InterruptManager.vectors[MiniCDI::Player.scc68070->InterruptManager.cur_index];
+	}
+
+	return M68K_INT_ACK_AUTOVECTOR;
+}
+
 /** @brief Contains initialization functions for boards. **/
 
 CDi::~CDi()
@@ -181,10 +181,14 @@ bool MonoI::init(const std::string &bios)
 
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
+		m68k_pulse_reset();
+
+		// Set callbacks
 		m68k_set_int_ack_callback(MiniCDI_int_ack_handler);
 		m68k_set_reset_instr_callback(MiniCDI_reset_handler);
 		m68k_set_trap_instr_callback(MiniCDI_op_trap_handler);
 		m68k_set_fc_callback(MiniCDI_set_fc);
+
 		this->cpu.load_rom(rom);
 		this->cpu.reset();
 

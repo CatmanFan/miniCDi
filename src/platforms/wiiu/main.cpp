@@ -38,7 +38,7 @@ static bool SDL_init()
 		return false;
 	}
 
-	SDL_renderer = SDL_CreateRenderer(SDL_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	SDL_renderer = SDL_CreateRenderer(SDL_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
 	if (!SDL_renderer) {
 		SDL_DestroyWindow(SDL_window);
 		SDL_window = nullptr;
@@ -113,8 +113,8 @@ public:
 
 	void draw()
 	{
-		SDL_Rect dest = {219, 0, 1481, 1080};
-		// SDL_Rect dest = {96, -90, 1728, 1260};
+		// SDL_Rect dest = {219, 0, 1481, 1080}; // PAL dimensions
+		SDL_Rect dest = {96, -90, 1728, 1260}; // NTSC dimensions
 		SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 
 		if (MiniCDI::Config::ShowLCD)
@@ -146,9 +146,10 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		return;
 	}
 
-	MiniCDI::Config::FrameSkip = 1;
-	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::TestPlug = false;
+	MiniCDI::Config::PAL = false;
 	MiniCDI::Config::ShowLCD = true;
+	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;

@@ -14,6 +14,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 ## To-Do
 - [ ] Proper reset sequence
 - [ ] Fix VDSC rendering
+- [ ] NVRAM auto-save on exit
 - [ ] LibRetro API compatibility?
 
 ## Building

@@ -87,7 +87,7 @@ public:
 
 	void Draw()
 	{
-		C2D_DrawImageAt(this->img, 40, 0, 0.5f, NULL, 320.0f / this->width, 240.0f / this->height);
+		C2D_DrawImageAt(this->img, 20, -20, 0.5f, NULL, 0.5f, 1.0f);
 	}
 
 	void Update(uint32_t* display_output, int width)
@@ -114,6 +114,64 @@ public:
 	}
 };
 
+#include <filesystem>
+static std::string RUN_MENU()
+{
+	if (!std::filesystem::is_directory("sdmc:/3ds/miniCDi/discs/")) {
+		return "";
+	}
+	// Look for ROMs in directory
+	std::vector<std::string> discs;
+    for (const auto & disc : std::filesystem::directory_iterator("sdmc:/3ds/miniCDi/discs/")) {
+        if (!disc.path().extension().compare(".bin") || !disc.path().extension().compare(".BIN"))
+			discs.push_back(disc.path().filename());
+	}
+	if (discs.size() == 0) {
+		return "";
+	}
+
+	size_t selected = 0;
+	bool render = true;
+
+	while (aptMainLoop()) {
+		hidScanInput();
+		u32 kDown = hidKeysDown();
+		if (kDown & KEY_ZR) exit(0);
+
+		if (kDown & KEY_DOWN) {
+			render = true;
+			selected = (selected + 1) % discs.size();
+		}
+		if (kDown & KEY_UP) {
+			render = true;
+			if (selected == 0) { selected = discs.size() - 1; }
+			else selected--;
+		}
+		if (kDown & KEY_A) {
+			return discs[selected];
+		}
+		if (kDown & KEY_B) {
+			break;
+		}
+
+		if (render) {
+			render = false;
+			printf("\033[2J\033[H"); // Clear screen
+			printf("miniCDi\n");
+			printf("select a disc\n");
+
+			for (size_t i = 0; i < discs.size(); i++) {
+				if (i == selected)
+					printf((">" + discs[i] + "\n").c_str());
+				else
+					printf((" " + discs[i] + "\n").c_str());
+			}
+		}
+	}
+
+	return "";
+}
+
 int main(int argc, char* argv[])
 {
 	gfxInitDefault();
@@ -128,7 +186,6 @@ int main(int argc, char* argv[])
 	C3D_RenderTarget* top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
 	consoleInit(GFX_BOTTOM, NULL);
 	printf("miniCDi\n");
-	printf("Loading CDi 220 bios\n");
 
 	// Check for BIOS
 	if (access("sdmc:/3ds/miniCDi/rom/cdi220b.rom", F_OK) != 0) {
@@ -137,22 +194,21 @@ int main(int argc, char* argv[])
 		exit(0);
 	}
 
+	std::string discName = RUN_MENU();
+	printf("\033[2J\033[H"); // Clear screen
+	printf("miniCDi\n");
+	printf("Loading CDi 220 bios\n");
+
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::PAL = false;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::FrameSkip = 1;
-	MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
+	MiniCDI::Config::FrameSkip = 2;
+	// MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
 
 	MonoI cdi;
-	// MonoIII cdi;
-	// MonoIV cdi;
-	// Robocon cdi;
-
+	cdi.board = CDi::MonoI;
 	cdi.init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
-	cdi.disc.open("sdmc:/3ds/miniCDi/discs/FROG.BIN");
-	// cdi.disc.open("sdmc:/3ds/miniCDi/discs/ZELDA.bin");
-	// cdi.disc.open("sdmc:/3ds/miniCDi/discs/HTLMARIO.bin");
-	// cdi.disc.open("sdmc:/3ds/miniCDi/discs/guignols0_03.bin");
+	cdi.disc.open(("sdmc:/3ds/miniCDi/discs/" + discName).c_str());
 
 	EmulatorWindow TOPSCREEN(768,280);
 
@@ -187,11 +243,12 @@ int main(int argc, char* argv[])
 		C2D_TargetClear(top, C2D_Color32(0x00, 0x00, 0x00, 0xFF));
 		C2D_SceneBegin(top);
 		TOPSCREEN.Draw();
+        C3D_FrameSync();
 		C3D_FrameEnd(0);
 	}
 
-	if (MiniCDI::Config::LogFile)
-		fclose(MiniCDI::Config::LogFile);
+	// if (MiniCDI::Config::LogFile)
+		// fclose(MiniCDI::Config::LogFile);
 
 	C2D_Fini();
 	C3D_Fini();

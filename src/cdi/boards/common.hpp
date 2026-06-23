@@ -6,6 +6,44 @@ class CDi
 protected:
 	uint8_t *memory; // Contains full memory map
 
+	uint32_t nvram;
+	bool nvram_save() {
+		if (MiniCDI::Config::NvramFile.empty() || !memory || this->nvram == 0) {
+			return false;
+		}
+
+		uint32_t nvram_size = (8*1024);
+		for (size_t i = 0; i < MiniCDI::OS9::modules.size(); i++) {
+			if (MiniCDI::OS9::modules[i].name.compare("nvr") == 0) {
+				if (MiniCDI::OS9::modules[i].size > nvram_size) {
+					MiniCDI::Log("[NVRAM] detected 32KB");
+					nvram_size = (32*1024);
+				}
+			}
+		}
+
+		FILE *file = fopen(MiniCDI::Config::NvramFile.c_str(), "wb");
+		if (!file) {
+			MiniCDI::Log("[NVRAM] failed to write to %s", MiniCDI::Config::NvramFile.c_str());
+			return false;
+		}
+		fwrite(&memory[this->nvram], sizeof(memory[0]), nvram_size, file);
+		fclose(file);
+
+		MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config::NvramFile.c_str());
+		return true;
+	}
+	void nvram_load() {
+		if (access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
+			MiniCDI::Log("[NVRAM] loading from %s", MiniCDI::Config::NvramFile.c_str());
+			std::ifstream nvrStream(MiniCDI::Config::NvramFile);
+			std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
+			nvrStream.close();
+
+			memcpy(&memory[this->nvram], &nvr[0], nvr.size());
+		}
+	}
+
 	// ONLY the chips shared in common by supported boards (MMC and Mono)
 	SCC68070 cpu;
 
@@ -50,13 +88,12 @@ public:
 
 	CDi() : memory(nullptr), cpu(memory) {}
 
-	virtual ~CDi();
-
 	/**
 	 * @brief  Runs until VSync signal on video driver (i.e. a frame).
 	 */
 	inline virtual void run(bool skip_draw = false) { ; }
 	inline virtual void reset() { ; }
+	void shutdown();
 
 	inline virtual uint32_t* get_display() { return nullptr; }
 	inline virtual size_t get_display_width() { return 0; }

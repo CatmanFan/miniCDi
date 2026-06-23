@@ -246,9 +246,7 @@ int main(int argc, char* argv[])
         C3D_FrameSync();
 		C3D_FrameEnd(0);
 	}
-
-	// if (MiniCDI::Config::LogFile)
-		// fclose(MiniCDI::Config::LogFile);
+	cdi.shutdown();
 
 	C2D_Fini();
 	C3D_Fini();

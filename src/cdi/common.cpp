@@ -10,7 +10,9 @@ namespace MiniCDI
 		bool ShowLCD = false;
 		bool HasDisc = false;
 		size_t FrameSkip = 0;
+
 		FILE* LogFile = nullptr;
+		std::string NvramFile = "";
 	}
 
 	static struct
@@ -139,8 +141,15 @@ static int MiniCDI_int_ack_handler(int int_level)
 
 /** @brief Contains initialization functions for boards. **/
 
-CDi::~CDi()
+void CDi::shutdown()
 {
+	this->nvram_save();
+
+	MiniCDI::Log("[CDI] shutting down");
+
+	if (MiniCDI::Config::LogFile)
+		fclose(MiniCDI::Config::LogFile);
+
 	// Avoid exception crash
 	MiniCDI::Player = {nullptr};
 	m68k_pulse_halt();
@@ -158,14 +167,21 @@ bool MonoI::init(const std::string &bios)
 		// Setup peripherals
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
-		if (this->board == CDi::MonoIV) {
-			this->ciap = new CIAP(&this->disc, this->memory);
-			this->ikat = new IKAT(&this->cpu, this->memory);
-			this->pd.IO.ikat = this->ikat;
-		} else {
-			this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
-			this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
-			this->pd.IO.slave = this->slave;
+		switch (this->board) {
+			default:
+			case CDi::MonoI:
+				this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
+				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+				this->pd.IO.slave = this->slave;
+				this->nvram = 0x00320000;
+				break;
+
+			case CDi::MonoIV:
+				this->ciap = new CIAP(&this->disc, this->memory);
+				this->ikat = new IKAT(&this->cpu, this->memory);
+				this->pd.IO.ikat = this->ikat;
+				this->nvram = 0x00320000;
+				break;
 		}
 
 		MiniCDI::Player =
@@ -181,7 +197,7 @@ bool MonoI::init(const std::string &bios)
 
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-		m68k_pulse_reset();
+		// m68k_pulse_reset();
 
 		// Set callbacks
 		m68k_set_int_ack_callback(MiniCDI_int_ack_handler);
@@ -191,6 +207,7 @@ bool MonoI::init(const std::string &bios)
 
 		this->cpu.load_rom(rom);
 		this->cpu.reset();
+		this->nvram_load();
 
 		return true;
 	}

@@ -46,6 +46,12 @@ class CDIC
 	{
 		if (disc->Sector.Mode == 2 && CdicController.is_mode2)
 		{
+			// Use order from MAME
+			if ((disc->Sector.FileNum[1] << 8) != FILE) {
+				MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector.FileNum[1]);
+				return false;
+			}
+
 			if ((disc->Sector.Submode[1] & 0b10000000) // EOF
 			 || (disc->Sector.Submode[1] & 0b00000001) // EOR
 			 || (disc->Sector.Submode[1] & 0b00010000) // Trigger
@@ -58,19 +64,14 @@ class CDIC
 				return true;
 			}
 
-			if ((disc->Sector.FileNum[1] << 8) != FILE) {
-				MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector.FileNum[1]);
+			if (!(disc->Sector.Submode[1] & 0b00001110)) {
+				// Either message or empty sector (Green Book II.4.9.1)
+				MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
 				return false;
 			}
 
 			if (!(CHAN & (1<<disc->Sector.ChNum[1]))) {
 				MiniCDI::Log("[CDIC] MODE2 skip: CHAN %08X is not AND (1 << %d)", CHAN, disc->Sector.ChNum[1]);
-				return false;
-			}
-
-			if (!(disc->Sector.Submode[1] & 0b00001110)) {
-				// Either message or empty sector (Green Book II.4.9.1)
-				MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
 				return false;
 			}
 		}

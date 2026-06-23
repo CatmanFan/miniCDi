@@ -164,8 +164,8 @@ static void FAT_Exit()
 
 static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
-	if (access((appPath + "rom/" + biosName).c_str(), F_OK) != 0) {
-		printf("BIOS not found at %s, exiting", (appPath + "rom/" + biosName).c_str());
+	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
+		printf("BIOS not found at %s, exiting", (appPath + "rom/" + biosName + ".rom").c_str());
 		sleep(5);
 		exit(0);
 	}
@@ -175,10 +175,11 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
+	MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
 
 	MonoI cdi;
 	cdi.board = CDi::MonoI;
-	cdi.init(appPath + "rom/" + biosName);
+	cdi.init(appPath + "rom/" + biosName + ".rom");
 	cdi.disc.open(appPath + "discs/" + discName);
 
 	#ifndef MINICDI_DEBUG
@@ -250,8 +251,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		#endif
 	}
 
-	if (MiniCDI::Config::LogFile)
-		fclose(MiniCDI::Config::LogFile);
+	cdi.shutdown();
 }
 
 static std::string selectedDisc;
@@ -391,8 +391,8 @@ int main(int argc, char **argv) {
 		printf("\033[2J\033[H"); // Clear screen
 		printf("miniCDi - Philips CD-i emulator\nLoading\n");
 
-		RUN_CDI("cdi220b.rom", selectedDisc);
-		// RUN_CDI("cdi490a.rom", selectedDisc);
+		RUN_CDI("cdi220b", selectedDisc);
+		// RUN_CDI("cdi490a", selectedDisc);
 	}
 
 	FAT_Exit();

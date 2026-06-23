@@ -10,7 +10,9 @@ namespace MiniCDI
 		extern bool ShowLCD;
 		extern bool HasDisc;
 		extern size_t FrameSkip;
+
 		extern FILE* LogFile;
+		extern std::string NvramFile;
 	}
 }
 

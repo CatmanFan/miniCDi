@@ -195,6 +195,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 
 			if (data->exp.type & WPAD_EXP_CLASSIC) {
 				if (down & WPAD_CLASSIC_BUTTON_HOME) break;
+				if (down & WPAD_CLASSIC_BUTTON_MINUS) cdi.reset();
 
 				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_CLASSIC_BUTTON_A);
 				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_CLASSIC_BUTTON_B);
@@ -204,12 +205,14 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 				cdi.pd.set_button(PointingDevice::Up, held & WPAD_CLASSIC_BUTTON_UP);
 			} else if (data->ir.valid) {
 				if (down & WPAD_BUTTON_HOME) break;
+				if (down & WPAD_BUTTON_MINUS) cdi.reset();
 
 				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
 				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
 				cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);
 			} else {
 				if (down & WPAD_BUTTON_HOME) break;
+				if (down & WPAD_BUTTON_MINUS) cdi.reset();
 
 				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_1);
 				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_2);

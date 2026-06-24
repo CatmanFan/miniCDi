@@ -32,7 +32,7 @@ protected:
 		return true;
 	}
 	void nvram_load() {
-		if (access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
+		if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
 			MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
 			std::ifstream nvrStream(MiniCDI::Config::NvramFile);
 			std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
@@ -93,7 +93,7 @@ public:
 	 */
 	inline virtual void run(bool skip_draw = false) { ; }
 	inline virtual void reset() { ; }
-	void shutdown();
+	inline virtual void shutdown() { ; }
 
 	inline virtual uint32_t* get_display() { return nullptr; }
 	inline virtual size_t get_display_width() { return 0; }

@@ -63,10 +63,12 @@ public:
 	}
 
 	inline void reset() override {
+		MiniCDI::Log("[CDI] reset");
 		cpu.reset();
 		vpu->reset();
 		if (slave) slave->reset();
 	}
+	void shutdown() override;
 
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }

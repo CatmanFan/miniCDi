@@ -141,7 +141,7 @@ static int MiniCDI_int_ack_handler(int int_level)
 
 /** @brief Contains initialization functions for boards. **/
 
-void CDi::shutdown()
+void MonoI::shutdown()
 {
 	this->nvram_save();
 
@@ -151,9 +151,15 @@ void CDi::shutdown()
 		fclose(MiniCDI::Config::LogFile);
 
 	// Avoid exception crash
-	MiniCDI::Player = {NULL};
 	m68k_pulse_halt();
-	if (memory) delete[] memory;
+	MiniCDI::Player = {NULL};
+	if (this->vpu != NULL) delete this->vpu;
+	if (this->cdic != NULL) delete this->cdic;
+	// if (this->dsp != NULL) delete this->dsp;
+	if (this->slave != NULL) delete this->slave;
+	if (this->ciap != NULL) delete this->ciap;
+	if (this->ikat != NULL) delete this->ikat;
+	if (this->memory != NULL) delete[] this->memory;
 }
 
 bool MonoI::init(const std::string &bios)

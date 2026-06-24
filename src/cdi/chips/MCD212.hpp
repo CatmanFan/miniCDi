@@ -113,6 +113,8 @@ class MCD212
 
 		bool Matte[2];
 		size_t MatteSlots = 0;
+		int TransparentColSlot = 0;
+		int MaskColSlot = 0;
 
 		template <size_t Path>
 		void matteCheck(size_t x)
@@ -196,14 +198,11 @@ class MCD212
 		bool isTransparent(uint8_t* src, bool second = false)
 		{
 			// Color key boolean (CLUT only)
-			bool ColorKey = (reg.Icm[0] == Off && reg.Icm[1] == RGB555) || reg.Icm[Path] == DYUV ? false
-						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0x00FCFCFC) == reg.TransparentCol[Path]
-						  || reg.MaskCol[Path];
-			if ((reg.TransparencyCtrl[Path] == 0b0001 || reg.TransparencyCtrl[Path] == 0b0101 || reg.TransparencyCtrl[Path] == 0b0110
-			|| reg.TransparencyCtrl[Path] == 0b1001 || reg.TransparencyCtrl[Path] == 0b1101 || reg.TransparencyCtrl[Path] == 0b1110)
-			&& (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0x00FCFCFC) && reg.TransparentCol[Path]) {
-				MiniCDI::Log("[VDSC] tctrl: %d colorkey %06X = %06X = %d", reg.TransparencyCtrl[Path], reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0x00FCFCFC, reg.TransparentCol[Path], ColorKey);
-			}
+			// formula adapted from MAME
+			const bool UseColorKey = !(reg.Icm[0] == Off && reg.Icm[1] == RGB555) && reg.Icm[Path] != DYUV;
+			const bool ColorKey = UseColorKey ? ((reg.TransparentCol[Path] & 0xFCFCFC) & (~(reg.MaskCol[Path]) & 0xFCFCFC))
+											 == ((reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) & (~(reg.MaskCol[Path]) & 0xFCFCFC))
+											  : true;
 
 			switch (reg.TransparencyCtrl[Path])
 			{
@@ -221,9 +220,9 @@ class MCD212
 				case 0b0100:
 					return Matte[1];
 				case 0b0101:
-					return Matte[0] || ColorKey;
+					return /*Matte[0] || */ColorKey;
 				case 0b0110:
-					return Matte[1] || ColorKey;
+					return /*Matte[1] || */ColorKey;
 				case 0b1000:
 					return false;
 				case 0b1001:
@@ -235,9 +234,9 @@ class MCD212
 				case 0b1100:
 					return !Matte[1];
 				case 0b1101:
-					return !Matte[0] || !ColorKey;
+					return /*!Matte[0] || */!ColorKey;
 				case 0b1110:
-					return !Matte[1] || !ColorKey;
+					return /*!Matte[1] || */!ColorKey;
 			}
 		}
 
@@ -500,20 +499,14 @@ class MCD212
 							default:
 							case CLUT4: // RL3
 							case CLUT7: // RL7
-								if (*src & 0x80) {
-									int length = memory[++vsr];
+								int length = *src & 0x80 ? memory[++vsr] : 1;
 
-									if (length != 1) {
-										if (length == 0)
-											length = FG[Path].width - x;
-										for (int i = 0; i < length;) {
-											i += decodeCLUT<Path>(src, dst+i);
-										}
-									}
-									x += length;
-								} else {
-									x += decodeCLUT<Path>(src, dst);
+								if (length == 0)
+									length = FG[Path].width - x;
+								for (int i = 0; i < length;) {
+									i += decodeCLUT<Path>(src, dst+i);
 								}
+								x += length;
 								continue;
 						}
 
@@ -598,20 +591,20 @@ class MCD212
 					break;
 
 				case 0xC4:
-					reg.TransparentCol[0] = inst & 0x00FCFCFCu;
+					reg.TransparentCol[TransparentColSlot ^= 1] = inst & 0x00FCFCFCu;
 					//MiniCDI::Log("[VDSC] P0 tcolor $%06x", reg.TransparentCol[0]);
 					break;
 				case 0xC6:
-					reg.TransparentCol[1] = inst & 0x00FCFCFCu;
+					reg.TransparentCol[TransparentColSlot ^= 1] = inst & 0x00FCFCFCu;
 					//MiniCDI::Log("[VDSC] P1 tcolor $%06x", reg.TransparentCol[1]);
 					break;
 
 				case 0xC7:
-					reg.MaskCol[0] = inst & 0x00FCFCFCu;
+					reg.MaskCol[MaskColSlot ^= 1] = inst & 0x00FCFCFCu;
 					//MiniCDI::Log("[VDSC] P0 mcolor $%06x", reg.MaskCol[0]);
 					break;
 				case 0xC9:
-					reg.MaskCol[1] = inst & 0x00FCFCFCu;
+					reg.MaskCol[MaskColSlot ^= 1] = inst & 0x00FCFCFCu;
 					//MiniCDI::Log("[VDSC] P1 mcolor $%06x", reg.MaskCol[1]);
 					break;
 

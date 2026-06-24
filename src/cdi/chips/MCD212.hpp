@@ -28,13 +28,14 @@ class MCD212
 		enum Icm
 		{
 			// All coding methods are usable in standard-res except for CLUT4.
-			Off = 0x00,
-			CLUT8 = 0x01, // plane A only
-			CLUT7 = 0x03,
-			CLUT77 = 0x04, // plane A only
-			DYUV = 0x05,
-			CLUT4 = 0x0B, // double-res only
-			RGB555 = 0x01, // plane B only
+			Off = 0b0000,
+			CLUT8 = 0b0001, // plane A only
+			RGB555 = 0b0001, // plane B only
+			CLUT7 = 0b0011,
+			CLUT77 = 0b0100, // plane A only
+			DYUV = 0b0101,
+			CLUT4 = 0b1011, // double-res only
+			QHY = 0b1111
 		};
 
 		enum Type
@@ -195,9 +196,14 @@ class MCD212
 		bool isTransparent(uint8_t* src, bool second = false)
 		{
 			// Color key boolean (CLUT only)
-			bool ColorKey = (Path == 1 && reg.Icm[Path] == RGB555) || reg.Icm[Path] == DYUV ? false
-						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) == reg.TransparentCol[Path]
+			bool ColorKey = (reg.Icm[0] == Off && reg.Icm[1] == RGB555) || reg.Icm[Path] == DYUV ? false
+						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0x00FCFCFC) == reg.TransparentCol[Path]
 						  || reg.MaskCol[Path];
+			if ((reg.TransparencyCtrl[Path] == 0b0001 || reg.TransparencyCtrl[Path] == 0b0101 || reg.TransparencyCtrl[Path] == 0b0110
+			|| reg.TransparencyCtrl[Path] == 0b1001 || reg.TransparencyCtrl[Path] == 0b1101 || reg.TransparencyCtrl[Path] == 0b1110)
+			&& (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0x00FCFCFC) && reg.TransparentCol[Path]) {
+				MiniCDI::Log("[VDSC] tctrl: %d colorkey %06X = %06X = %d", reg.TransparencyCtrl[Path], reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0x00FCFCFC, reg.TransparentCol[Path], ColorKey);
+			}
 
 			switch (reg.TransparencyCtrl[Path])
 			{
@@ -209,7 +215,7 @@ class MCD212
 				case 0b0001:
 					return ColorKey;
 				case 0b0010:
-					return reg.Icm[Path] == RGB555 && Path && (*src & 0x8000);
+					return reg.Icm[0] == Off && reg.Icm[1] == RGB555 && Path && (*src & 0x8000);
 				case 0b0011:
 					return Matte[0];
 				case 0b0100:
@@ -223,7 +229,7 @@ class MCD212
 				case 0b1001:
 					return !ColorKey;
 				case 0b1010:
-					return !(reg.Icm[Path] == RGB555 && Path && (*src & 0x8000));
+					return !(reg.Icm[0] == Off && reg.Icm[1] == RGB555 && Path && (*src & 0x8000));
 				case 0b1011:
 					return !Matte[0];
 				case 0b1100:
@@ -317,7 +323,7 @@ class MCD212
 
 				case CLUT4:
 					if (!isTransparent<Path>(src)) dst[0] = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
-					if (!isTransparent<Path>(src)) dst[1] = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
+					if (!isTransparent<Path>(src, true)) dst[1] = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
 					return 2;
 			}
 		}
@@ -464,7 +470,7 @@ class MCD212
 				switch (reg.FT[Path]) {
 					default:
 					case Bitmap:
-						if (Path == 1 && reg.Icm[Path] == RGB555) {
+						if (reg.Icm[0] == Off && reg.Icm[1] == RGB555) {
 							x += decodeRGB555<Path>(src, dst);
 							continue;
 						} else {
@@ -587,22 +593,26 @@ class MCD212
 					break;
 
 				case 0xC3:
-					reg.BankCLUT = inst & 0xFFu;
+					reg.BankCLUT = inst & 0x0Fu;
 					//MiniCDI::Log("[VDSC] P%d cbnk %d", Path, reg.BankCLUT);
 					break;
 
 				case 0xC4:
 					reg.TransparentCol[0] = inst & 0x00FCFCFCu;
+					//MiniCDI::Log("[VDSC] P0 tcolor $%06x", reg.TransparentCol[0]);
 					break;
 				case 0xC6:
 					reg.TransparentCol[1] = inst & 0x00FCFCFCu;
+					//MiniCDI::Log("[VDSC] P1 tcolor $%06x", reg.TransparentCol[1]);
 					break;
 
 				case 0xC7:
 					reg.MaskCol[0] = inst & 0x00FCFCFCu;
+					//MiniCDI::Log("[VDSC] P0 mcolor $%06x", reg.MaskCol[0]);
 					break;
 				case 0xC9:
 					reg.MaskCol[1] = inst & 0x00FCFCFCu;
+					//MiniCDI::Log("[VDSC] P1 mcolor $%06x", reg.MaskCol[1]);
 					break;
 
 				case 0xCA:
@@ -917,7 +927,7 @@ public:
 		line += SM ? 2 : 1;
 
 		if (linesV >= MCD212_VSYNC_LINES) {
-			// MiniCDI::Log("[MCD212] VSYNC");
+			//MiniCDI::Log("[MCD212] VSYNC");
 			DA = 0;
 			PA ^= 1;
 

@@ -113,8 +113,13 @@ public:
 
 	void draw()
 	{
-		// SDL_Rect dest = {219, 0, 1481, 1080}; // PAL dimensions
-		SDL_Rect dest = {96, -90, 1728, 1260}; // NTSC dimensions
+		SDL_Rect dest =
+		{
+			MiniCDI::Config::PAL ? 219 : 96,
+			MiniCDI::Config::PAL ? 0 : -90,
+			MiniCDI::Config::PAL ? 1481 : 1728,
+			MiniCDI::Config::PAL ? 1080 : 1260
+		};
 		SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 
 		if (MiniCDI::Config::ShowLCD)
@@ -147,9 +152,9 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = false;
-	MiniCDI::Config::ShowLCD = true;
-	MiniCDI::Config::FrameSkip = 0;
+	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::FrameSkip = 1;
 	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
@@ -168,6 +173,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 
 		/*if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
 		if (!status.tpNormal.touched && touchDown) { touchDown = false; }*/
+		if (status.trigger && VPAD_BUTTON_ZR) break; // exit
 
 		// Clear screen
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);

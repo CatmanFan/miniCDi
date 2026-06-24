@@ -266,7 +266,7 @@
  * operations.
 */
 #ifndef M68K_USE_64_BIT
-#define M68K_USE_64_BIT             M68K_OPT_ON
+#define M68K_USE_64_BIT             M68K_OPT_OFF
 #endif
 
 

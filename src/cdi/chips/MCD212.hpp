@@ -13,7 +13,7 @@
 
 class MCD212
 {
-	SCC68070 *_68070;
+	SCC68070* _68070;
 	uint8_t* memory;
 
 	class VDSC

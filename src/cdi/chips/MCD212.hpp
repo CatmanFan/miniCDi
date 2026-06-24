@@ -37,24 +37,6 @@ class MCD212
 			RGB555 = 0x01, // plane B only
 		};
 
-		enum Tcr
-		{
-			TcrAlways = 0x00,
-			TcrIfCK = 0x01,
-			TcrIfTB,
-			TcrIfMF0,
-			TcrIfMF1,
-			TcrIfCK_MF0,
-			TcrIfCK_MF1,
-			TcrNever = 0x08,
-			TcrIfNotCK,
-			TcrIfNotTB,
-			TcrIfNotMF0,
-			TcrIfNotMF1,
-			TcrIfNotCK_MF0,
-			TcrIfNotCK_MF1
-		};
-
 		enum Type
 		{
 			NTSCMonitor,	// 525 (360x240)
@@ -118,78 +100,72 @@ class MCD212
 			/* CD */ uint16_t CursorPosition[2];
 			/* CE */ uint8_t CursorEnable, CursorBlink, CursorOnTime, CursorOffTime, CursorColor, CursorRes;
 			/* CF */ uint16_t CursorPatternX; uint8_t CursorPatternY;
-			/* D0 */ /*** see below ***/
+			/* D0 */ uint32_t MCR[8];
 			/* D8 */ uint8_t BackdropColor;
 			/* D9 */ uint32_t MosaicPixel[2];
-			/* DB */ uint8_t ICF[2];
+			/* DB */ float ICF[2];
 
 			enum MosaicFactor MF[2];
 			enum FileType FT[2];
 			enum ColorMode CM[2];
 		} reg;
 
-		struct
-		{
-			// Registers
-			uint8_t opcode[8];
-			uint8_t x[8];
-			uint8_t icf[8];
-			uint8_t mf[8];
-
-			// Current index
-			size_t p = 0;
-		} MatteCtrl;
-		bool MF[2];
+		bool Matte[2];
+		size_t MatteSlots = 0;
 
 		template <size_t Path>
-		void matteCheck(int x)
+		void matteCheck(size_t x)
 		{
-			if (MatteCtrl.p >= 8 || MatteCtrl.x[MatteCtrl.p] != x) return;
+			if (MatteSlots == 0 || (reg.MCR[8 - MatteSlots] & 0x3FF) != x) return;
 
-			switch (MatteCtrl.opcode[MatteCtrl.p]) {
-				case 0x0: // end of matte control
-					MatteCtrl.p = 8;
+			uint8_t opcode = reg.MCR[8 - MatteSlots] >> 20 & 0x0F;
+			float icf = (float)(reg.MCR[8 - MatteSlots] >> 10 & 63) / 63.0f;
+			size_t mf = reg.MatteCount ? (MatteSlots <= 4 ? 0 : 1) : reg.MCR[8 - MatteSlots] >> 16 & 0x01;
+
+			switch (opcode) {
+				case 0b0000: // end of matte control
+					MatteSlots = 0;
 					//MiniCDI::Log("[VDSC] matte end");
 					return;
-				case 0x4: // change weight of pA
-					reg.ICF[0] = MatteCtrl.icf[MatteCtrl.p];
+				case 0b0100: // change weight of pA
+					reg.ICF[0] = icf;
 					//MiniCDI::Log("[VDSC] matte changed ICF for planeA: %.02f", reg.ICF[0]);
 					break;
-				case 0x6: // change weight of pB
-					reg.ICF[1] = MatteCtrl.icf[MatteCtrl.p];
-					//MiniCDI::Log("[VDSC] matte changed ICF for planeB: %.02f", reg.ICF[0]);
+				case 0b0110: // change weight of pB
+					reg.ICF[1] = icf;
+					//MiniCDI::Log("[VDSC] matte changed ICF for planeB: %.02f", reg.ICF[1]);
 					break;
-				case 0x8: // reset
-					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = false;
-					//MiniCDI::Log("[VDSC] matte flag %d unset", MatteCtrl.mf[MatteCtrl.p]);
+				case 0b1000: // reset
+					Matte[mf] = false;
+					//MiniCDI::Log("[VDSC] matte flag %d unset", Matte[mf]);
 					break;
-				case 0x9: // set
-					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = true;
-					//MiniCDI::Log("[VDSC] matte flag %d set", MatteCtrl.mf[MatteCtrl.p]);
+				case 0b1001: // set
+					Matte[mf] = true;
+					//MiniCDI::Log("[VDSC] matte flag %d set", Matte[mf]);
 					break;
-				case 0xC: // reset & change weight of pA
-					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = false;
-					reg.ICF[reg.PlaneOrder ? 0 : 1] = MatteCtrl.icf[MatteCtrl.p];
-					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeA: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[0]);
+				case 0b1100: // reset & change weight of pA
+					Matte[mf] = false;
+					reg.ICF[0] = icf;
+					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeA: %.02f", Matte[mf], reg.ICF[0]);
 					break;
-				case 0xD: // set & change weight of pA
-					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = true;
-					reg.ICF[reg.PlaneOrder ? 0 : 1] = MatteCtrl.icf[MatteCtrl.p];
-					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeA: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[0]);
+				case 0b1101: // set & change weight of pA
+					Matte[mf] = true;
+					reg.ICF[0] = icf;
+					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeA: %.02f", Matte[mf], reg.ICF[0]);
 					break;
-				case 0xE: // reset & change weight of pB
-					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = false;
-					reg.ICF[reg.PlaneOrder ? 1 : 0] = MatteCtrl.icf[MatteCtrl.p];
-					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeB: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[1]);
+				case 0b1110: // reset & change weight of pB
+					Matte[mf] = false;
+					reg.ICF[1] = icf;
+					//MiniCDI::Log("[VDSC] matte flag %d unset + ICF for planeB: %.02f", Matte[mf], reg.ICF[1]);
 					break;
-				case 0xF: // set & change weight of pB
-					MF[MatteCtrl.mf[MatteCtrl.p] & 0x01] = true;
-					reg.ICF[reg.PlaneOrder ? 1 : 0] = MatteCtrl.icf[MatteCtrl.p];
-					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeB: %.02f", MatteCtrl.mf[MatteCtrl.p], reg.ICF[1]);
+				case 0b1111: // set & change weight of pB
+					Matte[mf] = true;
+					reg.ICF[1] = icf;
+					//MiniCDI::Log("[VDSC] matte flag %d set + ICF for planeB: %.02f", Matte[mf], reg.ICF[1]);
 					break;
 			}
 
-			MatteCtrl.p++;
+			MatteSlots--;
 		}
 
 		template <size_t Path>
@@ -204,7 +180,7 @@ class MCD212
 					return Path ? std::clamp(*src & 0x7F, 0, 127) + 128 : *src & 0x7F;
 
 				case CLUT77:
-					return Path == 0 && reg.IcmCS ? std::clamp(*src & 0x7F, 0, 127) + 128 : *src & 0x7F;
+					return !Path && reg.IcmCS ? std::clamp(*src & 0x7F, 0, 127) + 128 : *src & 0x7F;
 
 				case CLUT8:
 					return *src;
@@ -218,43 +194,44 @@ class MCD212
 		template <size_t Path>
 		bool isTransparent(uint8_t* src, bool second = false)
 		{
+			// Color key boolean (CLUT only)
 			bool ColorKey = (Path == 1 && reg.Icm[Path] == RGB555) || reg.Icm[Path] == DYUV ? false
-						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) == (reg.TransparentCol[Path] & 0xFCFCFC)
-						 || (reg.MaskCol[Path] & 0xFCFCFC);
+						  : (reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) == reg.TransparentCol[Path]
+						  || reg.MaskCol[Path];
 
 			switch (reg.TransparencyCtrl[Path])
 			{
 				default:
 					// assert(0);
 					return false;
-				case TcrAlways:
+				case 0b0000:
 					return true;
-				case TcrIfCK:
+				case 0b0001:
 					return ColorKey;
-				case TcrIfTB:
+				case 0b0010:
 					return reg.Icm[Path] == RGB555 && Path && (*src & 0x8000);
-				case TcrIfMF0:
-					return !MF[0];
-				case TcrIfMF1:
-					return !MF[1];
-				case TcrIfCK_MF0:
-					return ColorKey || !MF[0];
-				case TcrIfCK_MF1:
-					return ColorKey || !MF[1];
-				case TcrNever:
+				case 0b0011:
+					return Matte[0];
+				case 0b0100:
+					return Matte[1];
+				case 0b0101:
+					return Matte[0] || ColorKey;
+				case 0b0110:
+					return Matte[1] || ColorKey;
+				case 0b1000:
 					return false;
-				case TcrIfNotCK:
+				case 0b1001:
 					return !ColorKey;
-				case TcrIfNotTB:
+				case 0b1010:
 					return !(reg.Icm[Path] == RGB555 && Path && (*src & 0x8000));
-				case TcrIfNotMF0:
-					return MF[0];
-				case TcrIfNotMF1:
-					return MF[1];
-				case TcrIfNotCK_MF0:
-					return !ColorKey || MF[0];
-				case TcrIfNotCK_MF1:
-					return !ColorKey || MF[1];
+				case 0b1011:
+					return !Matte[0];
+				case 0b1100:
+					return !Matte[1];
+				case 0b1101:
+					return !Matte[0] || !ColorKey;
+				case 0b1110:
+					return !Matte[1] || !ColorKey;
 			}
 		}
 
@@ -394,7 +371,7 @@ class MCD212
 			/// where ICF = Image Contribution Factor (between 0 and 1)
 			/// 	C = One of the color components, R G or B.
 			/// 	C' = The corresponding component after decoding."
-			#define ICF_APPLY(C, ICF) (int)(((float)(ICF) / 63.0f) * (float)((C)-16) + 16.0f)
+			#define ICF_APPLY(C, ICF) (int)((ICF) * (float)((C)-16) + 16.0f)
 			#define ICF_MIX(C1, C2, ICF1, ICF2) std::clamp(ICF_APPLY(C1, ICF1) + ICF_APPLY(C2, ICF2) - 16, 0, 255)
 
 			// Output screen coords.
@@ -410,7 +387,9 @@ class MCD212
 						gB = GET_G(FG[PLANEB].decoded[PIXELB]),
 						bB = GET_B(FG[PLANEB].decoded[PIXELB]);
 
-				if (reg.Mixing && FG[PLANEB].decoded[PIXELB] && FG[PLANEA].decoded[PIXELA])
+				if (reg.Icm[0] == Off && reg.Icm[1] == Off)
+					output[outputPixel] = 0x101010ff; // TO-DO: Cleaner way of doing this?
+				else if (reg.Mixing && (FG[PLANEB].decoded[PIXELB] & 0x000000FF) && (FG[PLANEA].decoded[PIXELA] & 0x000000FF))
 					output[outputPixel] = (ICF_MIX(rA, rB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 24)
 										| (ICF_MIX(gA, gB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 16)
 										| (ICF_MIX(bA, bB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 8)
@@ -427,19 +406,15 @@ class MCD212
 										| 0xFF;
 				else {
 					// Transparent, draw backdrop.
-					if (reg.Icm[0] == Off && reg.Icm[1] == Off)
-						output[outputPixel] = 0x101010ff; // TO-DO: Cleaner way of doing this?
-					else {
-						switch (reg.BackdropColor & 0x07) {
-							default: output[outputPixel] = 0x101010ff; break;
-							case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
-							case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
-							case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
-							case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
-							case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
-							case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
-							case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
-						}
+					switch (reg.BackdropColor & 0x07) {
+						default: output[outputPixel] = 0x101010ff; break;
+						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
+						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
+						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
+						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
+						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
+						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
+						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
 					}
 				}
 
@@ -564,8 +539,8 @@ class MCD212
 			}
 
 			// reset matte flag for plane
-			MatteCtrl.p = 0;
-			MF[0] = MF[1] = false;
+			Matte[0] = Matte[1] = false;
+			MatteSlots = 0;
 			return vsr;
 		}
 
@@ -599,33 +574,31 @@ class MCD212
 																  : "bmp");*/
 					break;
 
-				case 0xC0:
-					if (!Path) {
-						reg.IcmCS = inst >> 22 & 0x01u;
-						reg.MatteCount = inst >> 19 & 0x01u;
-						reg.ExternalVideo = inst >> 18 & 0x01u;
-						reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
-						reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
-						/*MiniCDI::Log("[VDSC] P%d icm cma=%s,cmb=%s,nr=%d,ev=%d,cs=%d", Path,
-								  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
-								: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
-								: reg.Icm[0] == CLUT4 ? "clut4" : "off",
-								  reg.Icm[1] == RGB555 ? "rgb555" : reg.Icm[1] == DYUV ? "dyuv"
-								: reg.Icm[1] == CLUT4 ? "clut4" : "off",
-								  reg.MatteCount, reg.ExternalVideo, reg.IcmCS);*/
-					}
+				case 0xC0: // channel 1
+					reg.IcmCS = inst >> 22 & 0x01u;
+					reg.MatteCount = inst >> 19 & 0x01u;
+					reg.ExternalVideo = inst >> 18 & 0x01u;
+					reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
+					reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
+					/*MiniCDI::Log("[VDSC] P%d icm cma=%s,cmb=%s,nr=%d,ev=%d,cs=%d", Path,
+							  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
+							: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
+							: reg.Icm[0] == CLUT4 ? "clut4" : "off",
+							  reg.Icm[1] == RGB555 ? "rgb555" : reg.Icm[1] == DYUV ? "dyuv"
+							: reg.Icm[1] == CLUT4 ? "clut4" : "off",
+							  reg.MatteCount, reg.ExternalVideo, reg.IcmCS);*/
 					break;
 
-				case 0xC1:
+				case 0xC1: // channel 1
 					if (!Path) {
 						reg.TransparencyCtrl[0] = inst & 0x0Fu;
 						reg.TransparencyCtrl[1] = inst >> 8 & 0x0Fu;
-						reg.Mixing = inst & 0x00800000u ? 0 : 1;
+						reg.Mixing = !(inst >> 23 & 0x01u);
 						//MiniCDI::Log("[VDSC] P%d tctl mx=%d,tca=%02d,tcb=%02d", Path, reg.Mixing, reg.TransparencyCtrl[0], reg.TransparencyCtrl[1]);
 					}
 					break;
 
-				case 0xC2:
+				case 0xC2: // channel 1
 					if (!Path) {
 						reg.PlaneOrder = inst & 0x0Fu;
 						//MiniCDI::Log("[VDSC] P%d po %s", Path, reg.PlaneOrder ? "a,b" : "b,a");
@@ -638,19 +611,26 @@ class MCD212
 					break;
 
 				case 0xC4:
+					reg.TransparentCol[0] = inst & 0x00FCFCFCu;
+					break;
 				case 0xC6:
-					reg.TransparentCol[(inst >> 24 & 0xFF) == 0xC6 ? 1 : 0] = inst & 0x00FFFFFFu;
+					reg.TransparentCol[1] = inst & 0x00FCFCFCu;
 					break;
 
 				case 0xC7:
+					reg.MaskCol[0] = inst & 0x00FCFCFCu;
+					break;
 				case 0xC9:
-					reg.MaskCol[(inst >> 24 & 0xFF) == 0xC9 ? 1 : 0] = inst & 0x00FFFFFFu;
+					reg.MaskCol[1] = inst & 0x00FCFCFCu;
 					break;
 
 				case 0xCA:
+					reg.ColorDYUV[0] = inst & 0x00FFFFFFu;
+					//MiniCDI::Log("[VDSC] P0 yuv_b y=$%02x,u=$%02x,v=$%02x", inst >> 16 & 0xFFu, inst >> 8 & 0xFFu, inst & 0xFFu);
+					break;
 				case 0xCB:
-					reg.ColorDYUV[(inst >> 24 & 0xFF) == 0xCB ? 1 : 0] = inst & 0x00FFFFFFu;
-					//MiniCDI::Log("[VDSC] P%d yuv_b y=$%02x,u=$%02x,v=$%02x", Path, inst >> 16 & 0xFFu, inst >> 8 & 0xFFu, inst & 0xFFu);
+					reg.ColorDYUV[1] = inst & 0x00FFFFFFu;
+					//MiniCDI::Log("[VDSC] P1 yuv_b y=$%02x,u=$%02x,v=$%02x", inst >> 16 & 0xFFu, inst >> 8 & 0xFFu, inst & 0xFFu);
 					break;
 
 				case 0xCD: // channel 1
@@ -697,31 +677,29 @@ class MCD212
 				case 0xD5:
 				case 0xD6:
 				case 0xD7:
-					{
-						uint8_t rIndex = (inst >> 24 & 0xFF) - 0xD0;
-						MatteCtrl.x[rIndex] = inst & 0x1FFu;
-						MatteCtrl.icf[rIndex] = inst >> 10 & 0x1Fu;
-						MatteCtrl.mf[rIndex] = reg.MatteCount ? (rIndex >= 4 ? 1 : 0) : inst >> 16 & 0x01u;
-						MatteCtrl.opcode[rIndex] = inst >> 20 & 0x0Fu;
-						//MiniCDI::Log("[VDSC] P%d rctl %d,op=%1X,rf=%d,wf=%d,x=%d", Path, rIndex, MatteCtrl.opcode[rIndex], MatteCtrl.mf[rIndex], MatteCtrl.icf[rIndex], MatteCtrl.x[rIndex]);
+					if (MatteSlots < 8) {
+						reg.MCR[MatteSlots++] = inst & 0x00FFFFFFu;
 					}
 					break;
 
 				case 0xD8: // channel 1
-					if (!Path) {
-						reg.BackdropColor = inst & 0x00FFFFFFu;
-					}
+					if (!Path) reg.BackdropColor = inst & 0x00FFFFFFu;
 					break;
 
 				case 0xD9:
+					reg.MosaicPixel[0] = inst & 0xFFu;
+					break;
 				case 0xDA:
-					reg.MosaicPixel[(inst >> 24 & 0xFF) == 0xDA ? 1 : 0] = inst & 0xFFu;
+					reg.MosaicPixel[1] = inst & 0xFFu;
 					break;
 
 				case 0xDB:
+					reg.ICF[0] = (float)(inst & 63) / 63.0f;
+					//MiniCDI::Log("[VDSC] P0 wfac_%s %d", inst & 0x2Fu);
+					break;
 				case 0xDC:
-					reg.ICF[(inst >> 24 & 0xFF) == 0xDC ? 1 : 0] = inst & 0x3Fu;
-					//if (reg.ICF[Path]) MiniCDI::Log("[VDSC] P%d wfac_%s %d", Path ? "b" : "a", reg.ICF[Path]);
+					reg.ICF[1] = (float)(inst & 63) / 63.0f;
+					//MiniCDI::Log("[VDSC] P1 wfac_%s %d", inst & 0x2Fu);
 					break;
 			}
 		}

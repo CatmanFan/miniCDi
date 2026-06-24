@@ -49,7 +49,6 @@
 #include "cdi/chips/MC6805_IKAT.hpp"
 #include "cdi/PointingDevice.hpp"
 #include "cdi/chips/IMS66490_CDIC.hpp"
-#include "cdi/chips/DSP56001_DRVDSP.hpp"
 #include "cdi/chips/MCD221_CIAP.hpp"
 
 // Other namespace defs

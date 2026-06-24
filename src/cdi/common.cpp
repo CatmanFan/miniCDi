@@ -191,7 +191,7 @@ bool MonoI::init(const std::string &bios)
 				break;
 
 			case CDi::MonoIV:
-				this->ciap = new CIAP(&this->cpu, &this->disc, this->memory);
+				this->ciap = new CIAP(&this->cpu, this->memory, &this->disc);
 				this->ikat = new IKAT(&this->cpu, this->memory);
 				this->pd.IO.ikat = this->ikat;
 				this->nvram = 0x00320000;

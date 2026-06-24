@@ -220,9 +220,9 @@ class MCD212
 				case 0b0100:
 					return Matte[1];
 				case 0b0101:
-					return /*Matte[0] || */ColorKey;
+					return Matte[0] || ColorKey;
 				case 0b0110:
-					return /*Matte[1] || */ColorKey;
+					return Matte[1] || ColorKey;
 				case 0b1000:
 					return false;
 				case 0b1001:
@@ -234,9 +234,9 @@ class MCD212
 				case 0b1100:
 					return !Matte[1];
 				case 0b1101:
-					return /*!Matte[0] || */!ColorKey;
+					return !Matte[0] || !ColorKey;
 				case 0b1110:
-					return /*!Matte[1] || */!ColorKey;
+					return !Matte[1] || !ColorKey;
 			}
 		}
 
@@ -591,21 +591,13 @@ class MCD212
 					break;
 
 				case 0xC4:
-					reg.TransparentCol[TransparentColSlot ^= 1] = inst & 0x00FCFCFCu;
-					//MiniCDI::Log("[VDSC] P0 tcolor $%06x", reg.TransparentCol[0]);
-					break;
 				case 0xC6:
 					reg.TransparentCol[TransparentColSlot ^= 1] = inst & 0x00FCFCFCu;
-					//MiniCDI::Log("[VDSC] P1 tcolor $%06x", reg.TransparentCol[1]);
 					break;
 
 				case 0xC7:
-					reg.MaskCol[MaskColSlot ^= 1] = inst & 0x00FCFCFCu;
-					//MiniCDI::Log("[VDSC] P0 mcolor $%06x", reg.MaskCol[0]);
-					break;
 				case 0xC9:
 					reg.MaskCol[MaskColSlot ^= 1] = inst & 0x00FCFCFCu;
-					//MiniCDI::Log("[VDSC] P1 mcolor $%06x", reg.MaskCol[1]);
 					break;
 
 				case 0xCA:

@@ -87,7 +87,7 @@ public:
 
 	void Draw()
 	{
-		C2D_DrawImageAt(this->img, 20, -20, 0.5f, NULL, 0.5f, 1.0f);
+		C2D_DrawImageAt(this->img, 8, -20, 0.5f, NULL, 0.5f, 1.0f);
 	}
 
 	void Update(uint32_t* display_output, int width)
@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
 	printf("Loading CDi 220 bios\n");
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = false;
+	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::FrameSkip = 2;
 	// MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");

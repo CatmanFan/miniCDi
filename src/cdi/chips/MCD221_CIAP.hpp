@@ -179,7 +179,7 @@ class CIAP
 	}
 
 public:
-	CIAP(SCC68070* _68070, CDiDisc *disc, uint8_t* memory) : _68070(_68070), memory(memory), disc(disc), CdReader({0})
+	CIAP(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), disc(disc), CdReader({0})
 	{
 	}
 

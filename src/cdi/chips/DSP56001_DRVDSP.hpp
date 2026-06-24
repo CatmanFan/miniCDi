@@ -25,7 +25,7 @@ class DRVDSP
 	CDiDisc *disc;
 
 public:
-	DRVDSP(SCC68070* _68070, CDiDisc *disc, uint8_t* memory) : _68070(_68070), memory(memory), disc(disc)
+	DRVDSP(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), disc(disc)
 	{
 	}
 
@@ -128,7 +128,7 @@ public:
 			case 0x300005: ISR = value;
 				break;
 			case 0x300007: IVR = value;
-				if (_68070) _68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value;
+				_68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value;
 				break;
 			case 0x30000B: RTX &= 0x0000FFFF; RTX |= value << 16;
 				break;

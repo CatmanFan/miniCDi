@@ -150,7 +150,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	MiniCDI::Config::PAL = false;
 	MiniCDI::Config::ShowLCD = true;
 	MiniCDI::Config::FrameSkip = 0;
-	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
+	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
 	cdi.board = CDi::MonoI;

@@ -71,12 +71,12 @@ public:
 			}
 
 			if (IO.ikat->PointerInterface.connected) {
-				if (changed_Face || changed_DPad)
+				/*if (changed_Face || changed_DPad)
 				{
 					if (changed_Face) { changed_Face = false; }
 
 					// Convert to IKAT response
-					/*if (x < 128 && x >= -128 && y < 128 && y >= -128) {
+					if (x < 128 && x >= -128 && y < 128 && y >= -128) {
 						// Relative coordinates
 						IO.ikat->Ch[1].Out =
 						{
@@ -85,7 +85,7 @@ public:
 							(uint8_t)(y & 0b00111111),
 							0,
 						};
-					} else {*/
+					} else {
 						// Absolute coordinates
 						IO.ikat->Ch[1].Out =
 						{
@@ -94,9 +94,9 @@ public:
 							(uint8_t)(x & 0b0000111111),
 							(uint8_t)(0x80 | (y & 0b0000111111)),
 						};
-					/*}*/
+					}
 					IO.ikat->poll_packet(1);
-				}
+				}*/
 			}
 		}
 	}

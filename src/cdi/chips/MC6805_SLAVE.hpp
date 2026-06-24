@@ -102,11 +102,13 @@ public:
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
 								Ch[c].ReadSize = 0;
+								return;
 							} else {
 								/** Set Pointer Pos **/
 								if (PointerInterface.enabled && value >= 0xC0 && value <= 0xFF
 								 && Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
 									Ch[c].InSize = 3;
+									return;
 								}
 							}
 							break;
@@ -139,7 +141,7 @@ public:
 										Ch[c].InSize = 0;
 										Ch[c].ReadSize = 0;
 									}
-									break;
+									return;
 							}
 							break;
 
@@ -157,6 +159,12 @@ public:
 				case 2:
 					switch (value)
 					{
+						/** Reset CPU **/
+						case 0x8A:
+							MiniCDI::Log("[SLAVE] reset CPU (0x%02X)", value);
+							if (_68070 != NULL) _68070->reset();
+							break;
+
 						/** Set Front Panel LCD **/
 						case 0xF0:
 							//MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);

@@ -151,7 +151,7 @@ void CDi::shutdown()
 		fclose(MiniCDI::Config::LogFile);
 
 	// Avoid exception crash
-	MiniCDI::Player = {nullptr};
+	MiniCDI::Player = {NULL};
 	m68k_pulse_halt();
 	if (memory) delete[] memory;
 }
@@ -167,6 +167,12 @@ bool MonoI::init(const std::string &bios)
 		// Setup peripherals
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
+
+		MiniCDI::Player = {NULL};
+		MiniCDI::Player.memory = this->memory;
+		MiniCDI::Player.scc68070 = &this->cpu;
+		MiniCDI::Player.mcd212 = this->vpu;
+
 		switch (this->board) {
 			default:
 			case CDi::MonoI:
@@ -174,26 +180,19 @@ bool MonoI::init(const std::string &bios)
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
+				MiniCDI::Player.slave = this->slave;
+				MiniCDI::Player.cdic = this->cdic;
 				break;
 
 			case CDi::MonoIV:
-				this->ciap = new CIAP(&this->disc, this->memory);
+				this->ciap = new CIAP(&this->cpu, &this->disc, this->memory);
 				this->ikat = new IKAT(&this->cpu, this->memory);
 				this->pd.IO.ikat = this->ikat;
 				this->nvram = 0x00320000;
+				MiniCDI::Player.ikat = this->ikat;
+				MiniCDI::Player.ciap = this->ciap;
 				break;
 		}
-
-		MiniCDI::Player =
-		{
-			.memory = this->memory,
-			.scc68070 = &this->cpu,
-			.mcd212 = this->vpu,
-			.slave = this->slave,
-			.ikat = this->ikat,
-			.cdic = this->cdic,
-			.ciap = this->ciap
-		};
 
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);

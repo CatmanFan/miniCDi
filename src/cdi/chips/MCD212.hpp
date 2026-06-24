@@ -359,62 +359,50 @@ class MCD212
 		 */
 		void mix_to_frame(int y)
 		{
-			#define PLANEA reg.PlaneOrder ? 0 : 1
-			#define PLANEB reg.PlaneOrder ? 1 : 0
-			#define GET_R(V) ((V) >> 24 & 0xFF)
-			#define GET_G(V) ((V) >> 16 & 0xFF)
-			#define GET_B(V) ((V) >> 8 & 0xFF)
-			#define GET_A(V) ((V) & 0xFF)
-
 			/// per Green Book:
 			/// "C = ICF * (C'-16) + 16
 			/// where ICF = Image Contribution Factor (between 0 and 1)
 			/// 	C = One of the color components, R G or B.
 			/// 	C' = The corresponding component after decoding."
-			#define ICF_APPLY(C, ICF) (int)((ICF) * (float)((C)-16) + 16.0f)
-			#define ICF_MIX(C1, C2, ICF1, ICF2) std::clamp(ICF_APPLY(C1, ICF1) + ICF_APPLY(C2, ICF2) - 16, 0, 255)
+			#define ICF_APPLY(C, ICF) (int)((ICF) * ((float)(C)-16.0f) + 16.0f)
 
 			// Output screen coords.
-			int outputPixel = (FG[PLANEA].height == 240 ? y + 20 : y) * 768 + (FG[PLANEA].width % 360 == 0 ? 12 : 0);
-			for (int x = 0; x < FG[PLANEA].width; x++) {
-				int PIXELA = (y*FG[PLANEA].width) + x;
-				int PIXELB = (y*FG[PLANEB].width) + x;
+			int outputPixel = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width % 360 == 0 ? 24 : 0);
+			for (int x = 0; x < FG[0].width; x++) {
+				int PIXELA = (y*FG[0].width) + x;
+				int PIXELB = (y*FG[1].width) + x;
 
-				uint8_t rA = GET_R(FG[PLANEA].decoded[PIXELA]),
-						gA = GET_G(FG[PLANEA].decoded[PIXELA]),
-						bA = GET_B(FG[PLANEA].decoded[PIXELA]),
-						rB = GET_R(FG[PLANEB].decoded[PIXELB]),
-						gB = GET_G(FG[PLANEB].decoded[PIXELB]),
-						bB = GET_B(FG[PLANEB].decoded[PIXELB]);
+				uint8_t rA = ICF_APPLY(FG[reg.PlaneOrder ? 0 : 1].decoded[PIXELA] >> 24 & 0xFF, reg.ICF[reg.PlaneOrder ? 0 : 1]),
+						gA = ICF_APPLY(FG[reg.PlaneOrder ? 0 : 1].decoded[PIXELA] >> 16 & 0xFF, reg.ICF[reg.PlaneOrder ? 0 : 1]),
+						bA = ICF_APPLY(FG[reg.PlaneOrder ? 0 : 1].decoded[PIXELA] >> 8 & 0xFF, reg.ICF[reg.PlaneOrder ? 0 : 1]),
+						aA = FG[reg.PlaneOrder ? 0 : 1].decoded[PIXELA] & 0xFF,
+						rB = ICF_APPLY(FG[reg.PlaneOrder ? 1 : 0].decoded[PIXELB] >> 24 & 0xFF, reg.ICF[reg.PlaneOrder ? 1 : 0]),
+						gB = ICF_APPLY(FG[reg.PlaneOrder ? 1 : 0].decoded[PIXELB] >> 16 & 0xFF, reg.ICF[reg.PlaneOrder ? 1 : 0]),
+						bB = ICF_APPLY(FG[reg.PlaneOrder ? 1 : 0].decoded[PIXELB] >> 8 & 0xFF, reg.ICF[reg.PlaneOrder ? 1 : 0]),
+						aB = FG[reg.PlaneOrder ? 1 : 0].decoded[PIXELB] & 0xFF;
 
 				if (reg.Icm[0] == Off && reg.Icm[1] == Off)
-					output[outputPixel] = 0x101010ff; // TO-DO: Cleaner way of doing this?
-				else if (reg.Mixing && (FG[PLANEB].decoded[PIXELB] & 0x000000FF) && (FG[PLANEA].decoded[PIXELA] & 0x000000FF))
-					output[outputPixel] = (ICF_MIX(rA, rB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 24)
-										| (ICF_MIX(gA, gB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 16)
-										| (ICF_MIX(bA, bB, reg.ICF[PLANEA], reg.ICF[PLANEB]) << 8)
+					output[outputPixel] = 0x000000FF;
+				else if (reg.Mixing && aA && aB)
+					output[outputPixel] = (std::clamp(rA + rB - 16, 0, 255) << 24)
+										| (std::clamp(gA + gB - 16, 0, 255) << 16)
+										| (std::clamp(bA + bB - 16, 0, 255) << 8)
 										| 0xFF;
-				else if (FG[PLANEB].decoded[PIXELB] & 0x000000FF)
-					output[outputPixel] = (ICF_APPLY(rB, reg.ICF[PLANEB]) << 24)
-										| (ICF_APPLY(gB, reg.ICF[PLANEB]) << 16)
-										| (ICF_APPLY(bB, reg.ICF[PLANEB]) << 8)
-										| 0xFF;
-				else if (FG[PLANEA].decoded[PIXELA] & 0x000000FF)
-					output[outputPixel] = (ICF_APPLY(rA, reg.ICF[PLANEA]) << 24)
-										| (ICF_APPLY(gA, reg.ICF[PLANEA]) << 16)
-										| (ICF_APPLY(bA, reg.ICF[PLANEA]) << 8)
-										| 0xFF;
+				else if (aB)
+					output[outputPixel] = (rB << 24) | (gB << 16) | (bB << 8) | 0xFF;
+				else if (aA)
+					output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | 0xFF;
 				else {
 					// Transparent, draw backdrop.
 					switch (reg.BackdropColor & 0x07) {
-						default: output[outputPixel] = 0x101010ff; break;
-						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
-						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
-						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
-						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
-						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
-						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
-						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
+						default: output[outputPixel] = 0x000000ff; break;
+						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
+						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
+						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
+						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
+						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
+						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
+						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
 					}
 				}
 
@@ -435,7 +423,7 @@ class MCD212
 					}
 				}
 
-				if (FG[PLANEA].width < 400) {
+				if (FG[0].width < 400) {
 					output[outputPixel+1] = output[outputPixel];
 					outputPixel += 2;
 				} else {
@@ -443,14 +431,7 @@ class MCD212
 				}
 			}
 
-			#undef PLANEA
-			#undef PLANEB
-			#undef GET_R
-			#undef GET_G
-			#undef GET_B
-			#undef GET_A
 			#undef ICF_APPLY
-			#undef ICF_MIX
 		}
 
 		/**

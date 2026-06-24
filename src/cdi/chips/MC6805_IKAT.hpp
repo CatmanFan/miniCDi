@@ -180,7 +180,6 @@ public:
 							case 0x9A:
 								//MiniCDI::Log("[IKAT] set LCD (0x%02X)", value);
 								Ch[1].InSize = 6; // redirects LCD display input to BDR
-								Ch[c].In.clear();
 								break;
 						}
 						break;
@@ -197,7 +196,7 @@ public:
 											Ch[c].In.clear();
 											Ch[c].InSize = 0;
 										}
-										break;
+										return;
 								}
 								break;
 						}
@@ -207,12 +206,17 @@ public:
 					case 2:
 						switch (value)
 						{
+							/** Reset CPU **/
+							case 0x88:
+								MiniCDI::Log("[IKAT] reset CPU (0x%02X)", value);
+								if (_68070 != NULL) _68070->reset();
+								break;
+
 							/** Pointing Device **/
 							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
 								Ch[c].Out = { 0xA5, 0xF3, 'T', 'T' }; // imitate cdiemu
-								Ch[c].In.clear();
 								poll_packet(c);
 								break;
 
@@ -220,7 +224,6 @@ public:
 							case 0xF4:
 								MiniCDI::Log("[IKAT] report boot status (0x%02X)", value);
 								Ch[c].Out = { 0xA5, 0xF4, (uint8_t)(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
-								Ch[c].In.clear();
 								poll_packet(c);
 								break;
 
@@ -228,7 +231,6 @@ public:
 							case 0xF6:
 								MiniCDI::Log("[IKAT] report video mode (0x%02X)", value);
 								Ch[c].Out = { 0xA5, 0xF6, (uint8_t)(MiniCDI::Config::PAL ? 0x02 : 0x01), 0xFF };
-								Ch[c].In.clear();
 								poll_packet(c);
 								break;
 						}
@@ -241,9 +243,28 @@ public:
 							default:
 								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
 									switch (Ch[c].In[0]) {
+										case 0xB0:
+											MiniCDI::Log("[IKAT] report disc status (0x%02X)", value);
+											Ch[c].Out = { 0xB0, 0x00, 0x02, 0x10 }; // cdifan: $00060E for SLAVE 5.0 (CD-i rev 450), $000210 for IKAT 6.x-9.x
+											poll_packet(c);
+											break;
+
+										case 0xB1:
+											MiniCDI::Log("[IKAT] report disc base (0x%02X)", value);
+											Ch[c].Out = { 0xB1, 0x00, 0x02, 0x00 }; // imitate cdiemu
+											poll_packet(c);
+											break;
+
+										case 0xB2:
+											MiniCDI::Log("[IKAT] report disc select (0x%02X)", value);
+											Ch[c].Out = { 0xB2, 0x20, 0x00, 0x10 }; // imitate cdiemu
+											poll_packet(c);
+											break;
+
 										case 0xE0:
 											MiniCDI::Log("[SLAVE] start CD-DA playback (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
 											break;
+
 										case 0xE1:
 											MiniCDI::Log("[SLAVE] start CD sector read (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
 											if (ciap) { ciap->disc_set_lba(Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]); }
@@ -254,37 +275,15 @@ public:
 								}
 								break;
 
-							/** Disc Status **/
-							case 0xB0:
-								MiniCDI::Log("[IKAT] report disc status (0x%02X)", value);
-								Ch[c].Out = { 0xB0, 0x02, 0x10 }; // cdifan: $00060E for SLAVE 5.0 (CD-i rev 450), $000210 for IKAT 6.x-9.x
-								Ch[c].In.clear();
-								poll_packet(c);
-								break;
-
-							/** Disc Base **/
-							case 0xB1:
-								MiniCDI::Log("[IKAT] report disc base (0x%02X)", value);
-								Ch[c].Out = { 0xB1, 0x00, 0x02, 0x00 }; // imitate cdiemu
-								Ch[c].In.clear();
-								poll_packet(c);
-								break;
-
-							/** Disc Select **/
-							case 0xB2:
-								MiniCDI::Log("[IKAT] report disc select (0x%02X)", value);
-								Ch[c].Out = { 0xB2, 0x20, 0x00, 0x10 }; // imitate cdiemu
-								Ch[c].In.clear();
-								poll_packet(c);
-								break;
-
 							/** Start TOC lead-in read **/
 							case 0xC0:
 								MiniCDI::Log("[IKAT] start TOC (0x%02X)", value);
 								// TO-DO
-								Ch[c].In.clear();
 								break;
 
+							case 0xB0: /** Disc Status **/
+							case 0xB1: /** Disc Base **/
+							case 0xB2: /** Disc Select **/
 							case 0xE0: /** Start CDDA playback **/
 							case 0xE1: /** Start CDDA sector read **/
 								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {

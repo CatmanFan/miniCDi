@@ -12,6 +12,7 @@ audio output can be in either I2S or Sony formats. **/
 
 class CIAP
 {
+	SCC68070* _68070;
 	uint8_t* memory;
 	// uint8_t ADPCM[2][0x8FF];
 	// uint8_t Main[2][2340];
@@ -44,19 +45,21 @@ class CIAP
 	uint16_t DMACTL;
 	uint16_t DLOAD;
 
-	void set_isr(uint16_t value)
+	void assert_irq()
 	{
-		ISR = value;
-		if (((ISR & 0x01) && (IER & 0x01))
-		|| ((ISR & 0x04) && (IER & 0x04))
-		|| ((ISR & 0x08) && (IER & 0x08))
-		|| ((ISR & 0x0800) && (IER & 0x0800))) {
+		if (ISR && IER && (((ISR & 0x01) && (IER & 0x01)) || ((ISR & 0x04) && (IER & 0x04))
+						|| ((ISR & 0x08) && (IER & 0x08)) || ((ISR & 0x0800) && (IER & 0x0800))))
+		{
 			MiniCDI::Log("[CIAP] INT %s", (ISR & 0x01) && (IER & 0x01) ? "data"
 										: (ISR & 0x04) && (IER & 0x04) ? "subcode"
 										: (ISR & 0x08) && (IER & 0x08) ? "audio"
 										: (ISR & 0x0800) && (IER & 0x0800) ? "qerror"
 										: "unknown");
-			// TO-DO
+			if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, true);
+		}
+		else
+		{
+			if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, false);
 		}
 	}
 
@@ -165,7 +168,8 @@ class CIAP
 				memory[targetAddr++] = 0xFF; // CRC
 				memory[targetAddr++] = 0xFF; // CRC
 
-				set_isr(0x0001);
+				ISR |= 0x0001;
+				assert_irq();
 			}
 
 			// Continue to next sector
@@ -175,7 +179,7 @@ class CIAP
 	}
 
 public:
-	CIAP(CDiDisc *disc, uint8_t* memory) : memory(memory), disc(disc), CdReader({0})
+	CIAP(SCC68070* _68070, CDiDisc *disc, uint8_t* memory) : _68070(_68070), memory(memory), disc(disc), CdReader({0})
 	{
 	}
 
@@ -200,6 +204,7 @@ public:
 			case 0x302586: {
 				uint16_t value = ISR;
 				ISR = 0;
+				if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, false);
 				return value;
 			}
 			case 0x302588: return TACS;
@@ -237,8 +242,14 @@ public:
 				MiniCDI::Log("[CIAP] IER <= QERROR=%d, AUDIO=%d, SUBCODE=%d, DATA=%d",
 							 value & 0x800 ? 1 : 0, value & 0x08 ? 1 : 0, value & 0x04 ? 1 : 0, value & 0x01 ? 1 : 0);
 				IER = value;
+				assert_irq();
 				break;
-			case 0x302586: MiniCDI::Log("[CIAP] ISR <= %04X", value); set_isr(value); break;
+			case 0x302586:
+				MiniCDI::Log("[CIAP] ISR <= QERROR=%d, AUDIO=%d, SUBCODE=%d, DATA=%d",
+							 value & 0x800 ? 1 : 0, value & 0x08 ? 1 : 0, value & 0x04 ? 1 : 0, value & 0x01 ? 1 : 0);
+				ISR = value;
+				assert_irq();
+				break;
 			case 0x302588: MiniCDI::Log("[CIAP] TACS <= %04X", value); TACS = value; break;
 			case 0x30258A: MiniCDI::Log("[CIAP] AACS <= %04X", value); AACS = value; break;
 			case 0x30258C: MiniCDI::Log("[CIAP] TCM1 <= %04X", value); TCM1 = value; break;
@@ -287,11 +298,13 @@ public:
 							break;
 						case 0x0020:
 							MiniCDI::Log("[CIAP] audio interrupt - wait (%04X)", value);
-							set_isr(0x0008);
+							ISR |= 0x0008;
+							assert_irq();
 							break;
 						case 0x00A0:
 							MiniCDI::Log("[CIAP] audio interrupt - now (%04X)", value);
-							set_isr(0x0008);
+							ISR |= 0x0008;
+							assert_irq();
 							break;
 						case 0x0140:
 							MiniCDI::Log("[CIAP] audio playback ADPCM0 (%04X)", value);
@@ -301,7 +314,9 @@ public:
 				break;
 			case 0x3025A8: ACONF = value; break;
 			case 0x3025AA: MiniCDI::Log("[CIAP] ASTAT <= %04X", value); ASTAT = value; break;
-			case 0x3025C0: MiniCDI::Log("[CIAP] ICR <= v=%d,l=%d", value >> 3 & 0xFF, value & 0x07); memory[addr] = ICR = value; break;
+			case 0x3025C0: MiniCDI::Log("[CIAP] ICR <= v=%d,l=%d", value >> 3 & 0xFF, value & 0x07); ICR = value;
+				if (_68070 != nullptr) _68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value >> 3 & 0xFF;
+				break;
 			case 0x3025C2: MiniCDI::Log("[CIAP] DMACTL <= %04X", value); DMACTL = value;
 				// if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF));
 				break;

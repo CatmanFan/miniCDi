@@ -158,7 +158,6 @@ static void FAT_Exit()
 		__io_usbstorage.shutdown();
 	}
 	#else // HW_DOL
-	fatDeinit();
 	#endif
 }
 

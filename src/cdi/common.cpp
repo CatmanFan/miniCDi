@@ -150,16 +150,7 @@ void MonoI::shutdown()
 	if (MiniCDI::Config::LogFile)
 		fclose(MiniCDI::Config::LogFile);
 
-	// Avoid exception crash
-	m68k_pulse_halt();
-	MiniCDI::Player = {NULL};
-	if (this->vpu != NULL) delete this->vpu;
-	if (this->cdic != NULL) delete this->cdic;
-	// if (this->dsp != NULL) delete this->dsp;
-	if (this->slave != NULL) delete this->slave;
-	if (this->ciap != NULL) delete this->ciap;
-	if (this->ikat != NULL) delete this->ikat;
-	if (this->memory != NULL) delete[] this->memory;
+	m68k_end_timeslice();
 }
 
 bool MonoI::init(const std::string &bios)

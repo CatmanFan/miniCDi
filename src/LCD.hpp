@@ -8,6 +8,12 @@
   Sourced from MAME's HLE SLAVE code.
  *****/
 
+/*****
+  /!\ WARNING WARNING WARNING:
+      Deconstructing (perhaps while it is being accessed by SDL) causes a crash on exit.
+	  Address this??
+ *****/
+
 class PlayerLCD
 {
 	static constexpr uint16_t cdi220_lcd_char[20*22] =
@@ -37,28 +43,25 @@ class PlayerLCD
 	};
 
 public:
-	uint32_t display[(20*7)*22];
+	std::vector<uint32_t> display;
 
 	PlayerLCD()
 	{
-		memset(display, 0x000000FF, sizeof(display));
+		display.assign((20*7)*22, 0x000000FF);
 	}
 
 	void get_from_slave(SLAVE *slave)
 	{
-		memset(display, 0x000000FF, sizeof(display));
-		if (slave)
+		if (slave != NULL)
 		{
 			for (int y = 0; y < 22; y++)
 			{
-				uint32_t *scanline = &display[y*(20*7)];
-
 				for (int glyph = 0; glyph < 8; glyph++)
 				{
 					uint16_t data = (slave->LCD[glyph*2] << 8) | slave->LCD[glyph*2 + 1];
 					for (int x = 0; x < 20; x++)
 					{
-						scanline[(7-glyph)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
+						display[y*(20*7) + (7-glyph)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
 					}
 				}
 			}
@@ -67,19 +70,16 @@ public:
 
 	void update_IKAT(IKAT *ikat)
 	{
-		memset(display, 0x000000FF, sizeof(display));
-		if (ikat)
+		if (ikat != NULL)
 		{
 			for (int y = 0; y < 22; y++)
 			{
-				uint32_t *scanline = &display[y*(20*7)];
-
 				for (int glyph = 2; glyph < 8; glyph++)
 				{
 					uint16_t data = ikat->LCD[glyph-2];
 					for (int x = 0; x < 20; x++)
 					{
-						scanline[(7-glyph)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
+						display[y*(20*7) + (7-glyph)*20 + x] = data & cdi220_lcd_char[y*20 + x] ? 0xFFFFFFFF :  0x000000FF;
 					}
 				}
 			}

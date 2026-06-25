@@ -71,10 +71,10 @@ public:
 	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
 	inline uint32_t* get_lcd() override {
-		if (slave != NULL) {
+		/*if (slave != NULL) {
 			lcd.get_from_slave(slave);
-			return lcd.display;
-		}
+			return &lcd.display[0];
+		}*/
 
 		return NULL;
 	}

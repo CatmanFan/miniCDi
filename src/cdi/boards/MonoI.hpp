@@ -50,12 +50,9 @@ public:
 			cycles_left_vpu -= cycles;
 			if (cycles_left_vpu <= 0) {
 				cycles_left_vpu += line_tick_rate;
-				VBLANK = vpu->tick(skip_draw);
+				VBLANK = vpu != NULL ? vpu->tick(skip_draw) : true;
 			}
 		} while (!VBLANK);
-
-		// Update LCD display
-		if (slave) lcd.get_from_slave(slave);
 
 		// Print verbose CPU
 		cpu.print();
@@ -73,7 +70,14 @@ public:
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
-	inline uint32_t* get_lcd() override { return slave ? &lcd.display[0] : nullptr; }
+	inline uint32_t* get_lcd() override {
+		if (slave != NULL) {
+			lcd.get_from_slave(slave);
+			return lcd.display;
+		}
+
+		return NULL;
+	}
 };
 
 #endif

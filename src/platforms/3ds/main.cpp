@@ -82,7 +82,9 @@ public:
 
 	~EmulatorWindow()
 	{
-		C3D_TexDelete(&this->tex);
+		if (this->tex.data != NULL) {
+			C3D_TexDelete(&this->tex);
+		}
 	}
 
 	void Draw()
@@ -173,6 +175,7 @@ static std::string RUN_MENU()
 }
 
 static C3D_RenderTarget* top = NULL;
+
 static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
 	// Check for BIOS
@@ -182,6 +185,9 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		exit(0);
 		return;
 	}
+
+	// Make use of N3DS clock speed
+	osSetSpeedupEnable(true);
 
 	printf("\033[2J\033[H"); // Clear screen
 	printf("miniCDi\n");
@@ -238,24 +244,23 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 
 int main(int argc, char* argv[])
 {
+	// Init libs
 	gfxInitDefault();
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 	C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
 	C2D_Prepare();
-	romfsInit();
-
-	// Make use of N3DS clock speed
-	osSetSpeedupEnable(true);
-
-	top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
 	consoleInit(GFX_BOTTOM, NULL);
-	printf("miniCDi\n");
 
+	// Create screens
+	top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+
+	// Main loop
+	printf("miniCDi\n");
 	RUN_CDI("cdi220b", RUN_MENU());
 
+	// Deinit libs
 	C2D_Fini();
 	C3D_Fini();
 	gfxExit();
-	romfsExit();
 	return 0;
 }

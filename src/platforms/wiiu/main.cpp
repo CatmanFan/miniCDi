@@ -66,6 +66,22 @@ namespace MiniCDI_WiiU
 	static bool Mounted = false;
 	static bool SDL = false;
 	static bool Close = false;
+	enum Language
+	{
+		ENGLISH = 0,
+		JAPANESE,
+		FRENCH,
+		GERMAN,
+		SPANISH_US,
+		SPANISH_EU,
+		PORTUGUESE_EU,
+		PORTUGUESE_US,
+		SWEDISH,
+		NORWEGIAN,
+		TURKISH,
+		CATALAN
+	};
+	enum Language UILanguage = MiniCDI_WiiU::FRENCH;
 
 	static bool Running()
 	{
@@ -199,9 +215,9 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::PAL = false;
 	MiniCDI::Config::ShowLCD = true;
-	MiniCDI::Config::FrameSkip = 2;
+	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
@@ -304,24 +320,58 @@ static std::string RUN_MENU()
 
 		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
 
-		SDL_print(1920/2,150,37,{255,255,255,255},"Select a disc or press \ue001 to boot without disc"); // en
-		// SDL_print(1920/2,150,34,{255,255,255,255},"ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。"); // ja
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001."); // fr
-		// SDL_print(1920/2,150,37,{255,255,255,255},"Elige una imagen de disco u oprime \ue001 para comenzar sin disco"); // es-LA
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001"); // es-ES
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001"); // pt-PT
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren."); // de
-		// SDL_print(1920/2,150,37,{255,255,255,255},"Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva."); // sv
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Velg en CD-fil.\nFor å starte uten en CD, trykk på \ue001."); // no
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın"); // tr
-		// SDL_print(1920/2,150,34,{255,255,255,255},"Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001"); // ca
+		std::string menu = "Select a disc or press \ue001 to boot without disc";
+		std::string empty = "Warning: Directory is empty";
+		switch (MiniCDI_WiiU::UILanguage)
+		{
+			default:
+				break;
+			case MiniCDI_WiiU::SWEDISH:
+				menu = "Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva.";
+				empty = "Varning! Katalogen är tom";
+				break;
+			case MiniCDI_WiiU::JAPANESE:
+				menu = "ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。";
+				empty = "ディスクファイルがありません";
+				break;
+			case MiniCDI_WiiU::FRENCH:
+				menu = "Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001.";
+				empty = "Le dossier est actuellement vide.";
+				break;
+			case MiniCDI_WiiU::SPANISH_US:
+				menu = "Elige una imagen de disco u oprime \ue001 para comenzar sin disco";
+				empty = "No hay ninguna imagen de disco.";
+				break;
+			case MiniCDI_WiiU::SPANISH_EU:
+				menu = "Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001";
+				empty = "No hay ninguna imagen de disco.";
+				break;
+			case MiniCDI_WiiU::PORTUGUESE_EU:
+				menu = "Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001";
+				break;
+			case MiniCDI_WiiU::GERMAN:
+				menu = "Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren.";
+				break;
+			case MiniCDI_WiiU::NORWEGIAN:
+				menu = "Velg en CD-fil.\nFor å starte uten en CD, trykk på \ue001.";
+				empty = "Advarsel: katalogen er tom";
+				break;
+			case MiniCDI_WiiU::TURKISH:
+				menu = "Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın";
+				break;
+			case MiniCDI_WiiU::CATALAN:
+				menu = "Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001";
+				empty = "No hi ha cap fitxer.";
+				break;
+		}
 
+		SDL_print(1920/2,150,34,{255,255,255,255},menu);
 		if (!noDiscs) {
 			for (size_t i = 0; i < discs.size(); i++) {
 				SDL_print(1920/2,250+(i*40),24,{255,255,(uint8_t)(i == selected ? 0 : 255),255},discs[i]);
 			}
 		} else {
-			SDL_print(1920/2,250,24,{255,255,0,255},"Warning: Directory is empty");
+			SDL_print(1920/2,250,28,{255,255,0,255},empty);
 		}
 		SDL_RenderPresent(SDL_renderer);
 	}
@@ -330,6 +380,7 @@ static std::string RUN_MENU()
 }
 
 int main(int argc, char **argv) {
+	// WHBProcInit is not necessary for SDL (SDL_QUIT event is called on exit)
 	atexit(MiniCDI_WiiU::Exit);
 	MiniCDI_WiiU::InitSDL();
 	if (!MiniCDI_WiiU::SDL) {

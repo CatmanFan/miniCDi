@@ -22,6 +22,12 @@ class DRVDSP
 	uint8_t IVR;
 	uint32_t RTX; // byte receive (RX) when read, byte transmit (TX) when written
 
+	void check_isr()
+	{
+		if (IVR > 0)
+			_68070->interrupt(SCC68070::IPL_IN4N, ((ISR & 0b00000001) && (ICR & 0b00000001)) || ((ISR & 0b00000010) && (ICR & 0b00000010)));
+	}
+
 	CDiDisc *disc;
 
 public:
@@ -54,6 +60,7 @@ public:
 				return RTX >> 8 & 0xFF;
 			case 0x30000F:
 				ISR &= ~0x01; // reset RXDF if RXL
+				check_isr();
 				return RTX & 0xFF;
 		}
 	}
@@ -126,6 +133,7 @@ public:
 				}
 				break;
 			case 0x300005: ISR = value;
+				check_isr();
 				break;
 			case 0x300007: IVR = value;
 				_68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value;
@@ -136,6 +144,7 @@ public:
 				break;
 			case 0x30000F: RTX &= 0x00FFFF00; RTX |= value;
 				ISR &= ~0x02; // reset TXDE if TXL
+				check_isr();
 				break;
 		}
 	}

@@ -23,6 +23,7 @@ namespace MiniCDI
 		SLAVE* slave;
 		IKAT* ikat;
 		CDIC* cdic;
+		DRVDSP* dsp;
 		CIAP* ciap;
 	} Player;
 }
@@ -36,10 +37,11 @@ unsigned int  m68k_read_memory_8(unsigned int address)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)		return MiniCDI::Player.scc68070->read8(address);
-	if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)			return MiniCDI::Player.slave->read8(address);
-	if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)			return MiniCDI::Player.ikat->read8(address);
-	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)			return MiniCDI::Player.mcd212->read8(address);
+	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)			return MiniCDI::Player.scc68070->read8(address);
+	if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)				return MiniCDI::Player.slave->read8(address);
+	if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)				return MiniCDI::Player.ikat->read8(address);
+	if (MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.dsp->read8(address);
+	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)				return MiniCDI::Player.mcd212->read8(address);
 	return MiniCDI::Player.memory[address & 0x00ffffff];
 }
 
@@ -48,9 +50,9 @@ unsigned int  m68k_read_memory_16(unsigned int address)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 	
-	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)			return MiniCDI::Player.mcd212->read16(address);
-	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)	return MiniCDI::Player.cdic->read16(address);
-	if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF)	return MiniCDI::Player.ciap->read16(address);
+	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)				return MiniCDI::Player.mcd212->read16(address);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.cdic->read16(address);
+	if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.ciap->read16(address);
 	return (uint16_t)((m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1));
 }
 
@@ -59,7 +61,7 @@ unsigned int  m68k_read_memory_32(unsigned int address)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)	return MiniCDI::Player.cdic->read32(address);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.cdic->read32(address);
 	return ((uint32_t)m68k_read_memory_16(address) << 16) | m68k_read_memory_16(address+2);
 }
 
@@ -72,9 +74,10 @@ void m68k_write_memory_8(unsigned int address, unsigned int value)
 	if ((address & 0x00FFFF00) == 0x00320000) return;
 	#endif
 
-	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)		MiniCDI::Player.scc68070->write8(address, value);
-	else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)		MiniCDI::Player.slave->write8(address, value);
-	else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)		MiniCDI::Player.ikat->write8(address, value, MiniCDI::Player.ciap);
+	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)			MiniCDI::Player.scc68070->write8(address, value);
+	else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.slave->write8(address, value);
+	else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.ikat->write8(address, value, MiniCDI::Player.ciap);
+	else if (MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.dsp->write8(address, value);
 	else MiniCDI::Player.memory[address & 0x00ffffff] = value;
 }
 
@@ -83,9 +86,9 @@ void m68k_write_memory_16(unsigned int address, unsigned int value)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) MiniCDI::Player.mcd212->write16(address, value);
-	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write16(address, value);
-	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.ciap->write16(address, value);
+	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)				MiniCDI::Player.mcd212->write16(address, value);
+	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.cdic->write16(address, value);
+	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.ciap->write16(address, value);
 	else {
 		m68k_write_memory_8(address, (uint8_t)(value >> 8 & 0x00FF));
 		m68k_write_memory_8(address + 1, (uint8_t)(value & 0x00FF));
@@ -97,7 +100,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write32(address, value);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)		MiniCDI::Player.cdic->write32(address, value);
 	else {
 		m68k_write_memory_16(address, (uint16_t)(value >> 16 & 0x0000FFFF));
 		m68k_write_memory_16(address + 2, (uint16_t)(value & 0x0000FFFF));
@@ -182,6 +185,16 @@ bool MonoI::init(const std::string &bios)
 				MiniCDI::Player.cdic = this->cdic;
 				break;
 
+			case CDi::MonoII:
+				this->dsp = new DRVDSP(&this->cpu, this->memory, &this->disc);
+				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+				this->pd.IO.slave = this->slave;
+				this->nvram = 0x00320000;
+				MiniCDI::Player.slave = this->slave;
+				MiniCDI::Player.dsp = this->dsp;
+				break;
+
+			case CDi::MonoIII:
 			case CDi::MonoIV:
 				this->ciap = new CIAP(&this->cpu, this->memory, &this->disc);
 				this->ikat = new IKAT(&this->cpu, this->memory);

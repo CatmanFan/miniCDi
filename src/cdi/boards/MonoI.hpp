@@ -18,6 +18,7 @@ private:
 	CDIC* cdic;
 	SLAVE* slave;
 	CIAP* ciap;
+	DRVDSP* dsp;
 	IKAT* ikat;
 	MCD212* vpu;
 	PlayerLCD lcd;
@@ -43,8 +44,9 @@ public:
 			cycles_left_sector -= cycles;
 			if (cycles_left_sector <= 0) {
 				cycles_left_sector += disc_tick_rate;
-				if (cdic) cdic->tick();
-				else if (ciap) ciap->tick();
+				if (cdic != NULL) cdic->tick();
+				else if (dsp != NULL) dsp->tick();
+				else if (ciap != NULL) ciap->tick();
 			}
 
 			cycles_left_vpu -= cycles;

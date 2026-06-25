@@ -172,29 +172,17 @@ static std::string RUN_MENU()
 	return "";
 }
 
-int main(int argc, char* argv[])
+static C3D_RenderTarget* top = NULL;
+static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
-	gfxInitDefault();
-	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
-	C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
-	C2D_Prepare();
-	romfsInit();
-
-	// Make use of N3DS clock speed
-	osSetSpeedupEnable(true);
-
-	C3D_RenderTarget* top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
-	consoleInit(GFX_BOTTOM, NULL);
-	printf("miniCDi\n");
-
 	// Check for BIOS
-	if (access("sdmc:/3ds/miniCDi/rom/cdi220b.rom", F_OK) != 0) {
+	if (access(("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
 		printf("BIOS not found, exiting");
 		sleep(5);
 		exit(0);
+		return;
 	}
 
-	std::string discName = RUN_MENU();
 	printf("\033[2J\033[H"); // Clear screen
 	printf("miniCDi\n");
 	printf("Loading CDi 220 bios\n");
@@ -207,12 +195,12 @@ int main(int argc, char* argv[])
 
 	MonoI cdi;
 	cdi.board = CDi::MonoI;
-	cdi.init("sdmc:/3ds/miniCDi/rom/cdi220b.rom");
+	cdi.init("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom");
 	cdi.disc.open(("sdmc:/3ds/miniCDi/discs/" + discName).c_str());
 
 	EmulatorWindow TOPSCREEN(768,280);
 
-    while (aptMainLoop())
+	while (aptMainLoop())
 	{
 		hidScanInput();
 		u32 kDown = hidKeysDown();
@@ -243,10 +231,27 @@ int main(int argc, char* argv[])
 		C2D_TargetClear(top, C2D_Color32(0x00, 0x00, 0x00, 0xFF));
 		C2D_SceneBegin(top);
 		TOPSCREEN.Draw();
-        C3D_FrameSync();
+		C3D_FrameSync();
 		C3D_FrameEnd(0);
 	}
-	cdi.shutdown();
+}
+
+int main(int argc, char* argv[])
+{
+	gfxInitDefault();
+	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
+	C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+	C2D_Prepare();
+	romfsInit();
+
+	// Make use of N3DS clock speed
+	osSetSpeedupEnable(true);
+
+	top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+	consoleInit(GFX_BOTTOM, NULL);
+	printf("miniCDi\n");
+
+	RUN_CDI("cdi220b", RUN_MENU());
 
 	C2D_Fini();
 	C3D_Fini();

@@ -141,7 +141,7 @@ static int MiniCDI_int_ack_handler(int int_level)
 
 /** @brief Contains initialization functions for boards. **/
 
-void MonoI::shutdown()
+MonoI::~MonoI()
 {
 	this->nvram_save();
 
@@ -151,6 +151,7 @@ void MonoI::shutdown()
 		fclose(MiniCDI::Config::LogFile);
 
 	m68k_end_timeslice();
+	MiniCDI::OS9::modules.clear();
 }
 
 bool MonoI::init(const std::string &bios)

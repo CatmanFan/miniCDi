@@ -68,7 +68,7 @@ public:
 		vpu->reset();
 		if (slave) slave->reset();
 	}
-	void shutdown() override;
+	~MonoI();
 
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }

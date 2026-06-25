@@ -252,8 +252,6 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 		#endif
 	}
-
-	cdi.shutdown();
 }
 
 static std::string selectedDisc;

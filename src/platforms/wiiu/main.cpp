@@ -16,44 +16,14 @@
 #include <whb/sdcard.h>
 #include <vpad/input.h>
 
+#include <proc_ui/procui.h>
+#include <sysapp/launch.h>
+
 static SDL_Window* SDL_window = nullptr;
 static SDL_Renderer* SDL_renderer = nullptr;
-
 static void* SDL_fontData = nullptr;
 static uint32_t SDL_fontSize = 0;
 static std::map<int, FC_Font*> SDL_fontMap;
-
-static bool SDL_init()
-{
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
-		WHBLogPrintf("[miniCDi] Failed to init SDL, exiting");
-		return false;
-	}
-
-	// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-
-	SDL_window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1920, 1080, 0);
-	if (!SDL_window) {
-		WHBLogPrintf("[miniCDi] Failed to init SDL window, exiting");
-		return false;
-	}
-
-	SDL_renderer = SDL_CreateRenderer(SDL_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
-	if (!SDL_renderer) {
-		SDL_DestroyWindow(SDL_window);
-		SDL_window = nullptr;
-		WHBLogPrintf("[miniCDi] Failed to init SDL renderer, exiting");
-		return false;
-	}
-
-    if (!OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, &SDL_fontData, &SDL_fontSize)) {
-        WHBLogPrintf("[miniCDi] OSGetSharedData failed\n");
-        return false;
-    }
-
-	SDL_SetRenderDrawBlendMode(SDL_renderer, SDL_BLENDMODE_BLEND);
-	return true;
-}
 
 static FC_Font* GetFontForSize(int size)
 {
@@ -89,6 +59,83 @@ static void SDL_print(int x, int y, int size, SDL_Color color, std::string text)
 	y -= FC_GetHeight(font, "%s", text.c_str()) / 2;
 
     FC_DrawEffect(font, SDL_renderer, x, y, effect, "%s", text.c_str());
+}
+
+namespace MiniCDI_WiiU
+{
+	static bool Mounted = false;
+	static bool SDL = false;
+	static bool Close = false;
+
+	static bool Running()
+	{
+		if (MiniCDI_WiiU::Close) return false;
+
+        SDL_Event event;
+        if (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                WHBLogPrintf("[miniCDi] got SDL_QUIT");
+				MiniCDI_WiiU::Close = true;
+                return false;
+            }
+        }
+		return true;
+	}
+
+	static void Exit()
+	{
+		// Deinit in reverse order
+		if (MiniCDI_WiiU::Mounted) { WHBUnmountSdCard(); }
+
+		WHBLogPrintf("[miniCDi] The End");
+		WHBLogUdpDeinit();
+		WHBLogCafeDeinit();
+
+		if (MiniCDI_WiiU::SDL) {
+			if (SDL_renderer) SDL_DestroyRenderer(SDL_renderer);
+			if (SDL_window) SDL_DestroyWindow(SDL_window);
+			SDL_fontMap.clear();
+			SDL_Quit(); // This already calls WHBProcShutdown!!!
+		} else {
+			WHBProcShutdown();
+		}
+	}
+
+	static void InitSDL()
+	{
+		if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+			WHBLogPrintf("[miniCDi] Failed to init SDL, exiting");
+			MiniCDI_WiiU::SDL = false;
+			return;
+		}
+
+		// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+
+		SDL_window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1920, 1080, 0);
+		if (!SDL_window) {
+			WHBLogPrintf("[miniCDi] Failed to init SDL window, exiting");
+			MiniCDI_WiiU::SDL = false;
+			return;
+		}
+
+		SDL_renderer = SDL_CreateRenderer(SDL_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
+		if (!SDL_renderer) {
+			SDL_DestroyWindow(SDL_window);
+			SDL_window = nullptr;
+			WHBLogPrintf("[miniCDi] Failed to init SDL renderer, exiting");
+			MiniCDI_WiiU::SDL = false;
+			return;
+		}
+
+		if (!OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD, 0, &SDL_fontData, &SDL_fontSize)) {
+			WHBLogPrintf("[miniCDi] OSGetSharedData failed\n");
+			MiniCDI_WiiU::SDL = false;
+			return;
+		}
+
+		SDL_SetRenderDrawBlendMode(SDL_renderer, SDL_BLENDMODE_BLEND);
+		MiniCDI_WiiU::SDL = true;
+	}
 }
 
 class EmuDisplay
@@ -153,40 +200,40 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
-	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::FrameSkip = 1;
-	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
+	MiniCDI::Config::ShowLCD = true;
+	MiniCDI::Config::FrameSkip = 2;
+	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
 	cdi.board = CDi::MonoI;
 	cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str());
 	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
-	// cdi.run(true);
+	cdi.run(true);
 
 	EmuDisplay screen;
 	bool paused = false;
 	bool touchDown = false;
 
-	while (WHBProcIsRunning()) {
+	while (MiniCDI_WiiU::Running()) {
 		VPADStatus status{};
 		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
 
-		/*if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
-		if (!status.tpNormal.touched && touchDown) { touchDown = false; }*/
-		if (status.trigger && VPAD_BUTTON_ZR) break; // exit
+		if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
+		if (!status.tpNormal.touched && touchDown) { touchDown = false; }
+		if (status.trigger & (VPAD_BUTTON_ZR)) break; // exit
 
 		// Clear screen
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
 		screen.draw();
-		/*if (paused) {
+		if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};
 			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
 			SDL_RenderFillRect(SDL_renderer, &rect);
 			SDL_print(1920/2,1080/2,48,{255,255,255,255},"Paused, touch to resume");
 			SDL_RenderPresent(SDL_renderer);
 			continue;
-		}*/
+		}
 		SDL_RenderPresent(SDL_renderer);
 
 		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
@@ -207,41 +254,46 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 	}
-
-	cdi.shutdown();
 }
 
 #include <filesystem>
 static std::string RUN_MENU()
 {
+	bool noDiscs = false;
 	if (!std::filesystem::is_directory(devicePrefix + "wiiu/apps/miniCDi/discs/")) {
-		return "";
+		noDiscs = true;
 	}
-	// Look for ROMs in directory
+
 	std::vector<std::string> discs;
-    for (const auto & disc : std::filesystem::directory_iterator(devicePrefix + "wiiu/apps/miniCDi/discs/")) {
-        if (!disc.path().extension().compare(".bin") || !disc.path().extension().compare(".BIN"))
-			discs.push_back(disc.path().filename());
-	}
-	if (discs.size() == 0) {
-		return "";
+	if (!noDiscs) {
+		// Look for ROMs in directory
+		for (const auto & disc : std::filesystem::directory_iterator(devicePrefix + "wiiu/apps/miniCDi/discs/")) {
+			if (!disc.path().extension().compare(".bin") || !disc.path().extension().compare(".BIN"))
+				discs.push_back(disc.path().filename());
+		}
+
+		if (discs.size() == 0) {
+			noDiscs = true;
+		}
 	}
 
 	size_t selected = 0;
 
-	while (WHBProcIsRunning()) {
+	while (MiniCDI_WiiU::Running()) {
 		VPADStatus status{};
 		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
 
-		if (status.trigger & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN)) {
-			selected = (selected + 1) % discs.size();
-		}
-		if (status.trigger & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP)) {
-			if (selected == 0) { selected = discs.size() - 1; }
-			else selected--;
-		}
-		if (status.trigger & VPAD_BUTTON_A) {
-			return discs[selected];
+		if (!noDiscs) {
+			if (status.trigger & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN)) {
+				selected = (selected + 1) % discs.size();
+			}
+			if (status.trigger & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP)) {
+				if (selected == 0) { selected = discs.size() - 1; }
+				else selected--;
+			}
+			if (status.trigger & VPAD_BUTTON_A) {
+				return discs[selected];
+			}
 		}
 		if (status.trigger & VPAD_BUTTON_B) {
 			break;
@@ -264,8 +316,12 @@ static std::string RUN_MENU()
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın"); // tr
 		// SDL_print(1920/2,150,34,{255,255,255,255},"Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001"); // ca
 
-		for (size_t i = 0; i < discs.size(); i++) {
-			SDL_print(1920/2,250+(i*40),24,{255,255,i == selected ? 0 : 255,255},discs[i]);
+		if (!noDiscs) {
+			for (size_t i = 0; i < discs.size(); i++) {
+				SDL_print(1920/2,250+(i*40),24,{255,255,(uint8_t)(i == selected ? 0 : 255),255},discs[i]);
+			}
+		} else {
+			SDL_print(1920/2,250,24,{255,255,0,255},"Warning: Directory is empty");
 		}
 		SDL_RenderPresent(SDL_renderer);
 	}
@@ -274,32 +330,30 @@ static std::string RUN_MENU()
 }
 
 int main(int argc, char **argv) {
-	// Init CafeOS and logging
-	WHBProcInit();
+	atexit(MiniCDI_WiiU::Exit);
+	MiniCDI_WiiU::InitSDL();
+	if (!MiniCDI_WiiU::SDL) {
+		return 1;
+	}
+
+	// Init logging
 	WHBLogCafeInit();
 	WHBLogUdpInit();
 	WHBLogPrintf("[miniCDi] logging initialized");
 
+	// Init mount
+	MiniCDI_WiiU::Mounted = WHBMountSdCard();
+	devicePrefix = MiniCDI_WiiU::Mounted ? "fs:/vol/external01/" : "/vol/external01/";
+	if (MiniCDI_WiiU::Mounted)
+		WHBLogPrintf("[miniCDi] mounted SD card");
+
+	// Init controller
     VPADInit();
-	bool mounted = WHBMountSdCard();
-	if (mounted) { WHBLogPrintf("[miniCDi] mounted SD card"); }
-	devicePrefix = mounted ? "fs:/vol/external01/" : "/vol/external01/";
 
-	if (!SDL_init()) goto exit;
-	atexit(SDL_Quit);
+	while (MiniCDI_WiiU::Running()) {
+		std::string disc = RUN_MENU();
+		if (MiniCDI_WiiU::Running()) RUN_CDI("cdi220b.rom", disc);
+	}
 
-	RUN_CDI("cdi220b.rom", RUN_MENU());
-
-	// Deinit SDL
-	if (SDL_renderer) SDL_DestroyRenderer(SDL_renderer);
-	if (SDL_window) SDL_DestroyWindow(SDL_window);
-
-	exit:
-	if (mounted) { WHBUnmountSdCard(); }
-	SDL_Quit();
-	// WHBProcShutdown();
-	WHBLogPrintf("[miniCDi] The End");
-	WHBLogCafeDeinit();
-	WHBLogUdpDeinit();
-	return 1;
+	return 0;
 }

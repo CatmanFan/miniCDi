@@ -12,18 +12,18 @@
 
 namespace MiniCDI
 {
-	static void Log(const char* txt, ...)
+	inline static void Log(const char* fmt, ...)
 	{
 	#if defined(MINICDI_DEBUG) || defined(MINICDI_LOGFILE)
-
 		// Copy arguments to string and allocate buffer
-		va_list arg1, arg2;
-		va_start(arg1, txt);
-		va_copy(arg2, arg1);
-		va_end(arg2);
-		char szBuff[1280];
-		vsnprintf(szBuff, 1280, txt, arg1);
-		va_end(arg1);
+		char szBuff[512];
+		// va_list args, args2;
+		va_list args;
+		va_start(args, fmt);
+		// va_copy(args2, args);
+		// va_end(args2);
+		vsnprintf(szBuff, sizeof(szBuff), fmt, args);
+		va_end(args);
 
 		#ifdef MINICDI_DEBUG_MODULE
 		MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module(m68k_get_reg(NULL, M68K_REG_PC));

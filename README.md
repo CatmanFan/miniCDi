@@ -12,9 +12,17 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 * ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (stub), IKAT
 
 ## To-Do
-- [ ] Proper reset sequence
-- [ ] Fix VDSC rendering
-- [ ] NVRAM auto-save on exit
+### Before official v0.1 release
+- [X] Proper reset sequence
+- Fix VDSC rendering
+   - [X] Color key
+   - [ ] RGB decoder formula
+   - [ ] DYUV decoder formula
+- [ ] Outline instructions/how-to for users
+- [ ] Update compatibility information
+
+### Potential
+- [X] NVRAM auto-save on exit
 - [ ] LibRetro API compatibility?
 
 ## Building

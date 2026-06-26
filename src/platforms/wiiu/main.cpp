@@ -156,10 +156,8 @@ namespace MiniCDI_WiiU
 	}
 }
 
-static int NoticeSecs = -1;
 static std::string menu = "Select a disc or press \ue001 to boot without disc";
 static std::string empty = "Warning: Directory is empty";
-static std::string help = "If nothing is displayed, press \ue055 to exit, then try again.";
 
 class FPS
 {
@@ -186,9 +184,6 @@ public:
 			lastTime = currentTime;
 			aggregate = incremented;
 			incremented = 0;
-
-			if (NoticeSecs >= 0) NoticeSecs++;
-			if (NoticeSecs >= 5) NoticeSecs = -1;
 		}
 	}
 };
@@ -265,12 +260,11 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 
 	MonoI cdi;
 	cdi.board = CDi::MonoI;
-	cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str());
+	if (!cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str())) return;
 	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
 
 	FPS fps;
 	EmuDisplay screen;
-	NoticeSecs = 0;
 	/*bool paused = false;
 	bool touchDown = false;*/
 
@@ -305,12 +299,6 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		screen.draw();
 		SDL_print(2,2,25,{255,255,255,255},"FPS:",true);
 		SDL_print(72,2,25,{255,255,0,255},std::to_string(fps.get()),true);
-		if (NoticeSecs >= 0) {
-			SDL_Rect rect{0, 1080-70, 1920, 70};
-			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
-			SDL_RenderFillRect(SDL_renderer, &rect);
-			SDL_print(1920/2,1040,34,{255,255,255,255},help);
-		}
 		/*if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};
 			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
@@ -378,22 +366,18 @@ static std::string RUN_MENU()
 			case MiniCDI_WiiU::JAPANESE:
 				menu = "ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。";
 				empty = "ディスクファイルがありません";
-				help = "画面がご覧になれない方は、\ue055を押して終了してからやり直してください";
 				break;
 			case MiniCDI_WiiU::FRENCH:
 				menu = "Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001.";
 				empty = "Le dossier est actuellement vide.";
-				help = "Si vous ne voyez rien sur l'écran, appuyez sur \ue055 pour quitter, puis réessayer.";
 				break;
 			case MiniCDI_WiiU::SPANISH_US:
 				menu = "Elige una imagen de disco u oprime \ue001 para comenzar sin disco";
 				empty = "No hay ninguna imagen de disco.";
-				help = "Si no puedes ver la pantalla, oprime \ue055 para salir y vuelva a intentarlo.";
 				break;
 			case MiniCDI_WiiU::SPANISH_EU:
 				menu = "Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001";
 				empty = "No hay ninguna imagen de disco.";
-				help = "Si no puedes ver la pantalla, pulsa \ue055 para cerrar la emulación y vuelva a intentarlo.";
 				break;
 			case MiniCDI_WiiU::PORTUGUESE_EU:
 				menu = "Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001";
@@ -415,7 +399,6 @@ static std::string RUN_MENU()
 			case MiniCDI_WiiU::CATALAN:
 				menu = "Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001";
 				empty = "No hi ha cap fitxer.";
-				help = "Si la pantalla és encara negre, pitgeu \ue055 per tancar la emulació i torneu-ho a provar.";
 				break;
 		}
 

@@ -29,7 +29,6 @@ namespace MiniCDI
 			uint32_t size;
 			std::string name;
 		};
-		static inline std::vector<Module> modules; // "module directory"
 		// std::vector<Process> processes;
 
 		static inline const char* get_SSDC_sub_name(uint32_t code) {
@@ -266,6 +265,7 @@ namespace MiniCDI
 
 		Module* get_module(uint32_t addr);
 
+		void clear_modules();
 		void scan_modules(uint8_t* memory);
 		void log(uint8_t* memory);
 	};

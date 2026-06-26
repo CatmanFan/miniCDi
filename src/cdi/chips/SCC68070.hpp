@@ -161,6 +161,7 @@ class SCC68070
 					}*/
 
 					m68k_set_irq(onchip ? new_level + 32 : new_level);
+					InterruptManager.cur_level = new_level;
 					return;
 				}
 			}

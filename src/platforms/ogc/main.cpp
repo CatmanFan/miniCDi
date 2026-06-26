@@ -180,7 +180,7 @@ static void RUN_CDI(const std::string &discName)
 
 	MonoI cdi;
 	cdi.board = CDi::MonoI;
-	cdi.init(appPath + "rom/" + biosName + ".rom");
+	if (!cdi.init(appPath + "rom/" + biosName + ".rom")) return;
 	cdi.disc.open(appPath + "discs/" + discName);
 
 	#ifndef MINICDI_DEBUG

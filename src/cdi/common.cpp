@@ -148,16 +148,10 @@ MonoI::~MonoI()
 {
 	this->nvram_save();
 
-	MiniCDI::Log("[CDI] shutting down");
-
-	if (MiniCDI::Config::LogFile != NULL) {
-		fclose(MiniCDI::Config::LogFile);
-		MiniCDI::Config::LogFile = NULL;
-	}
-
 	m68k_end_timeslice();
-	MiniCDI::OS9::modules.clear();
+	MiniCDI::OS9::clear_modules();
 
+	// Free peripherals and player structure
 	if (this->cdic != NULL) {
 		free(this->cdic);
 		this->cdic = NULL;
@@ -173,6 +167,14 @@ MonoI::~MonoI()
 	if (this->memory != NULL) {
 		free(this->memory);
 		this->memory = NULL;
+	}
+	MiniCDI::Player = {NULL};
+
+	MiniCDI::Log("[CDI] shutdown");
+
+	if (MiniCDI::Config::LogFile != NULL) {
+		fclose(MiniCDI::Config::LogFile);
+		MiniCDI::Config::LogFile = NULL;
 	}
 }
 
@@ -226,7 +228,6 @@ bool MonoI::init(const std::string &bios)
 
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-		// m68k_pulse_reset();
 
 		// Set callbacks
 		m68k_set_int_ack_callback(MiniCDI_int_ack_handler);

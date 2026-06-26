@@ -4,6 +4,8 @@ namespace MiniCDI
 {
 	namespace OS9
 	{
+		static std::vector<Module> modules; // "module directory"
+
 		Module* get_module(uint32_t addr)
 		{
 			for (size_t i = 0; i < modules.size(); i++) {
@@ -12,6 +14,12 @@ namespace MiniCDI
 			}
 
 			return NULL;
+		}
+
+		void clear_modules()
+		{
+			MiniCDI::Log("[OS9] clearing all modules");
+			modules.clear();
 		}
 
 		/// Algorithm taken from Slamy's CDi_MiSTer OS9 function, itself based on that of cdiemu:

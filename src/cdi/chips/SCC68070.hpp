@@ -306,8 +306,8 @@ public:
 		reset_internal();
 
 		// Clear DRAM banks
-		memset(&memory[0x000000], 0, 0x080000 * sizeof(char));
-		memset(&memory[0x240000], 0, 0x080000 * sizeof(char));
+		memset(&memory[0x000000], 0, 512*1024);
+		memset(&memory[0x200000], 0, 512*1024);
 
 		// Reset Musashi processor
 		m68k_pulse_reset();

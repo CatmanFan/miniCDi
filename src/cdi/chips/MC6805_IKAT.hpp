@@ -97,18 +97,22 @@ public:
 
 					if (Ch[c].Out.size() > 0)
 					{
-						//MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
-
 						Ch[c].DR = Ch[c].Out[0];
 						Ch[c].Out.pop_front();
-					}
 
-					if (Ch[c].Out.size() == 0) {
-						ISR &= ~(c == 3 ? 0x80 : c == 2 ? 0x20 : c == 1 ? 0x08 : 0x02);
-						Ch[c].SR |= 0x10; // REMTY ON
+						// imitate CeDImu behaviour
+						if (Ch[c].Out.size() == 0)
+						{
+							ISR &= ~(c == 3 ? 0x80 : c == 2 ? 0x20 : c == 1 ? 0x08 : 0x02);
+							Ch[c].SR |= 0x10; // REMTY ON
+							// _68070->interrupt(SCC68070::IPL_IN2N, false); // deassert IRQ
+						}
+					}
+					else
 						Ch[c].DR = 0xFF;
-					}
 
+
+					MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;
 				}
 				break;

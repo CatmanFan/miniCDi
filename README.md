@@ -1,8 +1,8 @@
 # miniCDi
 An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U. Currently only supports the Mono-I 220/20 player revision, with partial support for Mono-IV boards.
 
-## Bugs
-- On certain tries, the emulated CD-i may not boot properly and the output screen will remain black. This may be fixed by pressing HOME (Wii) or ZR (Wii U) to stop emulation and return to the disc selection menu (NOT by fully closing the emulator outright, otherwise the bug will reproduce), then trying again.
+## Usage
+Place the system ROM.
 
 ## Credits
 Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me where possible on this project. This project uses partial emulation code ported from the MAME CD-i driver ([see license](https://github.com/mamedev/mame?tab=License-1-ov-file#readme)) as well as Stovent's implementations of the relevant components in [CeDImu](https://github.com/Stovent/CeDImu), and is also based off of CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documentation of several components including the MCD212, SCC68070 (UART), IKAT and SLAVE and Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer)). The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.
@@ -24,9 +24,13 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 - [ ] Outline instructions/how-to for users
 - [ ] Update compatibility and licensing information
 
-### Potential
-- [ ] Address slowdown during CDIC reading active status
+### Next release
 - [ ] NVRAM auto-save on exit
+- [ ] CDIC audio status and handling
+
+### Potential
+- [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
+- [ ] Address slowdown during CDIC reading active status
 - [ ] LibRetro API compatibility?
 
 ## Building

@@ -147,18 +147,51 @@ static int MiniCDI_int_ack_handler(int int_level)
 MonoI::~MonoI()
 {
 	this->nvram_save();
-
-	m68k_end_timeslice();
 	MiniCDI::OS9::clear_modules();
 
+	// Musashi end
+	m68k_end_timeslice();
+	m68k_set_int_ack_callback(NULL);
+	m68k_set_reset_instr_callback(NULL);
+	m68k_set_trap_instr_callback(NULL);
+	m68k_set_fc_callback(NULL);
+
 	// Free peripherals and player structure
-	if (this->cdic != NULL) {
-		free(this->cdic);
-		this->cdic = NULL;
-	}
-	if (this->slave != NULL) {
-		free(this->slave);
-		this->slave = NULL;
+	switch (this->board) {
+		default:
+		case CDi::MonoI:
+			if (this->cdic != NULL) {
+				free(this->cdic);
+				this->cdic = NULL;
+			}
+			if (this->slave != NULL) {
+				free(this->slave);
+				this->slave = NULL;
+			}
+			break;
+
+		case CDi::MonoII:
+			if (this->dsp != NULL) {
+				free(this->dsp);
+				this->dsp = NULL;
+			}
+			if (this->slave != NULL) {
+				free(this->slave);
+				this->slave = NULL;
+			}
+			break;
+
+		case CDi::MonoIII:
+		case CDi::MonoIV:
+			if (this->ciap != NULL) {
+				free(this->ciap);
+				this->ciap = NULL;
+			}
+			if (this->ikat != NULL) {
+				free(this->ikat);
+				this->ikat = NULL;
+			}
+			break;
 	}
 	if (this->vpu != NULL) {
 		free(this->vpu);
@@ -169,31 +202,40 @@ MonoI::~MonoI()
 		this->memory = NULL;
 	}
 	MiniCDI::Player = {NULL};
+	this->board = CDi::Invalid;
 
+	// Stop logging
 	MiniCDI::Log("[CDI] shutdown");
-
 	if (MiniCDI::Config::LogFile != NULL) {
 		fclose(MiniCDI::Config::LogFile);
 		MiniCDI::Config::LogFile = NULL;
 	}
 }
 
-bool MonoI::init(const std::string &bios)
+bool MonoI::init(const std::string &bios, enum BoardType board)
 {
-	if (CDi::init(bios)) {
-		// Load system ROM data
-		std::ifstream romStream(bios);
-		std::vector<char> rom((std::istreambuf_iterator<char>(romStream)),(std::istreambuf_iterator<char>()));
-		romStream.close();
+	if (CDi::init(bios, board)) {
+		if (this->board != 0) return true;
+		this->board = board;
 
-		// Setup peripherals
+		// Prepare CPU and video chip
 		this->cpu = SCC68070(this->memory);
 		this->vpu = new MCD212(&this->cpu, this->memory);
 
-		MiniCDI::Player = {NULL};
-		MiniCDI::Player.memory = this->memory;
-		MiniCDI::Player.scc68070 = &this->cpu;
-		MiniCDI::Player.mcd212 = this->vpu;
+		// Load system ROM data and memory map
+		std::ifstream romStream(bios);
+		std::vector<char> rom((std::istreambuf_iterator<char>(romStream)),(std::istreambuf_iterator<char>()));
+		romStream.close();
+		this->cpu.load_rom(rom);
+		this->nvram_load();
+
+		// Setup remaining peripherals and player structure
+		MiniCDI::Player =
+		{
+			.memory = this->memory,
+			.scc68070 = &this->cpu,
+			.mcd212 = this->vpu
+		};
 
 		switch (this->board) {
 			default:
@@ -226,18 +268,14 @@ bool MonoI::init(const std::string &bios)
 				break;
 		}
 
+		// Init Musashi last (expects memory to already be setup in player struct)
 		m68k_init();
 		m68k_set_cpu_type(M68K_CPU_TYPE_SCC68070);
-
-		// Set callbacks
+		this->cpu.reset();
 		m68k_set_int_ack_callback(MiniCDI_int_ack_handler);
 		m68k_set_reset_instr_callback(MiniCDI_reset_handler);
 		m68k_set_trap_instr_callback(MiniCDI_op_trap_handler);
 		m68k_set_fc_callback(MiniCDI_set_fc);
-
-		this->cpu.load_rom(rom);
-		this->cpu.reset();
-		this->nvram_load();
 
 		return true;
 	}

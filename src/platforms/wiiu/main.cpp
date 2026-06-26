@@ -259,9 +259,8 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
-	cdi.board = CDi::MonoI;
-	if (!cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str())) return;
-	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
+	if (!cdi.init(devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName, CDi::MonoI)) return;
+	cdi.disc.open(devicePrefix + "wiiu/apps/miniCDi/discs/" + discName);
 
 	FPS fps;
 	EmuDisplay screen;

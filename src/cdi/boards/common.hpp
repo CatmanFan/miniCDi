@@ -3,6 +3,15 @@
 
 class CDi
 {
+public:
+	enum BoardType {
+		Invalid = 0,
+		MonoI,
+		MonoII,
+		MonoIII,
+		MonoIV
+	};
+
 protected:
 	uint8_t *memory; // Contains full memory map
 
@@ -44,21 +53,17 @@ protected:
 
 	// ONLY the chips shared in common by supported boards (MMC and Mono)
 	SCC68070 cpu;
+	enum BoardType board = CDi::Invalid;
 
 public:
-	enum BoardType {
-		MonoI = 0,
-		MonoII,
-		MonoIII,
-		MonoIV
-	};
-	enum BoardType board;
-
 	PointingDevice pd;
 	CDiDisc disc;
 
-	virtual bool init(const std::string &bios)
+	virtual bool init(const std::string &bios, enum BoardType board)
 	{
+		if (memory != NULL) return true;
+		if (board == CDi::Invalid) return false;
+
 		/** Order of initialization:
 		1) Initialising slave processor
 		2) Initialising video processor

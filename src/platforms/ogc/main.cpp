@@ -163,12 +163,12 @@ static void FAT_Exit()
 
 static void RUN_CDI(const std::string &discName)
 {
-	const std::string biosName = "cdi220b";
+	const std::string biosName = "cdi490a";
 
 	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
-		printf("BIOS not found at %s, exiting", (appPath + "rom/" + biosName + ".rom").c_str());
+		printf("BIOS not found at %s", (appPath + "rom/" + biosName + ".rom").c_str());
 		sleep(5);
-		exit(0);
+		return;
 	}
 
 	MiniCDI::Config::TestPlug = false;
@@ -179,8 +179,11 @@ static void RUN_CDI(const std::string &discName)
 	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
 
 	MonoI cdi;
-	cdi.board = CDi::MonoI;
-	if (!cdi.init(appPath + "rom/" + biosName + ".rom")) return;
+	if (!cdi.init(appPath + "rom/" + biosName + ".rom", CDi::MonoIV)) {
+		printf("Failed to init virtual machine");
+		sleep(5);
+		return;
+	}
 	cdi.disc.open(appPath + "discs/" + discName);
 
 	#ifndef MINICDI_DEBUG
@@ -395,38 +398,6 @@ int main(int argc, char **argv) {
 
 	do {
 		if (MINICDI_CLI_MENU()) {
-			printf("\033[2J\033[H"); // Clear screen
-			#ifdef HW_RVL
-			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)                  Wii version\n");
-			#else // HW_DOL
-			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)             GameCube version\n");
-			#endif
-			printf("___________________________________________________________________________\n\n");
-
-			#ifdef HW_RVL
-			printf("If nothing is displayed on the screen, press HOME to return to the\nselection menu and try again. If this happens, please note that it may\ntake several tries.\n\nPress A to continue");
-			#else // HW_DOL
-			printf("If nothing is displayed on the screen, press Z to return to the selection\nmenu and try again. If this happens, please note that it may take several\ntries.\n\nPress A to continue");
-			#endif
-
-			while (SYS_MainLoop())
-			{
-				#ifdef HW_RVL
-				WPAD_ScanPads();
-				PAD_ScanPads();
-				#else // HW_DOL
-				PAD_ScanPads();
-				#endif
-
-				#ifdef HW_RVL
-				if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A || WPAD_ButtonsDown(0) & WPAD_CLASSIC_BUTTON_A || PAD_ButtonsDown(0) & PAD_BUTTON_A) {
-				#else // HW_DOL
-				if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
-				#endif
-					break;
-				}
-			}
-
 			printf("\033[2J\033[H"); // Clear screen
 			#ifdef HW_RVL
 			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)                  Wii version\n");

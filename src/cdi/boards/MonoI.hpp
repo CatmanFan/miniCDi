@@ -24,12 +24,9 @@ private:
 	PlayerLCD lcd;
 
 public:
-	bool init(const std::string &bios) override;
+	bool init(const std::string &bios, enum BoardType board) override;
 
 	inline void run(bool skip_draw = false) override {
-		// Tick pointing device
-		pd.send();
-
 		const int disc_tick_rate = (MiniCDI::Config::PAL ? 15'000'000 : 15'104'900) / 75;
 		const int line_tick_rate = (MiniCDI::Config::PAL ? 15'000'000 : 15'104'900) / 15625;
 
@@ -59,13 +56,17 @@ public:
 		// Print verbose CPU
 		cpu.print();
 		MiniCDI::OS9::scan_modules(memory);
+
+		// Tick pointing device
+		pd.send();
 	}
 
 	inline void reset() override {
 		MiniCDI::Log("[CDI] reset");
 		cpu.reset();
 		vpu->reset();
-		if (slave) slave->reset();
+		if (slave != NULL) slave->reset();
+		if (ikat != NULL) ikat->reset();
 	}
 	~MonoI();
 

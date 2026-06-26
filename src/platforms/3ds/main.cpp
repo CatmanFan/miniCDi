@@ -200,9 +200,8 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	// MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
 
 	MonoI cdi;
-	cdi.board = CDi::MonoI;
-	cdi.init("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom");
-	cdi.disc.open(("sdmc:/3ds/miniCDi/discs/" + discName).c_str());
+	cdi.init("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom", CDi::MonoI);
+	cdi.disc.open("sdmc:/3ds/miniCDi/discs/" + discName);
 
 	EmulatorWindow TOPSCREEN(768,280);
 

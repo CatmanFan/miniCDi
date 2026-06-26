@@ -16,13 +16,12 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 - [X] Proper reset sequence
 - Fix VDSC rendering
    - [X] Color key
-   - [ ] RGB decoder formula
    - [ ] DYUV decoder formula
 - [ ] Outline instructions/how-to for users
-- [ ] Update compatibility information
+- [ ] Update compatibility and licensing information
 
 ### Potential
-- [X] NVRAM auto-save on exit
+- [ ] NVRAM auto-save on exit
 - [ ] LibRetro API compatibility?
 
 ## Building

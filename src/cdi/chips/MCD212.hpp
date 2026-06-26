@@ -189,8 +189,10 @@ class MCD212
 					return *src;
 
 				case CLUT4:
-					return second ? (Path ? std::clamp(*src & 0x07, 0, 127) + 128 : *src & 0x07)
-								  : (Path ? std::clamp(*src >> 4 & 0x07, 0, 127) + 128 : *src >> 4 & 0x07);
+					return second ? (Path ? std::clamp(*src & (reg.FT[Path] == Bitmap ? 0x0F : 0x07), 0, 127) + 128
+										  : *src & (reg.FT[Path] == Bitmap ? 0x0F : 0x07))
+								  : (Path ? std::clamp(*src >> 4 & (reg.FT[Path] == Bitmap ? 0x0F : 0x07), 0, 127) + 128
+										  : *src >> 4 & (reg.FT[Path] == Bitmap ? 0x0F : 0x07));
 			}
 		}
 
@@ -254,34 +256,29 @@ class MCD212
 		template <size_t Path>
 		uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 		{
-			uint8_t DYUV_Y1, DYUV_Y2, DYUV_U2, DYUV_V2;
+			uint8_t Y[2], U[2], V[2],
+					DYUV_Y1 = src[0] & 0x0F,
+					DYUV_Y2 = src[1] & 0x0F,
+					DYUV_U = src[0] & 0xF0 >> 4,
+					DYUV_V = src[1] & 0xF0 >> 4;
 
-			DYUV_Y1 = src[0] & 0x0F;
-			DYUV_Y2 = src[1] & 0x0F;
-			DYUV_U2 = src[0] & 0xF0 >> 4;
-			DYUV_V2 = src[1] & 0xF0 >> 4;
-
-			/// Formula adapted from ogarvey's CD-i Image Parser (licensed under MIT).
-			/// https://github.com/ogarvey/CD-i-Image-Parser/blob/main/CD-i%20Image%20Parser/Helpers/ImageFormatHelper.cs#L119
-
-			uint8_t Y[2], U[2], V[2];
 			Y[0] = (DYUVDecoder.Y + DYUVDecoder.LUT_deq[DYUV_Y1]) % 256;
 			Y[1] = (Y[0] + DYUVDecoder.LUT_deq[DYUV_Y2]) % 256;
-			U[1] = (DYUVDecoder.U + DYUVDecoder.LUT_deq[DYUV_U2]) % 256;
-			V[1] = (DYUVDecoder.V + DYUVDecoder.LUT_deq[DYUV_V2]) % 256;
-			U[0] = (DYUVDecoder.U + U[1]) / 2;
-			V[0] = (DYUVDecoder.V + V[1]) / 2;
+			U[1] = (DYUVDecoder.U + DYUVDecoder.LUT_deq[DYUV_U]) % 256;
+			V[1] = (DYUVDecoder.V + DYUVDecoder.LUT_deq[DYUV_V]) % 256;
+			U[0] = DYUVDecoder.U;
+			V[0] = DYUVDecoder.V;
 
 			DYUVDecoder.Y = Y[1];
 			DYUVDecoder.U = U[1];
 			DYUVDecoder.V = V[1];
 
 			for (size_t i = 0; i < 2; i++) {
-				int R = std::clamp((Y[i] * 256 + 351 * (V[i] - 128)) / 256, 0, 255);
-				int G = std::clamp(((Y[i] * 256) - (86 * (U[i] - 128) + 179 * (V[i] - 128))) / 256, 0, 255);
-				int B = std::clamp((Y[i] * 256 + 444 * (U[i] - 128)) / 256, 0, 255);
+				int B = std::clamp((int)((float)Y[i] + (float)(U[i] - 128) * 1.733f), 0, 255);
+				int R = std::clamp((int)((float)Y[i] + (float)(V[i] - 128) * 1.371f), 0, 255);
+				int G = std::clamp((int)(((float)Y[i] - 0.299f * (float)R - 0.114f * (float)B) / 0.587f), 0, 255);
 
-				dst[i] = (G << 24) | (B << 16) | (R << 8) | 0xFF;
+				dst[i] = (R << 24) | (G << 16) | (B << 8) | 0xFF;
 			}
 
 			return 2;
@@ -291,14 +288,11 @@ class MCD212
 		uint32_t decodeRGB555(uint8_t* src, uint32_t *dst)
 		{
 			if (!isTransparent<Path>(src)) {
-				uint8_t r = ((*src >> 10) & 0x1F) << 3;
-				uint8_t g = ((*src >> 5) & 0x1F) << 3;
-				uint8_t b = (*src & 0x1F) << 3;
+				uint8_t r = std::clamp((*src & 0b0111110000000000) >> 7, 0, 255);
+				uint8_t g = std::clamp((*src & 0b0000001111100000) >> 2, 0, 255);
+				uint8_t b = std::clamp((*src & 0b0000000000011111) << 3, 0, 255);
 
-				*dst = ((r > 255 ? 255 : r < 0 ? 0 : r) << 24) |
-					   ((g > 255 ? 255 : g < 0 ? 0 : g) << 16) |
-					   ((b > 255 ? 255 : b < 0 ? 0 : b) << 8) |
-					   0xFF;
+				*dst = (r << 24) | (g << 16) | (b << 8) | 0xFF;
 			}
 
 			return 1;
@@ -350,6 +344,8 @@ class MCD212
 
 		void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
 		{
+			if (reg.Icm[0] == CLUT4 || reg.Icm[1] == CLUT4) hDouble = true;
+
 			FG[1].width = FG[0].width = hRes * (hDouble || vDouble ? 2 : 1);
 			FG[1].height = FG[0].height = vRes * (vDouble ? 2 : 1);
 
@@ -428,6 +424,12 @@ class MCD212
 					}
 				}
 
+				/// Subtract to get the analog output (per Green Book 4.4.1.2).
+				output[outputPixel] = (std::clamp((int)(output[outputPixel] >> 24 & 0x000000FF) - 16, 0, 255) << 24)
+									| (std::clamp((int)(output[outputPixel] >> 16 & 0x000000FF) - 16, 0, 255) << 16)
+									| (std::clamp((int)(output[outputPixel] >> 8 & 0x000000FF) - 16, 0, 255) << 8)
+									| (output[outputPixel] & 0x000000FF);
+
 				if (FG[0].width < 400) {
 					output[outputPixel+1] = output[outputPixel];
 					outputPixel += 2;
@@ -451,7 +453,7 @@ class MCD212
 		uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 		{
 			// reset DYUV to initial values
-			DYUVDecoder.Y = 0;
+			DYUVDecoder.Y = reg.ColorDYUV[Path] >> 16 & 0xFF;
 			DYUVDecoder.U = reg.ColorDYUV[Path] >> 8 & 0xFF;
 			DYUVDecoder.V = reg.ColorDYUV[Path] & 0xFF;
 
@@ -499,14 +501,11 @@ class MCD212
 							default:
 							case CLUT4: // RL3
 							case CLUT7: // RL7
-								int length = *src & 0x80 ? memory[++vsr] : 1;
-
-								if (length == 0)
-									length = FG[Path].width - x;
-								for (int i = 0; i < length;) {
-									i += decodeCLUT<Path>(src, dst+i);
+								int length = (*src & 0x80 ? memory[++vsr] : 1) * (reg.Icm[Path] == CLUT4 ? 2 : 1);
+								int endX = length == 0 ? FG[Path].width : std::min({x+length, FG[Path].width});
+								while (x < endX) {
+									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
 								}
-								x += length;
 								continue;
 						}
 

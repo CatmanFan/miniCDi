@@ -187,6 +187,10 @@ static void RUN_CDI(const std::string &discName)
 	SDL screen;
 	#endif
 
+	#ifdef HW_RVL
+	bool pointer = false;
+	#endif
+
 	while (SYS_MainLoop()) {
 		#ifdef HW_RVL
 			WPAD_ScanPads();
@@ -195,6 +199,8 @@ static void RUN_CDI(const std::string &discName)
 			uint32_t held = WPAD_ButtonsHeld(0);
 
 			if (data->exp.type & WPAD_EXP_CLASSIC) {
+				if (pointer) pointer = false;
+
 				if (down & WPAD_CLASSIC_BUTTON_HOME) break;
 				if (down & WPAD_CLASSIC_BUTTON_MINUS) cdi.reset();
 
@@ -205,10 +211,13 @@ static void RUN_CDI(const std::string &discName)
 				cdi.pd.set_button(PointingDevice::Down, held & WPAD_CLASSIC_BUTTON_DOWN);
 				cdi.pd.set_button(PointingDevice::Up, held & WPAD_CLASSIC_BUTTON_UP);
 			} else  {
+				if (pointer && !data->ir.valid) pointer = false;
+
 				if (down & WPAD_BUTTON_HOME) break;
 				if (down & WPAD_BUTTON_MINUS) cdi.reset();
+				if (down & WPAD_BUTTON_PLUS) pointer = !pointer;
 
-				if (data->ir.valid) {
+				if (pointer && data->ir.valid) {
 					cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
 					cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
 					cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);

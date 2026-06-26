@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13...4.3)
-project(miniCDi VERSION 0.1.0 LANGUAGES C CXX)
+project(miniCDi VERSION 0.1 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -53,7 +53,7 @@ if (MINICDI_ENABLE_DEADNVRAM)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEADNVRAM)
 endif()
 
-set (APP_AUTHOR "Mr. Lechkar / CatmanFan")
+set (APP_AUTHOR "Mr. Lechkar aka CatmanFan")
 set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 
 # Core source files

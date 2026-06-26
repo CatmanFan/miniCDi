@@ -93,7 +93,6 @@ public:
 	 */
 	inline virtual void run(bool skip_draw = false) { ; }
 	inline virtual void reset() { ; }
-	inline virtual void shutdown() { ; }
 
 	inline virtual uint32_t* get_display() { return nullptr; }
 	inline virtual size_t get_display_width() { return 0; }

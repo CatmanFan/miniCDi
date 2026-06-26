@@ -47,19 +47,24 @@ public:
 			default:
 				return memory[addr];
 			case 0x300001:
+				MiniCDI::Log("[DSP] ICR => %02X", ICR);
 				return ICR;
 			case 0x300003:
+				MiniCDI::Log("[DSP] CVR => %02X", CVR);
 				return CVR;
 			case 0x300005:
+				// MiniCDI::Log("[DSP] ISR => %02X", ISR);
 				return ISR;
 			case 0x300007:
+				MiniCDI::Log("[DSP] IVR => %02X", IVR);
 				return IVR;
 			case 0x30000B:
 				return RTX >> 16 & 0xFF;
 			case 0x30000D:
 				return RTX >> 8 & 0xFF;
 			case 0x30000F:
-				ISR &= ~0x01; // reset RXDF if RXL
+				MiniCDI::Log("[DSP] send %06X to host", RTX);
+				ISR &= ~0x01; // deassert RX full
 				check_isr();
 				return RTX & 0xFF;
 		}
@@ -73,78 +78,86 @@ public:
 				memory[addr] = value;
 				break;
 			case 0x300001: ICR = value;
+				MiniCDI::Log("[DSP] ICR <= %02X", value);
 				break;
 			case 0x300003: CVR = value;
-				// Commands usually write argument values to RTX and THEN read result values from the same register. Prefix parameter is optional.
-				switch (CVR & 0x1F) {
-					default:
-						break;
-					case 0x00:
-						MiniCDI::Log("[DSP] run program (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x08:
-						MiniCDI::Log("[DSP] submit buffer 4 (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x09:
-						MiniCDI::Log("[DSP] submit buffer 5 (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x0E:
-						MiniCDI::Log("[DSP] set read mode (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x12:
-						MiniCDI::Log("[DSP] read audio status (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x13:
-						MiniCDI::Log("[DSP] read status (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x14:
-						MiniCDI::Log("[DSP] audio-related? 1 (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x15:
-						MiniCDI::Log("[DSP] audio-related? 2 (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x16:
-						MiniCDI::Log("[DSP] start sector (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x17:
-						MiniCDI::Log("[DSP] start DMA read (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x18:
-						MiniCDI::Log("[DSP] start DMA write (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x19:
-						MiniCDI::Log("[DSP] stop DMA (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x9A:
-						MiniCDI::Log("[DSP] read memory (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x9B:
-						MiniCDI::Log("[DSP] write memory (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x9C:
-						MiniCDI::Log("[DSP] get unknown status (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x9D:
-						MiniCDI::Log("[DSP] select sectors (0x%02X : %06X)", value, RTX);
-						break;
-					case 0x9F:
-						MiniCDI::Log("[DSP] set volume (0x%02X : %06X)", value, RTX);
-						break;
+				if (CVR & 0x80) {
+					CVR &= 0x1F;
+					// Commands usually write A NUMBER OF argument values to RTX and THEN read result values from the same register. Prefix parameter is optional.
+					switch (CVR) {
+						default:
+							break;
+						case 0x00:
+							MiniCDI::Log("[DSP] run program (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x08:
+							MiniCDI::Log("[DSP] submit buffer 4 (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x09:
+							MiniCDI::Log("[DSP] submit buffer 5 (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x0E:
+							MiniCDI::Log("[DSP] set read mode (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x12:
+							MiniCDI::Log("[DSP] read audio status (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x13:
+							MiniCDI::Log("[DSP] read status (0x%02X : %06X)", value, RTX);
+							// this command writes and reads two pairs of 24-bit values ? (0C0000 0C0000)
+							break;
+						case 0x14:
+							MiniCDI::Log("[DSP] audio-related? 1 (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x15:
+							MiniCDI::Log("[DSP] audio-related? 2 (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x16:
+							MiniCDI::Log("[DSP] start sector (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x17:
+							MiniCDI::Log("[DSP] start DMA read (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x18:
+							MiniCDI::Log("[DSP] start DMA write (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x19:
+							MiniCDI::Log("[DSP] stop DMA (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x1A:
+							MiniCDI::Log("[DSP] read memory (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x1B:
+							MiniCDI::Log("[DSP] write memory (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x1C:
+							MiniCDI::Log("[DSP] get unknown status (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x1D:
+							MiniCDI::Log("[DSP] select sectors (0x%02X : %06X)", value, RTX);
+							break;
+						case 0x1F:
+							MiniCDI::Log("[DSP] set volume (0x%02X : %06X)", value, RTX);
+							break;
+					}
 				}
 				break;
 			case 0x300005: ISR = value;
 				check_isr();
+				MiniCDI::Log("[DSP] ISR <= %02X", value);
 				break;
 			case 0x300007: IVR = value;
 				_68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value;
+				MiniCDI::Log("[DSP] IVR <= %02X", value);
 				break;
 			case 0x30000B: RTX &= 0x0000FFFF; RTX |= value << 16;
 				break;
 			case 0x30000D: RTX &= 0x00FF00FF; RTX |= value << 8;
 				break;
 			case 0x30000F: RTX &= 0x00FFFF00; RTX |= value;
-				ISR &= ~0x02; // reset TXDE if TXL
+				ISR &= ~0x02; // deassert TX empty
 				check_isr();
+				// MiniCDI::Log("[DSP] received %06X from host", value);
 				break;
 		}
 	}

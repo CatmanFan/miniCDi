@@ -196,6 +196,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::FrameSkip = 3;
 	// MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
 

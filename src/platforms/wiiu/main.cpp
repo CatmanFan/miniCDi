@@ -255,6 +255,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::FrameSkip = 2;
 	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
@@ -380,20 +381,23 @@ static std::string RUN_MENU()
 				break;
 			case MiniCDI_WiiU::PORTUGUESE_EU:
 				menu = "Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001";
+				empty = "Não existe nenhuma imagen de disco.";
 				break;
 			case MiniCDI_WiiU::GERMAN:
 				menu = "Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren.";
+				empty = "Keine Datei gefunden";
 				break;
 			case MiniCDI_WiiU::NORWEGIAN:
 				menu = "Velg en CD-fil.\nFor å starte uten en CD, trykk på \ue001.";
-				empty = "Advarsel: katalogen er tom";
+				empty = "Finner ingen CD-fil";
 				break;
 			case MiniCDI_WiiU::SWEDISH:
 				menu = "Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva.";
-				empty = "Varning! Katalogen är tom";
+				empty = "Ingen cd-skiva hittad";
 				break;
 			case MiniCDI_WiiU::TURKISH:
 				menu = "Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın";
+				empty = "Disk dosyası yok";
 				break;
 			case MiniCDI_WiiU::CATALAN:
 				menu = "Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001";
@@ -404,10 +408,10 @@ static std::string RUN_MENU()
 		SDL_print(1920/2,150,34,{255,255,255,255},menu);
 		if (!noDiscs) {
 			for (size_t i = 0; i < discs.size(); i++) {
-				SDL_print(1920/2,250+(i*40),24,{255,255,(uint8_t)(i == selected ? 0 : 255),255},discs[i]);
+				SDL_print(1920/2,250+(i*38),28,{255,255,(uint8_t)(i == selected ? 0 : 255),255},discs[i]);
 			}
 		} else {
-			SDL_print(1920/2,250,28,{255,255,0,255},empty);
+			SDL_print(1920/2,250,32,{255,255,0,255},empty);
 		}
 		SDL_RenderPresent(SDL_renderer);
 	}

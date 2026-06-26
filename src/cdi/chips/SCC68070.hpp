@@ -106,7 +106,7 @@ class SCC68070
 
 			DMA[index].CSR |= 0b10000000; // COC set
 			DMA[index].CSR &= 0b11110111; // Channel Active unset
-			interrupt(index == 1 ? IPL_DMA2 : IPL_DMA1, true);
+			interrupt(index == 1 ? SCC68070::IPL_DMA2 : SCC68070::IPL_DMA1, true);
 		}
 	}
 
@@ -546,16 +546,17 @@ public:
 		ran += m68k_execute(cycles);
 
 		// Poll timer.
+		cycles = ran;
 		while (cycles >= 96) {
 			cycles -= 96;
 			if (T[0] == 0xFFFF) {
 				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
 				TSR |= 0x80; // OV in T0
 				T[0] = RR;
-				interrupt(IPL_TIMER, true);
+				interrupt(SCC68070::IPL_TIMER, true);
 			} else {
 				T[0]++;
-				interrupt(IPL_TIMER, false);
+				interrupt(SCC68070::IPL_TIMER, false);
 			}
 		}
 

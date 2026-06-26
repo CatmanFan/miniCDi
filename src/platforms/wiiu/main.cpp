@@ -45,7 +45,7 @@ static FC_Font* GetFontForSize(int size)
     return font;
 }
 
-static void SDL_print(int x, int y, int size, SDL_Color color, std::string text)
+static void SDL_print(int x, int y, int size, SDL_Color color, std::string text, bool absolute = false)
 {
     FC_Font* font = GetFontForSize(size);
     if (!font) { return; }
@@ -55,8 +55,10 @@ static void SDL_print(int x, int y, int size, SDL_Color color, std::string text)
     effect.scale = FC_MakeScale(1,1);
     effect.alignment = FC_ALIGN_LEFT;
 
-	x -= FC_GetWidth(font, "%s", text.c_str()) / 2;
-	y -= FC_GetHeight(font, "%s", text.c_str()) / 2;
+	if (!absolute) {
+		x -= FC_GetWidth(font, "%s", text.c_str()) / 2;
+		y -= FC_GetHeight(font, "%s", text.c_str()) / 2;
+	}
 
     FC_DrawEffect(font, SDL_renderer, x, y, effect, "%s", text.c_str());
 }
@@ -154,6 +156,43 @@ namespace MiniCDI_WiiU
 	}
 }
 
+static int NoticeSecs = -1;
+static std::string menu = "Select a disc or press \ue001 to boot without disc";
+static std::string empty = "Warning: Directory is empty";
+static std::string help = "If nothing is displayed, press \ue055 to exit, then try again.";
+
+class FPS
+{
+	int aggregate;
+	int incremented;
+	clock_t lastTime;
+	clock_t currentTime;
+
+public:
+	FPS() : aggregate(0)
+		  , incremented(0)
+		  , lastTime(OSTicksToMilliseconds(OSGetTick()))
+	{ }
+
+	int get() { return aggregate; }
+
+	void update(int frames = 1)
+	{
+		incremented += frames;
+		currentTime = OSTicksToMilliseconds(OSGetTick());
+
+		if(currentTime - lastTime >= 1000)
+		{
+			lastTime = currentTime;
+			aggregate = incremented;
+			incremented = 0;
+
+			if (NoticeSecs >= 0) NoticeSecs++;
+			if (NoticeSecs >= 5) NoticeSecs = -1;
+		}
+	}
+};
+
 class EmuDisplay
 {
 	SDL_Texture* texture = nullptr;
@@ -167,15 +206,18 @@ public:
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
 
 			// Draw LCD if available
-			if (lcd_output)
+			/*if (lcd_output)
 			{
 				SDL_UpdateTexture(this->lcd, NULL, lcd_output, (20*7)*sizeof(uint32_t));
-			}
+			}*/
 		}
 	}
 
 	void draw()
 	{
+		#ifdef MINICDI_NATIVERES
+		SDL_Rect dest = {1920/2-384,1080/2-280, 384*2,280*2};
+		#else
 		SDL_Rect dest =
 		{
 			MiniCDI::Config::PAL ? 219 : 96,
@@ -183,6 +225,7 @@ public:
 			MiniCDI::Config::PAL ? 1481 : 1728,
 			MiniCDI::Config::PAL ? 1080 : 1260
 		};
+		#endif
 		SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 
 		if (MiniCDI::Config::ShowLCD)
@@ -215,41 +258,50 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = false;
-	MiniCDI::Config::ShowLCD = true;
-	MiniCDI::Config::FrameSkip = 1;
-	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
+	MiniCDI::Config::PAL = true;
+	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::FrameSkip = 2;
+	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 
 	MonoI cdi;
 	cdi.board = CDi::MonoI;
 	cdi.init((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str());
 	cdi.disc.open((devicePrefix + "wiiu/apps/miniCDi/discs/" + discName).c_str());
-	cdi.run(true);
 
+	FPS fps;
 	EmuDisplay screen;
-	bool paused = false;
-	bool touchDown = false;
+	NoticeSecs = 0;
+	/*bool paused = false;
+	bool touchDown = false;*/
 
 	while (MiniCDI_WiiU::Running()) {
 		VPADStatus status{};
 		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
 
-		if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
-		if (!status.tpNormal.touched && touchDown) { touchDown = false; }
+		/*if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
+		if (!status.tpNormal.touched && touchDown) { touchDown = false; }*/
 		if (status.trigger & (VPAD_BUTTON_ZR)) break; // exit
 
 		// Clear screen
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
 		screen.draw();
-		if (paused) {
+		SDL_print(2,2,25,{255,255,255,255},"FPS:",true);
+		SDL_print(72,2,25,{255,255,0,255},std::to_string(fps.get()),true);
+		if (NoticeSecs >= 0) {
+			SDL_Rect rect{0, 1080-70, 1920, 70};
+			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
+			SDL_RenderFillRect(SDL_renderer, &rect);
+			SDL_print(1920/2,1040,34,{255,255,255,255},help);
+		}
+		/*if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};
 			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
 			SDL_RenderFillRect(SDL_renderer, &rect);
 			SDL_print(1920/2,1080/2,48,{255,255,255,255},"Paused, touch to resume");
 			SDL_RenderPresent(SDL_renderer);
 			continue;
-		}
+		}*/
 		SDL_RenderPresent(SDL_renderer);
 
 		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
@@ -262,10 +314,10 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		if (MiniCDI::Config::FrameSkip > 0) {
 			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
 			cdi.run();
-			// fps.update(MiniCDI::Config::FrameSkip+1);
+			fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
 			cdi.run();
-			// fps.update();
+			fps.update();
 		}
 
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
@@ -320,31 +372,29 @@ static std::string RUN_MENU()
 
 		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
 
-		std::string menu = "Select a disc or press \ue001 to boot without disc";
-		std::string empty = "Warning: Directory is empty";
 		switch (MiniCDI_WiiU::UILanguage)
 		{
 			default:
 				break;
-			case MiniCDI_WiiU::SWEDISH:
-				menu = "Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva.";
-				empty = "Varning! Katalogen är tom";
-				break;
 			case MiniCDI_WiiU::JAPANESE:
 				menu = "ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。";
 				empty = "ディスクファイルがありません";
+				help = "画面がご覧になれない方は、\ue055を押して終了してからやり直してください";
 				break;
 			case MiniCDI_WiiU::FRENCH:
 				menu = "Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001.";
 				empty = "Le dossier est actuellement vide.";
+				help = "Si vous ne voyez rien sur l'écran, appuyez sur \ue055 pour quitter, puis réessayer.";
 				break;
 			case MiniCDI_WiiU::SPANISH_US:
 				menu = "Elige una imagen de disco u oprime \ue001 para comenzar sin disco";
 				empty = "No hay ninguna imagen de disco.";
+				help = "Si no puedes ver la pantalla, oprime \ue055 para salir y vuelva a intentarlo.";
 				break;
 			case MiniCDI_WiiU::SPANISH_EU:
 				menu = "Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001";
 				empty = "No hay ninguna imagen de disco.";
+				help = "Si no puedes ver la pantalla, pulsa \ue055 para cerrar la emulación y vuelva a intentarlo.";
 				break;
 			case MiniCDI_WiiU::PORTUGUESE_EU:
 				menu = "Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001";
@@ -356,12 +406,17 @@ static std::string RUN_MENU()
 				menu = "Velg en CD-fil.\nFor å starte uten en CD, trykk på \ue001.";
 				empty = "Advarsel: katalogen er tom";
 				break;
+			case MiniCDI_WiiU::SWEDISH:
+				menu = "Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva.";
+				empty = "Varning! Katalogen är tom";
+				break;
 			case MiniCDI_WiiU::TURKISH:
 				menu = "Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın";
 				break;
 			case MiniCDI_WiiU::CATALAN:
 				menu = "Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001";
 				empty = "No hi ha cap fitxer.";
+				help = "Si la pantalla és encara negre, pitgeu \ue055 per tancar la emulació i torneu-ho a provar.";
 				break;
 		}
 

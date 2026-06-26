@@ -150,8 +150,10 @@ MonoI::~MonoI()
 
 	MiniCDI::Log("[CDI] shutting down");
 
-	if (MiniCDI::Config::LogFile)
+	if (MiniCDI::Config::LogFile != NULL) {
 		fclose(MiniCDI::Config::LogFile);
+		MiniCDI::Config::LogFile = NULL;
+	}
 
 	m68k_end_timeslice();
 	MiniCDI::OS9::modules.clear();

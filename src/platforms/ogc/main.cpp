@@ -174,7 +174,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = /*VIDEO_GetCurrentTvMode() == VI_PAL*/ true;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::FrameSkip = 1;
+	MiniCDI::Config::FrameSkip = 2;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
 
@@ -300,7 +300,7 @@ static bool MINICDI_CLI_MENU() {
 		#else // HW_DOL
 		if (PAD_ButtonsDown(0) & PAD_TRIGGER_Z) {
 		#endif
-			break;
+			exit(0);
 		}
 
 		#ifdef HW_RVL
@@ -397,11 +397,22 @@ int main(int argc, char **argv) {
 		exit(0);
 	}
 
-	if (MINICDI_CLI_MENU()) {
-		printf("\033[2J\033[H"); // Clear screen
-		printf("miniCDi - Philips CD-i emulator\nLoading\n");
-		RUN_CDI(selectedDisc);
-	}
+	do {
+		if (MINICDI_CLI_MENU()) {
+			printf("\033[2J\033[H"); // Clear screen
+			printf("miniCDi - Philips CD-i emulator\nLoading\n");
+			RUN_CDI(selectedDisc);
+
+			// Reinit console gfx
+			console_init(xfb,20,20,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ);
+			VIDEO_Configure(rmode);
+			VIDEO_SetNextFramebuffer(xfb);
+			VIDEO_SetBlack(false);
+			VIDEO_Flush();
+			VIDEO_WaitVSync();
+			if (rmode->viTVMode & VI_NON_INTERLACE) { VIDEO_WaitVSync(); }
+		}
+	} while (SYS_MainLoop());
 
 	FAT_Exit();
 	VIDEO_SetBlack(true);

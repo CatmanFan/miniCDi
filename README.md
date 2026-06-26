@@ -21,6 +21,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 - [ ] Update compatibility and licensing information
 
 ### Potential
+- [ ] Address slowdown during CDIC reading active status
 - [ ] NVRAM auto-save on exit
 - [ ] LibRetro API compatibility?
 

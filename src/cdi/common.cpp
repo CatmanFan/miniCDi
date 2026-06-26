@@ -157,6 +157,23 @@ MonoI::~MonoI()
 
 	m68k_end_timeslice();
 	MiniCDI::OS9::modules.clear();
+
+	if (this->cdic != NULL) {
+		free(this->cdic);
+		this->cdic = NULL;
+	}
+	if (this->slave != NULL) {
+		free(this->slave);
+		this->slave = NULL;
+	}
+	if (this->vpu != NULL) {
+		free(this->vpu);
+		this->vpu = NULL;
+	}
+	if (this->memory != NULL) {
+		free(this->memory);
+		this->memory = NULL;
+	}
 }
 
 bool MonoI::init(const std::string &bios)

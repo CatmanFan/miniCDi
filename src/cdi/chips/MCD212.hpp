@@ -201,7 +201,7 @@ class MCD212
 		{
 			// Color key boolean (CLUT only)
 			// formula adapted from MAME
-			const bool UseColorKey = !(reg.Icm[0] == Off && reg.Icm[1] == RGB555) && reg.Icm[Path] != DYUV;
+			const bool UseColorKey = !(reg.Icm[0] == Off && reg.Icm[1] == RGB555) && (reg.Icm[Path] == CLUT4 || reg.Icm[Path] == CLUT7 || reg.Icm[Path] == CLUT77);
 			const bool ColorKey = UseColorKey ? ((reg.TransparentCol[Path] & 0xFCFCFC) & (~(reg.MaskCol[Path]) & 0xFCFCFC))
 											 == ((reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0xFCFCFC) & (~(reg.MaskCol[Path]) & 0xFCFCFC))
 											  : true;
@@ -259,8 +259,8 @@ class MCD212
 			uint8_t Y[2], U[2], V[2],
 					DYUV_Y1 = src[0] & 0x0F,
 					DYUV_Y2 = src[1] & 0x0F,
-					DYUV_U = src[0] & 0xF0 >> 4,
-					DYUV_V = src[1] & 0xF0 >> 4;
+					DYUV_U = src[0] >> 4 & 0x0F,
+					DYUV_V = src[1] >> 4 & 0x0F;
 
 			Y[0] = (DYUVDecoder.Y + DYUVDecoder.LUT_deq[DYUV_Y1]) % 256;
 			Y[1] = (Y[0] + DYUVDecoder.LUT_deq[DYUV_Y2]) % 256;
@@ -278,7 +278,7 @@ class MCD212
 				int R = std::clamp((int)((float)Y[i] + (float)(V[i] - 128) * 1.371f), 0, 255);
 				int G = std::clamp((int)(((float)Y[i] - 0.299f * (float)R - 0.114f * (float)B) / 0.587f), 0, 255);
 
-				dst[i] = (R << 24) | (G << 16) | (B << 8) | 0xFF;
+				dst[i] = (B << 24) | (G << 16) | (R << 8) | 0xFF;
 			}
 
 			return 2;

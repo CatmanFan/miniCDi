@@ -199,8 +199,6 @@ static void RUN_CDI(const std::string &discName)
 			uint32_t held = WPAD_ButtonsHeld(0);
 
 			if (data->exp.type & WPAD_EXP_CLASSIC) {
-				if (pointer) pointer = false;
-
 				if (down & WPAD_CLASSIC_BUTTON_HOME) break;
 				if (down & WPAD_CLASSIC_BUTTON_MINUS) cdi.reset();
 
@@ -211,8 +209,6 @@ static void RUN_CDI(const std::string &discName)
 				cdi.pd.set_button(PointingDevice::Down, held & WPAD_CLASSIC_BUTTON_DOWN);
 				cdi.pd.set_button(PointingDevice::Up, held & WPAD_CLASSIC_BUTTON_UP);
 			} else  {
-				if (pointer && !data->ir.valid) pointer = false;
-
 				if (down & WPAD_BUTTON_HOME) break;
 				if (down & WPAD_BUTTON_MINUS) cdi.reset();
 				if (down & WPAD_BUTTON_PLUS) pointer = !pointer;
@@ -351,7 +347,7 @@ static bool MINICDI_CLI_MENU() {
 			printf("___________________________________________________________________________\n\n");
 
 			#ifdef HW_RVL
-			printf("Up/Down to navigate, A to select, HOME (Wiimote) or Z (GC) to exit\n\n");
+			printf("Up/Down to navigate, A to select, HOME to exit\n\n");
 			#else // HW_DOL
 			printf("Up/Down to navigate, A to select, Z to exit\n\n");
 			#endif
@@ -400,7 +396,44 @@ int main(int argc, char **argv) {
 	do {
 		if (MINICDI_CLI_MENU()) {
 			printf("\033[2J\033[H"); // Clear screen
-			printf("miniCDi - Philips CD-i emulator\nLoading\n");
+			#ifdef HW_RVL
+			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)                  Wii version\n");
+			#else // HW_DOL
+			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)             GameCube version\n");
+			#endif
+			printf("___________________________________________________________________________\n\n");
+
+			#ifdef HW_RVL
+			printf("If nothing is displayed on the screen, press HOME to return to the\nselection menu and try again. If this happens, please note that it may\ntake several tries.\n\nPress A to continue");
+			#else // HW_DOL
+			printf("If nothing is displayed on the screen, press Z to return to the selection\nmenu and try again. If this happens, please note that it may take several\ntries.\n\nPress A to continue");
+			#endif
+
+			while (SYS_MainLoop())
+			{
+				#ifdef HW_RVL
+				WPAD_ScanPads();
+				PAD_ScanPads();
+				#else // HW_DOL
+				PAD_ScanPads();
+				#endif
+
+				#ifdef HW_RVL
+				if (WPAD_ButtonsDown(0) & WPAD_BUTTON_A || WPAD_ButtonsDown(0) & WPAD_CLASSIC_BUTTON_A || PAD_ButtonsDown(0) & PAD_BUTTON_A) {
+				#else // HW_DOL
+				if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
+				#endif
+					break;
+				}
+			}
+
+			printf("\033[2J\033[H"); // Clear screen
+			#ifdef HW_RVL
+			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)                  Wii version\n");
+			#else // HW_DOL
+			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)             GameCube version\n");
+			#endif
+			printf("___________________________________________________________________________\n\nLoading");
 			RUN_CDI(selectedDisc);
 
 			// Reinit console gfx

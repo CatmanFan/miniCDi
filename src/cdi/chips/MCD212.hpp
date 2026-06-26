@@ -220,7 +220,7 @@ class MCD212
 				case 0b0100:
 					return Matte[1];
 				case 0b0101:
-					return Matte[0] || ColorKey;
+					return /*Matte[0] ||*/ ColorKey; // TO-DO : fix? (this mode is used for Hotel Mario's cutscenes.)
 				case 0b0110:
 					return Matte[1] || ColorKey;
 				case 0b1000:

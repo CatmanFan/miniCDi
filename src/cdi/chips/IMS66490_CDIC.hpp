@@ -37,6 +37,7 @@ class CDIC
 
 	struct {
 		bool reading; // Whether is actively reading data
+		bool seek;
 		int delayed_sectors; // Number of sectors to delay for reading (e.g. to simulate discspin)
 		int curr_lba; // Taken from TIME register and then incremented
 		bool is_mode2; // Determines whether to apply MODE2 filter
@@ -144,11 +145,12 @@ class CDIC
 			assert_irq();
 		}
 
-		if (CdicController.reading) {
+		if (CdicController.reading && !CdicController.seek) {
 			CdicController.curr_lba++;
 			disc->read_sector(CdicController.curr_lba);
 		} else {
 			CdicController.reading = false;
+			CdicController.seek = false;
 			CdicController.delayed_sectors = 0;
 			CdicController.curr_lba = 0;
 			CdicController.is_mode2 = false;
@@ -306,7 +308,8 @@ public:
 
 							// Set to MODE2 and stop
 							CdicController.reading = false;
-							CdicController.delayed_sectors = 6;
+							CdicController.seek = false;
+							CdicController.delayed_sectors = 0;
 							CdicController.curr_lba = 0;
 							CdicController.is_mode2 = false;
 							break;
@@ -316,7 +319,8 @@ public:
 
 							// Set to MODE2 and stop
 							CdicController.reading = false;
-							CdicController.delayed_sectors = 6;
+							CdicController.seek = false;
+							CdicController.delayed_sectors = 0;
 							CdicController.curr_lba = 0;
 							CdicController.is_mode2 = true;
 							break;
@@ -345,6 +349,7 @@ public:
 
 							// Start reading
 							CdicController.reading = true;
+							CdicController.seek = CMD == 0x2C;
 							CdicController.delayed_sectors = 6;
 							CdicController.curr_lba = disc->get_lba_from_time(TIME);
 							CdicController.is_mode2 = CMD == 0x2A ? true : false;
@@ -361,6 +366,7 @@ public:
 				{
 					MiniCDI::Log("[CDIC] abort");
 					CdicController.reading = false;
+					CdicController.seek = false;
 					CdicController.delayed_sectors = 0;
 					CdicController.curr_lba = 0;
 					CdicController.is_mode2 = false;

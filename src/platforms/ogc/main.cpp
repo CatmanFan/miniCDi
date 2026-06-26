@@ -161,8 +161,10 @@ static void FAT_Exit()
 	#endif
 }
 
-static void RUN_CDI(const std::string &biosName, enum CDi::BoardType board, const std::string &discName)
+static void RUN_CDI(const std::string &discName)
 {
+	const std::string biosName = "cdi220b";
+
 	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
 		printf("BIOS not found at %s, exiting", (appPath + "rom/" + biosName + ".rom").c_str());
 		sleep(5);
@@ -170,14 +172,14 @@ static void RUN_CDI(const std::string &biosName, enum CDi::BoardType board, cons
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
+	MiniCDI::Config::PAL = /*VIDEO_GetCurrentTvMode() == VI_PAL*/ true;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::FrameSkip = 0;
+	MiniCDI::Config::FrameSkip = 1;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
 
 	MonoI cdi;
-	cdi.board = board;
+	cdi.board = CDi::MonoI;
 	cdi.init(appPath + "rom/" + biosName + ".rom");
 	cdi.disc.open(appPath + "discs/" + discName);
 
@@ -202,23 +204,22 @@ static void RUN_CDI(const std::string &biosName, enum CDi::BoardType board, cons
 				cdi.pd.set_button(PointingDevice::Right, held & WPAD_CLASSIC_BUTTON_RIGHT);
 				cdi.pd.set_button(PointingDevice::Down, held & WPAD_CLASSIC_BUTTON_DOWN);
 				cdi.pd.set_button(PointingDevice::Up, held & WPAD_CLASSIC_BUTTON_UP);
-			} else if (data->ir.valid) {
+			} else  {
 				if (down & WPAD_BUTTON_HOME) break;
 				if (down & WPAD_BUTTON_MINUS) cdi.reset();
 
-				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
-				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
-				cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);
-			} else {
-				if (down & WPAD_BUTTON_HOME) break;
-				if (down & WPAD_BUTTON_MINUS) cdi.reset();
-
-				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_1);
-				cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_2);
-				cdi.pd.set_button(PointingDevice::Left, held & WPAD_BUTTON_UP);
-				cdi.pd.set_button(PointingDevice::Right, held & WPAD_BUTTON_DOWN);
-				cdi.pd.set_button(PointingDevice::Down, held & WPAD_BUTTON_LEFT);
-				cdi.pd.set_button(PointingDevice::Up, held & WPAD_BUTTON_RIGHT);
+				if (data->ir.valid) {
+					cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
+					cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
+					cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);
+				} else {
+					cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_1);
+					cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_2);
+					cdi.pd.set_button(PointingDevice::Left, held & WPAD_BUTTON_UP);
+					cdi.pd.set_button(PointingDevice::Right, held & WPAD_BUTTON_DOWN);
+					cdi.pd.set_button(PointingDevice::Down, held & WPAD_BUTTON_LEFT);
+					cdi.pd.set_button(PointingDevice::Up, held & WPAD_BUTTON_RIGHT);
+				}
 			}
 		#else // HW_DOL
 			PAD_ScanPads();
@@ -390,10 +391,7 @@ int main(int argc, char **argv) {
 	if (MINICDI_CLI_MENU()) {
 		printf("\033[2J\033[H"); // Clear screen
 		printf("miniCDi - Philips CD-i emulator\nLoading\n");
-
-		RUN_CDI("cdi220b", CDi::MonoI, selectedDisc); // Mono-I
-		// RUN_CDI("cdi220c", CDi::MonoII, selectedDisc); // Mono-II
-		// RUN_CDI("cdi490a", CDi::MonoIV, selectedDisc); // Mono-IV
+		RUN_CDI(selectedDisc);
 	}
 
 	FAT_Exit();

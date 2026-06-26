@@ -30,8 +30,8 @@ public:
 		// Tick pointing device
 		pd.send();
 
-		const int disc_tick_rate = 15'000'000 / 75;
-		const int line_tick_rate = 15'000'000 / 15625;
+		const int disc_tick_rate = (MiniCDI::Config::PAL ? 15'000'000 : 15'104'900) / 75;
+		const int line_tick_rate = (MiniCDI::Config::PAL ? 15'000'000 : 15'104'900) / 15625;
 
 		int cycles_left_sector = disc_tick_rate;
 		int cycles_left_vpu = line_tick_rate;
@@ -65,8 +65,7 @@ public:
 		MiniCDI::Log("[CDI] reset");
 		cpu.reset();
 		vpu->reset();
-		if (slave != NULL) slave->reset();
-		if (ikat != NULL) ikat->reset();
+		if (slave) slave->reset();
 	}
 	~MonoI();
 

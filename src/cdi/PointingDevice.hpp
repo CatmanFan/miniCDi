@@ -71,7 +71,7 @@ public:
 			}
 
 			if (IO.ikat->PointerInterface.connected) {
-				/*if (changed_Face || changed_DPad)
+				if (changed_Face || changed_DPad)
 				{
 					if (changed_Face) { changed_Face = false; }
 
@@ -96,7 +96,7 @@ public:
 						};
 					}
 					IO.ikat->poll_packet(1);
-				}*/
+				}
 			}
 		}
 	}

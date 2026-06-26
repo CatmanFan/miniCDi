@@ -8,7 +8,7 @@ protected:
 
 	uint32_t nvram;
 	bool nvram_save() {
-		if (MiniCDI::Config::NvramFile.empty() || !memory || this->nvram == 0) {
+		/*if (MiniCDI::Config::NvramFile.empty() || !memory || this->nvram == 0) {
 			return false;
 		}
 
@@ -28,18 +28,18 @@ protected:
 		fwrite(&memory[this->nvram], sizeof(memory[0]), nvram_size, file);
 		fclose(file);
 
-		MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config::NvramFile.c_str());
+		MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config::NvramFile.c_str());*/
 		return true;
 	}
 	void nvram_load() {
-		if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
+		/*if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
 			MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
 			std::ifstream nvrStream(MiniCDI::Config::NvramFile);
 			std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
 			nvrStream.close();
 
 			memcpy(&memory[this->nvram], &nvr[0], nvr.size());
-		}
+		}*/
 	}
 
 	// ONLY the chips shared in common by supported boards (MMC and Mono)

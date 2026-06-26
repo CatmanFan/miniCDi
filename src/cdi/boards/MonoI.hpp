@@ -65,7 +65,8 @@ public:
 		MiniCDI::Log("[CDI] reset");
 		cpu.reset();
 		vpu->reset();
-		if (slave) slave->reset();
+		if (slave != NULL) slave->reset();
+		if (ikat != NULL) ikat->reset();
 	}
 	~MonoI();
 

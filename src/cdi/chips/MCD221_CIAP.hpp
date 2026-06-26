@@ -47,8 +47,8 @@ class CIAP
 
 	void assert_irq()
 	{
-		if (ISR && IER && (((ISR & 0x01) && (IER & 0x01)) || ((ISR & 0x04) && (IER & 0x04))
-						|| ((ISR & 0x08) && (IER & 0x08)) || ((ISR & 0x0800) && (IER & 0x0800))))
+		if (((ISR & 0x01) && (IER & 0x01)) || ((ISR & 0x04) && (IER & 0x04))
+		 || ((ISR & 0x08) && (IER & 0x08)) || ((ISR & 0x0800) && (IER & 0x0800)))
 		{
 			MiniCDI::Log("[CIAP] INT %s", (ISR & 0x01) && (IER & 0x01) ? "data"
 										: (ISR & 0x04) && (IER & 0x04) ? "subcode"
@@ -56,10 +56,6 @@ class CIAP
 										: (ISR & 0x0800) && (IER & 0x0800) ? "qerror"
 										: "unknown");
 			if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, true);
-		}
-		else
-		{
-			if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, false);
 		}
 	}
 
@@ -312,7 +308,7 @@ public:
 					}
 				}
 				break;
-			case 0x3025A8: ACONF = value; break;
+			case 0x3025A8: MiniCDI::Log("[CIAP] ACONF <= %04X", value); ACONF = value; break;
 			case 0x3025AA: MiniCDI::Log("[CIAP] ASTAT <= %04X", value); ASTAT = value; break;
 			case 0x3025C0: MiniCDI::Log("[CIAP] ICR <= v=%d,l=%d", value >> 3 & 0xFF, value & 0x07); ICR = value;
 				if (_68070 != nullptr) _68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value >> 3 & 0xFF;

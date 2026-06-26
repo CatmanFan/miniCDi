@@ -58,17 +58,17 @@ class SDL
 	SDL_Texture* lcd = nullptr;
 
 public:
-	void update(void* display_output, size_t width, void* lcd_output)
+	void update(void* display_output, int width, void* lcd_output)
 	{
 		if (display_output) {
 			// Clear screen
-			SDL_SetRenderDrawColor(this->renderer, 0, 0, 0, 255);
+			SDL_SetRenderDrawColor(this->renderer, 12, 12, 12, 255);
 			SDL_RenderClear(this->renderer);
 
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
 			#ifdef MINICDI_NATIVERES
-			SDL_Rect dest = {width/3, 280/3, width, 280};
+			SDL_Rect dest = {320-((width/2)/2), 100, width/2, 280};
 			SDL_RenderCopy(this->renderer, this->texture, NULL, &dest);
 			#else
 			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
@@ -171,7 +171,7 @@ static void RUN_CDI(const std::string &biosName, enum CDi::BoardType board, cons
 
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
-	MiniCDI::Config::ShowLCD = true;
+	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::FrameSkip = 0;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
@@ -234,16 +234,16 @@ static void RUN_CDI(const std::string &biosName, enum CDi::BoardType board, cons
 			cdi.pd.set_button(PointingDevice::Up, held & PAD_BUTTON_UP);
 		#endif
 
-		static FPS fps;
+		// static FPS fps;
 
 		// Ensure that drawing is done at 30fps or 25fps (native Wii 60fps mode).
 		if (MiniCDI::Config::FrameSkip > 0) {
 			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
 			cdi.run();
-			fps.update(MiniCDI::Config::FrameSkip+1);
+			// fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
 			cdi.run();
-			fps.update();
+			// fps.update();
 		}
 
 		#ifdef MINICDI_DEBUG

@@ -397,13 +397,13 @@ class MCD212
 					// Transparent, draw backdrop.
 					switch (reg.BackdropColor & 0x07) {
 						default: output[outputPixel] = 0x000000ff; break;
-						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
-						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
-						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
-						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
-						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
-						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
-						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
+						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
+						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
+						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
+						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
+						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
+						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
+						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
 					}
 				}
 
@@ -414,21 +414,21 @@ class MCD212
 				{
 					switch (reg.CursorColor & 0x07) {
 						default: output[outputPixel] = 0x000000ff; break;
-						case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x0000FFff : 0x000080ff; break;
-						case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FF00ff : 0x008000ff; break;
-						case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x00FFFFff : 0x008080ff; break;
-						case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF0000ff : 0x800000ff; break;
-						case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF00FFff : 0x800080ff; break;
-						case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF00ff : 0x808000ff; break;
-						case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x808080ff; break;
+						case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
+						case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
+						case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
+						case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
+						case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
+						case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
+						case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
 					}
 				}
 
 				/// Subtract to get the analog output (per Green Book 4.4.1.2).
-				output[outputPixel] = (std::clamp((int)(output[outputPixel] >> 24 & 0x000000FF) - 16, 0, 255) << 24)
+				/*output[outputPixel] = (std::clamp((int)(output[outputPixel] >> 24 & 0x000000FF) - 16, 0, 255) << 24)
 									| (std::clamp((int)(output[outputPixel] >> 16 & 0x000000FF) - 16, 0, 255) << 16)
 									| (std::clamp((int)(output[outputPixel] >> 8 & 0x000000FF) - 16, 0, 255) << 8)
-									| (output[outputPixel] & 0x000000FF);
+									| (output[outputPixel] & 0x000000FF);*/
 
 				if (FG[0].width < 400) {
 					output[outputPixel+1] = output[outputPixel];

@@ -163,16 +163,24 @@ static void FAT_Exit()
 
 static void RUN_CDI(const std::string &discName)
 {
-	const std::string biosName = "cdi490a";
-
+	/*const std::string biosName = "cdi490a";
 	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
 		printf("BIOS not found at %s", (appPath + "rom/" + biosName + ".rom").c_str());
+		sleep(5);
+		return;
+	}*/
+
+	std::string biosName = "";
+	if (access((appPath + "rom/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
+	else if (access((appPath + "rom/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
+	else {
+		printf("BIOS not found at %s.\nPlease supply a system ROM (either CD-i 220/20 or 200/00)", (appPath + "rom/").c_str());
 		sleep(5);
 		return;
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = /*VIDEO_GetCurrentTvMode() == VI_PAL*/ true;
+	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::FrameSkip = 2;
@@ -180,7 +188,7 @@ static void RUN_CDI(const std::string &discName)
 	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
 
 	MonoI cdi;
-	if (!cdi.init(appPath + "rom/" + biosName + ".rom", CDi::MonoIV)) {
+	if (!cdi.init(appPath + "rom/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI)) {
 		printf("Failed to init virtual machine");
 		sleep(5);
 		return;

@@ -229,13 +229,13 @@ public:
 								break;
 
 							/** Pointing Device **/
-							/*case 0xF3:
+							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
 								Ch[c].Out = { 0xA5, 0xF3, 'T', 'T' };
 								PointerInterface.absolute = Ch[c].Out[2] == 'T';
 								poll_packet(c);
-								break;*/
+								break;
 
 							/** Boot Mode **/
 							case 0xF4:

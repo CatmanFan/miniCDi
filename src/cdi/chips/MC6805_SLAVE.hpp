@@ -230,6 +230,7 @@ public:
 						case 0xF4:
 							MiniCDI::Log("[SLAVE] get test plug status (0x%02X)", value);
 							Ch[2].Out = { 0xF4, (uint8_t)(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
+							MiniCDI::Config::TestPlug = false; // unset to allow reboot into normal mode
 							assert_irq();
 							break;
 

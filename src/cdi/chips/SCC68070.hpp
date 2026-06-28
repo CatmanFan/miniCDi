@@ -122,46 +122,47 @@ class SCC68070
 		// TO-DO: Cleaner way of iterating through priority list ?
 		for (InterruptManager.cur_index = 0; InterruptManager.cur_index < 12; InterruptManager.cur_index++) {
 			if (InterruptManager.levels[InterruptManager.cur_index] != 0) {
-				/*MiniCDI::Log("[SCC68070:IPL] IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
-							 InterruptManager.levels[IPL_IN7N],
-							 InterruptManager.levels[IPL_IN5N],
-							 InterruptManager.levels[IPL_IN4N],
-							 InterruptManager.levels[IPL_IN2N],
-							 InterruptManager.levels[IPL_INT1],
-							 InterruptManager.levels[IPL_INT2],
-							 InterruptManager.levels[IPL_TIMER],
-							 InterruptManager.levels[IPL_UART_RX],
-							 InterruptManager.levels[IPL_UART_TX],
-							 InterruptManager.levels[IPL_I2C],
-							 InterruptManager.levels[IPL_DMA1],
-							 InterruptManager.levels[IPL_DMA2]);*/
+				bool onchip = InterruptManager.cur_index != IPL_IN7N
+						   && InterruptManager.cur_index != IPL_IN5N
+						   && InterruptManager.cur_index != IPL_IN4N
+						   && InterruptManager.cur_index != IPL_IN2N;
+				uint8_t new_level = onchip ? InterruptManager.levels[InterruptManager.cur_index] + 32
+										   : InterruptManager.levels[InterruptManager.cur_index];
 
-				uint8_t new_level = InterruptManager.levels[InterruptManager.cur_index];
 				if (InterruptManager.cur_level != new_level) {
-					bool onchip = InterruptManager.cur_index != IPL_IN7N
-							   && InterruptManager.cur_index != IPL_IN5N
-							   && InterruptManager.cur_index != IPL_IN4N
-							   && InterruptManager.cur_index != IPL_IN2N;
-					if (onchip) InterruptManager.levels[InterruptManager.cur_index] = 0;
-
-					/*switch (InterruptManager.cur_index) {
-						default: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d", new_level); break;
-						case IPL_IN7N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN7N)", new_level); break;
-						case IPL_IN5N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN5N)", new_level); break;
-						case IPL_IN4N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN4N)", new_level); break;
-						case IPL_IN2N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN2N)", new_level); break;
-						case IPL_INT1: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(INT1)", new_level); break;
-						case IPL_INT2: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(INT2)", new_level); break;
-						case IPL_TIMER: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(T)", new_level); break;
-						case IPL_UART_RX: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(URX)", new_level); break;
-						case IPL_UART_TX: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(UTX)", new_level); break;
-						case IPL_I2C: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(I2C)", new_level); break;
-						case IPL_DMA1: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA1)", new_level); break;
-						case IPL_DMA2: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA2)", new_level); break;
+					// Log interrupt information
+					/*MiniCDI::Log("[SCC68070:IPL] IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
+								 InterruptManager.levels[IPL_IN7N],
+								 InterruptManager.levels[IPL_IN5N],
+								 InterruptManager.levels[IPL_IN4N],
+								 InterruptManager.levels[IPL_IN2N],
+								 InterruptManager.levels[IPL_INT1],
+								 InterruptManager.levels[IPL_INT2],
+								 InterruptManager.levels[IPL_TIMER],
+								 InterruptManager.levels[IPL_UART_RX],
+								 InterruptManager.levels[IPL_UART_TX],
+								 InterruptManager.levels[IPL_I2C],
+								 InterruptManager.levels[IPL_DMA1],
+								 InterruptManager.levels[IPL_DMA2]);
+					switch (InterruptManager.cur_index) {
+						default: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_IN7N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN7N)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_IN5N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN5N)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_IN4N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN4N)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_IN2N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN2N)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_INT1: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(INT1)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_INT2: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(INT2)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_TIMER: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(T)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_UART_RX: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(URX)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_UART_TX: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(UTX)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_I2C: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(I2C)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_DMA1: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA1)", InterruptManager.levels[InterruptManager.cur_index]); break;
+						case IPL_DMA2: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA2)", InterruptManager.levels[InterruptManager.cur_index]); break;
 					}*/
 
-					m68k_set_irq(onchip ? new_level + 32 : new_level);
+					m68k_set_irq(new_level);
 					InterruptManager.cur_level = new_level;
+					// if (onchip) InterruptManager.levels[InterruptManager.cur_index] = 0;
 					return;
 				}
 			}
@@ -206,51 +207,47 @@ public:
 
 	void interrupt(size_t index, bool assert)
 	{
-		if (assert) {
-			switch (index)
-			{
-				default:
-					InterruptManager.levels[index] = 1;
-					break;
-				case IPL_IN7N:
-					InterruptManager.levels[index] = 7;
-					break;
-				case IPL_IN5N:
-					InterruptManager.levels[index] = 5;
-					break;
-				case IPL_IN4N:
-					InterruptManager.levels[index] = 4;
-					break;
-				case IPL_IN2N:
-					InterruptManager.levels[index] = 2;
-					break;
-				case IPL_INT1:
-					InterruptManager.levels[index] = LIR >> 4 & 7;
-					break;
-				case IPL_INT2:
-					InterruptManager.levels[index] = LIR & 7;
-					break;
-				case IPL_TIMER:
-					InterruptManager.levels[index] = PICR[0] & 7;
-					break;
-				case IPL_UART_RX:
-					InterruptManager.levels[index] = PICR[1] >> 4 & 7;
-					break;
-				case IPL_UART_TX:
-					InterruptManager.levels[index] = PICR[1] & 7;
-					break;
-				case IPL_I2C:
-					InterruptManager.levels[index] = PICR[0] >> 4 & 7;
-					break;
-				case IPL_DMA1:
-					InterruptManager.levels[index] = (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 7 : 0;
-					break;
-				case IPL_DMA2:
-					InterruptManager.levels[index] = (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 7 : 0;
-					break;
-			}
-		} else if (InterruptManager.levels[index]) {
-			InterruptManager.levels[index] = 0;
+		switch (index)
+		{
+			default:
+				InterruptManager.levels[index] = assert;
+				break;
+			case IPL_IN7N:
+				InterruptManager.levels[index] = assert ? 7 : 0;
+				break;
+			case IPL_IN5N:
+				InterruptManager.levels[index] = assert ? 5 : 0;
+				break;
+			case IPL_IN4N:
+				InterruptManager.levels[index] = assert ? 4 : 0;
+				break;
+			case IPL_IN2N:
+				InterruptManager.levels[index] = assert ? 2 : 0;
+				break;
+			case IPL_INT1:
+				InterruptManager.levels[index] = assert ? LIR >> 4 & 0x07 : 0;
+				break;
+			case IPL_INT2:
+				InterruptManager.levels[index] = assert ? LIR & 0x07 : 0;
+				break;
+			case IPL_TIMER:
+				InterruptManager.levels[index] = assert ? PICR[0] & 0x07 : 0;
+				break;
+			case IPL_UART_RX:
+				InterruptManager.levels[index] = assert ? PICR[1] >> 4 & 0x07 : 0;
+				break;
+			case IPL_UART_TX:
+				InterruptManager.levels[index] = assert ? PICR[1] & 0x07 : 0;
+				break;
+			case IPL_I2C:
+				InterruptManager.levels[index] = assert ? PICR[0] >> 4 & 0x07 : 0;
+				break;
+			case IPL_DMA1:
+				InterruptManager.levels[index] = assert && (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0;
+				break;
+			case IPL_DMA2:
+				InterruptManager.levels[index] = assert && (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0;
+				break;
 		}
 
 		check_interrupt_manager();
@@ -337,7 +334,11 @@ public:
 			case 0x80002003: return IAR;
 			case 0x80002005: return ISR;
 			case 0x80002007: return ICR;
+			#ifdef MINICDI_68070_ACCURACY
+			case 0x80002009: return ICCR | 0xE0;
+			#else
 			case 0x80002009: return ICCR;
+			#endif
 
 			/** Timer **/
 			case 0x80002020: return TSR;
@@ -406,7 +407,14 @@ public:
 				break;
 
 			/** I²C **/
+			#ifdef MINICDI_68070_ACCURACY
+			case 0x80002001: IDR = value;
+				ISR |= 0x10; // set PIN bit
+				ISR &= ~0x0C; // reset AL and AAS
+				break;
+			#else
 			case 0x80002001: IDR = value; break;
+			#endif
 			case 0x80002003: IAR = value; break;
 			case 0x80002005: ISR = value; break;
 			case 0x80002007: ICR = value; break;
@@ -433,7 +441,7 @@ public:
 						break;
 				}
 				break;
-			case 0x80002019: UTH = value; USR &= ~(0x08); break;
+			case 0x80002019: UTH = value; USR |= 0x08; break;
 			case 0x8000201B: URH = value; break;
 
 			/** Timer **/
@@ -547,9 +555,8 @@ public:
 		ran += m68k_execute(cycles);
 
 		// Poll timer.
-		cycles = ran;
-		while (cycles >= 96) {
-			cycles -= 96;
+		int timer_ticks = ran/96;
+		while (timer_ticks > 0) {
 			if (T[0] == 0xFFFF) {
 				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
 				TSR |= 0x80; // OV in T0
@@ -557,8 +564,9 @@ public:
 				interrupt(SCC68070::IPL_TIMER, true);
 			} else {
 				T[0]++;
-				interrupt(SCC68070::IPL_TIMER, false);
+				// interrupt(SCC68070::IPL_TIMER, false);
 			}
+			timer_ticks--;
 		}
 
 		return ran;

@@ -180,10 +180,10 @@ static void RUN_CDI(const std::string &discName)
 	}
 
 	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = VIDEO_GetCurrentTvMode() == VI_PAL;
+	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::HasDisc = false;
-	MiniCDI::Config::FrameSkip = 2;
+	MiniCDI::Config::FrameSkip = 1;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
 
@@ -200,7 +200,7 @@ static void RUN_CDI(const std::string &discName)
 	#endif
 
 	#ifdef HW_RVL
-	bool pointer = false;
+	bool pointer = true;
 	#endif
 
 	while (SYS_MainLoop()) {

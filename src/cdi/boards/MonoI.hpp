@@ -23,18 +23,17 @@ private:
 	MCD212* vpu = NULL;
 	PlayerLCD lcd;
 
+	// Scheduler values
+	const int disc_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800)/2 / 75;
+	const int line_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800)/2 / 15625;
+	int cycles_left_sector = disc_tick_rate;
+	int cycles_left_vpu = line_tick_rate;
+
 public:
 	bool init(const std::string &bios, enum BoardType board) override;
 
-	inline void run(bool skip_draw = false) override {
-		pd.send_packet();
-
-		// Scheduler values
-		const int disc_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 75 / 2;
-		const int line_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 15625 / 2;
-		int cycles_left_sector = disc_tick_rate;
-		int cycles_left_vpu = line_tick_rate;
-
+	inline void run(bool skip_draw = false) override
+	{
 		bool VBLANK = false;
 		do {
 			int cycles = std::min({cycles_left_sector, cycles_left_vpu});
@@ -59,8 +58,8 @@ public:
 		cpu.print();
 		MiniCDI::OS9::scan_modules(memory);
 
-		// Microcontroller stuff
-		if (ikat != NULL) ikat->update();
+		// Tick pointing device
+		pd.send_packet();
 	}
 
 	inline void reset() override {

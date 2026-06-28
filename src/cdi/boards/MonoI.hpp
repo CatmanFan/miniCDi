@@ -15,21 +15,23 @@
 class MonoI : public CDi
 {
 private:
-	CDIC* cdic;
-	SLAVE* slave;
-	CIAP* ciap;
-	DRVDSP* dsp;
-	IKAT* ikat;
-	MCD212* vpu;
+	CDIC* cdic = NULL;
+	SLAVE* slave = NULL;
+	CIAP* ciap = NULL;
+	DRVDSP* dsp = NULL;
+	IKAT* ikat = NULL;
+	MCD212* vpu = NULL;
 	PlayerLCD lcd;
 
 public:
 	bool init(const std::string &bios, enum BoardType board) override;
 
 	inline void run(bool skip_draw = false) override {
-		const int disc_tick_rate = (MiniCDI::Config::PAL ? 15'000'000 : 15'104'900) / 75;
-		const int line_tick_rate = (MiniCDI::Config::PAL ? 15'000'000 : 15'104'900) / 15625;
+		pd.send_packet();
 
+		// Scheduler values
+		const int disc_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 75 / 2;
+		const int line_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 15625 / 2;
 		int cycles_left_sector = disc_tick_rate;
 		int cycles_left_vpu = line_tick_rate;
 
@@ -57,8 +59,8 @@ public:
 		cpu.print();
 		MiniCDI::OS9::scan_modules(memory);
 
-		// Tick pointing device
-		pd.send();
+		// Microcontroller stuff
+		if (ikat != NULL) ikat->update();
 	}
 
 	inline void reset() override {

@@ -181,12 +181,13 @@ public:
 	friend class CDIC;
 	friend class CIAP;
 
+	// Priority order of interrupt signal booleans
 	enum IPLSignal {
-		IPL_IN7N = 0,
+		IPL_IN7N = 0, // NMI, should always come first.
 		IPL_IN5N,
-		IPL_IN4N,
-		IPL_IN2N,
-		IPL_INT1,
+		IPL_IN4N, // CD/audio device
+		IPL_IN2N, // microcontroller device
+		IPL_INT1, // VDSC/video (responsible for Ev$Pulse+Ev$All syscalls)
 		IPL_INT2,
 		IPL_TIMER,
 		IPL_UART_RX,

@@ -62,10 +62,10 @@ class CIAP
 	CDiDisc *disc;
 
 	struct {
-		bool active; // Whether is actively reading data
-		int skip_read; // Number of sectors to skip
+		bool reading; // Whether is actively reading data
+		int delayed_sectors; // Number of sectors to delay for reading (e.g. to simulate discspin)
 		int curr_lba; // Taken from TIME register and then incremented
-	} CdReader;
+	} CdStatus;
 
 	// struct {
 	// } DAC;
@@ -74,31 +74,32 @@ class CIAP
 	{
 		if (disc->Sector.Mode == 2)
 		{
+			// Use order from MAME
+			if (disc->Sector.FileNum[1] != (FILE & 0xFF)) {
+				MiniCDI::Log("[CIAP] MODE2 skip: FILE %02X != %02X", FILE & 0xFF, disc->Sector.FileNum[1]);
+				return false;
+			}
+
 			if ((disc->Sector.Submode[1] & 0b10000000) // EOF
 			 || (disc->Sector.Submode[1] & 0b00000001) // EOR
 			 || (disc->Sector.Submode[1] & 0b00010000) // Trigger
 			 ) {
 				if (disc->Sector.Submode[1] & 0b10000000) {
 					MiniCDI::Log("[CIAP] MODE2: reached EOF");
-					CdReader.active = false;
+					CdStatus.reading = false;
 				}
 				MiniCDI::Log("[CIAP] MODE2 autoread");
 				return true;
 			}
 
-			if (disc->Sector.FileNum[1] != FILE) {
-				MiniCDI::Log("[CIAP] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector.FileNum[1]);
+			if (!(disc->Sector.Submode[1] & 0b00001110)) {
+				// Either message or empty sector (Green Book II.4.9.1)
+				MiniCDI::Log("[CIAP] MODE2 skip: invalid sector");
 				return false;
 			}
 
 			if (!(TCM1 & (1<<disc->Sector.ChNum[1]))) {
 				MiniCDI::Log("[CIAP] MODE2 skip: TCM1 %08X is not AND (1 << %d)", TCM1, disc->Sector.ChNum[1]);
-				return false;
-			}
-
-			if (!(disc->Sector.Submode[1] & 0b00001110)) {
-				// Either message or empty sector (Green Book II.4.9.1)
-				MiniCDI::Log("[CIAP] MODE2 skip: invalid sector");
 				return false;
 			}
 		}
@@ -108,74 +109,58 @@ class CIAP
 
 	void disc_process_sector()
 	{
-		if (CdReader.active)
+		if (!CdStatus.reading)
+			return;
+
+		if (CdStatus.delayed_sectors > 0) {
+			CdStatus.delayed_sectors--;
+			return;
+		}
+
+		// Skip if MODE2 not satisfied
+		if (disc_check_filter())
 		{
-			if (CdReader.skip_read > 0) {
-				CdReader.skip_read--;
-				return;
-			}
+			MiniCDI::Log("[CIAP] read sector %02X:%02X:%02X", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 
-			// Additional MODE2 processing
-			if (disc_check_filter())
-			{
-				MiniCDI::Log("[CIAP] read sector %02X:%02X:%02X", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			// Select target DATA buffer
+			uint32_t targetAddr = 0x300000 + ((BMAN & 0b000100) ? 0x1BC2 : 0x1200);
 
-				// Switch DBUF index and reset audio
-				uint32_t targetAddr = 0x301200;
+			// Copy sector header as normal
+			memory[targetAddr++] = disc->Sector.Min;
+			memory[targetAddr++] = disc->Sector.Sec;
+			memory[targetAddr++] = disc->Sector.Frame;
+			memory[targetAddr++] = disc->Sector.Mode;
+			memory[targetAddr++] = disc->Sector.FileNum[0];
+			memory[targetAddr++] = disc->Sector.ChNum[0];
+			memory[targetAddr++] = disc->Sector.Submode[0];
+			memory[targetAddr++] = disc->Sector.CodingInfo[0];
 
-				// Copy sector header as normal
+			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
+			// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
+			/// TO-DO
 
-				memory[targetAddr++] = disc->Sector.Min;
-				memory[targetAddr++] = disc->Sector.Sec;
-				memory[targetAddr++] = disc->Sector.Frame;
-				memory[targetAddr++] = disc->Sector.Mode;
-				memory[targetAddr++] = disc->Sector.FileNum[0];
-				memory[targetAddr++] = disc->Sector.ChNum[0];
-				memory[targetAddr++] = disc->Sector.Submode[0];
-				memory[targetAddr++] = disc->Sector.CodingInfo[0];
+			memory[targetAddr++] = disc->Sector.FileNum[1];
+			memory[targetAddr++] = disc->Sector.ChNum[1];
+			memory[targetAddr++] = disc->Sector.Submode[1];
+			memory[targetAddr++] = disc->Sector.CodingInfo[1];
+			memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
 
-				// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
-				// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
+			// Select DATA buffer bit
+			if (BMAN & 0b001100) BMAN ^= 0b001100;
+			else BMAN |= 0b000100;
 
-				bool use_adpcm = disc->Sector.Mode == 2 && (disc->Sector.Submode[1] & 0x04) && (TACS & (1 << disc->Sector.ChNum[1]));
+			ISR |= 0b0001; // Mainchannel DATA buffer is full
+			assert_irq();
+		}
 
-				if (use_adpcm) {
-				}
-
-				memory[targetAddr++] = disc->Sector.FileNum[1];
-				memory[targetAddr++] = disc->Sector.ChNum[1];
-				memory[targetAddr++] = disc->Sector.Submode[1];
-				memory[targetAddr++] = disc->Sector.CodingInfo[1];
-
-				memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
-				targetAddr += 2328;
-
-				targetAddr = 0x301B24;
-				memory[targetAddr++] = 0x41; // Control
-				memory[targetAddr++] = 0x01; // Track
-				memory[targetAddr++] = 0x01; // Index
-				memory[targetAddr++] = disc->Sector.Min;
-				memory[targetAddr++] = disc->Sector.Sec;
-				memory[targetAddr++] = disc->Sector.Frame;
-				memory[targetAddr++] = 0x00;
-				memory[targetAddr++] = disc->Sector.Min;
-				memory[targetAddr++] = disc->Sector.Sec;
-				memory[targetAddr++] = disc->Sector.Frame;
-				memory[targetAddr++] = 0xFF; // CRC
-				memory[targetAddr++] = 0xFF; // CRC
-
-				ISR |= 0x0001;
-				assert_irq();
-			}
-
-			// Continue to next sector
-			if (CdReader.active)
-				disc->read_sector(CdReader.curr_lba++);
+		if (CdStatus.reading) {
+			CdStatus.curr_lba++;
+			disc->read_sector(CdStatus.curr_lba);
 		}
 	}
 
 public:
-	CIAP(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), disc(disc), CdReader({0})
+	CIAP(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), disc(disc), CdStatus({0})
 	{
 	}
 
@@ -186,7 +171,8 @@ public:
 
 	void disc_set_lba(uint8_t min, uint8_t sec, uint8_t frame)
 	{
-		CdReader.curr_lba = disc->get_lba_from_time((min << 24) | (sec << 16) | (frame << 8));
+		CdStatus.curr_lba = disc->get_lba_from_time((min << 24) | (sec << 16) | (frame << 8));
+		MiniCDI::Log("[CIAP] load LBA <= %02X:%02X:%02X", min, sec, frame);
 	}
 
 	uint16_t read16(uint32_t addr)
@@ -252,7 +238,7 @@ public:
 			case 0x30258E: MiniCDI::Log("[CIAP] ACM1 <= %04X", value); ACM1 = value; break;
 			case 0x302590: MiniCDI::Log("[CIAP] ACM2 <= %04X", value); ACM2 = value; break;
 			case 0x302592: MiniCDI::Log("[CIAP] FILE <= %04X", value); FILE = value; break;
-			case 0x302594: MiniCDI::Log("[CIAP] BMAN <= %04X", value); BMAN = value; break;
+			case 0x302594: MiniCDI::Log("[CIAP] BMAN <= %04X", value); BMAN ^= value; break;
 			case 0x302596: {
 					CCR = value;
 					switch (CCR)
@@ -262,6 +248,10 @@ public:
 							break;
 						case 0x0100:
 							MiniCDI::Log("[CIAP] RESET (0x%04X)", value);
+
+							// Stop reading
+							CdStatus.reading = false;
+							CdStatus.delayed_sectors = 6;
 							break;
 						case 0x3000:
 							MiniCDI::Log("[CIAP] PREPA (0x%04X)", value);
@@ -274,9 +264,9 @@ public:
 							MiniCDI::Log("[CIAP] START read (0x%04X)", value);
 
 							// Start reading
-							CdReader.active = true;
-							CdReader.skip_read = 6;
-							disc->read_sector(CdReader.curr_lba++);
+							disc->read_sector(CdStatus.curr_lba);
+							CdStatus.reading = true;
+							CdStatus.delayed_sectors = 6;
 							break;
 					}
 				}

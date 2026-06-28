@@ -18,6 +18,7 @@ class IKAT
 		std::deque<uint8_t> In;
 		std::deque<uint8_t> Out;
 		size_t InSize;
+		size_t Delay;
 	} Ch[4];
 
 	uint8_t ISR;
@@ -53,15 +54,42 @@ public:
 		reset();
 	}
 
-	void poll_packet(size_t c)
+	void poll_packet(size_t c, size_t delay = 0)
 	{
+		if (delay > 0)
+		{
+			Ch[c].Delay = delay;
+			return;
+		}
+
 		Ch[c].SR &= ~0x10; // REMTY OFF
 
 		// set corresponding Rx bit
-		// uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
-		uint8_t bit = 0x02 << (c*2);
+		uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
 		ISR |= bit;
 		check_for_int();
+		MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
+	}
+
+	void update()
+	{
+		for (size_t c = 0; c < 4; c++)
+		{
+			if (Ch[c].Delay != 0)
+			{
+				Ch[c].Delay--;
+				if (Ch[c].Delay == 0)
+				{
+					Ch[c].SR &= ~0x10; // REMTY OFF
+
+					// set corresponding Rx bit
+					uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
+					ISR |= bit;
+					check_for_int();
+					MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
+				}
+			}
+		}
 	}
 
 	void reset()
@@ -84,6 +112,9 @@ public:
 				{
 					size_t c = (addr - 0x310009) / 2;
 
+					// deassert IRQ
+					_68070->interrupt(SCC68070::IPL_IN2N, false);
+
 					if (Ch[c].Out.size() > 0)
 					{
 						Ch[c].DR = Ch[c].Out[0];
@@ -95,14 +126,10 @@ public:
 					// imitate CeDImu behaviour
 					if (Ch[c].Out.size() == 0)
 					{
-						// uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
-						uint8_t bit = 0x02 << (c*2);
+						uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
 						ISR &= ~bit;
 						Ch[c].SR |= 0x10; // REMTY ON
 					}
-
-					// deassert IRQ
-					_68070->interrupt(SCC68070::IPL_IN2N, false);
 
 					MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;
@@ -141,13 +168,13 @@ public:
 			case 0x310019:
 				MiniCDI::Log("[IKAT] ISR <= %02X", value);
 				ISR = value;
-				check_for_int();
+				//check_for_int();
 				break;
 
 			case 0x31001B:
-				MiniCDI::Log("[IKAT] IMR <= %02X", value);
+				//MiniCDI::Log("[IKAT] IMR <= %02X", value);
 				IMR = value;
-				check_for_int();
+				//check_for_int();
 				break;
 
 			case 0x310001:
@@ -157,7 +184,7 @@ public:
 			{
 				size_t c = (addr - 0x310001) / 2;
 				Ch[c].In.push_back(value);
-				//MiniCDI::Log("[IKAT] %sDR <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
+				MiniCDI::Log("[IKAT] %sDR <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 
 				switch (c)
 				{
@@ -167,7 +194,7 @@ public:
 						{
 							/** Set Front Panel LCD **/
 							case 0x9A:
-								//MiniCDI::Log("[IKAT] set LCD (0x%02X)", value);
+								MiniCDI::Log("[IKAT] set LCD (0x%02X)", value);
 								Ch[1].InSize = 6; // redirects LCD display input to BDR
 								break;
 						}
@@ -185,7 +212,7 @@ public:
 											Ch[c].In.clear();
 											Ch[c].InSize = 0;
 										}
-										return;
+										break;
 								}
 								break;
 						}
@@ -201,21 +228,14 @@ public:
 								_68070->reset();
 								break;
 
-							/** Copyright Info **/
-							/*case 0xF0:
-								MiniCDI::Log("[IKAT] report copyright (0x%02X)", value);
-								Ch[c].Out = { 0xA5, 0xF0, 0x7F };
-								poll_packet(c);
-								break;*/
-
 							/** Pointing Device **/
-							case 0xF3:
+							/*case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
 								Ch[c].Out = { 0xA5, 0xF3, 'T', 'T' };
 								PointerInterface.absolute = Ch[c].Out[2] == 'T';
 								poll_packet(c);
-								break;
+								break;*/
 
 							/** Boot Mode **/
 							case 0xF4:
@@ -245,27 +265,32 @@ public:
 											MiniCDI::Log("[IKAT] report disc status (0x%02X)", Ch[c].In[0]);
 											if (MiniCDI::Config::HasDisc) Ch[c].Out = { 0xB0, 0x00, 0x02, 0x10 }; // cdifan: $00060E for SLAVE 5.0 (CD-i rev 450), $000210 for IKAT 6.x-9.x
 											else Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
+											poll_packet(c, 2);
+											break;
+
+										case 0xB1:
+											MiniCDI::Log("[IKAT] report disc base (0x%02X)", Ch[c].In[0]);
+											Ch[c].Out = { 0xB1, 0x00, 0x02, 0x00 }; // imitate cdiemu
 											poll_packet(c);
 											break;
 
 										case 0xB2:
 											MiniCDI::Log("[IKAT] report disc select (0x%02X)", Ch[c].In[0]);
 											Ch[c].Out = { 0xB2, 0x20, 0x00, 0x10 }; // imitate cdiemu
-											poll_packet(c);
+											poll_packet(c, 2);
 											break;
 
 										case 0xE0:
-											MiniCDI::Log("[SLAVE] start CD-DA playback (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
+											MiniCDI::Log("[IKAT] init CIAP CD-DA playback (0x%02X)", Ch[c].In[0]);
 											break;
 
 										case 0xE1:
-											MiniCDI::Log("[SLAVE] start CD sector read (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
+											MiniCDI::Log("[IKAT] init CIAP sector read (0x%02X)", Ch[c].In[0]);
 											if (ciap) { ciap->disc_set_lba(Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]); }
 											break;
 									}
 									Ch[c].In.clear();
 									Ch[c].InSize = 0;
-									return;
 								}
 								break;
 

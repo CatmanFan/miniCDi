@@ -10,7 +10,7 @@ class PointingDevice
 	static constexpr int POINTER_ADVANCE = 1;
 
 	bool buttons[6];
-	bool poll; // Whether to send a packet
+	bool has_packet = false;
 	int x = 0, y = 0;
 
 public:
@@ -26,13 +26,16 @@ public:
 
 	struct
 	{
-		SLAVE* slave;
-		IKAT* ikat;
+		SLAVE* slave = NULL;
+		IKAT* ikat = NULL;
 	} IO;
 
-	void send()
+	void send_packet()
 	{
-		if (IO.slave) {
+		if (!has_packet) return;
+
+		if (IO.slave != NULL)
+		{
 			if (IO.slave->PointerInterface.posChanged) {
 				x = IO.slave->PointerInterface.x;
 				// y = IO.slave->PointerInterface.y;
@@ -47,7 +50,7 @@ public:
 					IO.slave->assert_irq();
 				}
 
-				else if (poll)
+				else
 				{
 					// Convert to SLAVE response
 					IO.slave->Ch[0].Out =
@@ -58,59 +61,57 @@ public:
 						(uint8_t)(y & 0x7f)
 					};
 					IO.slave->assert_irq();
-					poll = false;
 				}
 			}
 		}
 
-		else if (IO.ikat) {
+		else if (IO.ikat != NULL)
+		{
 			if (IO.ikat->PointerInterface.posChanged) {
 				x = IO.ikat->PointerInterface.x;
 				// y = IO.ikat->PointerInterface.y;
 				IO.ikat->PointerInterface.posChanged = false;
 			}
 
-			if (IO.ikat->PointerInterface.connected) {
-				if (poll)
+			if (IO.ikat->PointerInterface.connected)
+			{
+				/*// Convert to IKAT response
+
+				// Absolute coordinates (absolute device)
+				if (IO.ikat->PointerInterface.absolute || x >= 128 || y >= 128)
 				{
-					// Convert to IKAT response
+					MAX_POINTER_X = 16;
+					MAX_POINTER_Y = 18;
 
-					// Absolute coordinates (absolute device)
-					if (IO.ikat->PointerInterface.absolute || x >= 128 || y >= 128)
+					IO.ikat->Ch[1].Out =
 					{
-						MAX_POINTER_X = 16;
-						MAX_POINTER_Y = 18;
-
-						IO.ikat->Ch[1].Out =
-						{
-							(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b1111000000 >> 6)),
-							(uint8_t)((poll << 4) | (y & 0b1111000000 >> 6)),
-							(uint8_t)(x & 0b0000111111),
-							(uint8_t)(0x80 | (y & 0b0000111111)),
-						};
-						IO.ikat->poll_packet(1);
-					}
-
-					// Relative coordinates (relative or maneuvering device)
-					else if (!IO.ikat->PointerInterface.absolute)
-					{
-						MAX_POINTER_X = MAX_POINTER_Y = 128;
-						MIN_POINTER_X = MIN_POINTER_Y = -128;
-
-						IO.ikat->Ch[1].Out =
-						{
-							(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 4) | (y & 0b11000000 >> 6)),
-							(uint8_t)(x & 0b00111111),
-							(uint8_t)(y & 0b00111111),
-							0,
-						};
-						IO.ikat->poll_packet(1);
-					}
-
-					poll = false;
+						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b1111000000 >> 6)),
+						(uint8_t)((1 << 4) | (y & 0b1111000000 >> 6)),
+						(uint8_t)(x & 0b0000111111),
+						(uint8_t)(0x80 | (y & 0b0000111111)),
+					};
+					IO.ikat->poll_packet(1);
 				}
+
+				// Relative coordinates (relative or maneuvering device)
+				else if (!IO.ikat->PointerInterface.absolute)
+				{
+					MAX_POINTER_X = MAX_POINTER_Y = 128;
+					MIN_POINTER_X = MIN_POINTER_Y = -128;
+
+					IO.ikat->Ch[1].Out =
+					{
+						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 4) | (y & 0b11000000 >> 6)),
+						(uint8_t)(x & 0b00111111),
+						(uint8_t)(y & 0b00111111),
+						0,
+					};
+					IO.ikat->poll_packet(1);
+				}*/
 			}
 		}
+
+		has_packet = false;
 	}
 
 	void set_button(enum Buttons b, bool value)
@@ -120,7 +121,6 @@ public:
 
 		if (b == Left || b == Right || b == Down || b == Up) {
 			this->buttons[(int)b] = value;
-			poll = true;
 
 			if (IO.ikat != NULL && !IO.ikat->PointerInterface.absolute)
 			{
@@ -144,14 +144,18 @@ public:
 			}
 
 			//MiniCDI::Log("[PD] x=%d,y=%d", x, y);
-		} else {
-			poll = this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up];
 		}
+
+		has_packet = this->buttons[Left]
+				  || this->buttons[Right]
+				  || this->buttons[Down]
+				  || this->buttons[Up];
 
 		if ((b == Button1 || b == Button2) && this->buttons[(int)b] != value) {
 			this->buttons[(int)b] = value;
-			poll = true;
+			has_packet = true;
 		}
+
 	}
 
 	void set_coord(float x, float y)
@@ -160,7 +164,7 @@ public:
 
 		this->x = (int)(x*(float)MAX_POINTER_X) - MIN_POINTER_X;
 		this->y = (int)(y*(float)MAX_POINTER_Y) - MIN_POINTER_Y;
-		poll = true;
+		has_packet = true;
 	}
 };
 

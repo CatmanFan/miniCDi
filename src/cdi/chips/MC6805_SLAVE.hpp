@@ -237,8 +237,7 @@ public:
 						case 0xF6:
 							MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
 							Ch[2].Out = { 0xF6, (uint8_t)(MiniCDI::Config::PAL ? 0x02 : 0x01) };
-							// per MAME: this does not seem to trigger interrupt signal.
-							// assert_irq();
+							assert_irq(); // interrupt not required on MAME ?
 							break;
 
 						/** Enable Polling **/

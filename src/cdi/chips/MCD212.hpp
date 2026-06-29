@@ -936,9 +936,9 @@ public:
 				return (PA << 5) | (DA << 7);
 			case 0x4FFFE0:
 			case 0x4FFFE1: // CSR2R
-				uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
+				const uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
 				BE[0] = IT[1] = IT[0] = 0;
-				_68070->interrupt(SCC68070::IPL_INT1, false);
+				if (value & 0b0110) _68070->interrupt(SCC68070::IPL_INT1, false);
 				return value;
 		}
 	}
@@ -952,9 +952,9 @@ public:
 			case 0x4FFFF0: // CSR1R
 				return 0xFF00 | (PA << 5) | (DA << 7);
 			case 0x4FFFE0: // CSR2R
-				uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
+				const uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
 				BE[0] = IT[1] = IT[0] = 0;
-				_68070->interrupt(SCC68070::IPL_INT1, false);
+				if (value & 0b0110) _68070->interrupt(SCC68070::IPL_INT1, false);
 				return 0xFF00 | value;
 		}
 	}
@@ -971,11 +971,9 @@ public:
 				DD2 = value >> 8 & 0b01u;
 				DD1 = value >> 9 & 0b01u;
 				DI[0] = value >> 15 & 0b01u;
-				if (DI[0] && IT[0]) _68070->interrupt(SCC68070::IPL_INT1, false);
 				break;
 			case 0x4FFFE0: // CSR2W
 				DI[1] = value >> 15 & 0b01u;
-				if (DI[1] && IT[1]) _68070->interrupt(SCC68070::IPL_INT1, false);
 				break;
 			case 0x4FFFF2: // DCR1
 				IC[0] = value >> 8 & 0b01u;

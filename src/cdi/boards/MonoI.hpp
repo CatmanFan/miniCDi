@@ -24,9 +24,9 @@ private:
 	PlayerLCD lcd;
 
 	// Scheduler values
-	const int disc_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800)/2 / 75;
-	const int line_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800)/2 / 15625;
-	int cycles_left_sector = disc_tick_rate;
+	const int sector_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 75;
+	const int line_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 15625;
+	int cycles_left_sector = sector_tick_rate;
 	int cycles_left_vpu = line_tick_rate;
 
 public:
@@ -41,7 +41,7 @@ public:
 
 			cycles_left_sector -= cycles;
 			if (cycles_left_sector <= 0) {
-				cycles_left_sector += disc_tick_rate;
+				cycles_left_sector += sector_tick_rate;
 				if (cdic != NULL) cdic->tick();
 				else if (dsp != NULL) dsp->tick();
 				else if (ciap != NULL) ciap->tick();

@@ -184,7 +184,7 @@ public:
 
 			case 0x302584: return IER;
 			case 0x302586: {
-				uint16_t value = ISR;
+				const uint16_t value = ISR;
 				ISR = 0;
 				if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, false);
 				return value;

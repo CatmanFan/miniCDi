@@ -201,7 +201,7 @@ public:
 			case 0x303FF4: case 0x303FF5:
 			{
 				MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
-				uint16_t value = ABUF;
+				const uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
 					assert_irq();
@@ -212,7 +212,7 @@ public:
 			case 0x303FF6: case 0x303FF7:
 			{
 				MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
-				uint16_t value = XBUF;
+				const uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
 					assert_irq();

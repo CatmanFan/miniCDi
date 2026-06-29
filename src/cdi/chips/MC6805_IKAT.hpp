@@ -30,8 +30,13 @@ class IKAT
 		if (((ISR & 0x02) && (IMR & 0x02))
 		 || ((ISR & 0x08) && (IMR & 0x08))
 		 || ((ISR & 0x20) && (IMR & 0x20))
-		 || ((ISR & 0x80) && (IMR & 0x80)))
+		 || ((ISR & 0x80) && (IMR & 0x80))) {
 			_68070->interrupt(SCC68070::IPL_IN2N, true);
+			return;
+		}
+		if (ISR == 0) {
+			_68070->interrupt(SCC68070::IPL_IN2N, false);
+		}
 	}
 
 	struct
@@ -131,7 +136,7 @@ public:
 						Ch[c].SR |= 0x10; // REMTY ON
 					}
 
-					MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
+					//MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;
 				}
 				break;
@@ -184,7 +189,7 @@ public:
 			{
 				size_t c = (addr - 0x310001) / 2;
 				Ch[c].In.push_back(value);
-				MiniCDI::Log("[IKAT] %sDR <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
+				//MiniCDI::Log("[IKAT] %sDR <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 
 				switch (c)
 				{

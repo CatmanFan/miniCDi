@@ -259,13 +259,13 @@ public:
 
 	void load_rom(std::vector<char> &rom)
 	{
-		if (rom[4] != 0x00) { // byteswap
+		// (Dirty) byteswap method
+		if (rom[4] != 0x00) {
 			for (size_t i = 0; i < rom.size(); i+=2) {
 				std::swap(rom[i], rom[i+1]);
 			}
 		}
 
-		// memcpy(&memory[0], &rom[0], 0x8); // contains initial SSP and PC
 		memcpy(&memory[0x400000], &rom[0], 512*1024*sizeof(char));
 	}
 
@@ -299,20 +299,26 @@ public:
 
 	void reset()
 	{
-		fc = 0;
-		InterruptManager = {0,0,{0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,0,0}};
-		reset_internal();
-
 		// Clear DRAM banks
 		memset(&memory[0x000000], 0, 512*1024);
 		memset(&memory[0x200000], 0, 512*1024);
 
+		// Copy ROM's starting SSP and PC to DRAM
+		memcpy(&memory[0], &memory[0x400000], 8*sizeof(char));
+
+		// Reset internal peripherals
+		fc = 0;
+		InterruptManager = {0};
+		reset_internal();
+
 		// Reset Musashi processor
 		m68k_pulse_reset();
 		m68k_set_irq(0);
+
+		// set A0-A7, D0-D6 to 0xffffffff (cdiemu)
 		for (int i = 0; i < 15; i++) { m68k_set_reg((m68k_register_t)i, 0xffffffff); }
-		m68k_set_reg(M68K_REG_A7, (memory[0x400000] << 24) | (memory[0x400001] << 16) | (memory[0x400002] << 8) | memory[0x400003]);
-		m68k_set_reg(M68K_REG_PC, (memory[0x400004] << 24) | (memory[0x400005] << 16) | (memory[0x400006] << 8) | memory[0x400007]);
+		/*m68k_set_reg(M68K_REG_A7, (memory[0x400000] << 24) | (memory[0x400001] << 16) | (memory[0x400002] << 8) | memory[0x400003]);
+		m68k_set_reg(M68K_REG_PC, (memory[0x400004] << 24) | (memory[0x400005] << 16) | (memory[0x400006] << 8) | memory[0x400007]);*/
 	}
 
 	uint8_t read8(uint32_t addr)
@@ -402,8 +408,8 @@ public:
 		{
 			/** LIR **/
 			case 0x80001001: LIR = value;
-				// if (LIR & 0x80) LIR &= 0x0F;
-				// if (LIR & 0x08) LIR &= 0xF0;
+				// if (LIR & 0x80) { LIR &= 0x0F; check_interrupt_manager(); }
+				// if (LIR & 0x08) { LIR &= 0xF0; check_interrupt_manager(); }
 				break;
 
 			/** I²C **/
@@ -441,7 +447,9 @@ public:
 						break;
 				}
 				break;
-			case 0x80002019: UTH = value; USR |= 0x08; break;
+			case 0x80002019: UTH = value;
+				USR &= ~0x08; // unset TXE
+				break;
 			case 0x8000201B: URH = value; break;
 
 			/** Timer **/
@@ -458,12 +466,12 @@ public:
 
 			/** PICR **/
 			case 0x80002045: PICR[0] = value;
-				if (PICR[0] & 0x80) PICR[0] &= 0x0F;
-				if (PICR[0] & 0x08) PICR[0] &= 0xF0;
+				if (PICR[0] & 0x80) { PICR[0] &= 0x0F; check_interrupt_manager(); }
+				if (PICR[0] & 0x08) { PICR[0] &= 0xF0; check_interrupt_manager(); }
 				break;
 			case 0x80002047: PICR[1] = value;
-				if (PICR[1] & 0x80) PICR[1] &= 0x0F;
-				if (PICR[1] & 0x08) PICR[1] &= 0xF0;
+				if (PICR[1] & 0x80) { PICR[1] &= 0x0F; check_interrupt_manager(); }
+				if (PICR[1] & 0x08) { PICR[1] &= 0xF0; check_interrupt_manager(); }
 				break;
 
 			/** DMA (ch1) **/

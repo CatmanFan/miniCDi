@@ -292,7 +292,7 @@ public:
 			case 0x303FFC: case 0x303FFD:
 				MiniCDI::Log("[CDIC] IVEC <= %04X", value);
 				IVEC = value;
-				_68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value & 0x00FF;
+				_68070->Ipl.vectors[SCC68070::IPL_IN4N] = value & 0x00FF;
 				break;
 
 			case 0x303FFE: case 0x303FFF:

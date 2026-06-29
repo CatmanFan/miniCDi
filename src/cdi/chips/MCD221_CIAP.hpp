@@ -301,7 +301,7 @@ public:
 			case 0x3025A8: MiniCDI::Log("[CIAP] ACONF <= %04X", value); ACONF = value; break;
 			case 0x3025AA: MiniCDI::Log("[CIAP] ASTAT <= %04X", value); ASTAT = value; break;
 			case 0x3025C0: MiniCDI::Log("[CIAP] ICR <= v=%d,l=%d", value >> 3 & 0xFF, value & 0x07); ICR = value;
-				if (_68070 != nullptr) _68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value >> 3 & 0xFF;
+				if (_68070 != nullptr) _68070->Ipl.vectors[SCC68070::IPL_IN4N] = value >> 3 & 0xFF;
 				break;
 			case 0x3025C2: MiniCDI::Log("[CIAP] DMACTL <= %04X", value); DMACTL = value;
 				// if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF));

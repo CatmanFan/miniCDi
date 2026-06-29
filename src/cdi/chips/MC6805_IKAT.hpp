@@ -124,17 +124,17 @@ public:
 					{
 						Ch[c].DR = Ch[c].Out[0];
 						Ch[c].Out.pop_front();
+
+						// imitate CeDImu behaviour
+						if (Ch[c].Out.size() == 0)
+						{
+							uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
+							ISR &= ~bit;
+							Ch[c].SR |= 0x10; // REMTY ON
+						}
 					}
 					else
 						Ch[c].DR = 0xFF;
-
-					// imitate CeDImu behaviour
-					if (Ch[c].Out.size() == 0)
-					{
-						uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
-						ISR &= ~bit;
-						Ch[c].SR |= 0x10; // REMTY ON
-					}
 
 					//MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;

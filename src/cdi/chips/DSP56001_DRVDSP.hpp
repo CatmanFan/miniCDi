@@ -147,7 +147,7 @@ public:
 				MiniCDI::Log("[DSP] ISR <= %02X", value);
 				break;
 			case 0x300007: IVR = value;
-				_68070->InterruptManager.vectors[SCC68070::IPL_IN4N] = value;
+				_68070->Ipl.vectors[SCC68070::IPL_IN4N] = value;
 				MiniCDI::Log("[DSP] IVR <= %02X", value);
 				break;
 			case 0x30000B: RTX &= 0x0000FFFF; RTX |= value << 16;

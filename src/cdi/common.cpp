@@ -135,8 +135,8 @@ static int MiniCDI_int_ack_handler(int int_level)
 	if (MiniCDI::Player.scc68070)
 	{
 		//MiniCDI::Log("[SCC68070:IPL] acknowledge lvl=%X", int_level);
-		if (MiniCDI::Player.scc68070->InterruptManager.vectors[MiniCDI::Player.scc68070->InterruptManager.cur_index])
-			return MiniCDI::Player.scc68070->InterruptManager.vectors[MiniCDI::Player.scc68070->InterruptManager.cur_index];
+		if (MiniCDI::Player.scc68070->Ipl.vectors[MiniCDI::Player.scc68070->Ipl.cur_index])
+			return MiniCDI::Player.scc68070->Ipl.vectors[MiniCDI::Player.scc68070->Ipl.cur_index];
 	}
 
 	return M68K_INT_ACK_AUTOVECTOR;

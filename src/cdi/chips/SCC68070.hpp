@@ -117,62 +117,56 @@ class SCC68070
 	uint8_t ICR;
 	uint8_t ICCR;
 
-	void check_interrupt_manager()
+	void update_ipl()
 	{
-		// TO-DO: Cleaner way of iterating through priority list ?
-		for (InterruptManager.cur_index = 0; InterruptManager.cur_index < 12; InterruptManager.cur_index++) {
-			if (InterruptManager.levels[InterruptManager.cur_index] != 0) {
-				bool onchip = InterruptManager.cur_index != IPL_IN7N
-						   && InterruptManager.cur_index != IPL_IN5N
-						   && InterruptManager.cur_index != IPL_IN4N
-						   && InterruptManager.cur_index != IPL_IN2N;
-				uint8_t new_level = onchip ? InterruptManager.levels[InterruptManager.cur_index] + 32
-										   : InterruptManager.levels[InterruptManager.cur_index];
-
-				if (InterruptManager.cur_level != new_level) {
-					// Log interrupt information
-					/*MiniCDI::Log("[SCC68070:IPL] IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
-								 InterruptManager.levels[IPL_IN7N],
-								 InterruptManager.levels[IPL_IN5N],
-								 InterruptManager.levels[IPL_IN4N],
-								 InterruptManager.levels[IPL_IN2N],
-								 InterruptManager.levels[IPL_INT1],
-								 InterruptManager.levels[IPL_INT2],
-								 InterruptManager.levels[IPL_TIMER],
-								 InterruptManager.levels[IPL_UART_RX],
-								 InterruptManager.levels[IPL_UART_TX],
-								 InterruptManager.levels[IPL_I2C],
-								 InterruptManager.levels[IPL_DMA1],
-								 InterruptManager.levels[IPL_DMA2]);
-					switch (InterruptManager.cur_index) {
-						default: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_IN7N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN7N)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_IN5N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN5N)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_IN4N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN4N)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_IN2N: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(IN2N)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_INT1: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(INT1)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_INT2: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(INT2)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_TIMER: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(T)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_UART_RX: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(URX)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_UART_TX: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(UTX)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_I2C: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(I2C)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_DMA1: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA1)", InterruptManager.levels[InterruptManager.cur_index]); break;
-						case IPL_DMA2: MiniCDI::Log("[SCC68070:IPL] IRQ <= %d(DMA2)", InterruptManager.levels[InterruptManager.cur_index]); break;
-					}*/
-
-					m68k_set_irq(new_level);
-					InterruptManager.cur_level = new_level;
-					// if (onchip) InterruptManager.levels[InterruptManager.cur_index] = 0;
-					return;
-				}
+		Ipl.nxt_index = 0;
+		Ipl.nxt_irq = 0;
+		for (int i = 11; i >= 0; i--) {
+			if (Ipl.levels[i] >= Ipl.nxt_irq) {
+				Ipl.nxt_index = i;
+				Ipl.nxt_irq = Ipl.levels[i];
 			}
 		}
 
-		InterruptManager.cur_index = 0;
-		if (InterruptManager.cur_level != 0) {
-			//MiniCDI::Log("[SCC68070:IPL] IRQ reset");
-			m68k_set_irq(0);
-			InterruptManager.cur_level = 0;
+		if (Ipl.cur_irq != Ipl.nxt_irq)
+		{
+			// Mimic MAME behaviour, which is to clear the current interrupt line THEN check for any pending interrupt levels.
+
+			if (Ipl.cur_irq != 0)
+			{
+				// Log interrupt information
+				MiniCDI::Log("[SCC68070:IPL] IPL%d(%d) <= reset", Ipl.cur_index, Ipl.cur_irq);
+
+				Ipl.cur_index = 0;
+				Ipl.cur_irq = 0;
+
+				m68k_set_irq(0);
+			}
+
+			if (Ipl.nxt_irq != 0)
+			{
+				// Log interrupt information
+				MiniCDI::Log("[SCC68070:IPL] IPL%d(%d) <= IPL%d(%d)  IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
+							 Ipl.cur_index, Ipl.cur_irq,
+							 Ipl.nxt_index, Ipl.nxt_irq,
+							 Ipl.levels[IPL_IN7N],
+							 Ipl.levels[IPL_IN5N],
+							 Ipl.levels[IPL_IN4N],
+							 Ipl.levels[IPL_IN2N],
+							 Ipl.levels[IPL_INT1],
+							 Ipl.levels[IPL_INT2],
+							 Ipl.levels[IPL_TIMER],
+							 Ipl.levels[IPL_UART_RX],
+							 Ipl.levels[IPL_UART_TX],
+							 Ipl.levels[IPL_I2C],
+							 Ipl.levels[IPL_DMA1],
+							 Ipl.levels[IPL_DMA2]);
+
+				Ipl.cur_index = Ipl.nxt_index;
+				Ipl.cur_irq = Ipl.nxt_irq;
+
+				m68k_set_irq(Ipl.cur_irq > 0 && Ipl.cur_index >= IPL_INT1 ? Ipl.cur_irq + 32 : Ipl.cur_irq);
+			}
 		}
 	}
 
@@ -198,59 +192,67 @@ public:
 		IPL_DMA2
 	};
 	struct {
-		int cur_index;
-		uint8_t cur_level;
+		int cur_index; // Index of peripheral holding current IRQ
+		int nxt_index; // Index of peripheral holding next IRQ
+		uint8_t cur_irq; // Current pending interrupt level
+		uint8_t nxt_irq; // Next pending interrupt level
 
 		uint8_t levels[12];
 		uint8_t vectors[12];
-	} InterruptManager;
+	} Ipl;
 
+	/**
+	 * @brief  Sets a peripheral's (or external's) pending interrupt to true or false.
+	 *         It gets the level from the corresponding onchip register and then sets the Musashi IRQ through `update_ipl()`.
+	 *
+	 * @param  assert:  Whether the interrupt is asserted.
+	 */
 	void interrupt(size_t index, bool assert)
 	{
 		switch (index)
 		{
 			default:
-				InterruptManager.levels[index] = assert;
+				Ipl.levels[index] = assert;
 				break;
 			case IPL_IN7N:
-				InterruptManager.levels[index] = assert ? 7 : 0;
+				Ipl.levels[index] = assert ? 7 : 0;
 				break;
 			case IPL_IN5N:
-				InterruptManager.levels[index] = assert ? 5 : 0;
+				Ipl.levels[index] = assert ? 5 : 0;
 				break;
 			case IPL_IN4N:
-				InterruptManager.levels[index] = assert ? 4 : 0;
+				Ipl.levels[index] = assert ? 4 : 0;
 				break;
 			case IPL_IN2N:
-				InterruptManager.levels[index] = assert ? 2 : 0;
+				Ipl.levels[index] = assert ? 2 : 0;
 				break;
 			case IPL_INT1:
-				InterruptManager.levels[index] = assert ? LIR >> 4 & 0x07 : 0;
+				Ipl.levels[index] = assert ? LIR >> 4 & 0x07 : 0;
 				break;
 			case IPL_INT2:
-				InterruptManager.levels[index] = assert ? LIR & 0x07 : 0;
+				Ipl.levels[index] = assert ? LIR & 0x07 : 0;
 				break;
 			case IPL_TIMER:
-				InterruptManager.levels[index] = assert ? PICR[0] & 0x07 : 0;
+				Ipl.levels[index] = assert ? PICR[0] & 0x07 : 0;
 				break;
 			case IPL_UART_RX:
-				InterruptManager.levels[index] = assert ? PICR[1] >> 4 & 0x07 : 0;
+				Ipl.levels[index] = assert ? PICR[1] >> 4 & 0x07 : 0;
 				break;
 			case IPL_UART_TX:
-				InterruptManager.levels[index] = assert ? PICR[1] & 0x07 : 0;
+				Ipl.levels[index] = assert ? PICR[1] & 0x07 : 0;
 				break;
 			case IPL_I2C:
-				InterruptManager.levels[index] = assert ? PICR[0] >> 4 & 0x07 : 0;
+				Ipl.levels[index] = assert ? PICR[0] >> 4 & 0x07 : 0;
 				break;
 			case IPL_DMA1:
-				InterruptManager.levels[index] = assert && (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0;
+				Ipl.levels[index] = assert && (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0;
 				break;
 			case IPL_DMA2:
-				InterruptManager.levels[index] = assert && (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0;
+				Ipl.levels[index] = assert && (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0;
 				break;
 		}
 
-		check_interrupt_manager();
+		update_ipl();
 	}
 
 	SCC68070(uint8_t* memory) : memory(memory)
@@ -308,7 +310,7 @@ public:
 
 		// Reset internal peripherals
 		fc = 0;
-		InterruptManager = {0};
+		Ipl = {0};
 		reset_internal();
 
 		// Reset Musashi processor
@@ -408,8 +410,8 @@ public:
 		{
 			/** LIR **/
 			case 0x80001001: LIR = value;
-				// if (LIR & 0x80) { LIR &= 0x0F; check_interrupt_manager(); }
-				// if (LIR & 0x08) { LIR &= 0xF0; check_interrupt_manager(); }
+				if (value & 0x80) interrupt(SCC68070::IPL_INT1, false);
+				if (value & 0x08) interrupt(SCC68070::IPL_INT2, false);
 				break;
 
 			/** I²C **/
@@ -465,13 +467,15 @@ public:
 			case 0x80002029: T[2] &= 0xFF00; T[2] |= value; break;
 
 			/** PICR **/
+			/// When PIR (4th bit) is set for either peripheral, the pending interrupt is cleared, per datasheet.
+			/// It seems to have the same behaviour as PIR for INT1N and INT2N.
 			case 0x80002045: PICR[0] = value;
-				if (PICR[0] & 0x80) { PICR[0] &= 0x0F; check_interrupt_manager(); }
-				if (PICR[0] & 0x08) { PICR[0] &= 0xF0; check_interrupt_manager(); }
+				if (value & 0x80) interrupt(SCC68070::IPL_I2C, false);
+				if (value & 0x08) interrupt(SCC68070::IPL_TIMER, false);
 				break;
 			case 0x80002047: PICR[1] = value;
-				if (PICR[1] & 0x80) { PICR[1] &= 0x0F; check_interrupt_manager(); }
-				if (PICR[1] & 0x08) { PICR[1] &= 0xF0; check_interrupt_manager(); }
+				if (value & 0x80) interrupt(SCC68070::IPL_UART_RX, false);
+				if (value & 0x08) interrupt(SCC68070::IPL_UART_TX, false);
 				break;
 
 			/** DMA (ch1) **/
@@ -572,7 +576,7 @@ public:
 				interrupt(SCC68070::IPL_TIMER, true);
 			} else {
 				T[0]++;
-				// interrupt(SCC68070::IPL_TIMER, false);
+				interrupt(SCC68070::IPL_TIMER, false);
 			}
 			timer_ticks--;
 		}

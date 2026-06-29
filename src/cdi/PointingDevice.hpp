@@ -8,7 +8,8 @@ class PointingDevice
 	static constexpr int POINTER_ADVANCE = 1;
 
 	bool buttons[6];
-	bool must_poll = false; // set to true if and ONLY if a face button has changed state or D-Pad is active.
+	bool poll_movement = false;
+	bool poll_state_changed = false;
 	int x = 0, y = 0;
 
 public:
@@ -45,7 +46,7 @@ public:
 					IO.slave->assert_irq();
 				}
 
-				else if (must_poll)
+				else if (poll_movement || poll_state_changed)
 				{
 					// Convert to SLAVE response (allowed coord bounds: 54x97 to 704x679?)
 					IO.slave->Ch[0].Out =
@@ -56,10 +57,6 @@ public:
 						(uint8_t)(y & 0x7f)
 					};
 					IO.slave->assert_irq();
-
-					if (!(this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up]))
-						must_poll = false;
-					return;
 				}
 			}
 		}
@@ -71,9 +68,9 @@ public:
 				IO.ikat->PointerInterface.posChanged = false;
 			}
 
-			if (IO.ikat->PointerInterface.connected && must_poll) {
+			if (IO.ikat->PointerInterface.connected && (poll_movement || poll_state_changed)) {
 				// Convert to IKAT response
-				/*if (x < 128 && x >= -128 && y < 128 && y >= -128)
+				if (!IO.ikat->PointerInterface.absolute)
 				{
 					// Relative coordinates
 					IO.ikat->Ch[1].Out =
@@ -84,26 +81,22 @@ public:
 						0,
 					};
 				}
-				else*/
+				else
 				{
 					// Absolute coordinates
 					IO.ikat->Ch[1].Out =
 					{
 						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b1111000000 >> 6)),
-						(uint8_t)((1 << 4) | (y & 0b1111000000 >> 6)),
+						(uint8_t)((poll_movement << 4) | (y & 0b1111000000 >> 6)),
 						(uint8_t)(x & 0b0000111111),
 						(uint8_t)(0x80 | (y & 0b0000111111)),
 					};
 				}
 				IO.ikat->poll_packet(1);
-
-				if (!(this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up]))
-					must_poll = false;
-				return;
 			}
 		}
 
-		must_poll = false;
+		poll_state_changed = false;
 	}
 
 	void set_button(enum Buttons b, bool value)
@@ -111,7 +104,7 @@ public:
 		if (b == Left || b == Right || b == Down || b == Up) this->buttons[(int)b] = value;
 		if (this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up])
 		{
-			must_poll = true;
+			poll_movement = true;
 			x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
 																 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
 																 : 0), 0, 767);
@@ -120,10 +113,12 @@ public:
 															  : 0), 0, 559);
 			MiniCDI::Log("[PD] x=%d,y=%d", x, y);
 		}
+		else
+			poll_movement = false;
 
 		if ((b == Button1 || b == Button2) && this->buttons[(int)b] != value)
 		{
-			must_poll = true;
+			poll_state_changed = true;
 			this->buttons[(int)b] = value;
 			MiniCDI::Log("[PD] 1=%d,2=%d", this->buttons[Button1], this->buttons[Button2]);
 		}
@@ -133,9 +128,12 @@ public:
 	{
 		if (x < 0 || y < 0 || x > 1 || y > 1) return;
 
-		must_poll = true;
-		this->x = (int)(x*(IO.ikat ? 16.0f : 768.0f));
-		this->y = (int)(y*(IO.ikat ? 16.0f : 560.0f));
+		int newX = (int)(x*(IO.ikat ? 17.0f : 768.0f));
+		int newY = (int)(y*(IO.ikat ? 17.0f : 560.0f));
+
+		poll_movement = this->x != newX || this->y != newY;
+		this->x = newX;
+		this->y = newY;
 	}
 };
 

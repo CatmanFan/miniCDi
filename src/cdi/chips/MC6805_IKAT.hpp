@@ -79,7 +79,7 @@ public:
 
 		// set corresponding Rx bit
 		set_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
-		MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
+		//MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 	}
 
 	void update()
@@ -96,7 +96,7 @@ public:
 
 					// set corresponding Rx bit
 					set_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
-					MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
+					//MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 				}
 			}
 		}
@@ -145,7 +145,7 @@ public:
 							unset_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
 							Ch[c].SR &= ~0b01000000; // RRDY OFF
 							Ch[c].SR |= 0b00010000; // REMTY ON
-							MiniCDI::Log("[IKAT] %sDR read completed", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
+							//MiniCDI::Log("[IKAT] %sDR read completed", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 						}
 					}
 					else
@@ -169,7 +169,7 @@ public:
 				break;
 
 			case 0x310019:
-				MiniCDI::Log("[IKAT] ISR => %02X", ISR);
+				//MiniCDI::Log("[IKAT] ISR => %02X", ISR);
 				return ISR;
 
 			case 0x31001B:

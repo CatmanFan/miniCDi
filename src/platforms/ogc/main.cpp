@@ -273,7 +273,6 @@ static void RUN_CDI(const std::string &discName)
 }
 
 static std::string selectedDisc;
-static int boardType;
 #include <filesystem>
 
 static bool MINICDI_CLI_MENU() {
@@ -335,7 +334,6 @@ static bool MINICDI_CLI_MENU() {
 		if (PAD_ButtonsDown(0) & PAD_BUTTON_A) {
 		#endif
 			selectedDisc = discs[selected];
-			boardType = 0;
 			return true;
 		}
 
@@ -344,8 +342,7 @@ static bool MINICDI_CLI_MENU() {
 		#else // HW_DOL
 		if (PAD_ButtonsDown(0) & PAD_BUTTON_B) {
 		#endif
-			selectedDisc = discs[selected];
-			boardType = 1;
+			selectedDisc = "";
 			return true;
 		}
 
@@ -359,9 +356,9 @@ static bool MINICDI_CLI_MENU() {
 			printf("___________________________________________________________________________\n\n");
 
 			#ifdef HW_RVL
-			printf("Up/Down to navigate, A to select, HOME to exit\n\n");
+			printf("Up/Down to navigate, A to select, B to boot without disc, HOME to exit\n\n");
 			#else // HW_DOL
-			printf("Up/Down to navigate, A to select, Z to exit\n\n");
+			printf("Up/Down to navigate, A to select, B to boot without disc, Z to exit\n\n");
 			#endif
 
 			for (size_t i = 0; i < discs.size(); i++) {

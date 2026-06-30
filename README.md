@@ -1,5 +1,5 @@
 # miniCDi
-An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U. Currently only supports the Mono-I 220/20 player revision, with partial support for Mono-IV boards.
+An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U.
 
 ## Usage
 Place the system ROM in `miniCDi/rom/cdi220b.rom` and any disc images/games in `miniCDi/discs`. Depending on the platform the full path may be structured as follows:
@@ -24,24 +24,26 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 
 ## To-Do
 
-### Before official v0.1 release
+### Before official v0.1 beta release
 - [X] Proper reset sequence
 - Fix VDSC rendering
    - [X] Color key
+   - [ ] Mixing
    - [ ] DYUV decoder formula
 - [X] Outline instructions/how-to for users
 - [ ] Update compatibility information
 - [X] Update licensing information
 
-### Next release
-- [ ] NVRAM auto-save on exit
+### Next beta release
 - [ ] CDIC audio status and handling
 
 ### Potential
 - [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
-- [ ] Address slowdown during CDIC reading active status
+- [ ] Emulate timekeeper on Mono-I/Mono-IV? (should handle NVRAM saving)
+- Disc-related:
+   - [ ] Address slowdown during CDIC reading active status
+   - [ ] Make CIAP read discs properly
 - [ ] LibRetro API compatibility?
-- [ ] Mono-IV player shell is functional only when disc slot is empty? (elaborate specific reproduction of bug)
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS). This is automatically done by GitHub Actions on every commit.

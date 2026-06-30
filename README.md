@@ -41,6 +41,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 - [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
 - [ ] Address slowdown during CDIC reading active status
 - [ ] LibRetro API compatibility?
+- [ ] Mono-IV player shell is functional only when disc slot is empty? (elaborate specific reproduction of bug)
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS). This is automatically done by GitHub Actions on every commit.

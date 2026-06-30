@@ -28,6 +28,10 @@ private:
 	const int line_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 15625;
 	int cycles_left_sector = sector_tick_rate;
 	int cycles_left_vpu = line_tick_rate;
+	#ifdef MINICDI_PDTICK
+	const int pd_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 30; // absolute: 30, relative: 40
+	int cycles_left_pd = pd_tick_rate;
+	#endif
 
 public:
 	bool init(const std::string &bios, enum BoardType board) override;
@@ -52,14 +56,27 @@ public:
 				cycles_left_vpu += line_tick_rate;
 				VBLANK = vpu != NULL ? vpu->tick(skip_draw) : true;
 			}
+
+			#ifdef MINICDI_PDTICK
+			cycles_left_pd -= cycles;
+			if (cycles_left_pd <= 0) {
+				cycles_left_pd += pd_tick_rate;
+				pd.send_packet();
+			}
+			#endif
 		} while (!VBLANK);
 
 		// Print verbose CPU
 		cpu.print();
 		MiniCDI::OS9::scan_modules(memory);
 
+		#ifndef MINICDI_PDTICK
 		// Tick pointing device
 		pd.send_packet();
+		#endif
+
+		// Update microcontroller
+		if (ikat != NULL) ikat->update();
 	}
 
 	inline void reset() override {

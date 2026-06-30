@@ -32,6 +32,7 @@ class IKAT
 	void set_ISR(uint8_t flag)
 	{
 		ISR |= flag;
+		//MiniCDI::Log("[IKAT] ISR %02X |= IMR %02X", ISR, IMR);
 		if (IMR & flag)
 			_68070->interrupt(SCC68070::IPL_IN2N, true);
 	}
@@ -39,6 +40,7 @@ class IKAT
 	void unset_ISR(uint8_t flag)
 	{
 		ISR &= ~flag;
+		//MiniCDI::Log("[IKAT] ISR %02X != IMR %02X", ISR, IMR);
 		if (IMR & flag)
 			_68070->interrupt(SCC68070::IPL_IN2N, false);
 	}

@@ -55,7 +55,7 @@ class CIAP
 										: (ISR & 0x08) && (IER & 0x08) ? "audio"
 										: (ISR & 0x0800) && (IER & 0x0800) ? "qerror"
 										: "unknown");
-			if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, true);
+			_68070->interrupt(SCC68070::IPL_IN4N, true);
 		}
 	}
 
@@ -63,6 +63,7 @@ class CIAP
 
 	struct {
 		bool reading; // Whether is actively reading data
+		bool audio; // Controls MODE2 filter(?)
 		int delayed_sectors; // Number of sectors to delay for reading (e.g. to simulate discspin)
 		int curr_lba; // Taken from TIME register and then incremented
 	} CdStatus;
@@ -72,7 +73,7 @@ class CIAP
 
 	bool disc_check_filter()
 	{
-		if (disc->Sector.Mode == 2)
+		if (disc->Sector.Mode == 2 && CdStatus.audio)
 		{
 			// Use order from MAME
 			if (disc->Sector.FileNum[1] != (FILE & 0xFF)) {
@@ -98,8 +99,8 @@ class CIAP
 				return false;
 			}
 
-			if (!(TCM1 & (1<<disc->Sector.ChNum[1]))) {
-				MiniCDI::Log("[CIAP] MODE2 skip: TCM1 %08X is not AND (1 << %d)", TCM1, disc->Sector.ChNum[1]);
+			if (!(TCM1 & (1<<disc->Sector.ChNum[1])) && !(ACM2 & (1<<disc->Sector.ChNum[1]))) {
+				MiniCDI::Log("[CIAP] MODE2 skip: channel does not match TCM1 ($%04X) or ACM2 ($%04X)", TCM1, ACM2);
 				return false;
 			}
 		}
@@ -137,6 +138,7 @@ class CIAP
 
 			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
 			// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
+			// TACS contains audio channel.
 			/// TO-DO
 
 			memory[targetAddr++] = disc->Sector.FileNum[1];
@@ -148,6 +150,7 @@ class CIAP
 			// Select DATA buffer bit
 			if (BMAN & 0b001100) BMAN ^= 0b001100;
 			else BMAN |= 0b000100;
+			MiniCDI::Log("[CIAP] read BMAN : %04X", BMAN);
 
 			ISR |= 0b0001; // Mainchannel DATA buffer is full
 			assert_irq();
@@ -171,8 +174,10 @@ public:
 
 	void disc_set_lba(uint8_t min, uint8_t sec, uint8_t frame)
 	{
-		CdStatus.curr_lba = disc->get_lba_from_time((min << 24) | (sec << 16) | (frame << 8));
 		MiniCDI::Log("[CIAP] load LBA <= %02X:%02X:%02X", min, sec, frame);
+
+		CdStatus.curr_lba = disc->get_lba_from_time((min << 24) | (sec << 16) | (frame << 8));
+		disc->read_sector(CdStatus.curr_lba);
 	}
 
 	uint16_t read16(uint32_t addr)
@@ -251,6 +256,7 @@ public:
 
 							// Stop reading
 							CdStatus.reading = false;
+							CdStatus.audio = false;
 							CdStatus.delayed_sectors = 6;
 							break;
 						case 0x3000:
@@ -264,8 +270,8 @@ public:
 							MiniCDI::Log("[CIAP] START read (0x%04X)", value);
 
 							// Start reading
-							disc->read_sector(CdStatus.curr_lba);
 							CdStatus.reading = true;
+							CdStatus.audio = CCR == 0x0094;
 							CdStatus.delayed_sectors = 6;
 							break;
 					}
@@ -304,7 +310,7 @@ public:
 				if (_68070 != nullptr) _68070->Ipl.vectors[SCC68070::IPL_IN4N] = value >> 3 & 0xFF;
 				break;
 			case 0x3025C2: MiniCDI::Log("[CIAP] DMACTL <= %04X", value); DMACTL = value;
-				// if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF));
+				if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF));
 				break;
 			case 0x3025FE: DLOAD = value; break;
 		}

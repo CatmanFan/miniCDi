@@ -8,6 +8,7 @@ namespace MiniCDI
 		bool TestPlug = false;
 		bool PAL = true;
 		bool ShowLCD = false;
+		bool AnalogColors = false;
 		bool HasDisc = false;
 		size_t FrameSkip = 0;
 

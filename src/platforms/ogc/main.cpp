@@ -182,6 +182,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::AnalogColors = false;
 	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::FrameSkip = 1;
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");

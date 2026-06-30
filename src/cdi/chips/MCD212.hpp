@@ -383,7 +383,7 @@ class MCD212
 						aB = FG[reg.PlaneOrder ? 1 : 0].decoded[PIXELB] & 0xFF;
 
 				if (reg.Icm[0] == Off && reg.Icm[1] == Off)
-					output[outputPixel] = 0x000000FF;
+					output[outputPixel] = 0x101010ff;
 				else if (reg.Mixing && aA && aB)
 					output[outputPixel] = (std::clamp(rA + rB - 16, 0, 255) << 24)
 										| (std::clamp(gA + gB - 16, 0, 255) << 16)
@@ -396,7 +396,7 @@ class MCD212
 				else {
 					// Transparent, draw backdrop.
 					switch (reg.BackdropColor & 0x07) {
-						default: output[outputPixel] = 0x000000ff; break;
+						default: output[outputPixel] = 0x101010ff; break;
 						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
 						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
 						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
@@ -413,7 +413,7 @@ class MCD212
 				 && reg.CursorEnable)
 				{
 					switch (reg.CursorColor & 0x07) {
-						default: output[outputPixel] = 0x000000ff; break;
+						default: output[outputPixel] = 0x101010ff; break;
 						case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
 						case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
 						case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
@@ -424,11 +424,13 @@ class MCD212
 					}
 				}
 
-				/// Subtract to get the analog output (per Green Book 4.4.1.2).
-				/*output[outputPixel] = (std::clamp((int)(output[outputPixel] >> 24 & 0x000000FF) - 16, 0, 255) << 24)
-									| (std::clamp((int)(output[outputPixel] >> 16 & 0x000000FF) - 16, 0, 255) << 16)
-									| (std::clamp((int)(output[outputPixel] >> 8 & 0x000000FF) - 16, 0, 255) << 8)
-									| (output[outputPixel] & 0x000000FF);*/
+				if (MiniCDI::Config::AnalogColors) {
+					/// Subtract to get the analog output (per Green Book 4.4.1.2).
+					output[outputPixel] = (std::clamp((int)(output[outputPixel] >> 24 & 0x000000FF) - 16, 0, 255) << 24)
+										| (std::clamp((int)(output[outputPixel] >> 16 & 0x000000FF) - 16, 0, 255) << 16)
+										| (std::clamp((int)(output[outputPixel] >> 8 & 0x000000FF) - 16, 0, 255) << 8)
+										| (output[outputPixel] & 0x000000FF);
+				}
 
 				if (FG[0].width < 400) {
 					output[outputPixel+1] = output[outputPixel];

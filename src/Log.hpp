@@ -37,7 +37,7 @@ namespace MiniCDI
 			va_end(args);
 
 			#ifdef MINICDI_DEBUG_MODULE
-			MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module(m68k_get_reg(NULL, M68K_REG_PC));
+			MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module_from_addr(m68k_get_reg(NULL, M68K_REG_PC));
 			#endif
 
 			// Print to logfile if available

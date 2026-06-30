@@ -263,7 +263,8 @@ namespace MiniCDI
 			}
 		}
 
-		Module* get_module(uint32_t addr);
+		Module* get_module_from_addr(const uint32_t addr);
+		Module* get_module_from_name(const std::string &name);
 
 		void clear_modules();
 		void scan_modules(uint8_t* memory);

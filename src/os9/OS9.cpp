@@ -6,10 +6,20 @@ namespace MiniCDI
 	{
 		static std::vector<Module> modules; // "module directory"
 
-		Module* get_module(uint32_t addr)
+		Module* get_module_from_addr(const uint32_t addr)
 		{
 			for (size_t i = 0; i < modules.size(); i++) {
 				if (addr >= modules[i].address && addr < modules[i].address + modules[i].size)
+					return &modules[i];
+			}
+
+			return NULL;
+		}
+
+		Module* get_module_from_name(const std::string &name)
+		{
+			for (size_t i = 0; i < modules.size(); i++) {
+				if (modules[i].name.compare(name) == 0)
 					return &modules[i];
 			}
 

@@ -17,16 +17,17 @@ protected:
 
 	uint32_t nvram;
 	bool nvram_save() {
-		/*if (MiniCDI::Config::NvramFile.empty() || !memory || this->nvram == 0) {
+		/*if (MiniCDI::Config::NvramFile.empty() || memory == NULL || this->nvram == 0) {
 			return false;
 		}
 
-		uint32_t nvram_size = (board == CDi::MonoI ? 8 : 32) * 1024;
-		for (size_t i = 0; i < MiniCDI::OS9::modules.size(); i++) {
-			if (MiniCDI::OS9::modules[i].name.compare("nvr") == 0) {
-				MiniCDI::Log("[NVRAM] detected %dKB", MiniCDI::OS9::modules[i].size > nvram_size ? 32 : 8);
-				nvram_size = (MiniCDI::OS9::modules[i].size > nvram_size ? 32 : 8) * 1024;
-			}
+		uint32_t nvram_size = 32*1024;
+		MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module_from_name("nvr");
+		if (module != NULL && module->size < nvram_size) {
+			nvram_size = (module->size > 12*1024 ? 16 : 8) * 1024;
+			MiniCDI::Log("[NVRAM] detected %dKB", nvram_size);
+		} else {
+			//MiniCDI::Log("[NVRAM] \"nvr\" module not found, defaulting to max 32KB");
 		}
 
 		FILE *file = fopen(MiniCDI::Config::NvramFile.c_str(), "wb");

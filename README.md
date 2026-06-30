@@ -1,5 +1,5 @@
 # miniCDi
-An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U.
+An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U. Currently has no support for audio or NVRAM saving.
 
 ## Usage
 Place the system ROM in `miniCDi/rom/cdi220b.rom` and any disc images/games in `miniCDi/discs`. Depending on the platform the full path may be structured as follows:

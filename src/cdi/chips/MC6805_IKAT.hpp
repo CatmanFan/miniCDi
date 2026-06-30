@@ -4,7 +4,11 @@
 #include <deque>
 #include "cdi/chips/MCD221_CIAP.hpp"
 
-/// HLE implementation of IKAT as found in Mono-III & Mono-IV.
+/*****
+  DISCLAIMER:
+  Partially sourced from CeDImu emulation code. Some added context from the MC68HC05i8 datasheet is included.
+ *****/
+
 class IKAT
 {
 	SCC68070* _68070;
@@ -23,20 +27,20 @@ class IKAT
 
 	uint8_t ISR;
 	uint8_t IMR;
-	// uint8_t MR; // not emulated, always 8F (enable all channels?)
+	uint8_t MR; // always 8F (in "set on Receiver Ready" interrupt mode and enable all channels)
 
-	void check_for_int()
+	void set_ISR(uint8_t flag)
 	{
-		if (((ISR & 0x02) && (IMR & 0x02))
-		 || ((ISR & 0x08) && (IMR & 0x08))
-		 || ((ISR & 0x20) && (IMR & 0x20))
-		 || ((ISR & 0x80) && (IMR & 0x80))) {
+		ISR |= flag;
+		if (IMR & flag)
 			_68070->interrupt(SCC68070::IPL_IN2N, true);
-			return;
-		}
-		if (ISR == 0) {
+	}
+
+	void unset_ISR(uint8_t flag)
+	{
+		ISR &= ~flag;
+		if (IMR & flag)
 			_68070->interrupt(SCC68070::IPL_IN2N, false);
-		}
 	}
 
 	struct
@@ -67,12 +71,12 @@ public:
 			return;
 		}
 
-		Ch[c].SR &= ~0x10; // REMTY OFF
+		// Per MC68HC05i8 datasheet: under MRH's current mode Receiver Ready is supposed to trigger the Rx/Tx bits in ISR.
+		Ch[c].SR |= 0b01000000; // RRDY ON
+		Ch[c].SR &= ~0b00010000; // REMTY OFF
 
 		// set corresponding Rx bit
-		uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
-		ISR |= bit;
-		check_for_int();
+		set_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
 		MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 	}
 
@@ -85,12 +89,11 @@ public:
 				Ch[c].Delay--;
 				if (Ch[c].Delay == 0)
 				{
-					Ch[c].SR &= ~0x10; // REMTY OFF
+					Ch[c].SR |= 0b01000000; // RRDY ON
+					Ch[c].SR &= ~0b00010000; // REMTY OFF
 
 					// set corresponding Rx bit
-					uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
-					ISR |= bit;
-					check_for_int();
+					set_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
 					MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 				}
 			}
@@ -100,6 +103,19 @@ public:
 	void reset()
 	{
 		memset(&LCD[0], 0, 16);
+
+		// REMTY ON (per MC68HC05i8 datasheet)
+		Ch[0].SR |= 0b00010000;
+		Ch[1].SR |= 0b00010000;
+		Ch[2].SR |= 0b00010000;
+		Ch[3].SR |= 0b00010000;
+
+		// TEMTY ON (mimic cdiemu behaviour ?)
+		Ch[0].SR |= 0b00000001;
+		Ch[1].SR |= 0b00000001;
+		Ch[2].SR |= 0b00000001;
+		Ch[3].SR |= 0b00000001;
+
 		Ch[0].InSize = 0;
 		Ch[1].InSize = 0;
 		Ch[2].InSize = 0;
@@ -117,26 +133,23 @@ public:
 				{
 					size_t c = (addr - 0x310009) / 2;
 
-					// deassert IRQ
-					_68070->interrupt(SCC68070::IPL_IN2N, false);
-
 					if (Ch[c].Out.size() > 0)
 					{
 						Ch[c].DR = Ch[c].Out[0];
 						Ch[c].Out.pop_front();
 
-						// imitate CeDImu behaviour
 						if (Ch[c].Out.size() == 0)
 						{
-							uint8_t bit = c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10;
-							ISR &= ~bit;
-							Ch[c].SR |= 0x10; // REMTY ON
+							unset_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
+							Ch[c].SR &= ~0b01000000; // RRDY OFF
+							Ch[c].SR |= 0b00010000; // REMTY ON
+							MiniCDI::Log("[IKAT] %dDR read completed", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 						}
 					}
 					else
 						Ch[c].DR = 0xFF;
 
-					//MiniCDI::Log("[IKAT] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
+					//MiniCDI::Log("[IKAT] %sDRR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;
 				}
 				break;
@@ -149,17 +162,21 @@ public:
 					size_t c = (addr - 0x310011) / 2;
 
 					//MiniCDI::Log("[IKAT] %sSR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].SR);
-					return Ch[c].SR | 0x01; // imitate cdiemu
+					return Ch[c].SR;
 				}
 				break;
 
 			case 0x310019:
-				//MiniCDI::Log("[IKAT] ISR => %02X", ISR);
+				MiniCDI::Log("[IKAT] ISR => %02X", ISR);
 				return ISR;
 
 			case 0x31001B:
 				MiniCDI::Log("[IKAT] IMR => %02X", IMR);
 				return IMR;
+
+			case 0x31001D:
+				MiniCDI::Log("[IKAT] MR => %02X", MR);
+				return MR;
 		}
 
 		return memory[addr];
@@ -173,13 +190,16 @@ public:
 			case 0x310019:
 				MiniCDI::Log("[IKAT] ISR <= %02X", value);
 				ISR = value;
-				//check_for_int();
 				break;
 
 			case 0x31001B:
-				//MiniCDI::Log("[IKAT] IMR <= %02X", value);
+				MiniCDI::Log("[IKAT] IMR <= %02X", value);
 				IMR = value;
-				//check_for_int();
+				break;
+
+			case 0x31001D:
+				MiniCDI::Log("[IKAT] MR <= %02X", MR);
+				MR = value;
 				break;
 
 			case 0x310001:
@@ -189,7 +209,7 @@ public:
 			{
 				size_t c = (addr - 0x310001) / 2;
 				Ch[c].In.push_back(value);
-				//MiniCDI::Log("[IKAT] %sDR <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
+				//MiniCDI::Log("[IKAT] %sDRW <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 
 				switch (c)
 				{

@@ -244,10 +244,14 @@ public:
 };
 
 static std::string devicePrefix;
-static void RUN_CDI(const std::string &biosName, const std::string &discName)
+static void RUN_CDI(const std::string &discName)
 {
-	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName).c_str(), F_OK) != 0) {
+	std::string biosName = "";
+	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
+	else if (access((devicePrefix + "wiiu/apps/miniCDi/rom/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
+	else {
 		WHBLogPrintf("[miniCDi] error: BIOS not found in required path");
+		// printf("BIOS not found at %s.\nPlease supply a system ROM (either CD-i 220/20 or 200/00)", (appPath + "rom/").c_str());
 		// OSSleepTicks(OSSecondsToTicks(5));
 		return;
 	}
@@ -256,11 +260,16 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::HasDisc = false;
-	MiniCDI::Config::FrameSkip = 2;
+	MiniCDI::Config::FrameSkip = 1;
 	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
+	// MiniCDI::Config::NvramFile = devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram";
 
 	MonoI cdi;
-	if (!cdi.init(devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName, CDi::MonoI)) return;
+	if (!cdi.init(devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".rom", CDi::MonoI)) {
+		WHBLogPrintf("[miniCDi] error: failed to create CD-i player");
+		// OSSleepTicks(OSSecondsToTicks(5));
+		return;
+	}
 	cdi.disc.open(devicePrefix + "wiiu/apps/miniCDi/discs/" + discName);
 
 	FPS fps;
@@ -329,6 +338,8 @@ static std::string RUN_MENU()
 
 		if (discs.size() == 0) {
 			noDiscs = true;
+		} else {
+			std::stable_sort(discs.begin(), discs.end());
 		}
 	}
 
@@ -443,7 +454,7 @@ int main(int argc, char **argv) {
 
 	while (MiniCDI_WiiU::Running()) {
 		std::string disc = RUN_MENU();
-		if (MiniCDI_WiiU::Running()) RUN_CDI("cdi220b.rom", disc);
+		if (MiniCDI_WiiU::Running()) RUN_CDI(disc);
 	}
 
 	return 0;

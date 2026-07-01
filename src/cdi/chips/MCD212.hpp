@@ -587,7 +587,7 @@ class MCD212
 					break;
 
 				case 0xC3:
-					reg.BankCLUT = inst & 0x0Fu;
+					reg.BankCLUT = Path ? (inst & 0x01u) + 2 : inst & 0x0Fu;
 					//MiniCDI::Log("[VDSC] P%d cbnk %d", Path, reg.BankCLUT);
 					break;
 
@@ -865,7 +865,8 @@ public:
 		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
 
 		// initialization
-		CF = FD = MiniCDI::Config::PAL ? 0 : 1;
+		CF = 1;
+		FD = MiniCDI::Config::PAL ? 0 : 1;
 		SM = /* to-do: interlace */ 0;
 
 		interlace = false;

@@ -209,7 +209,7 @@ class MCD212
 			switch (reg.TransparencyCtrl[Path])
 			{
 				default:
-					// assert(0);
+					assert(0);
 					return false;
 				case 0b0000:
 					return true;
@@ -222,7 +222,7 @@ class MCD212
 				case 0b0100:
 					return Matte[1];
 				case 0b0101:
-					return /*Matte[0] ||*/ ColorKey; // TO-DO : fix? (this mode is used for Hotel Mario's cutscenes.)
+					return Matte[0] || ColorKey;
 				case 0b0110:
 					return Matte[1] || ColorKey;
 				case 0b1000:
@@ -556,18 +556,20 @@ class MCD212
 					break;
 
 				case 0xC0: // channel 1
-					reg.IcmCS = inst >> 22 & 0x01u;
-					reg.MatteCount = inst >> 19 & 0x01u;
-					reg.ExternalVideo = inst >> 18 & 0x01u;
-					reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
-					reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
-					/*MiniCDI::Log("[VDSC] P%d icm cma=%s,cmb=%s,nr=%d,ev=%d,cs=%d", Path,
-							  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
-							: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
-							: reg.Icm[0] == CLUT4 ? "clut4" : "off",
-							  reg.Icm[1] == RGB555 ? "rgb555" : reg.Icm[1] == DYUV ? "dyuv"
-							: reg.Icm[1] == CLUT4 ? "clut4" : "off",
-							  reg.MatteCount, reg.ExternalVideo, reg.IcmCS);*/
+					if (!Path) {
+						reg.IcmCS = inst >> 22 & 0x01u;
+						reg.MatteCount = inst >> 19 & 0x01u;
+						reg.ExternalVideo = inst >> 18 & 0x01u;
+						reg.Icm[1] = (enum Icm)(inst >> 8 & 0x0Fu);
+						reg.Icm[0] = (enum Icm)(inst & 0x0Fu);
+						/*MiniCDI::Log("[VDSC] P%d icm cma=%s,cmb=%s,nr=%d,ev=%d,cs=%d", Path,
+								  reg.Icm[0] == CLUT8 ? "clut8" : reg.Icm[0] == CLUT7 ? "clut7"
+								: reg.Icm[0] == CLUT77 ? "clut7+7" : reg.Icm[0] == DYUV ? "dyuv"
+								: reg.Icm[0] == CLUT4 ? "clut4" : "off",
+								  reg.Icm[1] == RGB555 ? "rgb555" : reg.Icm[1] == DYUV ? "dyuv"
+								: reg.Icm[1] == CLUT4 ? "clut4" : "off",
+								  reg.MatteCount, reg.ExternalVideo, reg.IcmCS);*/
+					}
 					break;
 
 				case 0xC1: // channel 1
@@ -865,9 +867,9 @@ public:
 		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
 
 		// initialization
-		CF = 1;
-		FD = MiniCDI::Config::PAL ? 0 : 1;
-		SM = /* to-do: interlace */ 0;
+		CF = 1; // crystal frequency: 60Hz
+		FD = MiniCDI::Config::PAL ? 0 : 1; // frame duration
+		SM = 0; // interlace not needed
 
 		interlace = false;
 		linesV = 0;

@@ -58,7 +58,7 @@ class SDL
 	SDL_Texture* lcd = nullptr;
 
 public:
-	void update(void* display_output, int width, void* lcd_output)
+	void update(void* display_output, int width, void* lcd_output, bool cd_read_status)
 	{
 		if (display_output) {
 			// Clear screen
@@ -88,6 +88,15 @@ public:
 				SDL_RenderCopy(this->renderer, this->lcd, NULL, &dest);
 			}
 
+			#ifdef MINICDI_CDINDICATOR
+			SDL_Rect cd_led = {0,0,24,24};
+			if (cd_read_status)
+				SDL_SetRenderDrawColor(this->renderer, 0,255,0,128);
+			else
+				SDL_SetRenderDrawColor(this->renderer, 0,0,0,128);
+			SDL_RenderFillRect(this->renderer, &cd_led);
+			#endif
+
 			SDL_RenderPresent(this->renderer);
 		}
 	}
@@ -95,14 +104,15 @@ public:
 	SDL()
 	{
 		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == 0) {
-			// atexit(SDL_Quit);
-			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+			// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 			SDL_ShowCursor(SDL_DISABLE);
 
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
 			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
+
+			SDL_SetRenderDrawBlendMode(this->renderer, SDL_BLENDMODE_BLEND);
 		}
 	}
 
@@ -268,7 +278,7 @@ static void RUN_CDI(const std::string &discName)
 		#ifdef MINICDI_DEBUG
 		VIDEO_WaitVSync();
 		#else
-		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
+		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr, cdi.get_cd_read_status());
 		#endif
 	}
 }

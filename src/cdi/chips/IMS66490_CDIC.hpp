@@ -412,6 +412,8 @@ public:
 				break;
 		}
 	}
+
+	bool is_reading() { return CdicController.reading; }
 };
 
 #endif

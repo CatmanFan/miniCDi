@@ -104,6 +104,7 @@ public:
 	inline virtual size_t get_display_width() { return 0; }
 
 	inline virtual uint32_t* get_lcd() { return nullptr; }
+	inline virtual bool get_cd_read_status() { return false; }
 };
 
 #endif

@@ -315,6 +315,8 @@ public:
 			case 0x3025FE: DLOAD = value; break;
 		}
 	}
+
+	bool is_reading() { return CdStatus.reading; }
 };
 
 #endif

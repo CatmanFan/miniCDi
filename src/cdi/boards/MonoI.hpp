@@ -99,6 +99,11 @@ public:
 
 		return NULL;
 	}
+	inline bool get_cd_read_status() override {
+		if (cdic != NULL) return cdic->is_reading();
+		if (ciap != NULL) return ciap->is_reading();
+		return false;
+	}
 };
 
 #endif

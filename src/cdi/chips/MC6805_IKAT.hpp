@@ -73,7 +73,7 @@ public:
 			return;
 		}
 
-		// Per MC68HC05i8 datasheet: under MRH's current mode Receiver Ready is supposed to trigger the Rx/Tx bits in ISR.
+		// Per MC68HC05i8 datasheet: under MRH's current mode RRDY when set is supposed to trigger the Rx/Tx bits in ISR.
 		Ch[c].SR |= 0b01000000; // RRDY ON
 		Ch[c].SR &= ~0b00010000; // REMTY OFF
 

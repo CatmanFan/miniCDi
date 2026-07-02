@@ -20,6 +20,7 @@ option(MINICDI_ENABLE_VERBOSE_LOGFILE "Print debug information to a text file if
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
 option(MINICDI_ENABLE_PDTICK "Enable cycle polling for pointing device instead of polling it at the end of each frame." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper (breaks player shell if no NVRAM settings data exists)." OFF)
+option(MINICDI_ENABLE_CDINDICATOR "Show an on-screen indicator for when the CD is being read." OFF)
 # -------------------------------------------
 
 if (MINICDI_ENABLE_VERBOSE_DISPLAY)
@@ -57,6 +58,10 @@ if (MINICDI_ENABLE_DEADNVRAM)
 	MESSAGE(STATUS "MINICDI_ENABLE_DEADNVRAM")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEADNVRAM)
 endif()
+if (MINICDI_ENABLE_CDINDICATOR)
+	MESSAGE(STATUS "MINICDI_ENABLE_CDINDICATOR")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_CDINDICATOR)
+endif()
 
 set (APP_AUTHOR "Mr. Lechkar aka CatmanFan")
 set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
@@ -89,7 +94,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 if (NINTENDO_3DS)
 	# Libraries
 	# ************
-	target_link_libraries(${PROJECT_NAME} -lcitro2d -lcitro3d)
+	target_link_libraries(${PROJECT_NAME} PRIVATE -lcitro2d -lcitro3d)
 	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
 	# Source files/directories
@@ -120,7 +125,7 @@ if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 	# ************
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
-	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} -laesnd -lfat)
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -laesnd -lfat)
 
 	# Source files/directories
 	# ************
@@ -149,7 +154,7 @@ if (NINTENDO_WIIU)
 	find_package(SDL2_ttf REQUIRED)
     find_package(Freetype REQUIRED)
 	include_directories(${DEVKITPRO}/portlibs/wiiu/include ${FREETYPE_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2TTF_INCLUDE_DIRS})
-	target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES} -lSDL2_ttf -lfreetype -lpng -lz -lm -lharfbuzz -lbrotlidec -lbrotlicommon -lbz2 -lwut)
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -lSDL2_ttf -lfreetype -lpng -lz -lm -lharfbuzz -lbrotlidec -lbrotlicommon -lbz2 -lwut)
 
 	# Source files/directories
 	# ************

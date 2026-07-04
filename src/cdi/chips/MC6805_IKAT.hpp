@@ -273,8 +273,8 @@ public:
 							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
-								Ch[c].Out = { 0xA5, 0xF3, 'T', 'T' };
-								PointerInterface.absolute = Ch[c].Out[2] == 'T';
+								Ch[c].Out = { 0xA5, 0xF3, 0x54, 0x4D };
+								PointerInterface.absolute = Ch[c].Out[2] == 0x54;
 								poll_packet(c);
 								break;
 

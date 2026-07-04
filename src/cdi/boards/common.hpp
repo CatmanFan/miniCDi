@@ -42,6 +42,26 @@ protected:
 		return true;
 	}
 	void nvram_load() {
+		/*if (this->memory != NULL)
+		{
+			// Write a default value to where the M48T08 (8KB NVRAM) registers should be stored.
+			memory[this->nvram + 0x1FFF] = 0x01; // (BCD) yy: 2001
+			memory[this->nvram + 0x1FFE] = 0x01; // (BCD) mm: 1
+			memory[this->nvram + 0x1FFD] = 0x01; // (BCD) dd: 1
+			memory[this->nvram + 0x1FFC] = 0x01; // (BCD) dd: Monday + normal clock operation
+			memory[this->nvram + 0x1FFB] = 0x12; // (BCD) HH: 12
+			memory[this->nvram + 0x1FFA] = 0x00; // (BCD) MM: 00
+			memory[this->nvram + 0x1FF9] = 0x00; // (BCD) SS: 00
+			memory[this->nvram + 0x1FF8] = 0; // control
+
+			// Ditto for DS1216 (32KB NVRAM)
+			memory[this->nvram + 0x0000] = 0x00; // (BCD) centiseconds
+			memory[this->nvram + 0x0001] = 0x00; // (BCD) SS: 00
+			memory[this->nvram + 0x0002] = 0x00; // (BCD) MM: 00
+			memory[this->nvram + 0x0005] = 0x01; // (BCD) dd: 1
+			memory[this->nvram + 0x0006] = 0x01; // (BCD) mm: 1
+			memory[this->nvram + 0x0007] = 0x01; // (BCD) yy: 2001
+		}*/
 		/*if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
 			MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
 			std::ifstream nvrStream(MiniCDI::Config::NvramFile);

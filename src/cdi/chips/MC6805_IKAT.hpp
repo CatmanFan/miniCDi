@@ -6,7 +6,7 @@
 
 /*****
   DISCLAIMER:
-  Partially sourced from CeDImu emulation code. Some added context from the MC68HC05i8 datasheet is included.
+  Partially sourced from CeDImu emulation code and documentation by cdifan. Some added context from the MC68HC05i8 datasheet is included.
  *****/
 
 class IKAT
@@ -173,11 +173,11 @@ public:
 				return ISR;
 
 			case 0x31001B:
-				MiniCDI::Log("[IKAT] IMR => %02X", IMR);
+				//MiniCDI::Log("[IKAT] IMR => %02X", IMR);
 				return IMR;
 
 			case 0x31001D:
-				MiniCDI::Log("[IKAT] MR => %02X", MR);
+				//MiniCDI::Log("[IKAT] MR => %02X", MR);
 				return MR;
 		}
 
@@ -190,17 +190,17 @@ public:
 		switch (addr)
 		{
 			case 0x310019:
-				MiniCDI::Log("[IKAT] ISR <= %02X", value);
+				//MiniCDI::Log("[IKAT] ISR <= %02X", value);
 				ISR = value;
 				break;
 
 			case 0x31001B:
-				MiniCDI::Log("[IKAT] IMR <= %02X", value);
+				//MiniCDI::Log("[IKAT] IMR <= %02X", value);
 				IMR = value;
 				break;
 
 			case 0x31001D:
-				MiniCDI::Log("[IKAT] MR <= %02X", MR);
+				//MiniCDI::Log("[IKAT] MR <= %02X", MR);
 				MR = value;
 				break;
 
@@ -255,6 +255,20 @@ public:
 								_68070->reset();
 								break;
 
+							/** Player Shell Startup Animation **/
+							case 0xF1:
+								MiniCDI::Log("[IKAT] player shell startup animation (0x%02X)", value);
+								Ch[c].Out = { 0xA5, 0xF1, 0x00 };
+								poll_packet(c);
+								break;
+
+							/** Player Shell Branding **/
+							case 0xF2:
+								MiniCDI::Log("[IKAT] player shell branding (0x%02X)", value);
+								Ch[c].Out = { 0xA5, 0xF2, 0x00 }; // 0x00 returns Philips
+								poll_packet(c);
+								break;
+
 							/** Pointing Device **/
 							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
@@ -288,6 +302,16 @@ public:
 								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
 									switch (Ch[c].In[0]) {
 										case 0xA1:
+											MiniCDI::Log("[IKAT] SS_Enable? (0x%02X)", Ch[c].In[0]);
+											break;
+
+										case 0xA6:
+											MiniCDI::Log("[IKAT] eject disc drive (0x%02X)", Ch[c].In[0]);
+											MiniCDI::Config::HasDisc = false;
+											Ch[c].Out = { 0xA6, 0x00, 0x00, 0x00 };
+											poll_packet(c, 2);
+											break;
+
 										case 0xB0:
 											MiniCDI::Log("[IKAT] report disc status (0x%02X)", Ch[c].In[0]);
 											if (MiniCDI::Config::HasDisc) Ch[c].Out = { 0xB0, 0x00, 0x02, 0x10 }; // cdifan: $00060E for SLAVE 5.0 (CD-i rev 450), $000210 for IKAT 6.x-9.x
@@ -303,7 +327,7 @@ public:
 
 										case 0xB2:
 											MiniCDI::Log("[IKAT] report disc select (0x%02X)", Ch[c].In[0]);
-											Ch[c].Out = { 0xB2, 0x20, 0x00, 0x10 }; // imitate cdiemu
+											Ch[c].Out = { 0xB2, 0x20, 0x00, 0x01 }; // imitate cdiemu
 											poll_packet(c, 2);
 											break;
 
@@ -333,7 +357,8 @@ public:
 								poll_packet(c);
 								break;
 
-							case 0xA1: /** Disc Status (alt) **/
+							case 0xA1: /** SS_Enable? **/
+							case 0xA6: /** SS_Eject? **/
 							case 0xB0: /** Disc Status **/
 							case 0xB2: /** Disc Select **/
 							case 0xE0: /** Start CDDA playback **/

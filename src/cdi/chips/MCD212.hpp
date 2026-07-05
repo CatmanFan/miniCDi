@@ -134,16 +134,14 @@ class MCD212
 				case 0b1000: // reset
 				case 0b1100: // reset & change weight of pA
 				case 0b1110: // reset & change weight of pB
-					Matte[MCR.mf[MCR.current]] = false;
-					break;
+					Matte[MCR.mf[MCR.current++]] = false;
+					return;
 				case 0b1001: // set
 				case 0b1101: // set & change weight of pA
 				case 0b1111: // set & change weight of pB
-					Matte[MCR.mf[MCR.current]] = true;
-					break;
+					Matte[MCR.mf[MCR.current++]] = true;
+					return;
 			}
-
-			MCR.current++;
 		}
 
 		void matte_set_icf(size_t x)
@@ -157,16 +155,14 @@ class MCD212
 				case 0b0100: // change weight of pA
 				case 0b1100: // reset & change weight of pA
 				case 0b1101: // set & change weight of pA
-					reg.ICF[0] = MCR.icf[MCR.current];
-					break;
+					reg.ICF[0] = MCR.icf[MCR.current++];
+					return;
 				case 0b0110: // change weight of pB
 				case 0b1110: // reset & change weight of pB
 				case 0b1111: // set & change weight of pB
-					reg.ICF[1] = MCR.icf[MCR.current];
-					break;
+					reg.ICF[1] = MCR.icf[MCR.current++];
+					return;
 			}
-
-			MCR.current++;
 		}
 
 		template <size_t Path>
@@ -378,7 +374,7 @@ class MCD212
 			int outputPixel = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width % 360 == 0 ? 24 : 0);
 			for (int x = 0; x < FG[0].width; x++)
 			{
-				matte_set_icf(FG[0].width < 400 ? x*2 : x);
+				matte_set_icf(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
 				int PIXELA = (y*FG[0].width) + x;
 				int PIXELB = (y*FG[1].width) + x;
 
@@ -483,7 +479,7 @@ class MCD212
 
 			for (int x = 0; x < FG[Path].width;)
 			{
-				matte_set_flag<Path>(FG[0].width < 400 ? x*2 : x);
+				matte_set_flag<Path>(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
 				uint8_t* src = &memory[++vsr];
 				uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
 
@@ -902,6 +898,18 @@ public:
 	 */
 	bool tick(bool skip_draw = false)
 	{
+		if (skip_draw) {
+			linesV++;
+			DA = linesV > MCD212_INACTIVE_VLINES && linesV < MCD212_VSYNC_LINES;
+			if (linesV >= MCD212_VSYNC_LINES) {
+				PA ^= 1;
+				linesV = 0;
+				interlace = SM ? !interlace : false;
+				return true;
+			}
+			return false;
+		}
+
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
 			if (linesV == 1 && DE) {
 				if (IC[0]) ICA_execute<0>();
@@ -912,21 +920,16 @@ public:
 
 		if (line == 0) {
 			DA = 1;
+			if (interlace && SM) line = 1;
 
-			if (interlace && SM)
-				line = 1;
-
-			if (!skip_draw)
-				vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
+			vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
 		}
 
 		if (DE) {
-			if (!skip_draw) {
-				// render line onto bitmap
-				VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
-				VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
-				vdsc.mix_to_frame(line);
-			}
+			// render line onto bitmap
+			VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
+			VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+			vdsc.mix_to_frame(line);
 
 			if (DC[0] && IC[0]) DCA_execute<0>();
 			if (DC[1] && IC[1]) DCA_execute<1>();

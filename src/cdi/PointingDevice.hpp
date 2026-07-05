@@ -120,7 +120,7 @@ public:
 		{
 			poll_state_changed = true;
 			this->buttons[(int)b] = value;
-			MiniCDI::Log("[PD] 1=%d,2=%d", this->buttons[Button1], this->buttons[Button2]);
+			//MiniCDI::Log("[PD] B1=%d,B2=%d", this->buttons[Button1], this->buttons[Button2]);
 		}
 	}
 

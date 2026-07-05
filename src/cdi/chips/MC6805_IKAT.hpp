@@ -257,14 +257,14 @@ public:
 
 							/** Player Shell Startup Animation **/
 							case 0xF1:
-								MiniCDI::Log("[IKAT] player shell startup animation (0x%02X)", value);
+								MiniCDI::Log("[IKAT] player shell startup animation ? (0x%02X)", value);
 								Ch[c].Out = { 0xA5, 0xF1, 0x00 };
 								poll_packet(c);
 								break;
 
 							/** Player Shell Branding **/
 							case 0xF2:
-								MiniCDI::Log("[IKAT] player shell branding (0x%02X)", value);
+								MiniCDI::Log("[IKAT] player shell branding ? (0x%02X)", value);
 								Ch[c].Out = { 0xA5, 0xF2, 0x00 }; // 0x00 returns Philips
 								poll_packet(c);
 								break;

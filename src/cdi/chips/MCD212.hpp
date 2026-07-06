@@ -1,7 +1,6 @@
 #ifndef MINICDI_MCD212
 #define MINICDI_MCD212
 
-
 /*****
   DISCLAIMER:
   Sourced from official documentation of MCD212 by Motorola.
@@ -898,18 +897,6 @@ public:
 	 */
 	bool tick(bool skip_draw = false)
 	{
-		if (skip_draw) {
-			linesV++;
-			DA = linesV > MCD212_INACTIVE_VLINES && linesV < MCD212_VSYNC_LINES;
-			if (linesV >= MCD212_VSYNC_LINES) {
-				PA ^= 1;
-				linesV = 0;
-				interlace = SM ? !interlace : false;
-				return true;
-			}
-			return false;
-		}
-
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
 			if (linesV == 1 && DE) {
 				if (IC[0]) ICA_execute<0>();
@@ -920,16 +907,21 @@ public:
 
 		if (line == 0) {
 			DA = 1;
-			if (interlace && SM) line = 1;
 
-			vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
+			if (interlace && SM)
+				line = 1;
+
+			if (!skip_draw)
+				vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
 		}
 
 		if (DE) {
-			// render line onto bitmap
-			VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
-			VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
-			vdsc.mix_to_frame(line);
+			if (!skip_draw) {
+				// render line onto bitmap
+				VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
+				VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+				vdsc.mix_to_frame(line);
+			}
 
 			if (DC[0] && IC[0]) DCA_execute<0>();
 			if (DC[1] && IC[1]) DCA_execute<1>();

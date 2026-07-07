@@ -567,8 +567,8 @@ public:
 		ran += m68k_execute(cycles);
 
 		// Poll timer.
-		int timer_ticks = ran/96;
-		while (timer_ticks > 0) {
+		for (int i = cycles; i >= 96; i -= 96)
+		{
 			if (T[0] == 0xFFFF) {
 				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
 				TSR |= 0x80; // OV in T0
@@ -578,7 +578,6 @@ public:
 				T[0]++;
 				interrupt(SCC68070::IPL_TIMER, false);
 			}
-			timer_ticks--;
 		}
 
 		return ran;

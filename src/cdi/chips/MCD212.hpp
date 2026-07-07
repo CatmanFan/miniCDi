@@ -430,9 +430,9 @@ class MCD212
 
 				if (MiniCDI::Config::AnalogColors) {
 					/// Subtract to get the analog output (per Green Book 4.4.1.2).
-					output[outputPixel] = (std::clamp((int)(output[outputPixel] >> 24 & 0x000000FF) - 16, 0, 255) << 24)
-										| (std::clamp((int)(output[outputPixel] >> 16 & 0x000000FF) - 16, 0, 255) << 16)
-										| (std::clamp((int)(output[outputPixel] >> 8 & 0x000000FF) - 16, 0, 255) << 8)
+					output[outputPixel] = (std::clamp((int)(((output[outputPixel] >> 24 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 24)
+										| (std::clamp((int)(((output[outputPixel] >> 16 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 16)
+										| (std::clamp((int)(((output[outputPixel] >> 8 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 8)
 										| (output[outputPixel] & 0x000000FF);
 				}
 

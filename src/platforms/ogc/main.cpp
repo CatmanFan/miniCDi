@@ -173,13 +173,14 @@ static void FAT_Exit()
 
 static void RUN_CDI(const std::string &discName)
 {
-	/*const std::string biosName = "cdi490a";
+	#ifdef MINICDI_FORCE_MONOIV
+	const std::string biosName = "cdi490a";
 	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
 		printf("BIOS not found at %s", (appPath + "rom/" + biosName + ".rom").c_str());
 		sleep(5);
 		return;
-	}*/
-
+	}
+	#else
 	std::string biosName = "";
 	if (access((appPath + "rom/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
 	else if (access((appPath + "rom/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
@@ -188,6 +189,7 @@ static void RUN_CDI(const std::string &discName)
 		sleep(5);
 		return;
 	}
+	#endif
 
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;

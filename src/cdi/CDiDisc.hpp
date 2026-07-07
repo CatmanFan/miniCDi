@@ -202,6 +202,8 @@ class CDiDisc
 	 */
 	uint32_t get_lba_from_time(uint32_t time)
 	{
+		#ifdef MINICDI_USE_MAME_LBA_METHOD
+
 		/** Copied from MAME source code of CD-i CDIC driver **/
 		Sector.Min = time >> 24 & 0xFF;
 		Sector.Sec = time >> 16 & 0xFF;
@@ -223,6 +225,35 @@ class CDiDisc
 
 		disc.clear();
 		disc.seekg(lba*2352, std::ios::beg);
+
+		#else
+
+		Sector.Min = time >> 24 & 0xFF;
+		Sector.Sec = time >> 16 & 0xFF;
+		Sector.Frame = time >> 8 & 0xFF;
+
+		// Values are stored in BCD.
+		// Check validity of nibbles for each value
+		assert(((Sector.Min & 0xF0) >> 4) < 10);
+		assert((Sector.Min & 0x0F) < 10);
+		assert(((Sector.Sec & 0xF0) >> 4) < 10);
+		assert((Sector.Sec & 0x0F) < 10);
+		assert(((Sector.Frame & 0xF0) >> 4) < 10);
+		assert((Sector.Frame & 0x0F) < 10);
+
+		const uint8_t min_raw = ((Sector.Min & 0xF0) >> 4) * 10 + (Sector.Min & 0x0F);
+		const uint8_t sec_raw = ((Sector.Sec & 0xF0) >> 4) * 10 + (Sector.Sec & 0x0F);
+		const uint8_t fra_raw = ((Sector.Frame & 0xF0) >> 4) * 10 + (Sector.Frame & 0x0F);
+
+		uint32_t lba = ((min_raw * 60) + sec_raw) * 75 + fra_raw;
+		if (lba >= 150)
+			lba -= 150;
+
+		disc.clear();
+		disc.seekg(lba*2352, std::ios::beg);
+		//MiniCDI::Log("[Disc] time: %08X  raw_min: %02d, raw_sec: %02d, raw_frame: %02d, lba: %X", time, min_raw, sec_raw, fra_raw, lba*2352);
+
+		#endif
 
 		return lba;
 	}

@@ -22,6 +22,7 @@ class SCC68070
 	uint8_t TCR;
 	uint16_t RR;
 	uint16_t T[3]; // only Timer 0 is used in practice.
+	int T_cycles[3];
 
 	/** DMA **/
 	struct {
@@ -287,6 +288,7 @@ public:
 
 		// Timer(s)
 		TSR = TCR = RR = T[0] = T[1] = T[2] = 0;
+		T_cycles[0] = T_cycles[1] = T_cycles[2] = 0;
 
 		// DMA
 		DMA[0].CER = DMA[0].DCR = DMA[0].OCR = DMA[0].SCR = DMA[0].CCR = 0;
@@ -567,7 +569,8 @@ public:
 		ran += m68k_execute(cycles);
 
 		// Poll timer.
-		for (int i = cycles; i >= 96; i -= 96)
+		T_cycles[0] += cycles;
+		while (T_cycles[0] >= 96)
 		{
 			if (T[0] == 0xFFFF) {
 				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
@@ -578,6 +581,8 @@ public:
 				T[0]++;
 				interrupt(SCC68070::IPL_TIMER, false);
 			}
+
+			T_cycles[0] -= 96;
 		}
 
 		return ran;

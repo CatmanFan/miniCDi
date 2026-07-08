@@ -579,7 +579,6 @@ public:
 				interrupt(SCC68070::IPL_TIMER, true);
 			} else {
 				T[0]++;
-				interrupt(SCC68070::IPL_TIMER, false);
 			}
 
 			T_cycles[0] -= 96;

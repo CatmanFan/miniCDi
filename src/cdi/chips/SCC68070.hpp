@@ -6,39 +6,43 @@ class SCC68070
 	uint8_t* memory;
 
 	// On-chip peripherals
-	uint8_t LIR;
-	uint8_t PICR[2];
+	uint8_t LIR = 0;
+	uint8_t PICR[2] = {0,0};
 
 	/** UART **/
-	uint8_t UMR; // Mode Register
-	uint8_t USR; // Status Register
-	uint8_t UCS; // Clock Select Register
-	uint8_t UCR; // Command Register
-	uint8_t UTH; // Transmit Holding Register
-	uint8_t URH; // Receive Holding Register
+	uint8_t UMR = 0; // Mode Register
+	uint8_t USR = 0; // Status Register
+	uint8_t UCS = 0; // Clock Select Register
+	uint8_t UCR = 0; // Command Register
+	struct {
+		uint8_t HR = 0; // Transmit Holding Register
+		std::vector<uint8_t> chars;
+		int clock = 0;
+	} UART_T;
+	uint8_t URH = 0; // Receive Holding Register
 
 	/** Timer **/
-	uint8_t TSR;
-	uint8_t TCR;
-	uint16_t RR;
-	uint16_t T[3]; // only Timer 0 is used in practice.
-	int T_cycles[3];
+	uint8_t TSR = 0;
+	uint8_t TCR = 0;
+	uint16_t RR = 0;
+	uint16_t T[3] = {0,0,0}; // only Timer 0 is used in practice.
+	int T_cycles[3] = {0,0,0};
 
 	/** DMA **/
 	struct {
-		uint8_t CSR;
-		uint8_t CER;
+		uint8_t CSR = 0;
+		uint8_t CER = 0;
 
-		uint8_t DCR;
-		uint8_t OCR;
-		uint8_t SCR;
-		uint8_t CCR;
+		uint8_t DCR = 0;
+		uint8_t OCR = 0;
+		uint8_t SCR = 0;
+		uint8_t CCR = 0;
 
-		uint16_t MTC;
-		uint32_t MAC;
-		uint32_t DAC;
+		uint16_t MTC = 0;
+		uint32_t MAC = 0;
+		uint32_t DAC = 0;
 
-		uint8_t CPR;
+		uint8_t CPR = 0;
 	} DMA[2];
 
 	void dma_call(size_t index, uint32_t start_address)
@@ -112,11 +116,11 @@ class SCC68070
 	}
 
 	/** I²C **/
-	uint8_t IDR;
-	uint8_t IAR;
-	uint8_t ISR;
-	uint8_t ICR;
-	uint8_t ICCR;
+	uint8_t IDR = 0;
+	uint8_t IAR = 0;
+	uint8_t ISR = 0;
+	uint8_t ICR = 0;
+	uint8_t ICCR = 0;
 
 	void update_ipl()
 	{
@@ -172,7 +176,7 @@ class SCC68070
 	}
 
 public:
-	uint8_t fc; // used for FC/address space callback
+	uint8_t fc = 0; // used for FC/address space callback
 	friend class PointingDevice;
 	friend class CDIC;
 	friend class CIAP;
@@ -193,13 +197,13 @@ public:
 		IPL_DMA2
 	};
 	struct {
-		int cur_index; // Index of peripheral holding current IRQ
-		int nxt_index; // Index of peripheral holding next IRQ
-		uint8_t cur_irq; // Current pending interrupt level
-		uint8_t nxt_irq; // Next pending interrupt level
+		int cur_index = 0; // Index of peripheral holding current IRQ
+		int nxt_index = 0; // Index of peripheral holding next IRQ
+		uint8_t cur_irq = 0; // Current pending interrupt level
+		uint8_t nxt_irq = 0; // Next pending interrupt level
 
-		uint8_t levels[12];
-		uint8_t vectors[12];
+		uint8_t levels[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+		uint8_t vectors[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 	} Ipl;
 
 	/**
@@ -282,7 +286,12 @@ public:
 		USR = 0x06; // TX ready and unused bit
 		UCS = 0x08; // unused bit
 		UCR = 0x80; // unused bit
-		UTH = URH = 0;
+		UART_T.HR = UART_T.clock = 0;
+		if (UART_T.chars.size() > 0) {
+			MiniCDI::Log("[SCC68070:UART] UART TX at reset:\n%s\n", &UART_T.chars[0]);
+			UART_T.chars.clear();
+		}
+		URH = 0;
 
 		PICR[0] = PICR[1] = 0;
 
@@ -336,7 +345,7 @@ public:
 			case 0x80002013: USR |= (1<<1); return USR | 0x08;
 			case 0x80002015: return UCS | 0x08;
 			case 0x80002017: return UCR | 0x80;
-			case 0x80002019: return UTH;
+			case 0x80002019: return UART_T.HR;
 			case 0x8000201B: if (URH) USR |= 0x01; else USR &= ~(0x01); return URH;
 
 			/** I²C **/
@@ -438,20 +447,25 @@ public:
 				switch (UCR & 0x70)
 				{
 					case 0x20: // reset receiver
+						MiniCDI::Log("[SCC68070:UART] UCR %02X (reset URH)", value);
 						URH = 0;
-						//MiniCDI::Log("[SCC68070:UART] UCR %02X (reset URH)", value);
+						UCR &= ~0x03; // reset RxD control
 						break;
 					case 0x30: // reset transmitter
-						UTH = 0; USR |= 0x08;
-						//MiniCDI::Log("[SCC68070:UART] UCR %02X (reset UTH)", value);
+						MiniCDI::Log("[SCC68070:UART] UCR %02X (reset UTH)", value);
+						UART_T.HR = 0;
+						UART_T.chars.clear();
+						USR |= 0x08; // set TXE
+						UCR &= ~0x0C; // reset TxD control
 						break;
 					case 0x40: // reset error status
+						MiniCDI::Log("[SCC68070:UART] UCR %02X (reset error)", value);
 						USR &= 0x0F;
-						//MiniCDI::Log("[SCC68070:UART] UCR %02X (reset error)", value);
 						break;
 				}
 				break;
-			case 0x80002019: UTH = value;
+			case 0x80002019: UART_T.HR = value;
+				UART_T.chars.push_back(value);
 				USR &= ~0x08; // unset TXE
 				break;
 			case 0x8000201B: URH = value; break;
@@ -543,6 +557,24 @@ public:
 		printf("\n[DMA1] CSR: %02X MTC: %04X MAC: %08X\n", DMA[0].CSR, DMA[0].MTC, DMA[0].MAC);
 		printf("\x1b[%d;%dH", 16, 0);
 		#endif
+	}
+
+	void uart_tx_tick()
+	{
+		if ((UCR & 0b1100) != 0b0100) return;
+		USR |= 0x04; // set TXRDY
+		interrupt(SCC68070::IPL_UART_TX, true);
+
+		if (UART_T.chars.size() > 0)
+		{
+			MiniCDI::Log("[SCC68070:UART] transferring %02X", UART_T.chars[0]);
+			UART_T.HR = UART_T.chars[0];
+		}
+
+		if (UART_T.chars.size() == 0)
+		{
+			USR |= 0x08; // set TXE
+		}
 	}
 
 	int run(int cycles)

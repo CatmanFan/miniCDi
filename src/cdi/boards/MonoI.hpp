@@ -24,14 +24,38 @@ private:
 	PlayerLCD lcd;
 
 	// Scheduler values
-	const int sector_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 75;
-	const int line_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 15625;
-	int cycles_left_sector = sector_tick_rate;
-	int cycles_left_vpu = line_tick_rate;
-	#ifdef MINICDI_PDTICK
-	const int pd_tick_rate = (MiniCDI::Config::PAL ? 30000000 : 30209800) / 30; // absolute: 30, relative: 40
-	int cycles_left_pd = pd_tick_rate;
-	#endif
+	enum EventType
+	{
+		SECTOR = 0,
+		VPU,
+		UART_TX,
+		#ifdef MINICDI_PDTICK
+		EventCOUNT,
+		PD
+		#else
+		EventCOUNT
+		#endif
+	};
+
+	int event_rates[EventCOUNT] =
+	{
+		(MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
+		(MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
+		4915200
+		#ifdef MINICDI_PDTICK
+		, (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30 // absolute: 30, relative: 40
+		#endif
+	};
+
+	int event_cycles[EventCOUNT] =
+	{
+		event_rates[SECTOR],
+		event_rates[VPU],
+		event_rates[UART_TX]
+		#ifdef MINICDI_PDTICK
+		, event_rates[PD]
+		#endif
+	};
 
 public:
 	bool init(const std::string &bios, enum BoardType board) override;
@@ -40,30 +64,40 @@ public:
 	{
 		bool VBLANK = false;
 		do {
-			int cycles = std::min({cycles_left_sector, cycles_left_vpu});
+			int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 			cpu.run(cycles);
 
-			cycles_left_sector -= cycles;
-			if (cycles_left_sector <= 0) {
-				cycles_left_sector += sector_tick_rate;
-				if (cdic != NULL) cdic->tick();
-				else if (dsp != NULL) dsp->tick();
-				else if (ciap != NULL) ciap->tick();
-			}
+			for (int i = 0; i < EventCOUNT; i++)
+			{
+				event_cycles[i] -= cycles;
+				if (event_cycles[i] <= 0)
+				{
+					switch (i)
+					{
+						case SECTOR:
+							if (cdic != NULL) cdic->tick();
+							else if (dsp != NULL) dsp->tick();
+							else if (ciap != NULL) ciap->tick();
+							break;
 
-			cycles_left_vpu -= cycles;
-			if (cycles_left_vpu <= 0) {
-				cycles_left_vpu += line_tick_rate;
-				VBLANK = vpu != NULL ? vpu->tick(skip_draw) : true;
-			}
+						case UART_TX:
+							cpu.uart_tx_tick();
+							break;
 
-			#ifdef MINICDI_PDTICK
-			cycles_left_pd -= cycles;
-			if (cycles_left_pd <= 0) {
-				cycles_left_pd += pd_tick_rate;
-				pd.send_packet();
+						case VPU:
+							VBLANK = vpu != NULL ? vpu->tick(skip_draw) : true;
+							break;
+
+						#ifdef MINICDI_PDTICK
+						case PD:
+							pd.send_packet();
+							break;
+						#endif
+					}
+
+					event_cycles[i] += event_rates[i];
+				}
 			}
-			#endif
 		} while (!VBLANK);
 
 		// Print verbose CPU
@@ -83,8 +117,13 @@ public:
 		MiniCDI::Log("[CDI] reset");
 		cpu.reset();
 		vpu->reset();
+
+		// Microcontroller
 		if (slave != NULL) slave->reset();
 		if (ikat != NULL) ikat->reset();
+
+		// CD-Audio
+		if (cdic != NULL) cdic->reset();
 	}
 	~MonoI();
 

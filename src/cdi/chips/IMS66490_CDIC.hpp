@@ -169,6 +169,12 @@ public:
 	{
 	}
 
+	void reset()
+	{
+		XBUF = 0;
+		CdicController = {0};
+	}
+
 	void tick()
 	{
 		disc_process_sector();

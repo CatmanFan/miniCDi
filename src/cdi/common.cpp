@@ -135,10 +135,15 @@ static int MiniCDI_int_ack_handler(int int_level)
 
 	if (MiniCDI::Player.scc68070)
 	{
-		if (MiniCDI::Player.scc68070->Ipl.cur_index == SCC68070::IPL_TIMER)
-			MiniCDI::Player.scc68070->interrupt(SCC68070::IPL_TIMER, false);
-
 		//MiniCDI::Log("[SCC68070:IPL] acknowledge lvl=%X", int_level);
+		switch (MiniCDI::Player.scc68070->Ipl.cur_index)
+		{
+			case SCC68070::IPL_TIMER:
+				MiniCDI::Player.scc68070->interrupt(SCC68070::IPL_TIMER, false);
+			case SCC68070::IPL_UART_TX:
+				MiniCDI::Player.scc68070->interrupt(SCC68070::IPL_UART_TX, false);
+		}
+
 		if (MiniCDI::Player.scc68070->Ipl.vectors[MiniCDI::Player.scc68070->Ipl.cur_index])
 			return MiniCDI::Player.scc68070->Ipl.vectors[MiniCDI::Player.scc68070->Ipl.cur_index];
 	}

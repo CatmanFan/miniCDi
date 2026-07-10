@@ -240,17 +240,9 @@ class MCD212
 			uint8_t Y = 0;
 			uint8_t U = 0;
 			uint8_t V = 0;
-			int line = -1;
 
 			/// Table 7–1 in MCD212 datasheet
 			uint8_t LUT_deq[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
-
-			int16_t LUT_Y[0x100];
-			int16_t LUT_UV[0x100];
-			int16_t LUT_V_R[0x100];
-			int16_t LUT_V_G[0x100];
-			int16_t LUT_U_G[0x100];
-			int16_t LUT_U_B[0x100];
 		} DYUVDecoder;
 
 		template <size_t Path>
@@ -259,14 +251,14 @@ class MCD212
 			uint8_t Y[2], U[2], V[2];
 
 			// Decode DYUV pair of bytes
-			Y[0] = DYUVDecoder.Y + DYUVDecoder.LUT_Y[src[0]];
-			U[1] = DYUVDecoder.U + DYUVDecoder.LUT_UV[src[0]];
-			V[1] = DYUVDecoder.V + DYUVDecoder.LUT_UV[src[1]];
-			Y[1] = Y[0] + DYUVDecoder.LUT_Y[src[1]];
+			U[1] = DYUVDecoder.U + DYUVDecoder.LUT_deq[src[0] >> 4 & 0x0F];
+			Y[0] = DYUVDecoder.Y + DYUVDecoder.LUT_deq[src[0] & 0x0F];
+			V[1] = DYUVDecoder.V + DYUVDecoder.LUT_deq[src[1] >> 4 & 0x0F];
+			Y[1] = Y[0] + DYUVDecoder.LUT_deq[src[1] & 0x0F];
 
 			// Interpolation for U0 and V0
-			U[0] = (DYUVDecoder.U >> 1) + (U[1] >> 1) + (DYUVDecoder.U & U[1] & 1);
-			V[0] = (DYUVDecoder.V >> 1) + (V[1] >> 1) + (DYUVDecoder.V & V[1] & 1);
+			U[0] = (DYUVDecoder.U + U[1]) >> 1;
+			V[0] = (DYUVDecoder.V + V[1]) >> 1;
 
 			DYUVDecoder.Y = Y[1];
 			DYUVDecoder.U = U[1];
@@ -274,11 +266,11 @@ class MCD212
 
 			// Convert to RGB values
 			for (size_t i = 0; i < 2; i++) {
-				const int R = std::clamp((int)Y[i] + (DYUVDecoder.LUT_V_R[V[i]] >> 8), 0, 255);
-				const int G = std::clamp((int)Y[i] + ((DYUVDecoder.LUT_U_G[U[i]] + DYUVDecoder.LUT_V_G[V[i]]) >> 8), 0, 255);
-				const int B = std::clamp((int)Y[i] + (DYUVDecoder.LUT_U_B[U[i]] >> 8), 0, 255);
+				int B = std::clamp((int)((float)Y[i] + (float)(U[i] - 128) * 1.733f), 0, 255);
+				int R = std::clamp((int)((float)Y[i] + (float)(V[i] - 128) * 1.371f), 0, 255);
+				int G = std::clamp((int)(((float)Y[i] - 0.299f * (float)R - 0.114f * (float)B) / 0.587f), 0, 255);
 
-				dst[i] = (B << 24) | (G << 16) | (R << 8) | 0xFF;
+				dst[i] = (R << 24) | (G << 16) | (B << 8) | 0xFF;
 			}
 
 			return 2;
@@ -340,18 +332,6 @@ class MCD212
 			output.assign(768 * 280, 0x000000FF); // max bounds
 			memset(cursor, 0, sizeof(cursor));
 			reg = {0};
-
-			// Generate LUTs for DYUV
-			for (int i = 0; i < 0x100; i++)
-			{
-				DYUVDecoder.LUT_Y[i] = DYUVDecoder.LUT_deq[i & 15];
-				DYUVDecoder.LUT_UV[i] = DYUVDecoder.LUT_deq[i >> 4];
-
-				DYUVDecoder.LUT_V_R[i] = std::clamp(351 * (i - 128), 0, 255);
-				DYUVDecoder.LUT_V_G[i] = std::clamp(179 * (i - 128), 0, 255);
-				DYUVDecoder.LUT_U_G[i] = std::clamp(86 * (i - 128), 0, 255);
-				DYUVDecoder.LUT_U_B[i] = std::clamp(444 * (i - 128), 0, 255);
-			}
 		}
 
 		void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
@@ -498,7 +478,7 @@ class MCD212
 			for (int x = 0; x < FG[Path].width;)
 			{
 				matte_set_flag<Path>(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
-				uint8_t* src = &memory[++vsr];
+				uint8_t* src = &memory[vsr];
 				uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
 
 				switch (reg.FT[Path]) {
@@ -512,11 +492,12 @@ class MCD212
 							{
 								default:
 									assert(0);
+									vsr++;
 									continue;
 
 								case DYUV:
 									x += decodeDYUV<Path>(src, dst);
-									++vsr;
+									vsr += 2;
 									continue;
 
 								case CLUT4:
@@ -524,6 +505,7 @@ class MCD212
 								case CLUT77:
 								case CLUT8:
 									x += decodeCLUT<Path>(src, dst);
+									vsr++;
 									continue;
 							}
 						}
@@ -534,11 +516,12 @@ class MCD212
 							default:
 							case CLUT4: // RL3
 							case CLUT7: // RL7
-								int length = (*src & 0x80 ? memory[++vsr] : 1) * (reg.Icm[Path] == CLUT4 ? 2 : 1);
+								int length = (*src & 0x80 ? memory[vsr+1] : 1) * (reg.Icm[Path] == CLUT4 ? 2 : 1);
 								int endX = length == 0 ? FG[Path].width : std::min({x+length, FG[Path].width});
 								while (x < endX) {
 									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
 								}
+								vsr += (*src & 0x80 ? 2 : 1);
 								continue;
 						}
 
@@ -546,6 +529,7 @@ class MCD212
 						// TO-DO
 						// reg.ICF[Path] /= 2;
 						assert(0);
+						vsr++;
 						continue;
 				}
 			}

@@ -255,17 +255,21 @@ class MCD212
 					DYUV_U = src[0] >> 4 & 0x0F,
 					DYUV_V = src[1] >> 4 & 0x0F;
 
+			// Decode DYUV pair of bytes
 			Y[0] = (DYUVDecoder.Y + DYUVDecoder.LUT_deq[DYUV_Y1]) % 256;
-			Y[1] = (Y[0] + DYUVDecoder.LUT_deq[DYUV_Y2]) % 256;
 			U[1] = (DYUVDecoder.U + DYUVDecoder.LUT_deq[DYUV_U]) % 256;
 			V[1] = (DYUVDecoder.V + DYUVDecoder.LUT_deq[DYUV_V]) % 256;
-			U[0] = DYUVDecoder.U;
-			V[0] = DYUVDecoder.V;
+			Y[1] = (Y[0] + DYUVDecoder.LUT_deq[DYUV_Y2]) % 256;
+
+			// Interpolation for U0 and V0
+			U[0] = ((uint16_t)DYUVDecoder.U + (uint16_t)U[1]) >> 1;
+			V[0] = ((uint16_t)DYUVDecoder.V + (uint16_t)V[1]) >> 1;
 
 			DYUVDecoder.Y = Y[1];
 			DYUVDecoder.U = U[1];
 			DYUVDecoder.V = V[1];
 
+			// Convert to RGB values
 			for (size_t i = 0; i < 2; i++) {
 				int B = std::clamp((int)((float)Y[i] + (float)(U[i] - 128) * 1.733f), 0, 255);
 				int R = std::clamp((int)((float)Y[i] + (float)(V[i] - 128) * 1.371f), 0, 255);
@@ -430,9 +434,9 @@ class MCD212
 
 				if (MiniCDI::Config::AnalogColors) {
 					/// Subtract to get the analog output (per Green Book 4.4.1.2).
-					output[outputPixel] = (std::clamp((int)(((output[outputPixel] >> 24 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 24)
-										| (std::clamp((int)(((output[outputPixel] >> 16 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 16)
-										| (std::clamp((int)(((output[outputPixel] >> 8 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 8)
+					output[outputPixel] = (std::clamp((int)((((int)output[outputPixel] >> 24 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 24)
+										| (std::clamp((int)((((int)output[outputPixel] >> 16 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 16)
+										| (std::clamp((int)((((int)output[outputPixel] >> 8 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 8)
 										| (output[outputPixel] & 0x000000FF);
 				}
 
@@ -613,12 +617,16 @@ class MCD212
 					break;
 
 				case 0xCA:
-					reg.ColorDYUV[0] = inst & 0x00FFFFFFu;
-					//MiniCDI::Log("[VDSC] P0 yuv_b y=$%02x,u=$%02x,v=$%02x", inst >> 16 & 0xFFu, inst >> 8 & 0xFFu, inst & 0xFFu);
+					if (!Path) {
+						reg.ColorDYUV[0] = inst & 0x00FFFFFFu;
+						//MiniCDI::Log("[VDSC] P0 yuv_b y=$%02x,u=$%02x,v=$%02x", inst >> 16 & 0xFFu, inst >> 8 & 0xFFu, inst & 0xFFu);
+					}
 					break;
 				case 0xCB:
-					reg.ColorDYUV[1] = inst & 0x00FFFFFFu;
-					//MiniCDI::Log("[VDSC] P1 yuv_b y=$%02x,u=$%02x,v=$%02x", inst >> 16 & 0xFFu, inst >> 8 & 0xFFu, inst & 0xFFu);
+					if (Path) {
+						reg.ColorDYUV[1] = inst & 0x00FFFFFFu;
+						//MiniCDI::Log("[VDSC] P1 yuv_b y=$%02x,u=$%02x,v=$%02x", inst >> 16 & 0xFFu, inst >> 8 & 0xFFu, inst & 0xFFu);
+					}
 					break;
 
 				case 0xCD: // channel 1

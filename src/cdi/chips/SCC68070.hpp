@@ -288,7 +288,7 @@ public:
 		UCR = 0x80; // unused bit
 		UART_T.HR = UART_T.clock = 0;
 		if (UART_T.chars.size() > 0) {
-			MiniCDI::Log("[SCC68070:UART] UART TX at reset:\n%s\n", &UART_T.chars[0]);
+			MiniCDI::Log("[SCC68070:UART] TX log at reset:\n%s\n", &UART_T.chars[0]);
 			UART_T.chars.clear();
 		}
 		URH = 0;

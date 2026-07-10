@@ -237,33 +237,36 @@ class MCD212
 
 		struct
 		{
-			uint8_t Y;
-			uint8_t U;
-			uint8_t V;
+			uint8_t Y = 0;
+			uint8_t U = 0;
+			uint8_t V = 0;
+			int line = -1;
 
-			// Use only ONE LUT, for the dequantizer (small enough to fit in host memory, unlike a 16-million RGB LUT).
-			// The RGB color is generated dynamically so as to prevent crashing from full RAM usage.
+			/// Table 7–1 in MCD212 datasheet
 			uint8_t LUT_deq[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
+
+			int16_t LUT_Y[0x100];
+			int16_t LUT_UV[0x100];
+			int16_t LUT_V_R[0x100];
+			int16_t LUT_V_G[0x100];
+			int16_t LUT_U_G[0x100];
+			int16_t LUT_U_B[0x100];
 		} DYUVDecoder;
 
 		template <size_t Path>
 		uint32_t decodeDYUV(uint8_t* src, uint32_t *dst)
 		{
-			uint8_t Y[2], U[2], V[2],
-					DYUV_Y1 = src[0] & 0x0F,
-					DYUV_Y2 = src[1] & 0x0F,
-					DYUV_U = src[0] >> 4 & 0x0F,
-					DYUV_V = src[1] >> 4 & 0x0F;
+			uint8_t Y[2], U[2], V[2];
 
 			// Decode DYUV pair of bytes
-			Y[0] = (DYUVDecoder.Y + DYUVDecoder.LUT_deq[DYUV_Y1]) % 256;
-			U[1] = (DYUVDecoder.U + DYUVDecoder.LUT_deq[DYUV_U]) % 256;
-			V[1] = (DYUVDecoder.V + DYUVDecoder.LUT_deq[DYUV_V]) % 256;
-			Y[1] = (Y[0] + DYUVDecoder.LUT_deq[DYUV_Y2]) % 256;
+			Y[0] = DYUVDecoder.Y + DYUVDecoder.LUT_Y[src[0]];
+			U[1] = DYUVDecoder.U + DYUVDecoder.LUT_UV[src[0]];
+			V[1] = DYUVDecoder.V + DYUVDecoder.LUT_UV[src[1]];
+			Y[1] = Y[0] + DYUVDecoder.LUT_Y[src[1]];
 
 			// Interpolation for U0 and V0
-			U[0] = ((uint16_t)DYUVDecoder.U + (uint16_t)U[1]) >> 1;
-			V[0] = ((uint16_t)DYUVDecoder.V + (uint16_t)V[1]) >> 1;
+			U[0] = (DYUVDecoder.U >> 1) + (U[1] >> 1) + (DYUVDecoder.U & U[1] & 1);
+			V[0] = (DYUVDecoder.V >> 1) + (V[1] >> 1) + (DYUVDecoder.V & V[1] & 1);
 
 			DYUVDecoder.Y = Y[1];
 			DYUVDecoder.U = U[1];
@@ -271,9 +274,9 @@ class MCD212
 
 			// Convert to RGB values
 			for (size_t i = 0; i < 2; i++) {
-				int B = std::clamp((int)((float)Y[i] + (float)(U[i] - 128) * 1.733f), 0, 255);
-				int R = std::clamp((int)((float)Y[i] + (float)(V[i] - 128) * 1.371f), 0, 255);
-				int G = std::clamp((int)(((float)Y[i] - 0.299f * (float)R - 0.114f * (float)B) / 0.587f), 0, 255);
+				const int R = std::clamp((int)Y[i] + (DYUVDecoder.LUT_V_R[V[i]] >> 8), 0, 255);
+				const int G = std::clamp((int)Y[i] + ((DYUVDecoder.LUT_U_G[U[i]] + DYUVDecoder.LUT_V_G[V[i]]) >> 8), 0, 255);
+				const int B = std::clamp((int)Y[i] + (DYUVDecoder.LUT_U_B[U[i]] >> 8), 0, 255);
 
 				dst[i] = (B << 24) | (G << 16) | (R << 8) | 0xFF;
 			}
@@ -337,6 +340,18 @@ class MCD212
 			output.assign(768 * 280, 0x000000FF); // max bounds
 			memset(cursor, 0, sizeof(cursor));
 			reg = {0};
+
+			// Generate LUTs for DYUV
+			for (int i = 0; i < 0x100; i++)
+			{
+				DYUVDecoder.LUT_Y[i] = DYUVDecoder.LUT_deq[i & 15];
+				DYUVDecoder.LUT_UV[i] = DYUVDecoder.LUT_deq[i >> 4];
+
+				DYUVDecoder.LUT_V_R[i] = std::clamp(351 * (i - 128), 0, 255);
+				DYUVDecoder.LUT_V_G[i] = std::clamp(179 * (i - 128), 0, 255);
+				DYUVDecoder.LUT_U_G[i] = std::clamp(86 * (i - 128), 0, 255);
+				DYUVDecoder.LUT_U_B[i] = std::clamp(444 * (i - 128), 0, 255);
+			}
 		}
 
 		void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
@@ -731,10 +746,8 @@ class MCD212
 			DC[2],		/** (DCA) 0 = corresponding DCA off, 1 = corresponding DCA on **/
 			IT[2],		/** (Interrupt) **/
 			DI[2],		/** (Disable Interrupts) **/
-			MF1[2],		/** (Mosaic Factor) separate for each channel **/
-			MF2[2],
-			FT1[2],		/** (File Type) separate for each channel **/
-			FT2[2];
+			MF[2],		/** (Mosaic Factor) separate for each channel **/
+			FT[2];		/** (File Type) separate for each channel **/
 
 	template <size_t Path>
 	void vsr_set(uint32_t value) {
@@ -799,11 +812,9 @@ class MCD212
 					break;
 
 				case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
-					CM[Path] = inst >> 4 & 0b01u;
-					MF1[Path] = inst >> 3 & 0b01u;
-					MF2[Path] = inst >> 2 & 0b01u;
-					FT1[Path] = inst >> 1 & 0b01u;
-					FT2[Path] = inst & 0b01u;
+					CM[Path] = inst >> 8 & 0b01u;
+					MF[Path] = inst >> 2 & 0b11u;
+					FT[Path] = inst & 0b11u;
 					vdsc.set_register<Path>(inst);
 					break;
 
@@ -885,8 +896,8 @@ public:
 		DI[1] = 0;
 		DE = CF = FD = SM = CM[0] = IC[0] = DC[0] = 0;
 		CM[1] = IC[1] = DC[1] = 0;
-		MF1[0] = MF2[0] = FT1[0] = FT2[0] = 0;
-		MF1[1] = MF2[1] = FT1[1] = FT2[1] = 0;
+		MF[0] = FT[0] = 0;
+		MF[1] = FT[1] = 0;
 
 		// initialization
 		CF = 1; // crystal frequency: 60Hz
@@ -1031,19 +1042,15 @@ public:
 				VSR[1] |= value;
 				break;
 			case 0x4FFFF8: // DDR1
-				FT2[0] = value >> 7 & 0b01u;
-				FT1[0] = value >> 8 & 0b01u;
-				MF2[0] = value >> 9 & 0b01u;
-				MF1[0] = value >> 10 & 0b01u;
+				FT[0] = value >> 8 & 0b11u;
+				MF[0] = value >> 10 & 0b11u;
 
 				DCP[0] &= 0x0000FFFFu;
 				DCP[0] |= (value & 0x3Fu) << 8;
 				break;
 			case 0x4FFFE8: // DDR2
-				FT2[1] = value >> 7 & 0b01u;
-				FT1[1] = value >> 8 & 0b01u;
-				MF2[1] = value >> 9 & 0b01u;
-				MF1[1] = value >> 10 & 0b01u;
+				FT[1] = value >> 8 & 0b11u;
+				MF[1] = value >> 10 & 0b11u;
 
 				DCP[1] &= 0x0000FFFFu;
 				DCP[1] |= (value & 0x3Fu) << 8;

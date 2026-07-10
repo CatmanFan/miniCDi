@@ -266,6 +266,7 @@ class MCD212
 
 			// Convert to RGB values
 			for (size_t i = 0; i < 2; i++) {
+				/// Green Book V.4.4.2.2
 				int B = std::clamp((int)((float)Y[i] + (float)(U[i] - 128) * 1.733f), 0, 255);
 				int R = std::clamp((int)((float)Y[i] + (float)(V[i] - 128) * 1.371f), 0, 255);
 				int G = std::clamp((int)(((float)Y[i] - 0.299f * (float)R - 0.114f * (float)B) / 0.587f), 0, 255);
@@ -280,9 +281,10 @@ class MCD212
 		uint32_t decodeRGB555(uint8_t* src, uint32_t *dst)
 		{
 			if (!isTransparent<Path>(src)) {
-				uint8_t r = std::clamp((*src & 0b0111110000000000) >> 7, 0, 255);
-				uint8_t g = std::clamp((*src & 0b0000001111100000) >> 2, 0, 255);
-				uint8_t b = std::clamp((*src & 0b0000000000011111) << 3, 0, 255);
+				uint16_t rgb555 = (*src << 8) | *(src+1);
+				uint8_t r = std::clamp((rgb555 & 0b0111110000000000) >> 7, 0, 255);
+				uint8_t g = std::clamp((rgb555 & 0b0000001111100000) >> 2, 0, 255);
+				uint8_t b = std::clamp((rgb555 & 0b0000000000011111) << 3, 0, 255);
 
 				*dst = (r << 24) | (g << 16) | (b << 8) | 0xFF;
 			}
@@ -486,6 +488,7 @@ class MCD212
 					case Bitmap:
 						if (reg.Icm[0] == Off && reg.Icm[1] == RGB555) {
 							x += decodeRGB555<Path>(src, dst);
+							vsr++;
 							continue;
 						} else {
 							switch (reg.Icm[Path])
@@ -884,9 +887,9 @@ public:
 		MF[1] = FT[1] = 0;
 
 		// initialization
-		CF = 1; // crystal frequency: 60Hz
+		CF = MiniCDI::Config::PAL ? 0 : 1; // crystal frequency
 		FD = MiniCDI::Config::PAL ? 0 : 1; // frame duration
-		SM = 0; // interlace not needed
+		SM = 0; // interlace (unnecessary)
 
 		interlace = false;
 		linesV = 0;

@@ -39,11 +39,11 @@ private:
 
 	int event_rates[EventCOUNT] =
 	{
-		(MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
-		(MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
-		4915200
+		/* SECTOR */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
+		/* VPU */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
+		/* UART_TX */ 4915200
 		#ifdef MINICDI_PDTICK
-		, (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30 // absolute: 30, relative: 40
+		, /* PD */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30 // absolute: 30, relative: 40
 		#endif
 	};
 
@@ -80,12 +80,12 @@ public:
 							else if (ciap != NULL) ciap->tick();
 							break;
 
-						case UART_TX:
-							cpu.uart_tx_tick();
-							break;
-
 						case VPU:
 							VBLANK = vpu != NULL ? vpu->tick(skip_draw) : true;
+							break;
+
+						case UART_TX:
+							cpu.uart_tx_tick();
 							break;
 
 						#ifdef MINICDI_PDTICK
@@ -124,6 +124,13 @@ public:
 
 		// CD-Audio
 		if (cdic != NULL) cdic->reset();
+
+		event_cycles[SECTOR] = event_rates[SECTOR];
+		event_cycles[VPU] = event_rates[VPU];
+		event_cycles[UART_TX] = event_rates[UART_TX];
+		#ifdef MINICDI_PDTICK
+		event_cycles[PD] = event_rates[PD];
+		#endif
 	}
 	~MonoI();
 

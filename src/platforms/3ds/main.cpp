@@ -7,6 +7,8 @@
 #include <3ds.h>
 #include <citro2d.h>
 
+#include "../common/mINI.hpp"
+
 /*class FPS
 {
 	int8_t aggregate;
@@ -159,8 +161,8 @@ static std::string RUN_MENU()
 		if (render) {
 			render = false;
 			printf("\033[2J\033[H"); // Clear screen
-			printf("miniCDi\n");
-			printf("select a disc\n");
+			printf("miniCDi v0.1 for 3DS\n");
+			printf("select a disc\n\n");
 
 			for (size_t i = 0; i < discs.size(); i++) {
 				if (i == selected)
@@ -178,6 +180,8 @@ static C3D_RenderTarget* top = NULL;
 
 static void RUN_CDI(const std::string &biosName, const std::string &discName)
 {
+	printf("\033[2J\033[H"); // Clear screen
+	printf("miniCDi\n");
 	// Check for BIOS
 	if (access(("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
 		printf("BIOS not found, exiting");
@@ -185,21 +189,36 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		exit(0);
 		return;
 	}
+	printf("player: %s.rom\n", biosName.c_str());
 
-	// Make use of N3DS clock speed
-	osSetSpeedupEnable(true);
-
-	printf("\033[2J\033[H"); // Clear screen
-	printf("miniCDi\n");
-	printf("Loading CDi 220 bios\n");
-
-	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = true;
+	// load whatever settings we have
+	mINI::INIFile file("sdmc:/3ds/miniCDi/config.ini");
+	mINI::INIStructure ini;
+	if (access("sdmc:/3ds/miniCDi/config.ini", F_OK) == 0) {
+		file.read(ini);
+	}
+	else {
+		ini["CDI"]["AutosaveNVRAM"] = "1";
+		ini["CDI"]["TestPlug"] = "0";
+		ini["CDI"]["PAL"] = "1";
+		ini["CDI"]["AnalogColors"] = "0";
+		ini["MiniCDI"]["FrameSkip"] = "2";
+		ini["MiniCDI"]["Logging"] = "0";
+		file.generate(ini);
+	}
+	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	#ifdef MINICDI_FORCE_LOGFILE
+	MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
+	#else
+	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen("sdmc:/3ds/miniCDi/log.txt", "wt") : NULL;
+	#endif
+	MiniCDI::Config::ShowFPS = false;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::AnalogColors = true;
 	MiniCDI::Config::HasDisc = false;
-	MiniCDI::Config::FrameSkip = 3;
-	// MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
+	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? "sdmc:/3ds/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
 	cdi.init("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom", CDi::MonoI);
@@ -213,6 +232,10 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		u32 kDown = hidKeysDown();
 		u32 kHeld = hidKeysHeld();
 		if (kDown & KEY_ZR) break; // break in order to return to hbmenu
+		if (kDown & KEY_SELECT) {
+			printf("Reset\n");
+			cdi.reset();
+		}
 
 		cdi.pd.set_button(PointingDevice::Left, kHeld & KEY_LEFT);
 		cdi.pd.set_button(PointingDevice::Right, kHeld & KEY_RIGHT);
@@ -241,11 +264,14 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		C3D_FrameSync();
 		C3D_FrameEnd(0);
 	}
+
+	printf("Shutdown\n");
 }
 
 int main(int argc, char* argv[])
 {
 	// Init libs
+	osSetSpeedupEnable(true);
 	gfxInitDefault();
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
 	C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
@@ -257,7 +283,10 @@ int main(int argc, char* argv[])
 
 	// Main loop
 	printf("miniCDi\n");
-	RUN_CDI("cdi220b", RUN_MENU());
+	while (aptMainLoop())
+	{
+		RUN_CDI("cdi220b", RUN_MENU());
+	}
 
 	// Deinit libs
 	C2D_Fini();

@@ -7,6 +7,7 @@ namespace MiniCDI
 	{
 		extern bool TestPlug; // enables service menu
 		extern bool PAL;
+		extern bool ShowFPS;
 		extern bool ShowLCD;
 		extern bool AnalogColors;
 		extern bool HasDisc;

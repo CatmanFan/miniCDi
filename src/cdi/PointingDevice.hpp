@@ -5,7 +5,7 @@ class PointingDevice
 {
 	static constexpr int MAX_POINTER_X = 768;
 	static constexpr int MAX_POINTER_Y = 560;
-	static constexpr int POINTER_ADVANCE = 1;
+	static constexpr int POINTER_ADVANCE = 2;
 
 	bool buttons[6];
 	bool poll_movement = false;

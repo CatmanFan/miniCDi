@@ -17,11 +17,7 @@ namespace MiniCDI
 	#ifdef MINICDI_DEBUG
 		bool mustLog = true;
 	#else
-	#ifdef MINICDI_LOGFILE
 		bool mustLog = MiniCDI::Config::LogFile != NULL;
-	#else
-		bool mustLog = false;
-	#endif
 	#endif
 
 		if (mustLog)

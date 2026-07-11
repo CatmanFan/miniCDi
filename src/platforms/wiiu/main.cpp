@@ -19,6 +19,19 @@
 #include <proc_ui/procui.h>
 #include <sysapp/launch.h>
 
+#include <swkbd/rpl_interface.h>
+#include <coreinit/memdefaultheap.h>
+#include <coreinit/userconfig.h>
+
+#ifdef MINICDI_USE_IMGUI
+#include "imgui.h"
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_sdlrenderer2.h"
+static ImGuiIO io;
+#endif
+
+#include "../common/mINI.hpp"
+
 static SDL_Window* SDL_window = nullptr;
 static SDL_Renderer* SDL_renderer = nullptr;
 static void* SDL_fontData = nullptr;
@@ -27,40 +40,42 @@ static std::map<int, FC_Font*> SDL_fontMap;
 
 static FC_Font* GetFontForSize(int size)
 {
-    if (SDL_fontMap.count(size)) {
-        return SDL_fontMap[size];
-    }
+	if (SDL_fontMap.count(size)) {
+		return SDL_fontMap[size];
+	}
 
-    FC_Font* font = FC_CreateFont();
-    if (!font) {
-        return font;
-    }
+	FC_Font* font = FC_CreateFont();
+	if (!font) {
+		return font;
+	}
 
-    if (!FC_LoadFont_RW(font, SDL_renderer, SDL_RWFromMem(SDL_fontData, SDL_fontSize), 1, size, {255,255,255,255}, TTF_STYLE_NORMAL)) {
-        FC_FreeFont(font);
-        return nullptr;
-    }
+	if (!FC_LoadFont_RW(font, SDL_renderer, SDL_RWFromMem(SDL_fontData, SDL_fontSize), 1, size, {255,255,255,255}, TTF_STYLE_NORMAL)) {
+		FC_FreeFont(font);
+		return nullptr;
+	}
 
-    SDL_fontMap.insert({size, font});
-    return font;
+	SDL_fontMap.insert({size, font});
+	return font;
 }
 
-static void SDL_print(int x, int y, int size, SDL_Color color, std::string text, bool absolute = false)
+static void SDL_print(int x, int y, int size, SDL_Color color, std::string text, bool absolute = false, bool center = false)
 {
-    FC_Font* font = GetFontForSize(size);
-    if (!font) { return; }
+	FC_Font* font = GetFontForSize(size);
+	if (!font) { return; }
 
-    FC_Effect effect;
-    effect.color = color;
-    effect.scale = FC_MakeScale(1,1);
-    effect.alignment = FC_ALIGN_LEFT;
+	FC_Effect effect;
+	effect.color = color;
+	effect.scale = FC_MakeScale(1,1);
+	effect.alignment = center ? FC_ALIGN_CENTER : FC_ALIGN_LEFT;
 
-	if (!absolute) {
+	if (!absolute && !center) {
 		x -= FC_GetWidth(font, "%s", text.c_str()) / 2;
+	}
+	if (!absolute) {
 		y -= FC_GetHeight(font, "%s", text.c_str()) / 2;
 	}
 
-    FC_DrawEffect(font, SDL_renderer, x, y, effect, "%s", text.c_str());
+	FC_DrawEffect(font, SDL_renderer, x, y, effect, "%s", text.c_str());
 }
 
 namespace MiniCDI_WiiU
@@ -68,11 +83,13 @@ namespace MiniCDI_WiiU
 	static bool Mounted = false;
 	static bool SDL = false;
 	static bool Close = false;
+
 	enum Language
 	{
 		ENGLISH = 0,
 		JAPANESE,
-		FRENCH,
+		FRENCH_EU,
+		FRENCH_US,
 		GERMAN,
 		SPANISH_US,
 		SPANISH_EU,
@@ -83,20 +100,104 @@ namespace MiniCDI_WiiU
 		TURKISH,
 		CATALAN
 	};
-	enum Language UILanguage = MiniCDI_WiiU::FRENCH;
+	enum Language UILanguage = MiniCDI_WiiU::ENGLISH;
+	static void GetSystemLanguage()
+	{
+		UCError err;
+		nn::swkbd::LanguageType language = nn::swkbd::LanguageType::English;
+		nn::swkbd::RegionType region = nn::swkbd::RegionType::Europe;
+
+		UCHandle handle = UCOpen();
+		if(handle < 1)
+			UILanguage = MiniCDI_WiiU::ENGLISH;
+
+		UCSysConfig *settings = (UCSysConfig*)MEMAllocFromDefaultHeapEx(sizeof(UCSysConfig), 0x40);
+		if(!settings)
+		{
+			UCClose(handle);
+			UILanguage = MiniCDI_WiiU::ENGLISH;
+			return;
+		}
+
+		strcpy(settings->name, "cafe.language");
+		settings->access = 0;
+		settings->dataType = UC_DATATYPE_UNSIGNED_INT;
+		settings->error = UC_ERROR_OK;
+		settings->dataSize = sizeof(nn::swkbd::LanguageType);
+		settings->data = &language;
+
+		err = UCReadSysConfig(handle, 1, settings);
+
+		if(err == UC_ERROR_OK)
+		{
+			strcpy(settings->name, "cafe.region");
+			settings->dataSize = sizeof(nn::swkbd::LanguageType);
+			settings->data = &region;
+			err = UCReadSysConfig(handle, 1, settings);
+		}
+
+		UCClose(handle);
+		MEMFreeToDefaultHeap(settings);
+
+		if(err != UC_ERROR_OK)
+		{
+			UILanguage = MiniCDI_WiiU::ENGLISH;
+			return;
+		}
+
+		switch(language)
+		{
+			case nn::swkbd::LanguageType::Japanese:
+				UILanguage = MiniCDI_WiiU::JAPANESE;
+				break;
+
+			default:
+			case nn::swkbd::LanguageType::English:
+				UILanguage = MiniCDI_WiiU::ENGLISH;
+				break;
+
+			case nn::swkbd::LanguageType::French:
+				UILanguage = region == nn::swkbd::RegionType::USA ? MiniCDI_WiiU::FRENCH_US : MiniCDI_WiiU::FRENCH_EU;
+				break;
+
+			case nn::swkbd::LanguageType::Spanish:
+				UILanguage = region == nn::swkbd::RegionType::USA ? MiniCDI_WiiU::SPANISH_US : MiniCDI_WiiU::SPANISH_EU;
+				break;
+
+			case nn::swkbd::LanguageType::Portuguese:
+				UILanguage = region == nn::swkbd::RegionType::USA ? MiniCDI_WiiU::PORTUGUESE_US : MiniCDI_WiiU::PORTUGUESE_EU;
+				break;
+		}
+	}
 
 	static bool Running()
 	{
 		if (MiniCDI_WiiU::Close) return false;
 
-        SDL_Event event;
-        if (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                WHBLogPrintf("[miniCDi] got SDL_QUIT");
+		SDL_Event event;
+		#ifdef MINICDI_USE_IMGUI
+		while (SDL_PollEvent(&event))
+		{
+			ImGui_ImplSDL2_ProcessEvent(&event);
+			switch (event.type) {
+				case SDL_QUIT:
+					WHBLogPrintf("[miniCDi] got SDL_QUIT");
+					MiniCDI_WiiU::Close = true;
+					return false;
+				default:
+					break;
+			}
+		}
+		#else
+		if (SDL_PollEvent(&event)) {
+			if (event.type == SDL_QUIT) {
+				WHBLogPrintf("[miniCDi] got SDL_QUIT");
 				MiniCDI_WiiU::Close = true;
-                return false;
-            }
-        }
+				return false;
+			}
+		}
+		#endif
+
 		return true;
 	}
 
@@ -110,6 +211,12 @@ namespace MiniCDI_WiiU
 		WHBLogCafeDeinit();
 
 		if (MiniCDI_WiiU::SDL) {
+			#ifdef MINICDI_USE_IMGUI
+			ImGui_ImplSDLRenderer2_Shutdown();
+			ImGui_ImplSDL2_Shutdown();
+			ImGui::DestroyContext();
+			#endif
+
 			if (SDL_renderer) SDL_DestroyRenderer(SDL_renderer);
 			if (SDL_window) SDL_DestroyWindow(SDL_window);
 			SDL_fontMap.clear();
@@ -121,7 +228,11 @@ namespace MiniCDI_WiiU
 
 	static void InitSDL()
 	{
+		#ifdef MINICDI_USE_IMGUI
+		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
+		#else
 		if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+		#endif
 			WHBLogPrintf("[miniCDi] Failed to init SDL, exiting");
 			MiniCDI_WiiU::SDL = false;
 			return;
@@ -151,13 +262,27 @@ namespace MiniCDI_WiiU
 			return;
 		}
 
+		#ifdef MINICDI_USE_IMGUI
+		// Setup Dear ImGui context
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO io = ImGui::GetIO(); (void)io;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+		// Setup Dear ImGui style
+		ImGui::StyleColorsDark();
+		//ImGui::StyleColorsLight();
+
+		// Setup Platform/Renderer backends
+		ImGui_ImplSDL2_InitForSDLRenderer(SDL_window, SDL_renderer);
+		ImGui_ImplSDLRenderer2_Init(SDL_renderer);
+		#endif
+
 		SDL_SetRenderDrawBlendMode(SDL_renderer, SDL_BLENDMODE_BLEND);
 		MiniCDI_WiiU::SDL = true;
 	}
 }
-
-static std::string menu = "Select a disc or press \ue001 to boot without disc";
-static std::string empty = "Warning: Directory is empty";
 
 class FPS
 {
@@ -244,26 +369,54 @@ public:
 };
 
 static std::string devicePrefix;
+
+static std::string menu, empty, warning;
+static void DISPLAY_BIOS_ERROR();
+
 static void RUN_CDI(const std::string &discName)
 {
+	#ifdef MINICDI_FORCE_MONOIV
+	std::string biosName = "cdi490a";
+	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
+	#else
 	std::string biosName = "";
 	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
 	else if (access((devicePrefix + "wiiu/apps/miniCDi/rom/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
 	else {
+	#endif
 		WHBLogPrintf("[miniCDi] error: BIOS not found in required path");
-		// printf("BIOS not found at %s.\nPlease supply a system ROM (either CD-i 220/20 or 200/00)", (appPath + "rom/").c_str());
-		// OSSleepTicks(OSSecondsToTicks(5));
+		DISPLAY_BIOS_ERROR();
 		return;
 	}
 
-	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = true;
+	mINI::INIFile file((devicePrefix + "wiiu/apps/miniCDi/config.ini").c_str());
+	mINI::INIStructure ini;
+	if (access((devicePrefix + "wiiu/apps/miniCDi/config.ini").c_str(), F_OK) == 0) {
+		file.read(ini);
+	}
+	else {
+		ini["CDI"]["AutosaveNVRAM"] = "1";
+		ini["CDI"]["TestPlug"] = "0";
+		ini["CDI"]["PAL"] = "1";
+		ini["CDI"]["AnalogColors"] = "0";
+		ini["MiniCDI"]["FPS"] = "0";
+		ini["MiniCDI"]["FrameSkip"] = "2";
+		ini["MiniCDI"]["Logging"] = "0";
+		file.generate(ini);
+	}
+	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	#ifdef MINICDI_FORCE_LOGFILE
+	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
+	#else
+	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt") : NULL;
+	#endif
+	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::AnalogColors = true;
 	MiniCDI::Config::HasDisc = false;
-	MiniCDI::Config::FrameSkip = 1;
-	// MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
-	// MiniCDI::Config::NvramFile = devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram";
+	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
 	if (!cdi.init(devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".rom", CDi::MonoI)) {
@@ -285,6 +438,7 @@ static void RUN_CDI(const std::string &discName)
 		/*if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
 		if (!status.tpNormal.touched && touchDown) { touchDown = false; }*/
 		if (status.trigger & (VPAD_BUTTON_ZR)) break; // exit
+		if (status.trigger & (VPAD_BUTTON_MINUS)) cdi.reset();
 
 		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);
 		cdi.pd.set_button(PointingDevice::Button2, status.hold & VPAD_BUTTON_B);
@@ -307,8 +461,6 @@ static void RUN_CDI(const std::string &discName)
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
 		screen.draw();
-		SDL_print(2,2,25,{255,255,255,255},"FPS:",true);
-		SDL_print(72,2,25,{255,255,0,255},std::to_string(fps.get()),true);
 		/*if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};
 			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
@@ -317,6 +469,10 @@ static void RUN_CDI(const std::string &discName)
 			SDL_RenderPresent(SDL_renderer);
 			continue;
 		}*/
+		if (MiniCDI::Config::ShowFPS) {
+			SDL_print(2,2,25,{255,255,255,255},"FPS:",true);
+			SDL_print(72,2,25,{255,255,0,255},std::to_string(fps.get()),true);
+		}
 		SDL_RenderPresent(SDL_renderer);
 	}
 }
@@ -350,6 +506,26 @@ static std::string RUN_MENU()
 		VPADStatus status{};
 		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
 
+		#ifdef MINICDI_USE_IMGUI
+
+		// Start the Dear ImGui frame
+		ImGui_ImplSDLRenderer2_NewFrame();
+		ImGui_ImplSDL2_NewFrame();
+		ImGui::NewFrame();
+
+		// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+		ImGui::ShowDemoWindow();
+
+		// Rendering
+		ImGui::Render();
+		SDL_RenderSetScale(SDL_renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+		SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,255);
+		SDL_RenderClear(SDL_renderer);
+		ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+		SDL_RenderPresent(SDL_renderer);
+
+		#else
+
 		if (!noDiscs) {
 			if (status.trigger & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN)) {
 				selected = (selected + 1) % discs.size();
@@ -368,56 +544,9 @@ static std::string RUN_MENU()
 
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
-
 		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
 
-		switch (MiniCDI_WiiU::UILanguage)
-		{
-			default:
-				break;
-			case MiniCDI_WiiU::JAPANESE:
-				menu = "ディスクを選んで\ue000を押してください。\n\ue001を押すとディスクなしで起動します。";
-				empty = "ディスクファイルがありません";
-				break;
-			case MiniCDI_WiiU::FRENCH:
-				menu = "Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001.";
-				empty = "Le dossier est actuellement vide.";
-				break;
-			case MiniCDI_WiiU::SPANISH_US:
-				menu = "Elige una imagen de disco u oprime \ue001 para comenzar sin disco";
-				empty = "No hay ninguna imagen de disco.";
-				break;
-			case MiniCDI_WiiU::SPANISH_EU:
-				menu = "Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001";
-				empty = "No hay ninguna imagen de disco.";
-				break;
-			case MiniCDI_WiiU::PORTUGUESE_EU:
-				menu = "Selecione uma imagen de disco.\nPara ligar a consola sem disco, prima \ue001";
-				empty = "Não existe nenhuma imagen de disco.";
-				break;
-			case MiniCDI_WiiU::GERMAN:
-				menu = "Bitte wählen Sie eine CD-Datei aus.\nDrücke \ue001, um das System ohne CD zu hochfahren.";
-				empty = "Keine Datei gefunden";
-				break;
-			case MiniCDI_WiiU::NORWEGIAN:
-				menu = "Velg en CD-fil.\nFor å starte uten en CD, trykk på \ue001.";
-				empty = "Finner ingen CD-fil";
-				break;
-			case MiniCDI_WiiU::SWEDISH:
-				menu = "Välj en skiva eller tryck på \ue001 för att starta utan en cd-skiva.";
-				empty = "Ingen cd-skiva hittad";
-				break;
-			case MiniCDI_WiiU::TURKISH:
-				menu = "Bir disk seçin.\nDisksiz başlatmak için \ue001 Butonuna basın";
-				empty = "Disk dosyası yok";
-				break;
-			case MiniCDI_WiiU::CATALAN:
-				menu = "Trieu una imatge de disc.\nPer arrencar sense disc, pitgeu \ue001";
-				empty = "No hi ha cap fitxer.";
-				break;
-		}
-
-		SDL_print(1920/2,150,34,{255,255,255,255},menu);
+		SDL_print(1920/2,150,34,{255,255,255,255},menu,false,true);
 		if (!noDiscs) {
 			for (size_t i = 0; i < discs.size(); i++) {
 				SDL_print(1920/2,250+(i*38),28,{255,255,(uint8_t)(i == selected ? 0 : 255),255},discs[i]);
@@ -426,9 +555,47 @@ static std::string RUN_MENU()
 			SDL_print(1920/2,250,32,{255,255,0,255},empty);
 		}
 		SDL_RenderPresent(SDL_renderer);
+
+		#endif
 	}
 
 	return "";
+}
+
+static void DISPLAY_WARNING()
+{
+	#ifndef MINICDI_USE_IMGUI
+	while (MiniCDI_WiiU::Running()) {
+		VPADStatus status{};
+		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
+		if (status.trigger & (VPAD_BUTTON_A | VPAD_BUTTON_PLUS))
+			break;
+
+		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
+		SDL_RenderClear(SDL_renderer);
+		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
+		SDL_print(1920/2,1080/2,40,{255,255,255,255},warning,false,true);
+		SDL_RenderPresent(SDL_renderer);
+	}
+	#endif
+}
+
+static void DISPLAY_BIOS_ERROR()
+{
+	#ifndef MINICDI_USE_IMGUI
+	while (MiniCDI_WiiU::Running()) {
+		VPADStatus status{};
+		VPADRead(VPAD_CHAN_0, &status, 1, nullptr);
+		if (status.trigger & VPAD_BUTTON_A)
+			break;
+
+		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
+		SDL_RenderClear(SDL_renderer);
+		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
+		SDL_print(1920/2,1080/2,40,{255,255,255,255},"Error: BIOS not found in required path\n\nPress \ue000 to return to menu",false,true);
+		SDL_RenderPresent(SDL_renderer);
+	}
+	#endif
 }
 
 int main(int argc, char **argv) {
@@ -451,8 +618,84 @@ int main(int argc, char **argv) {
 		WHBLogPrintf("[miniCDi] mounted SD card");
 
 	// Init controller
-    VPADInit();
+	VPADInit();
 
+	// Init language strings
+	MiniCDI_WiiU::GetSystemLanguage();
+	switch (MiniCDI_WiiU::UILanguage)
+	{
+		default:
+			menu = "Select a disc or press \ue001 to boot without disc";
+			empty = "No files found";
+			warning = "This is an experimental build of miniCDi.\n\n"
+					 "Emulation may not function properly.\n"
+					 "If the CD-i machine does not boot, press \ue055 to cancel\n"
+					 "emulation and try again (this may take several tries).\n\n"
+					 "For more information, consult the GitHub repo webpage:\n"
+					 "https://github.com/CatmanFan/miniCDi.\n\n"
+					 "Press \ue000 or \ue045 to proceed to the main menu";
+			break;
+
+		case MiniCDI_WiiU::JAPANESE:
+			menu = "ディスクを選んで\ue000を押してください。\n \ue001を押すとディスクなしで起動します。";
+			empty = "ディスクファイルはありません";
+			warning = "こちらはminiCDiの実験版です。\n\n"
+					 "エミュレーションは、適切に機能しない場合があります。\n"
+					 "起動できない場合は、\ue055を押してエミュレーションを終了してから\n"
+					 "やり直してください。詳しくはhttps://github.com/CatmanFan/miniCDiを\n"
+					 "ご覧ください。\n\n"
+					 "\ue000または\ue045を押しください";
+			break;
+
+		case MiniCDI_WiiU::FRENCH_EU:
+			menu = "Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001.";
+			empty = "Aucun fichier disponible";
+			warning = "Attention : vous utilisez une version préliminaire de miniCDi.\n\n"
+					 "Il est possible que l'émulation ne puisse pas fonctionner complètement.\n"
+					 "Si le système ne semble pas se démarrer, appuyez sur \ue055 afin de\n"
+					 "terminer l'émulation, puis réessayez.\n\n"
+					 "Pour plus d'informations, veuillez vous référer au site du dépôt\n"
+					 "GitHub de miniCDi : https://github.com/CatmanFan/miniCDi.\n\n"
+					 "Appuyez sur \ue000 ou \ue045 pour accéder au menu principal";
+			break;
+
+		case MiniCDI_WiiU::FRENCH_US:
+			menu = "Choisissez un fichier de disque ou appuyez sur \ue001 pour démarrer la console sans disque";
+			empty = "Aucun fichier disponible";
+			warning = "Attention : vous utilisez une version préliminaire de miniCDi.\n\n"
+					 "Il est possible que l'émulation ne puisse pas fonctionner complètement.\n"
+					 "Si le système ne semble pas se démarrer, appuyez sur \ue055 afin de\n"
+					 "terminer l'émulation, puis réessayez.\n\n"
+					 "Pour plus d'informations, veuillez vous référer au site du dépôt\n"
+					 "GitHub de miniCDi : https://github.com/CatmanFan/miniCDi.\n\n"
+					 "Appuyez sur \ue000 ou \ue045 pour accéder au menu principal";
+			break;
+
+		case MiniCDI_WiiU::SPANISH_EU:
+			menu = "Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001";
+			empty = "No hay ninguna imagen de disco.";
+			warning = "Estás utilizando una versión preliminar de miniCDi.\n\n"
+					 "Es posible que la emulación no pueda funcionar correctamente.\n"
+					 "Si el sistema no puede arrancar, pulsa \ue055 para terminar\n"
+					 "la emulación y inténtalo de nuevo.\n\n"
+					 "Para más información, consulta la página GitHub de miniCDi:\n"
+					 "https://github.com/CatmanFan/miniCDi.\n\n"
+					 "Pulsa \ue000 o \ue045 para acceder al menú principal";
+
+		case MiniCDI_WiiU::SPANISH_US:
+			menu = "Elige una imagen de disco u oprime \ue001 para iniciar la consola sin disco";
+			empty = "No hay ninguna imagen de disco.";
+			warning = "Estás utilizando una versión preliminar de miniCDi.\n\n"
+					 "Es posible que la emulación no pueda funcionar correctamente.\n"
+					 "Si el sistema no puede iniciar, oprime \ue055 para terminar\n"
+					 "la emulación y inténtalo de nuevo.\n\n"
+					 "Para más información, consulta la página GitHub de miniCDi:\n"
+					 "https://github.com/CatmanFan/miniCDi.\n\n"
+					 "Oprime \ue000 o \ue045 para acceder al menú principal";
+			break;
+	}
+
+	if (MiniCDI_WiiU::Running()) DISPLAY_WARNING();
 	while (MiniCDI_WiiU::Running()) {
 		std::string disc = RUN_MENU();
 		if (MiniCDI_WiiU::Running()) RUN_CDI(disc);

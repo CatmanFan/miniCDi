@@ -118,8 +118,6 @@ class MCD212
 			size_t mf[8];
 			uint8_t opcode[8];
 		} MCR;
-		int TransparentColSlot = 0;
-		int MaskColSlot = 0;
 
 		template <size_t Path>
 		void matte_set_flag(size_t x)
@@ -609,13 +607,25 @@ class MCD212
 					break;
 
 				case 0xC4:
+					if (!Path) {
+						reg.TransparentCol[0] = inst & 0x00FCFCFCu;
+					}
+					break;
 				case 0xC6:
-					reg.TransparentCol[TransparentColSlot ^= 1] = inst & 0x00FCFCFCu;
+					if (Path) {
+						reg.TransparentCol[1] = inst & 0x00FCFCFCu;
+					}
 					break;
 
 				case 0xC7:
+					if (!Path) {
+						reg.MaskCol[0] = inst & 0x00FCFCFCu;
+					}
+					break;
 				case 0xC9:
-					reg.MaskCol[MaskColSlot ^= 1] = inst & 0x00FCFCFCu;
+					if (Path) {
+						reg.MaskCol[1] = inst & 0x00FCFCFCu;
+					}
 					break;
 
 				case 0xCA:

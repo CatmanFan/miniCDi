@@ -70,7 +70,7 @@ public:
 			for (int i = 0; i < EventCOUNT; i++)
 			{
 				event_cycles[i] -= cycles;
-				if (event_cycles[i] <= 0)
+				while (event_cycles[i] <= 0)
 				{
 					switch (i)
 					{
@@ -115,6 +115,7 @@ public:
 
 	inline void reset() override {
 		MiniCDI::Log("[CDI] reset");
+		nvram_save();
 		cpu.reset();
 		vpu->reset();
 

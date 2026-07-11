@@ -17,17 +17,17 @@ protected:
 
 	uint32_t nvram;
 	bool nvram_save() {
-		/*if (MiniCDI::Config::NvramFile.empty() || memory == NULL || this->nvram == 0) {
+		if (MiniCDI::Config::NvramFile.empty() || memory == NULL || this->nvram == 0) {
 			return false;
 		}
 
-		uint32_t nvram_size = 32*1024;
+		uint32_t nvram_size = board == CDi::MonoIV ? 32*1024 : 8*1024;
 		MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module_from_name("nvr");
 		if (module != NULL && module->size < nvram_size) {
 			nvram_size = (module->size > 12*1024 ? 16 : 8) * 1024;
 			MiniCDI::Log("[NVRAM] detected %dKB", nvram_size);
 		} else {
-			//MiniCDI::Log("[NVRAM] \"nvr\" module not found, defaulting to max 32KB");
+			MiniCDI::Log("[NVRAM] \"nvr\" system module not found, defaulting to max %dKB", nvram_size/1024);
 		}
 
 		FILE *file = fopen(MiniCDI::Config::NvramFile.c_str(), "wb");
@@ -38,7 +38,7 @@ protected:
 		fwrite(&memory[this->nvram], sizeof(memory[0]), nvram_size, file);
 		fclose(file);
 
-		MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config::NvramFile.c_str());*/
+		MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config::NvramFile.c_str());
 		return true;
 	}
 	void nvram_load() {
@@ -62,14 +62,14 @@ protected:
 			memory[this->nvram + 0x0006] = 0x01; // (BCD) mm: 1
 			memory[this->nvram + 0x0007] = 0x01; // (BCD) yy: 2001
 		}*/
-		/*if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
+		if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
 			MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
 			std::ifstream nvrStream(MiniCDI::Config::NvramFile);
 			std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
 			nvrStream.close();
 
 			memcpy(&memory[this->nvram], &nvr[0], nvr.size());
-		}*/
+		}
 	}
 
 	// ONLY the chips shared in common by supported boards (MMC and Mono)

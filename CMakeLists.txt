@@ -7,19 +7,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # -------------------------------------------
 add_executable(${PROJECT_NAME})
 dkp_target_generate_symbol_list(${PROJECT_NAME})
-target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -g -Ofast -Wall)
 
 # Debug options
 option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)."	OFF)
-option(MINICDI_ENABLE_VERBOSE_OS9 "Print verbose OS-9 syscall information."						OFF)
-option(MINICDI_ENABLE_VERBOSE_MODULE "Print modules issuing syscalls or write/read commands."	ON)
-option(MINICDI_ENABLE_VERBOSE_LOGFILE "Print debug information to a text file if it exists."	ON)
+option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose."								OFF)
+option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses."			ON)
+option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file option."			OFF)
 
 # Emulation options
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
 option(MINICDI_ENABLE_PDTICK "Enable cycle polling for pointing device instead of polling it at the end of each frame." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper (breaks player shell if no NVRAM settings data exists)." OFF)
+option(MINICDI_ENABLE_FORCEMONOIV "Force Mono-IV emulation." OFF)
+option(MINICDI_ENABLE_MAMELBAMETHOD "Use MAME's method for calculating the sector LBA." OFF)
+option(MINICDI_ENABLE_ALTTIMERIRQ "Enable alternative method for calculating the Timer IRQ (may fix or break some software)." OFF)
 option(MINICDI_ENABLE_CDINDICATOR "Show an on-screen indicator for when the CD is being read." OFF)
 # -------------------------------------------
 
@@ -31,19 +34,17 @@ if (MINICDI_ENABLE_VERBOSE_DISPLAY)
 		target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG_CPU)
 	endif()
 endif()
-if (MINICDI_ENABLE_VERBOSE_LOGFILE)
-	MESSAGE(STATUS "MINICDI_ENABLE_LOGFILE")
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_LOGFILE)
+if (MINICDI_ENABLE_VERBOSE_OS9)
+	MESSAGE(STATUS "MINICDI_ENABLE_VERBOSE_OS9")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG_OS9)
 endif()
-if (MINICDI_ENABLE_VERBOSE_DISPLAY OR MINICDI_ENABLE_VERBOSE_LOGFILE)
-	if (MINICDI_ENABLE_VERBOSE_OS9)
-		MESSAGE(STATUS "MINICDI_ENABLE_VERBOSE_OS9")
-		target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG_OS9)
-	endif()
-	if (MINICDI_ENABLE_VERBOSE_MODULE)
-		MESSAGE(STATUS "MINICDI_ENABLE_VERBOSE_MODULE")
-		target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG_MODULE)
-	endif()
+if (MINICDI_ENABLE_VERBOSE_MODULE)
+	MESSAGE(STATUS "MINICDI_ENABLE_VERBOSE_MODULE")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG_MODULE)
+endif()
+if (MINICDI_ENABLE_FORCE_LOGFILE)
+	MESSAGE(STATUS "MINICDI_ENABLE_FORCE_LOGFILE")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_FORCE_LOGFILE)
 endif()
 
 if (MINICDI_ENABLE_NATIVERES)
@@ -57,6 +58,18 @@ endif()
 if (MINICDI_ENABLE_DEADNVRAM)
 	MESSAGE(STATUS "MINICDI_ENABLE_DEADNVRAM")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEADNVRAM)
+endif()
+if (MINICDI_ENABLE_FORCEMONOIV)
+	MESSAGE(STATUS "MINICDI_ENABLE_FORCEMONOIV")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_FORCE_MONOIV)
+endif()
+if (MINICDI_ENABLE_MAMELBAMETHOD)
+	MESSAGE(STATUS "MINICDI_ENABLE_MAMELBAMETHOD")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_USE_MAME_LBA_METHOD)
+endif()
+if (MINICDI_ENABLE_ALTTIMERIRQ)
+	MESSAGE(STATUS "MINICDI_ENABLE_ALTTIMERIRQ")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_ALTERNATE_TIMER_IRQ)
 endif()
 if (MINICDI_ENABLE_CDINDICATOR)
 	MESSAGE(STATUS "MINICDI_ENABLE_CDINDICATOR")
@@ -99,8 +112,23 @@ if (NINTENDO_3DS)
 
 	# Source files/directories
 	# ************
-	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/3ds)
+	target_include_directories(${PROJECT_NAME} PRIVATE
+		# src/platforms/common/imgui
+		src/platforms/3ds
+	)
+
+	# ctr_add_shader_library(vshader src/platforms/common/imgui/vshader.v.pica)
+	# dkp_add_embedded_binary_library(vshader_data vshader)
+	# target_link_libraries(${PROJECT_NAME} PRIVATE vshader_data)
+
 	target_sources(${PROJECT_NAME} PRIVATE
+		# src/platforms/common/imgui/imgui.cpp
+		# src/platforms/common/imgui/imgui_demo.cpp
+		# src/platforms/common/imgui/imgui_draw.cpp
+		# src/platforms/common/imgui/imgui_tables.cpp
+		# src/platforms/common/imgui/imgui_widgets.cpp
+		# src/platforms/common/imgui/backends/imgui_citro3d.cpp
+		# src/platforms/common/imgui/backends/imgui_ctru.cpp
 		src/platforms/3ds/main.cpp
 	)
 
@@ -158,8 +186,18 @@ if (NINTENDO_WIIU)
 
 	# Source files/directories
 	# ************
-	target_include_directories(${PROJECT_NAME} PRIVATE src/platforms/wiiu)
+	target_include_directories(${PROJECT_NAME} PRIVATE
+		# src/platforms/common/imgui
+		src/platforms/wiiu
+	)
 	target_sources(${PROJECT_NAME} PRIVATE
+		# src/platforms/common/imgui/imgui.cpp
+		# src/platforms/common/imgui/imgui_demo.cpp
+		# src/platforms/common/imgui/imgui_draw.cpp
+		# src/platforms/common/imgui/imgui_tables.cpp
+		# src/platforms/common/imgui/imgui_widgets.cpp
+		# src/platforms/common/imgui/backends/imgui_impl_sdl2.cpp
+		# src/platforms/common/imgui/backends/imgui_impl_sdlrenderer2.cpp
 		src/platforms/wiiu/SDL_FontCache.c
 		src/platforms/wiiu/main.cpp
 	)

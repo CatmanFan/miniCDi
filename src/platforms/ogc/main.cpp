@@ -17,6 +17,8 @@
 #include <wiiuse/wpad.h>
 #endif
 
+#include "../common/mINI.hpp"
+
 static void *xfb = NULL;
 static GXRModeObj *rmode = NULL;
 
@@ -177,29 +179,47 @@ static void RUN_CDI(const std::string &discName)
 	const std::string biosName = "cdi490a";
 	if (access((appPath + "rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
 		printf("BIOS not found at %s", (appPath + "rom/" + biosName + ".rom").c_str());
-		sleep(5);
-		return;
-	}
 	#else
 	std::string biosName = "";
 	if (access((appPath + "rom/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
 	else if (access((appPath + "rom/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
 	else {
 		printf("BIOS not found at %s.\nPlease supply a system ROM (either CD-i 220/20 or 200/00)", (appPath + "rom/").c_str());
+	#endif
 		sleep(5);
 		return;
 	}
-	#endif
 
-	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = true;
-	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::AnalogColors = false;
-	MiniCDI::Config::HasDisc = false;
-	MiniCDI::Config::FrameSkip = 1;
+	// load whatever settings we have
+	mINI::INIFile file((appPath + "config.ini").c_str());
+	mINI::INIStructure ini;
+	if (access((appPath + "config.ini").c_str(), F_OK) == 0) {
+		file.read(ini);
+	}
+	else {
+		ini["CDI"]["AutosaveNVRAM"] = "1";
+		ini["CDI"]["TestPlug"] = "0";
+		ini["CDI"]["PAL"] = "1";
+		ini["CDI"]["AnalogColors"] = "0";
+		ini["MiniCDI"]["FrameSkip"] = "2";
+		ini["MiniCDI"]["Logging"] = "0";
+		file.generate(ini);
+	}
+	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	#ifdef MINICDI_FORCE_LOGFILE
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
-	// MiniCDI::Config::NvramFile = appPath + "rom/" + biosName + ".nvram";
+	#else
+	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((appPath + "log.txt").c_str(), "wt") : NULL;
+	#endif
+	MiniCDI::Config::ShowFPS = false;
+	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::HasDisc = false;
+	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? appPath + "rom/" + biosName + ".nvram" : "";
 
+	// Declare the CD-i machine
 	MonoI cdi;
 	if (!cdi.init(appPath + "rom/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI)) {
 		printf("Failed to init virtual machine");

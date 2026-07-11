@@ -7,6 +7,7 @@ namespace MiniCDI
 	{
 		bool TestPlug = false;
 		bool PAL = true;
+		bool ShowFPS = false;
 		bool ShowLCD = false;
 		bool AnalogColors = false;
 		bool HasDisc = false;
@@ -38,12 +39,12 @@ unsigned int  m68k_read_memory_8(unsigned int address)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)			return MiniCDI::Player.scc68070->read8(address);
-	if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)				return MiniCDI::Player.slave->read8(address);
-	if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)				return MiniCDI::Player.ikat->read8(address);
-	if (MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.dsp->read8(address);
-	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)				return MiniCDI::Player.mcd212->read8(address);
-	return MiniCDI::Player.memory[address & 0x00ffffff];
+	return MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000 ? MiniCDI::Player.scc68070->read8(address)
+		 : MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000 ? MiniCDI::Player.slave->read8(address)
+		 : MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000 ? MiniCDI::Player.ikat->read8(address)
+		 : MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.dsp->read8(address)
+		 : MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00 ? MiniCDI::Player.mcd212->read8(address)
+		 : MiniCDI::Player.memory[address & 0x00ffffff];
 }
 
 unsigned int  m68k_read_memory_16(unsigned int address)
@@ -51,10 +52,10 @@ unsigned int  m68k_read_memory_16(unsigned int address)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 	
-	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)				return MiniCDI::Player.mcd212->read16(address);
-	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.cdic->read16(address);
-	if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.ciap->read16(address);
-	return (uint16_t)((m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1));
+	return MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00 ? MiniCDI::Player.mcd212->read16(address)
+		 : MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.cdic->read16(address)
+		 : MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.ciap->read16(address)
+		 : (uint16_t)((m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1));
 }
 
 unsigned int  m68k_read_memory_32(unsigned int address)
@@ -62,8 +63,8 @@ unsigned int  m68k_read_memory_32(unsigned int address)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)		return MiniCDI::Player.cdic->read32(address);
-	return ((uint32_t)m68k_read_memory_16(address) << 16) | m68k_read_memory_16(address+2);
+	return MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.cdic->read32(address)
+		 : (uint32_t)((m68k_read_memory_16(address) << 16) | m68k_read_memory_16(address+2));
 }
 
 void m68k_write_memory_8(unsigned int address, unsigned int value)
@@ -159,6 +160,7 @@ MonoI::~MonoI()
 	MiniCDI::OS9::clear_modules();
 
 	// Musashi end
+	m68k_set_irq(0);
 	m68k_end_timeslice();
 	m68k_set_int_ack_callback(NULL);
 	m68k_set_reset_instr_callback(NULL);
@@ -170,22 +172,22 @@ MonoI::~MonoI()
 		default:
 		case CDi::MonoI:
 			if (this->cdic != NULL) {
-				free(this->cdic);
+				delete this->cdic;
 				this->cdic = NULL;
 			}
 			if (this->slave != NULL) {
-				free(this->slave);
+				delete this->slave;
 				this->slave = NULL;
 			}
 			break;
 
 		case CDi::MonoII:
 			if (this->dsp != NULL) {
-				free(this->dsp);
+				delete this->dsp;
 				this->dsp = NULL;
 			}
 			if (this->slave != NULL) {
-				free(this->slave);
+				delete this->slave;
 				this->slave = NULL;
 			}
 			break;
@@ -193,17 +195,17 @@ MonoI::~MonoI()
 		case CDi::MonoIII:
 		case CDi::MonoIV:
 			if (this->ciap != NULL) {
-				free(this->ciap);
+				delete this->ciap;
 				this->ciap = NULL;
 			}
 			if (this->ikat != NULL) {
-				free(this->ikat);
+				delete this->ikat;
 				this->ikat = NULL;
 			}
 			break;
 	}
 	if (this->vpu != NULL) {
-		free(this->vpu);
+		delete this->vpu;
 		this->vpu = NULL;
 	}
 	if (this->memory != NULL) {

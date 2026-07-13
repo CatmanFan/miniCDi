@@ -9,7 +9,7 @@
 
 #include "../common/mINI.hpp"
 
-/*class FPS
+class FPS
 {
 	int8_t aggregate;
 	int8_t incremented;
@@ -24,6 +24,8 @@ public:
 
 	void update(int frames = 1)
 	{
+		if (!MiniCDI::Config::ShowFPS) return;
+
 		incremented += frames;
 		currentTime = osGetTime();
 
@@ -32,10 +34,13 @@ public:
 			lastTime = currentTime;
 			aggregate = incremented;
 			incremented = 0;
+
+			printf("\033[0;34H");
 			printf("FPS: %2d\n", aggregate);
+			printf("\033[1;0H");
 		}
 	}
-};*/
+};
 
 class EmulatorWindow
 {
@@ -79,7 +84,7 @@ public:
 
 		// Initialize the texture with a specific format
 		C3D_TexInit(&this->tex, this->tex.width, this->tex.height, GPU_RGBA8);
-		C3D_TexSetFilter(&this->tex, GPU_LINEAR, GPU_NEAREST);
+		C3D_TexSetFilter(&this->tex, GPU_LINEAR, GPU_LINEAR);
 	}
 
 	~EmulatorWindow()
@@ -91,7 +96,7 @@ public:
 
 	void Draw()
 	{
-		C2D_DrawImageAt(this->img, 8, -20, 0.5f, NULL, 0.5f, 1.0f);
+		C2D_DrawImageAt(this->img, 8, -20, 0.5f, NULL, 0.5f, 1);
 	}
 
 	void Update(uint32_t* display_output, int width)
@@ -113,7 +118,6 @@ public:
 					((u32*)this->tex.data)[dst_ptr_offset] = display_output[j * this->width + i];
 				}
 			}
-
 		}
 	}
 };
@@ -178,12 +182,21 @@ static std::string RUN_MENU()
 
 static C3D_RenderTarget* top = NULL;
 
-static void RUN_CDI(const std::string &biosName, const std::string &discName)
+static void RUN_CDI(const std::string &discName)
 {
 	printf("\033[2J\033[H"); // Clear screen
 	printf("miniCDi\n");
+
 	// Check for BIOS
+	#ifdef MINICDI_FORCE_MONOIV
+	const std::string biosName = "cdi490a";
 	if (access(("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
+	#else
+	std::string biosName = "";
+	if (access("sdmc:/3ds/miniCDi/rom/cdi220b.rom", F_OK) == 0) biosName = "cdi220b";
+	else if (access("sdmc:/3ds/miniCDi/rom/cdi200.rom", F_OK) == 0) biosName = "cdi200";
+	else {
+	#endif
 		printf("BIOS not found, exiting");
 		sleep(5);
 		exit(0);
@@ -202,7 +215,8 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		ini["CDI"]["TestPlug"] = "0";
 		ini["CDI"]["PAL"] = "1";
 		ini["CDI"]["AnalogColors"] = "0";
-		ini["MiniCDI"]["FrameSkip"] = "2";
+		ini["MiniCDI"]["FPS"] = "1";
+		ini["MiniCDI"]["FrameSkip"] = "1";
 		ini["MiniCDI"]["Logging"] = "0";
 		file.generate(ini);
 	}
@@ -215,7 +229,7 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 	#else
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen("sdmc:/3ds/miniCDi/log.txt", "wt") : NULL;
 	#endif
-	MiniCDI::Config::ShowFPS = false;
+	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
 	MiniCDI::Config::ShowLCD = false;
 	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? "sdmc:/3ds/miniCDi/rom/" + biosName + ".nvram" : "";
@@ -231,11 +245,8 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		hidScanInput();
 		u32 kDown = hidKeysDown();
 		u32 kHeld = hidKeysHeld();
-		if (kDown & KEY_ZR) break; // break in order to return to hbmenu
-		if (kDown & KEY_SELECT) {
-			printf("Reset\n");
-			cdi.reset();
-		}
+		if (kDown & KEY_ZR) return; // break in order to return to hbmenu
+		if (kDown & KEY_SELECT) cdi.reset();
 
 		cdi.pd.set_button(PointingDevice::Left, kHeld & KEY_LEFT);
 		cdi.pd.set_button(PointingDevice::Right, kHeld & KEY_RIGHT);
@@ -244,16 +255,16 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		cdi.pd.set_button(PointingDevice::Button1, kHeld & KEY_A);
 		cdi.pd.set_button(PointingDevice::Button2, kHeld & KEY_B);
 
-		// static FPS fps;
+		static FPS fps;
 
 		// Ensure that drawing is done at 30fps
 		if (MiniCDI::Config::FrameSkip > 0) {
 			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
 			cdi.run();
-			// fps.update(MiniCDI::Config::FrameSkip+1);
+			fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
 			cdi.run();
-			// fps.update();
+			fps.update();
 		}
 
 		TOPSCREEN.Update(cdi.get_display(), cdi.get_display_width());
@@ -264,8 +275,6 @@ static void RUN_CDI(const std::string &biosName, const std::string &discName)
 		C3D_FrameSync();
 		C3D_FrameEnd(0);
 	}
-
-	printf("Shutdown\n");
 }
 
 int main(int argc, char* argv[])
@@ -285,7 +294,8 @@ int main(int argc, char* argv[])
 	printf("miniCDi\n");
 	while (aptMainLoop())
 	{
-		RUN_CDI("cdi220b", RUN_MENU());
+		std::string disc = RUN_MENU();
+		if (aptMainLoop()) RUN_CDI(disc);
 	}
 
 	// Deinit libs

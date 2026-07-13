@@ -399,8 +399,8 @@ static void RUN_CDI(const std::string &discName)
 		ini["CDI"]["TestPlug"] = "0";
 		ini["CDI"]["PAL"] = "1";
 		ini["CDI"]["AnalogColors"] = "0";
-		ini["MiniCDI"]["FPS"] = "0";
-		ini["MiniCDI"]["FrameSkip"] = "2";
+		ini["MiniCDI"]["FPS"] = "1";
+		ini["MiniCDI"]["FrameSkip"] = "1";
 		ini["MiniCDI"]["Logging"] = "0";
 		file.generate(ini);
 	}

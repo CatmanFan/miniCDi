@@ -15,6 +15,7 @@ option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR
 option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose."								OFF)
 option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses."			ON)
 option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file option."			OFF)
+option(MINICDI_ENABLE_RAW68KMODE "Only use the 68K processor."									ON)
 
 # Emulation options
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
@@ -45,6 +46,10 @@ endif()
 if (MINICDI_ENABLE_FORCE_LOGFILE)
 	MESSAGE(STATUS "MINICDI_ENABLE_FORCE_LOGFILE")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_FORCE_LOGFILE)
+endif()
+if (MINICDI_ENABLE_RAW68KMODE)
+	MESSAGE(STATUS "MINICDI_ENABLE_RAW68KMODE")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_RAW_68K_MODE)
 endif()
 
 if (MINICDI_ENABLE_NATIVERES)
@@ -81,24 +86,24 @@ set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 
 # Core source files
 # -------------------------------------------
-target_include_directories(${PROJECT_NAME} PRIVATE src src/cdi/Musashi)
+target_include_directories(${PROJECT_NAME} PRIVATE src src/m68k)
 target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/common.cpp
 	src/os9/OS9.cpp
 
-	# Musashi core
-	src/cdi/Musashi/m68k.h
-	src/cdi/Musashi/m68kconf.h
-	src/cdi/Musashi/m68kcpu.c
-	src/cdi/Musashi/m68kcpu.h
-	src/cdi/Musashi/m68kdasm.c
-	src/cdi/Musashi/m68kfpu.c
-	src/cdi/Musashi/m68kmmu.h
-	src/cdi/Musashi/m68kops.c
-	src/cdi/Musashi/m68kops.h
-	src/cdi/Musashi/softfloat/softfloat.c
-	src/cdi/Musashi/softfloat/softfloat.h
-	src/cdi/Musashi/softfloat/softfloat-macros
+	# Musashi core for M68K
+	src/m68k/m68k.h
+	src/m68k/m68kconf.h
+	src/m68k/m68kcpu.c
+	src/m68k/m68kcpu.h
+	src/m68k/m68kdasm.c
+	src/m68k/m68kfpu.c
+	src/m68k/m68kmmu.h
+	src/m68k/m68kops.c
+	src/m68k/m68kops.h
+	src/m68k/softfloat/softfloat.c
+	src/m68k/softfloat/softfloat.h
+	src/m68k/softfloat/softfloat-macros
 )
 
 # Console specific

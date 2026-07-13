@@ -62,8 +62,8 @@ public:
 
 	inline void run(bool skip_draw = false) override
 	{
-		bool VBLANK = false;
-		do {
+		for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
+		{
 			int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 			cpu.run(cycles);
 
@@ -81,7 +81,9 @@ public:
 							break;
 
 						case VPU:
-							VBLANK = vpu != NULL ? vpu->tick(skip_draw) : true;
+							#ifndef MINICDI_RAW_68K_MODE
+							if (vpu != NULL) vpu->tick(skip_draw);
+							#endif
 							break;
 
 						case UART_TX:
@@ -98,7 +100,9 @@ public:
 					event_cycles[i] += event_rates[i];
 				}
 			}
-		} while (!VBLANK);
+
+			total_cycles += cycles;
+		}
 
 		// Print verbose CPU
 		cpu.print();

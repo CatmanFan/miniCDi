@@ -1,4 +1,4 @@
-#include "cdi/Musashi/m68kcpu.h"
+#include "m68k/m68kcpu.h"
 #include "cdi/common.hpp"
 
 namespace MiniCDI
@@ -248,6 +248,7 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 			.mcd212 = this->vpu
 		};
 
+		#ifndef MINICDI_RAW_68K_MODE
 		switch (this->board) {
 			default:
 			case CDi::MonoI:
@@ -278,6 +279,7 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 				MiniCDI::Player.ciap = this->ciap;
 				break;
 		}
+		#endif
 
 		// Init Musashi last (expects memory to already be setup in player struct)
 		m68k_init();

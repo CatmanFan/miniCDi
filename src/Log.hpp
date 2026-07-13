@@ -2,7 +2,7 @@
 #define MINICDI_LOG
 
 #include <stdarg.h>
-#include "cdi/Musashi/m68k.h"
+#include "m68k/m68k.h"
 
 #ifdef __WIIU__
 #include <whb/log_cafe.h>

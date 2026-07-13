@@ -36,7 +36,7 @@
 #endif
 
 // Global defs
-#include "cdi/Musashi/m68k.h"
+#include "m68k/m68k.h"
 #include "os9/OS9.hpp"
 #include "../Config.hpp"
 #include "../Log.hpp"

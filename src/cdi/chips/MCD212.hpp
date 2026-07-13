@@ -81,8 +81,6 @@ class MCD212
 			std::vector<uint32_t> decoded;
 		};
 
-		std::vector<uint32_t> output;
-
 		struct
 		{
 			/* 80 */ uint32_t ColorCLUT[256];
@@ -313,13 +311,15 @@ class MCD212
 			}
 		}
 
+		uint32_t framebuffer[768 * 280]; // max bounds
+
 	public:
 		uint8_t cursor[16*16];
 		Plane FG[2];
 
 		uint32_t* get_display()
 		{
-			return &output[0];
+			return &framebuffer[0];
 		}
 
 		int get_display_width()
@@ -329,7 +329,6 @@ class MCD212
 
 		void reset()
 		{
-			output.assign(768 * 280, 0x000000FF); // max bounds
 			memset(cursor, 0, sizeof(cursor));
 			reg = {0};
 		}
@@ -344,7 +343,7 @@ class MCD212
 			FG[0].decoded.assign(FG[0].width * FG[0].height, 0);
 			FG[1].decoded.assign(FG[1].width * FG[1].height, 0);
 
-			output.assign(768 * 280, 0x000000FF); // max bounds
+			memset(&framebuffer[0], 0x000000FF, sizeof(framebuffer));
 		}
 
 		/**
@@ -369,7 +368,7 @@ class MCD212
 			MCR.current = 0;
 
 			// Output screen coords.
-			int outputPixel = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width % 360 == 0 ? 24 : 0);
+			int fb_xy = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width % 360 == 0 ? 24 : 0);
 			for (int x = 0; x < FG[0].width; x++)
 			{
 				matte_set_icf(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
@@ -386,27 +385,27 @@ class MCD212
 						aB = FG[PLANEB].decoded[PIXELB] & 0xFF;
 
 				if (reg.Icm[0] == Off && reg.Icm[1] == Off)
-					output[outputPixel] = 0x101010ff;
+					framebuffer[fb_xy] = 0x101010ff;
 				else if (reg.Mixing && aA && aB)
-					output[outputPixel] = (std::clamp(rA + rB - 16, 0, 255) << 24)
+					framebuffer[fb_xy] = (std::clamp(rA + rB - 16, 0, 255) << 24)
 										| (std::clamp(gA + gB - 16, 0, 255) << 16)
 										| (std::clamp(bA + bB - 16, 0, 255) << 8)
 										| 0xFF;
 				else if (aB)
-					output[outputPixel] = (rB << 24) | (gB << 16) | (bB << 8) | 0xFF;
+					framebuffer[fb_xy] = (rB << 24) | (gB << 16) | (bB << 8) | 0xFF;
 				else if (aA)
-					output[outputPixel] = (rA << 24) | (gA << 16) | (bA << 8) | 0xFF;
+					framebuffer[fb_xy] = (rA << 24) | (gA << 16) | (bA << 8) | 0xFF;
 				else {
 					// Transparent, draw backdrop.
 					switch (reg.BackdropColor & 0x07) {
-						default: output[outputPixel] = 0x101010ff; break;
-						case 0x01: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
-						case 0x02: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
-						case 0x03: output[outputPixel] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
-						case 0x04: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
-						case 0x05: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
-						case 0x06: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
-						case 0x07: output[outputPixel] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
+						default: framebuffer[fb_xy] = 0x101010ff; break;
+						case 0x01: framebuffer[fb_xy] = reg.BackdropColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
+						case 0x02: framebuffer[fb_xy] = reg.BackdropColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
+						case 0x03: framebuffer[fb_xy] = reg.BackdropColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
+						case 0x04: framebuffer[fb_xy] = reg.BackdropColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
+						case 0x05: framebuffer[fb_xy] = reg.BackdropColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
+						case 0x06: framebuffer[fb_xy] = reg.BackdropColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
+						case 0x07: framebuffer[fb_xy] = reg.BackdropColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
 					}
 				}
 
@@ -416,30 +415,30 @@ class MCD212
 				 && reg.CursorEnable)
 				{
 					switch (reg.CursorColor & 0x07) {
-						default: output[outputPixel] = 0x101010ff; break;
-						case 0x01: output[outputPixel] = reg.CursorColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
-						case 0x02: output[outputPixel] = reg.CursorColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
-						case 0x03: output[outputPixel] = reg.CursorColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
-						case 0x04: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
-						case 0x05: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
-						case 0x06: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
-						case 0x07: output[outputPixel] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
+						default: framebuffer[fb_xy] = 0x101010ff; break;
+						case 0x01: framebuffer[fb_xy] = reg.CursorColor & 0x08 ? 0x1010FFff : 0x101090ff; break;
+						case 0x02: framebuffer[fb_xy] = reg.CursorColor & 0x08 ? 0x10FF10ff : 0x109010ff; break;
+						case 0x03: framebuffer[fb_xy] = reg.CursorColor & 0x08 ? 0x10FFFFff : 0x109090ff; break;
+						case 0x04: framebuffer[fb_xy] = reg.CursorColor & 0x08 ? 0xFF1010ff : 0x901010ff; break;
+						case 0x05: framebuffer[fb_xy] = reg.CursorColor & 0x08 ? 0xFF10FFff : 0x901090ff; break;
+						case 0x06: framebuffer[fb_xy] = reg.CursorColor & 0x08 ? 0xFFFF10ff : 0x909010ff; break;
+						case 0x07: framebuffer[fb_xy] = reg.CursorColor & 0x08 ? 0xFFFFFFff : 0x909090ff; break;
 					}
 				}
 
 				if (MiniCDI::Config::AnalogColors) {
 					/// Subtract to get the analog output (per Green Book 4.4.1.2).
-					output[outputPixel] = (std::clamp((int)((((int)output[outputPixel] >> 24 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 24)
-										| (std::clamp((int)((((int)output[outputPixel] >> 16 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 16)
-										| (std::clamp((int)((((int)output[outputPixel] >> 8 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 8)
-										| (output[outputPixel] & 0x000000FF);
+					framebuffer[fb_xy] = (std::clamp((int)((((int)framebuffer[fb_xy] >> 24 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 24)
+										| (std::clamp((int)((((int)framebuffer[fb_xy] >> 16 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 16)
+										| (std::clamp((int)((((int)framebuffer[fb_xy] >> 8 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 8)
+										| (framebuffer[fb_xy] & 0x000000FF);
 				}
 
 				if (FG[0].width < 400) {
-					output[outputPixel+1] = output[outputPixel];
-					outputPixel += 2;
+					framebuffer[fb_xy+1] = framebuffer[fb_xy];
+					fb_xy += 2;
 				} else {
-					outputPixel++;
+					fb_xy++;
 				}
 			}
 

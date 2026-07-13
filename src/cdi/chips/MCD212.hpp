@@ -317,23 +317,23 @@ class MCD212
 		uint8_t cursor[16*16];
 		Plane FG[2];
 
-		uint32_t* get_display()
+		inline uint32_t* get_display()
 		{
 			return &framebuffer[0];
 		}
 
-		int get_display_width()
+		inline int get_display_width()
 		{
 			return 768;
 		}
 
-		void reset()
+		inline void reset()
 		{
 			memset(cursor, 0, sizeof(cursor));
 			reg = {0};
 		}
 
-		void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
+		inline void set_mode(int hRes, int vRes, bool hDouble = false, bool vDouble = false)
 		{
 			if (reg.Icm[0] == CLUT4 || reg.Icm[1] == CLUT4) hDouble = true;
 
@@ -348,7 +348,7 @@ class MCD212
 		/**
 		 * @brief  Mixes all planes to the framebuffer.
 		 */
-		void mix_to_frame(int y)
+		inline void mix_to_frame(int y)
 		{
 			#define PLANEA reg.PlaneOrder ? 0 : 1
 			#define PLANEB reg.PlaneOrder ? 1 : 0
@@ -454,7 +454,7 @@ class MCD212
 		 * @return The incremented VSR
 		 */
 		template <size_t Path>
-		uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
+		inline uint32_t draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 		{
 			// Reset matte flags and count
 			Matte[0] = Matte[1] = false;
@@ -534,7 +534,7 @@ class MCD212
 		}
 
 		template <size_t Path>
-		void set_register(uint32_t inst)
+		inline void set_register(uint32_t inst)
 		{
 			switch (inst >> 24 & 0xFF)
 			{
@@ -742,19 +742,19 @@ class MCD212
 			FT[2];		/** (File Type) separate for each channel **/
 
 	template <size_t Path>
-	void vsr_set(uint32_t value) {
+	inline void vsr_set(uint32_t value) {
 		VSR[Path] = value & 0x003FFFFFu;
 		IC[Path] = 1;
 	}
 
 	template <size_t Path>
-	void dcp_set(uint32_t value) {
+	inline void dcp_set(uint32_t value) {
 		DCP[Path] = value & 0x003FFFFCu;
 		DC[Path] = 1;
 	}
 
 	template <size_t Path>
-	void ICA_execute()
+	inline void ICA_execute()
 	{
 		uint32_t addr = SM && !PA ? (Path ? 0x200404 : 0x404) : (Path ? 0x200400 : 0x400);
 
@@ -818,7 +818,7 @@ class MCD212
 	}
 
 	template <size_t Path>
-	void DCA_execute()
+	inline void DCA_execute()
 	{
 		for (int i = 0; i < (CF ? 16 : 8); i++)
 		{
@@ -881,7 +881,7 @@ public:
 	/**
 	 * @brief  Resets the chip.
 	 */
-	void reset()
+	inline void reset()
 	{
 		// clear write bits
 		DI[0] = DD1 = DD2 = TD = DD = ST = BE[0] = 0;
@@ -906,7 +906,7 @@ public:
 	/**
 	 * @brief  Draws a video line.
 	 */
-	bool tick(bool skip_draw = false)
+	inline bool tick(bool skip_draw = false)
 	{
 		if (linesV++ <= MCD212_INACTIVE_VLINES) {
 			if (linesV == 1 && DE) {
@@ -955,7 +955,7 @@ public:
 		return false;
 	}
 
-	uint8_t read8(uint32_t addr)
+	inline uint8_t read8(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -973,7 +973,7 @@ public:
 		}
 	}
 
-	uint16_t read16(uint32_t addr)
+	inline uint16_t read16(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -989,7 +989,7 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint16_t value)
+	inline void write16(uint32_t addr, uint16_t value)
 	{
 		switch (addr)
 		{
@@ -1058,12 +1058,12 @@ public:
 		}
 	}
 
-	uint32_t* get_display()
+	inline uint32_t* get_display()
 	{
 		return vdsc.get_display();
 	}
 
-	size_t get_display_width()
+	inline size_t get_display_width()
 	{
 		return vdsc.get_display_width();
 	}

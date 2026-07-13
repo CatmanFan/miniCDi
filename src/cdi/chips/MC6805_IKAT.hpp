@@ -29,7 +29,7 @@ class IKAT
 	uint8_t IMR;
 	uint8_t MR; // always 8F (in "set on Receiver Ready" interrupt mode and enable all channels)
 
-	void set_ISR(uint8_t flag)
+	inline void set_ISR(uint8_t flag)
 	{
 		ISR |= flag;
 		//MiniCDI::Log("[IKAT] ISR %02X |= IMR %02X", ISR, IMR);
@@ -37,7 +37,7 @@ class IKAT
 			_68070->interrupt(SCC68070::IPL_IN2N, true);
 	}
 
-	void unset_ISR(uint8_t flag)
+	inline void unset_ISR(uint8_t flag)
 	{
 		ISR &= ~flag;
 		//MiniCDI::Log("[IKAT] ISR %02X != IMR %02X", ISR, IMR);
@@ -65,7 +65,7 @@ public:
 		reset();
 	}
 
-	void poll_packet(size_t c, size_t delay = 0)
+	inline void poll_packet(size_t c, size_t delay = 0)
 	{
 		if (delay > 0)
 		{
@@ -82,7 +82,7 @@ public:
 		//MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 	}
 
-	void update()
+	inline void update()
 	{
 		for (size_t c = 0; c < 4; c++)
 		{
@@ -102,7 +102,7 @@ public:
 		}
 	}
 
-	void reset()
+	inline void reset()
 	{
 		memset(&LCD[0], 0, 16);
 
@@ -124,7 +124,7 @@ public:
 		Ch[3].InSize = 0;
 	}
 
-	uint8_t read8(uint32_t addr)
+	inline uint8_t read8(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -184,7 +184,7 @@ public:
 		return memory[addr];
 	}
 
-	void write8(uint32_t addr, uint8_t value, CIAP *ciap)
+	inline void write8(uint32_t addr, uint8_t value, CIAP *ciap)
 	{
 		memory[addr] = value;
 		switch (addr)

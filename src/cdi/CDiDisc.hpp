@@ -200,7 +200,7 @@ class CDiDisc
 	 *
 	 * @return The LBA address, subtracted by 150.
 	 */
-	uint32_t get_lba_from_time(uint32_t time)
+	inline uint32_t get_lba_from_time(uint32_t time)
 	{
 		#ifdef MINICDI_USE_MAME_LBA_METHOD
 
@@ -258,7 +258,7 @@ class CDiDisc
 		return lba;
 	}
 
-	bool is_byteswapped(int lba)
+	inline bool is_byteswapped(int lba)
 	{
 		char sync[2];
 		disc.seekg(lba*2352, std::ios::beg);
@@ -268,7 +268,7 @@ class CDiDisc
 	}
 
 	/// Taken from MAME CDIC driver source code.
-	bool is_valid_sector(int lba)
+	inline bool is_valid_sector(int lba)
 	{
 		char raw[12];
 		disc.seekg(lba*2352+12, std::ios::beg);
@@ -295,7 +295,7 @@ class CDiDisc
 		return true;
 	}
 
-	void read_sector(int lba = 0)
+	inline void read_sector(int lba = 0)
 	{
 		// seek and skip sync field
 		disc.seekg(lba*2352+12, std::ios::beg);
@@ -351,7 +351,7 @@ public:
 	friend class CDIC;
 	friend class CIAP;
 
-	void open(const std::string &path)
+	inline void open(const std::string &path)
 	{
 		if (access(path.c_str(), F_OK) == 0) {
 			disc.open(path, std::ios::in | std::ios::binary);
@@ -381,7 +381,7 @@ public:
 		}
 	}
 
-	void eject()
+	inline void eject()
 	{
 		if (disc.is_open()) {
 			disc.close();

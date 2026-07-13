@@ -206,12 +206,12 @@ public:
 	{
 	}
 
-	void tick()
+	inline void tick()
 	{
 		disc_process_sector();
 	}
 
-	void disc_set_lba(uint8_t min, uint8_t sec, uint8_t frame)
+	inline void disc_set_lba(uint8_t min, uint8_t sec, uint8_t frame)
 	{
 		// Hack
 		if (sec == 0x01 && frame == 0x72) {
@@ -224,7 +224,7 @@ public:
 		CdStatus.curr_lba = disc->get_lba_from_time((min << 24) | (sec << 16) | (frame << 8));
 	}
 
-	uint16_t read16(uint32_t addr)
+	inline uint16_t read16(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -262,7 +262,7 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint16_t value)
+	inline void write16(uint32_t addr, uint16_t value)
 	{
 		switch (addr)
 		{
@@ -363,7 +363,7 @@ public:
 		}
 	}
 
-	bool is_reading() { return CdStatus.reading; }
+	inline bool is_reading() { return CdStatus.reading; }
 };
 
 #endif

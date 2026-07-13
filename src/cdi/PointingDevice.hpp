@@ -28,7 +28,7 @@ public:
 		IKAT* ikat = NULL;
 	} IO;
 
-	void send_packet()
+	inline void send_packet()
 	{
 		if (IO.slave != NULL) {
 			if (IO.slave->PointerInterface.posChanged) {
@@ -98,7 +98,7 @@ public:
 		poll_state_changed = false;
 	}
 
-	void set_button(enum Buttons b, bool value)
+	inline void set_button(enum Buttons b, bool value)
 	{
 		if (b == Left || b == Right || b == Down || b == Up) this->buttons[(int)b] = value;
 		if (this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up])
@@ -123,7 +123,7 @@ public:
 		}
 	}
 
-	void set_coord(float x, float y)
+	inline void set_coord(float x, float y)
 	{
 		if (x < 0 || y < 0 || x > 1 || y > 1) return;
 

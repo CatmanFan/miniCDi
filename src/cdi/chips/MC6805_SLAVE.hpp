@@ -45,7 +45,7 @@ public:
 		reset();
 	}
 
-	void reset()
+	inline void reset()
 	{
 		memset(&LCD[0], 0, 16);
 		Ch[0].InSize = 0;
@@ -54,7 +54,7 @@ public:
 		Ch[3].InSize = 0;
 	}
 
-	uint8_t read8(uint32_t addr)
+	inline uint8_t read8(uint32_t addr)
 	{
 		if (addr == DR[0] || addr == DR[1] || addr == DR[2] || addr == DR[3])
 		{
@@ -78,7 +78,7 @@ public:
 		return memory[addr];
 	}
 
-	void write8(uint32_t addr, uint8_t value)
+	inline void write8(uint32_t addr, uint8_t value)
 	{
 		memory[addr] = value;
 		if (addr == DR[0] || addr == DR[1] || addr == DR[2] || addr == DR[3])

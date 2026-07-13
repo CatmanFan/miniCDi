@@ -22,7 +22,7 @@ class DRVDSP
 	uint8_t IVR;
 	uint32_t RTX; // byte receive (RX) when read, byte transmit (TX) when written
 
-	void check_isr()
+	inline void check_isr()
 	{
 		if (IVR > 0)
 			_68070->interrupt(SCC68070::IPL_IN4N, ((ISR & 0b00000001) && (ICR & 0b00000001)) || ((ISR & 0b00000010) && (ICR & 0b00000010)));
@@ -35,12 +35,12 @@ public:
 	{
 	}
 
-	void tick()
+	inline void tick()
 	{
 		// TO-DO
 	}
 
-	uint8_t read8(uint32_t addr)
+	inline uint8_t read8(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -70,7 +70,7 @@ public:
 		}
 	}
 
-	void write8(uint32_t addr, uint8_t value)
+	inline void write8(uint32_t addr, uint8_t value)
 	{
 		switch (addr)
 		{

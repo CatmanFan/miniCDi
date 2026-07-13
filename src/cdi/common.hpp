@@ -41,6 +41,7 @@
 #include "../Config.hpp"
 #include "../Log.hpp"
 #include "cdi/CDiDisc.hpp"
+#include "cdi/AdpcmDecoder.hpp"
 
 // Cores
 #include "cdi/chips/SCC68070.hpp"

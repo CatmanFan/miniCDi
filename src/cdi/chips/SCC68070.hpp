@@ -45,7 +45,7 @@ class SCC68070
 		uint8_t CPR = 0;
 	} DMA[2];
 
-	void dma_call(size_t index, uint32_t start_address)
+	inline void dma_call(size_t index, uint32_t start_address)
 	{
 		if (DMA[index].CCR & 0x80) {
 			DMA[index].CCR &= ~0x80; // START unset
@@ -122,7 +122,7 @@ class SCC68070
 	uint8_t ICR = 0;
 	uint8_t ICCR = 0;
 
-	void update_ipl()
+	inline void update_ipl()
 	{
 		Ipl.nxt_index = 0;
 		Ipl.nxt_irq = 0;
@@ -212,7 +212,7 @@ public:
 	 *
 	 * @param  assert:  Whether the interrupt is asserted.
 	 */
-	void interrupt(size_t index, bool assert)
+	inline void interrupt(size_t index, bool assert)
 	{
 		switch (index)
 		{
@@ -264,7 +264,7 @@ public:
 	{
 	}
 
-	void load_rom(std::vector<char> &rom)
+	inline void load_rom(std::vector<char> &rom)
 	{
 		// (Dirty) byteswap method
 		if (rom[4] != 0x00) {
@@ -276,7 +276,7 @@ public:
 		memcpy(&memory[0x400000], &rom[0], 512*1024*sizeof(char));
 	}
 
-	void reset_internal()
+	inline void reset_internal()
 	{
 		// LIR
 		LIR = 0;
@@ -310,7 +310,7 @@ public:
 		IDR = IAR = ISR = ICR = ICCR = 0;
 	}
 
-	void reset()
+	inline void reset()
 	{
 		// Clear DRAM banks
 		memset(&memory[0x000000], 0, 512*1024);
@@ -334,7 +334,7 @@ public:
 		m68k_set_reg(M68K_REG_PC, (memory[0x400004] << 24) | (memory[0x400005] << 16) | (memory[0x400006] << 8) | memory[0x400007]);*/
 	}
 
-	uint8_t read8(uint32_t addr)
+	inline uint8_t read8(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -415,7 +415,7 @@ public:
 		return memory[addr & 0x00FFFFFF];
 	}
 
-	void write8(uint32_t addr, uint8_t value)
+	inline void write8(uint32_t addr, uint8_t value)
 	{
 		switch (addr)
 		{
@@ -530,7 +530,7 @@ public:
 		}
 	}
 
-	void print()
+	inline void print()
 	{
 		#ifdef MINICDI_DEBUG_CPU
 		printf("\x1b[%d;%dH", 4, 0);
@@ -559,7 +559,7 @@ public:
 		#endif
 	}
 
-	void uart_tx_tick()
+	inline void uart_tx_tick()
 	{
 		if ((UCR & 0b1100) != 0b0100) return;
 		USR |= 0x04; // set TXRDY
@@ -577,10 +577,8 @@ public:
 		}
 	}
 
-	int run(int cycles)
+	inline void run(int cycles)
 	{
-		int ran = 0;
-
 		/*#ifdef MINICDI_DEBUG_CPU
 		if (MiniCDI::Config::LogFile != 0) {
 			uint32_t pcLog;
@@ -598,7 +596,7 @@ public:
 		ran += m68k_execute(cycles);
 		#endif*/
 
-		ran += m68k_execute(cycles);
+		m68k_execute(cycles);
 
 		// Poll timer.
 		T_cycles[0] += cycles;
@@ -618,8 +616,6 @@ public:
 
 			T_cycles[0] -= 96;
 		}
-
-		return ran;
 	}
 };
 

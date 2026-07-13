@@ -1,6 +1,10 @@
 #ifndef MINICDI_IMS66490_CDIC
 #define MINICDI_IMS66490_CDIC
 
+#ifdef MINICDI_AUDIO_SDL2
+#include <SDL2/SDL.h>
+#endif
+
 /*****
   DISCLAIMER:
   Partially sourced from the MAME CDIC driver and documentation by Slamy.
@@ -25,12 +29,77 @@ class CDIC
 	uint16_t IVEC; // 0x3FFC
 	uint16_t DBUF; // 0x3FFE
 
-	void audio_process()
+	#ifdef MINICDI_AUDIO_SDL2
+	uint32_t SDL_audio_id = 0;
+	int SDL_audio_valid = -1;
+	SDL_AudioSpec SDL_audio_specs;
+	std::vector<int16_t> SDL_audio_buffer;
+	#endif
+
+	AdpcmDecoder ADPCM;
+
+	inline void audio_process()
 	{
-		// TO-DO
-		/*if (AUDCTL & 0x2000) {
-			assert_irq();
-		}*/
+		if (AUDCTL & 0x0800)
+		{
+			// TO-DO
+			if (disc->Sector.CodingInfo[1] == 0xFF)
+			{
+				AUDCTL |= 0x0001; // audio playback ended
+				AUDCTL &= ~0x0800; // unset playback started
+				goto irq;
+			}
+
+			#ifdef MINICDI_AUDIO_SDL2
+				switch (SDL_audio_valid)
+				{
+					case -1:
+					{
+						if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+							MiniCDI::Log("[Audio:SDL2] failed to init audio subsystem");
+							SDL_audio_valid = 0;
+						} else {
+							// Audio
+							SDL_AudioSpec preset = { 0 };
+							preset.freq = 44100;
+							preset.format = AUDIO_S16SYS;
+							preset.channels = 2;
+							preset.samples = 4096;
+							SDL_OpenAudio(&preset, 0);
+
+							SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &preset, &SDL_audio_specs, 0);
+							SDL_audio_valid = !SDL_audio_id ? 0 : 1;
+							if (SDL_audio_id != 0)
+							{
+								SDL_PauseAudioDevice(SDL_audio_id, 0);
+								MiniCDI::Log("[Audio:SDL2] initialized audio device #%d", SDL_audio_id);
+								MiniCDI::Log("[Audio:SDL2] audiospec frequency: %d", SDL_audio_specs.freq);
+								MiniCDI::Log("[Audio:SDL2] audiospec format: %d", SDL_audio_specs.format);
+								MiniCDI::Log("[Audio:SDL2] audiospec channels: %d", SDL_audio_specs.channels);
+								MiniCDI::Log("[Audio:SDL2] audiospec samples: %d", SDL_audio_specs.samples);
+							}
+						}
+					}
+					break;
+
+					default:
+					case 0:
+						break;
+
+					case 1:
+						break;
+				}
+
+				if (!ADPCM.decode(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)], SDL_audio_buffer))
+					return;
+			#endif
+
+			irq:
+			if (AUDCTL & 0x2000) {
+				ABUF |= 0x8000; // audio playback IRQ
+				update_irq();
+			}
+		}
 	}
 
 	CDiDisc *disc;
@@ -43,7 +112,7 @@ class CDIC
 		bool is_mode2; // Determines whether to apply MODE2 filter
 	} CdicController;
 
-	bool disc_check_filter()
+	inline bool disc_check_filter()
 	{
 		if (disc->Sector.Mode == 2 && CdicController.is_mode2)
 		{
@@ -80,7 +149,7 @@ class CDIC
 		return true;
 	}
 
-	void disc_process_sector()
+	inline void disc_process_sector()
 	{
 		if (!CdicController.reading)
 			return;
@@ -93,8 +162,6 @@ class CDIC
 		// Skip if MODE2 not satisfied
 		if (disc_check_filter())
 		{
-			MiniCDI::Log("[CDIC] read sector %02X:%02X:%02X", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
-
 			// Switch DBUF index and reset audio
 			DBUF &= 0b01110001; DBUF ^= 0x0001;
 			uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
@@ -110,14 +177,18 @@ class CDIC
 			memory[targetAddr++] = disc->Sector.CodingInfo[0];
 
 			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
-			// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
-			bool use_adpcm = disc->Sector.Mode == 2 && CdicController.is_mode2
+			// `is_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
+			bool is_adpcm = disc->Sector.Mode == 2 && CdicController.is_mode2
 						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
-			if (use_adpcm) {
-				DBUF |= 0x0004; // audio index
-				if ((AUDCTL & 0x0800) == 0) AUDCTL |= 0x0800; // start playback
-				targetAddr += 0x2800;
+			if (is_adpcm) {
+				targetAddr += 0x2800; // switch to ADPCM buffer
+
+				// set audio index bit and schedule playback of audio sector
+				DBUF |= 0x0004;
+				if ((AUDCTL & 0x0800) == 0x0000 && (DBUF & 0x000F) == 0x0004)
+					AUDCTL |= 0x0800;
 			}
+			MiniCDI::Log("[CDIC] read %s sector %02X:%02X:%02X", is_adpcm ? "audio" : "data", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 
 			memory[targetAddr++] = disc->Sector.FileNum[1];
 			memory[targetAddr++] = disc->Sector.ChNum[1];
@@ -142,7 +213,7 @@ class CDIC
 
 			XBUF |= 0x8000; // sector filled for processing
 			DBUF |= 0x4000; // send DATA to CPU
-			assert_irq();
+			update_irq();
 		}
 
 		if (CdicController.reading && !CdicController.seek) {
@@ -157,7 +228,7 @@ class CDIC
 		}
 	}
 
-	void assert_irq()
+	inline void update_irq()
 	{
 		bool xbuf_raised = XBUF & 0x8000 ? true : false;
 		bool abuf_raised = ABUF & 0x8000 ? true : false;
@@ -169,19 +240,19 @@ public:
 	{
 	}
 
-	void reset()
+	inline void reset()
 	{
 		XBUF = 0;
 		CdicController = {0};
 	}
 
-	void tick()
+	inline void tick()
 	{
 		disc_process_sector();
 		audio_process();
 	}
 
-	uint16_t read16(uint32_t addr)
+	inline uint16_t read16(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -210,7 +281,7 @@ public:
 				const uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
-					assert_irq();
+					update_irq();
 				}
 				return value;
 			}
@@ -221,7 +292,7 @@ public:
 				const uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
-					assert_irq();
+					update_irq();
 				}
 				return value;
 			}
@@ -231,7 +302,7 @@ public:
 				return DMACTL;
 
 			case 0x303FFA: case 0x303FFB:
-				AUDCTL ^= 0x0001; // reset ADPCM playback stopped bit
+				AUDCTL &= ~0x0001; // reset ADPCM playback stopped bit
 				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
 				return AUDCTL;
 
@@ -245,7 +316,7 @@ public:
 		}
 	}
 
-	void write16(uint32_t addr, uint16_t value)
+	inline void write16(uint32_t addr, uint16_t value)
 	{
 		switch (addr)
 		{
@@ -381,7 +452,7 @@ public:
 		}
 	}
 
-	uint32_t read32(uint32_t addr)
+	inline uint32_t read32(uint32_t addr)
 	{
 		switch (addr)
 		{
@@ -398,7 +469,7 @@ public:
 		}
 	}
 
-	void write32(uint32_t addr, uint32_t value)
+	inline void write32(uint32_t addr, uint32_t value)
 	{
 		switch (addr)
 		{
@@ -419,7 +490,7 @@ public:
 		}
 	}
 
-	bool is_reading() { return CdicController.reading; }
+	inline bool is_reading() { return CdicController.reading; }
 };
 
 #endif

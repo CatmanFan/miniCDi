@@ -28,8 +28,8 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 - [X] Proper reset sequence
 - Fix VDSC rendering
    - [X] Color key
-   - [ ] Mixing
-   - [ ] DYUV decoder formula
+   - [X] Mixing
+   - [X] DYUV decoder formula
 - [X] Outline instructions/how-to for users
 - [ ] Update compatibility information
 - [X] Update licensing information

@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # -------------------------------------------
 add_executable(${PROJECT_NAME})
 dkp_target_generate_symbol_list(${PROJECT_NAME})
-target_compile_options(${PROJECT_NAME} PRIVATE -g -Ofast -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
 # Debug options
 option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)

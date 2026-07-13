@@ -207,23 +207,31 @@ static void RUN_CDI(const std::string &discName)
 	// load whatever settings we have
 	mINI::INIFile file("sdmc:/3ds/miniCDi/config.ini");
 	mINI::INIStructure ini;
+	bool recreateIni = true;
 	if (access("sdmc:/3ds/miniCDi/config.ini", F_OK) == 0) {
 		file.read(ini);
+		recreateIni = !(ini.has("CDI") && ini.has("MiniCDI") && ini["CDI"].size() == 4 && ini["MiniCDI"].size() == 4);
 	}
-	else {
-		ini["CDI"]["AutosaveNVRAM"] = "1";
-		ini["CDI"]["TestPlug"] = "0";
-		ini["CDI"]["PAL"] = "1";
-		ini["CDI"]["AnalogColors"] = "0";
-		ini["MiniCDI"]["FPS"] = "1";
-		ini["MiniCDI"]["FrameSkip"] = "1";
-		ini["MiniCDI"]["Logging"] = "0";
+	if (recreateIni) {
+		ini["CDI"].set({
+			{"AutosaveNVRAM", "0"},
+			{"TestPlug", "0"},
+			{"PAL", "1"},
+			{"AnalogColors", "0"}
+		});
+		ini["MiniCDI"].set({
+			{"FPS", "0"},
+			{"FrameSkip", "1"},
+			{"PointerAdvance", "1"},
+			{"Logging", "0"}
+		});
 		file.generate(ini);
 	}
 	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
 	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
 	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
 	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
 	MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
 	#else

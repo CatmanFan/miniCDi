@@ -5,7 +5,6 @@ class PointingDevice
 {
 	static constexpr int MAX_POINTER_X = 768;
 	static constexpr int MAX_POINTER_Y = 560;
-	static constexpr int POINTER_ADVANCE = 2;
 
 	bool buttons[6];
 	bool poll_movement = false;
@@ -105,11 +104,11 @@ public:
 		if (this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up])
 		{
 			poll_movement = true;
-			x = std::clamp(x + (buttons[Left] && !buttons[Right] ? POINTER_ADVANCE * -1
-																 : !buttons[Left] && buttons[Right] ? POINTER_ADVANCE
+			x = std::clamp(x + (buttons[Left] && !buttons[Right] ? MiniCDI::Config::PointerAdvance * -1
+																 : !buttons[Left] && buttons[Right] ? MiniCDI::Config::PointerAdvance
 																 : 0), 0, 767);
-			y = std::clamp(y + (buttons[Up] && !buttons[Down] ? POINTER_ADVANCE * -1
-															  : !buttons[Up] && buttons[Down] ? POINTER_ADVANCE
+			y = std::clamp(y + (buttons[Up] && !buttons[Down] ? MiniCDI::Config::PointerAdvance * -1
+															  : !buttons[Up] && buttons[Down] ? MiniCDI::Config::PointerAdvance
 															  : 0), 0, 559);
 			MiniCDI::Log("[PD] x=%d,y=%d", x, y);
 		}

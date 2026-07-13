@@ -105,7 +105,7 @@ public:
 
 	SDL()
 	{
-		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == 0) {
+		if (SDL_Init(SDL_INIT_VIDEO) == 0) {
 			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 			SDL_ShowCursor(SDL_DISABLE);
 
@@ -193,23 +193,31 @@ static void RUN_CDI(const std::string &discName)
 	// load whatever settings we have
 	mINI::INIFile file((appPath + "config.ini").c_str());
 	mINI::INIStructure ini;
+	bool recreateIni = true;
 	if (access((appPath + "config.ini").c_str(), F_OK) == 0) {
 		file.read(ini);
+		recreateIni = !(ini.has("CDI") && ini.has("MiniCDI") && ini["CDI"].size() == 4 && ini["MiniCDI"].size() == 4);
 	}
-	else {
-		ini["CDI"]["AutosaveNVRAM"] = "1";
-		ini["CDI"]["TestPlug"] = "0";
-		ini["CDI"]["PAL"] = "1";
-		ini["CDI"]["AnalogColors"] = "0";
-		ini["MiniCDI"]["FPS"] = "0";
-		ini["MiniCDI"]["FrameSkip"] = "1";
-		ini["MiniCDI"]["Logging"] = "0";
+	if (recreateIni) {
+		ini["CDI"].set({
+			{"AutosaveNVRAM", "0"},
+			{"TestPlug", "0"},
+			{"PAL", "1"},
+			{"AnalogColors", "0"}
+		});
+		ini["MiniCDI"].set({
+			{"FPS", "0"},
+			{"FrameSkip", "1"},
+			{"PointerAdvance", "1"},
+			{"Logging", "0"}
+		});
 		file.generate(ini);
 	}
 	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
 	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
 	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
 	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
 	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 	#else

@@ -78,7 +78,7 @@ class MCD212
 		{
 		public:
 			int width, height;
-			std::vector<uint32_t> decoded;
+			uint32_t decoded[768 * 280]; // max bounds
 		};
 
 		struct
@@ -337,13 +337,12 @@ class MCD212
 		{
 			if (reg.Icm[0] == CLUT4 || reg.Icm[1] == CLUT4) hDouble = true;
 
+			memset(FG[0].decoded, 0, sizeof(FG[0].decoded));
+			memset(FG[1].decoded, 0, sizeof(FG[1].decoded));
+			memset(framebuffer, 0xFF000000, sizeof(framebuffer));
+
 			FG[1].width = FG[0].width = hRes * (hDouble || vDouble ? 2 : 1);
 			FG[1].height = FG[0].height = vRes * (vDouble ? 2 : 1);
-
-			FG[0].decoded.assign(FG[0].width * FG[0].height, 0);
-			FG[1].decoded.assign(FG[1].width * FG[1].height, 0);
-
-			memset(&framebuffer[0], 0x000000FF, sizeof(framebuffer));
 		}
 
 		/**
@@ -372,17 +371,14 @@ class MCD212
 			for (int x = 0; x < FG[0].width; x++)
 			{
 				matte_set_icf(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
-				int PIXELA = (y*FG[0].width) + x;
-				int PIXELB = (y*FG[1].width) + x;
-
-				uint8_t rA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[PIXELA] >> 24 & 0xFF), reg.ICF[PLANEA]),
-						gA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[PIXELA] >> 16 & 0xFF), reg.ICF[PLANEA]),
-						bA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[PIXELA] >> 8 & 0xFF), reg.ICF[PLANEA]),
-						aA = FG[PLANEA].decoded[PIXELA] & 0xFF,
-						rB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[PIXELB] >> 24 & 0xFF), reg.ICF[PLANEB]),
-						gB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[PIXELB] >> 16 & 0xFF), reg.ICF[PLANEB]),
-						bB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[PIXELB] >> 8 & 0xFF), reg.ICF[PLANEB]),
-						aB = FG[PLANEB].decoded[PIXELB] & 0xFF;
+				uint8_t rA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 24 & 0xFF), reg.ICF[PLANEA]),
+						gA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 16 & 0xFF), reg.ICF[PLANEA]),
+						bA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 8 & 0xFF), reg.ICF[PLANEA]),
+						aA = FG[PLANEA].decoded[(y*768)+x] & 0xFF,
+						rB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[(y*768)+x] >> 24 & 0xFF), reg.ICF[PLANEB]),
+						gB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[(y*768)+x] >> 16 & 0xFF), reg.ICF[PLANEB]),
+						bB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[(y*768)+x] >> 8 & 0xFF), reg.ICF[PLANEB]),
+						aB = FG[PLANEB].decoded[(y*768)+x] & 0xFF;
 
 				if (reg.Icm[0] == Off && reg.Icm[1] == Off)
 					framebuffer[fb_xy] = 0x101010ff;
@@ -470,7 +466,7 @@ class MCD212
 			DYUVDecoder.V = reg.ColorDYUV[Path] & 0xFF;
 
 			if (reg.Icm[Path] == Off) {
-				memset(&FG[Path].decoded[(y * FG[Path].width)], 0, FG[Path].width * sizeof(uint32_t));
+				memset(&FG[Path].decoded[(y * 768)], 0, FG[Path].width * sizeof(uint32_t));
 				return 0;
 			}
 
@@ -478,7 +474,7 @@ class MCD212
 			{
 				matte_set_flag<Path>(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
 				uint8_t* src = &memory[vsr];
-				uint32_t* dst = &FG[Path].decoded[(y * FG[Path].width) + x];
+				uint32_t* dst = &FG[Path].decoded[(y * 768) + x];
 
 				switch (reg.FT[Path]) {
 					default:
@@ -519,7 +515,7 @@ class MCD212
 								int length = (*src & 0x80 ? memory[vsr+1] : 1) * (reg.Icm[Path] == CLUT4 ? 2 : 1);
 								int endX = length == 0 ? FG[Path].width : std::min({x+length, FG[Path].width});
 								while (x < endX) {
-									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * FG[Path].width) + x]);
+									x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * 768) + x]);
 								}
 								vsr += (*src & 0x80 ? 2 : 1);
 								continue;

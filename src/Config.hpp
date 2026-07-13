@@ -12,6 +12,7 @@ namespace MiniCDI
 		extern bool AnalogColors;
 		extern bool HasDisc;
 		extern size_t FrameSkip;
+		extern int PointerAdvance;
 
 		extern FILE* LogFile;
 		extern std::string NvramFile;

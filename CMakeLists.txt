@@ -15,7 +15,7 @@ option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR
 option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose."								OFF)
 option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses."			ON)
 option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file option."			OFF)
-option(MINICDI_ENABLE_RAW68KMODE "Only use the 68K processor."									ON)
+option(MINICDI_ENABLE_RAW68KMODE "Only use the 68K processor."									OFF)
 
 # Emulation options
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
@@ -159,6 +159,7 @@ if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -laesnd -lfat)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
 
 	# Source files/directories
 	# ************
@@ -188,6 +189,7 @@ if (NINTENDO_WIIU)
     find_package(Freetype REQUIRED)
 	include_directories(${DEVKITPRO}/portlibs/wiiu/include ${FREETYPE_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2TTF_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -lSDL2_ttf -lfreetype -lpng -lz -lm -lharfbuzz -lbrotlidec -lbrotlicommon -lbz2 -lwut)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
 
 	# Source files/directories
 	# ************

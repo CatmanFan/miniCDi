@@ -222,7 +222,7 @@ static void RUN_CDI(const std::string &discName)
 		ini["MiniCDI"].set({
 			{"FPS", "0"},
 			{"FrameSkip", "1"},
-			{"PointerAdvance", "1"},
+			{"PointerAdvance", "0"},
 			{"Logging", "0"}
 		});
 		file.generate(ini);

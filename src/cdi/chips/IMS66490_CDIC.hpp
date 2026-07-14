@@ -36,8 +36,6 @@ class CDIC
 	std::vector<int16_t> SDL_audio_buffer;
 	#endif
 
-	AdpcmDecoder ADPCM;
-
 	inline void audio_process()
 	{
 		if (AUDCTL & 0x0800)
@@ -90,6 +88,7 @@ class CDIC
 						break;
 				}
 
+				AdpcmDecoder ADPCM;
 				if (!ADPCM.decode(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)], SDL_audio_buffer))
 					return;
 			#endif
@@ -249,7 +248,7 @@ public:
 	inline void tick()
 	{
 		disc_process_sector();
-		audio_process();
+		// audio_process();
 	}
 
 	inline uint16_t read16(uint32_t addr)

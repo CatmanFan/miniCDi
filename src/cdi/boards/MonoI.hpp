@@ -29,32 +29,21 @@ private:
 		SECTOR = 0,
 		VPU,
 		UART_TX,
-		#ifdef MINICDI_PDTICK
-		EventCOUNT,
-		PD
-		#else
-		EventCOUNT
-		#endif
+		EVTNUM
 	};
 
-	int event_rates[EventCOUNT] =
+	int event_rates[EVTNUM] =
 	{
 		/* SECTOR */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
 		/* VPU */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
 		/* UART_TX */ 4915200
-		#ifdef MINICDI_PDTICK
-		, /* PD */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30 // absolute: 30, relative: 40
-		#endif
 	};
 
-	int event_cycles[EventCOUNT] =
+	int event_cycles[EVTNUM] =
 	{
 		event_rates[SECTOR],
 		event_rates[VPU],
 		event_rates[UART_TX]
-		#ifdef MINICDI_PDTICK
-		, event_rates[PD]
-		#endif
 	};
 
 public:
@@ -67,7 +56,7 @@ public:
 			int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 			cpu.run(cycles);
 
-			for (int i = 0; i < EventCOUNT; i++)
+			for (int i = 0; i < EVTNUM; i++)
 			{
 				event_cycles[i] -= cycles;
 				while (event_cycles[i] <= 0)
@@ -89,12 +78,6 @@ public:
 						case UART_TX:
 							cpu.uart_tx_tick();
 							break;
-
-						#ifdef MINICDI_PDTICK
-						case PD:
-							pd.send_packet();
-							break;
-						#endif
 					}
 
 					event_cycles[i] += event_rates[i];
@@ -133,9 +116,6 @@ public:
 		event_cycles[SECTOR] = event_rates[SECTOR];
 		event_cycles[VPU] = event_rates[VPU];
 		event_cycles[UART_TX] = event_rates[UART_TX];
-		#ifdef MINICDI_PDTICK
-		event_cycles[PD] = event_rates[PD];
-		#endif
 	}
 	~MonoI();
 

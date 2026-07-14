@@ -427,7 +427,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
-	if (!cdi.init(devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".rom", CDi::MonoI)) {
+	if (!cdi.init(devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI)) {
 		WHBLogPrintf("[miniCDi] error: failed to create CD-i player");
 		// OSSleepTicks(OSSecondsToTicks(5));
 		return;

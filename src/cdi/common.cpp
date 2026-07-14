@@ -291,6 +291,10 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 		m68k_set_trap_instr_callback(MiniCDI_op_trap_handler);
 		m68k_set_fc_callback(MiniCDI_set_fc);
 
+		MiniCDI::Log("[CDI] Created %s machine", this->board == CDi::MonoIV ? "Mono-IV"
+											   : this->board == CDi::MonoIII ? "Mono-III"
+											   : this->board == CDi::MonoII ? "Mono-II"
+											   : "Mono-I");
 		return true;
 	}
 

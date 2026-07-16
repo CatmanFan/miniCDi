@@ -325,6 +325,8 @@ public:
 
 	inline void open(const std::string &path)
 	{
+		if (path.empty()) return;
+
 		if (access(path.c_str(), F_OK) == 0) {
 			disc.open(path, std::ios::in | std::ios::binary);
 			if (disc.is_open()) {

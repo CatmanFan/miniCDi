@@ -273,7 +273,7 @@ public:
 			}
 		}
 
-		memcpy(&memory[0x400000], &rom[0], 512*1024*sizeof(char));
+		memcpy(&memory[0x400000], &rom[0], rom.size()*sizeof(char));
 	}
 
 	inline void reset_internal()

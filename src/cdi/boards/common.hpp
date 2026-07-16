@@ -105,7 +105,7 @@ public:
 		memory = (uint8_t *)memalign(32, memsize);
 
 		if (memory) {
-			memset(memory, 0, memsize);
+			memset(memory, 0, memsize*sizeof(uint8_t));
 			return true;
 		}
 

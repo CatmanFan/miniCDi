@@ -21,7 +21,7 @@ private:
 	DRVDSP* dsp = NULL;
 	IKAT* ikat = NULL;
 	MCD212* vpu = NULL;
-	PlayerLCD lcd;
+	// PlayerLCD lcd;
 
 	// Scheduler values
 	enum EventType

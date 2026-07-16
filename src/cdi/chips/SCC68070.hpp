@@ -567,7 +567,7 @@ public:
 
 		if (UART_T.chars.size() > 0)
 		{
-			MiniCDI::Log("[SCC68070:UART] transferring %02X", UART_T.chars[0]);
+			//MiniCDI::Log("[SCC68070:UART] transferring %02X", UART_T.chars[0]);
 			UART_T.HR = UART_T.chars[0];
 		}
 

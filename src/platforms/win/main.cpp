@@ -80,13 +80,23 @@ static void RUN_CDI(const char *biosPath, const char *discPath)
 	while (!has_quit)
 	{
         SDL_Event e;
-        while (SDL_PollEvent(&e))
+        if(SDL_PollEvent(&e)) 
         {
             switch (e.type)
             {
-            case SDL_QUIT:
-                has_quit = true;
-                break;
+				case SDL_KEYDOWN:
+				case SDL_KEYUP:
+					cdi.pd.set_button(PointingDevice::Button1, e.key.keysym.sym == SDLK_RETURN && e.type == SDL_KEYDOWN);
+					cdi.pd.set_button(PointingDevice::Button2, e.key.keysym.sym == SDLK_ESCAPE && e.type == SDL_KEYDOWN);
+					cdi.pd.set_button(PointingDevice::Down, e.key.keysym.sym == SDLK_DOWN && e.type == SDL_KEYDOWN);
+					cdi.pd.set_button(PointingDevice::Up, e.key.keysym.sym == SDLK_UP && e.type == SDL_KEYDOWN);
+					cdi.pd.set_button(PointingDevice::Left, e.key.keysym.sym == SDLK_LEFT && e.type == SDL_KEYDOWN);
+					cdi.pd.set_button(PointingDevice::Right, e.key.keysym.sym == SDLK_RIGHT && e.type == SDL_KEYDOWN);
+					if (e.key.keysym.sym == SDLK_n && e.type == SDL_KEYDOWN) cdi.reset();
+					break;
+				case SDL_QUIT:
+					has_quit = true;
+					break;
             }
         }
 

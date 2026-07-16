@@ -1777,6 +1777,9 @@ static inline void m68ki_stack_frame_1010(uint sr, uint vector, uint pc)
 /* Format 15 stack frame (68070).
  * 68070 only.  This is the 17 word bus/address error frame.
  */
+#ifdef __APPLE__
+void m68ki_stack_frame_1111(uint pc, uint sr, uint vector);
+#else
 inline void m68ki_stack_frame_1111(uint pc, uint sr, uint vector)
 {
 	/* INTERNAL INFORMATION */
@@ -1815,6 +1818,7 @@ inline void m68ki_stack_frame_1111(uint pc, uint sr, uint vector)
 	/* STATUS REGISTER */
 	m68ki_push_16(sr);
 }
+#endif
 
 /* Format B stack frame (long bus fault).
  * This is used only by 68020 for bus fault and address error

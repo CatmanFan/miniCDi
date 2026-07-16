@@ -1,6 +1,7 @@
 #ifndef MINICDI_PLAYERS
 #define MINICDI_PLAYERS
 
+
 class CDi
 {
 public:
@@ -104,6 +105,8 @@ public:
 
 		#ifdef _WIN32
 		memory = (uint8_t *)_aligned_malloc(memsize*sizeof(uint8_t), 32);
+		#elif defined(__APPLE__)
+		posix_memalign((void**)&memory, 32, memsize*sizeof(uint8_t));
 		#else
 		memory = (uint8_t *)memalign(32, memsize*sizeof(uint8_t));
 		#endif

@@ -11,7 +11,11 @@
 #include <cstring>
 #include <fstream>
 #include <dirent.h>
+#ifdef __APPLE__
+#include <unistd.h>
+#else
 #include <malloc.h>
+#endif
 #include <vector>
 #include <cassert>
 #include <cmath>

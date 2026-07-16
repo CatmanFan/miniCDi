@@ -1263,6 +1263,48 @@ void m68k_set_context(void* src)
 	if(src) m68ki_cpu = *(m68ki_cpu_core*)src;
 }
 
+#ifdef __APPLE__
+void m68ki_stack_frame_1111(uint pc, uint sr, uint vector)
+{
+	/* INTERNAL INFORMATION */
+	m68ki_fake_push_16();
+
+	/* INSTRUCTION INPUT BUFFER */
+	m68ki_push_16(0);
+
+	/* INSTRUCTION REGISTER */
+	m68ki_push_16(REG_IR);
+
+	/* DATA INPUT BUFFER */
+	m68ki_push_32(0);
+
+	/* FAULT ADDRESS */
+	m68ki_push_32(0);
+
+	/* DATA OUTPUT BUFFER */
+	m68ki_push_32(0);
+
+	/* INTERNAL INFORMATION */
+	m68ki_fake_push_32();
+
+	/* CURRENT MOVE MULTIPLE MASK */
+	m68ki_push_16(0);
+
+	/* SPECIAL STATUS WORD */
+	m68ki_push_16(0);
+
+	/* 1111, VECTOR OFFSET */
+	m68ki_push_16(0xf000 | (vector<<2));
+
+	/* PROGRAM COUNTER */
+	m68ki_push_32(pc);
+
+	/* STATUS REGISTER */
+	m68ki_push_16(sr);
+}
+#endif
+
+
 /* ======================================================================== */
 /* ============================== MAME STUFF ============================== */
 /* ======================================================================== */

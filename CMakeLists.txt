@@ -8,10 +8,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(${PROJECT_NAME})
 if (WIN32)
 target_compile_definitions(${PROJECT_NAME} PRIVATE _WIN32)
+elseif (APPLE)
+# ...
 else()
 dkp_target_generate_symbol_list(${PROJECT_NAME})
 endif()
-target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -O2 -g -Wall)
 
 # Debug options
 option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)
@@ -103,14 +105,17 @@ target_sources(${PROJECT_NAME} PRIVATE
 # Platform build specific
 # -------------------------------------------
 
-if (WIN32)
+if (WIN32 OR APPLE)
 # -------------------------------------------
 	# Libraries
 	# ************
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
-	target_sources(${PROJECT_NAME} PRIVATE res/win/windows.rc)
+
+	if (WIN32)
+		target_sources(${PROJECT_NAME} PRIVATE res/win/windows.rc)
+	endif ()
 
 	# Source files/directories
 	# ************

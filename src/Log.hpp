@@ -14,7 +14,7 @@ namespace MiniCDI
 {
 	inline static void Log(const char* fmt, ...)
 	{
-	#ifdef _WIN32
+	#if defined(_WIN32) || defined(__APPLE__)
 		// Copy arguments to string and allocate buffer
 		char szBuff[512];
 		va_list args;

@@ -64,7 +64,7 @@ protected:
 		}*/
 		if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
 			MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
-			std::ifstream nvrStream(MiniCDI::Config::NvramFile);
+			std::ifstream nvrStream(MiniCDI::Config::NvramFile, std::ios::binary);
 			std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
 			nvrStream.close();
 
@@ -102,8 +102,11 @@ public:
 		// In practice Mono-I only has 5.5 MB total (not including DVC RAM).
 		// cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
 
-		memory = (uint8_t *)memalign(32, memsize);
-
+		#ifdef _WIN32
+		memory = (uint8_t *)_aligned_malloc(memsize*sizeof(uint8_t), 32);
+		#else
+		memory = (uint8_t *)memalign(32, memsize*sizeof(uint8_t));
+		#endif
 		if (memory) {
 			memset(memory, 0, memsize*sizeof(uint8_t));
 			return true;

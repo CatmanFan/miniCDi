@@ -6,7 +6,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Compilation config
 # -------------------------------------------
 add_executable(${PROJECT_NAME})
+if (WIN32)
+target_compile_definitions(${PROJECT_NAME} PRIVATE _WIN32)
+else()
 dkp_target_generate_symbol_list(${PROJECT_NAME})
+endif()
 target_compile_options(${PROJECT_NAME} PRIVATE -g -O2 -Wall)
 
 # Debug options
@@ -96,10 +100,32 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/m68k/softfloat/softfloat-macros
 )
 
-# Console specific
+# Platform build specific
 # -------------------------------------------
 
+if (WIN32)
+# -------------------------------------------
+	# Libraries
+	# ************
+	find_package(SDL2 REQUIRED)
+	include_directories(${SDL2_INCLUDE_DIRS})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
+	target_sources(${PROJECT_NAME} PRIVATE res/win/windows.rc)
+
+	# Source files/directories
+	# ************
+	target_include_directories(${PROJECT_NAME} PRIVATE
+		src/platforms/win
+	)
+
+	target_sources(${PROJECT_NAME} PRIVATE
+		src/platforms/win/main.cpp
+	)
+# -------------------------------------------
+endif()
+
 if (NINTENDO_3DS)
+# -------------------------------------------
 	# Libraries
 	# ************
 	target_link_libraries(${PROJECT_NAME} PRIVATE -lcitro2d -lcitro3d)
@@ -139,6 +165,7 @@ if (NINTENDO_3DS)
 	ctr_create_3dsx(${PROJECT_NAME}
 		SMDH ${PROJECT_NAME}.smdh
 	)
+# -------------------------------------------
 endif()
 
 

@@ -4,6 +4,9 @@
 // Libraries
 #include <cstdio>
 #include <cstdlib>
+#ifdef _WIN32
+#include <cstdint>
+#endif
 #include <string>
 #include <cstring>
 #include <fstream>

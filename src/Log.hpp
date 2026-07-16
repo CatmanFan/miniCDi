@@ -14,11 +14,23 @@ namespace MiniCDI
 {
 	inline static void Log(const char* fmt, ...)
 	{
-	#ifdef MINICDI_DEBUG
-		bool mustLog = true;
+	#ifdef _WIN32
+		// Copy arguments to string and allocate buffer
+		char szBuff[512];
+		va_list args;
+		va_start(args, fmt);
+		vsnprintf(szBuff, sizeof(szBuff), fmt, args);
+		va_end(args);
+		printf("[@%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+		return;
+
 	#else
+
+		#ifdef MINICDI_DEBUG
+		bool mustLog = true;
+		#else
 		bool mustLog = MiniCDI::Config::LogFile != NULL;
-	#endif
+		#endif
 
 		if (mustLog)
 		{
@@ -71,6 +83,8 @@ namespace MiniCDI
 			#endif
 			#endif
 		}
+
+	#endif
 	}
 }
 

@@ -45,7 +45,7 @@ unsigned int  m68k_read_memory_8(unsigned int address)
 		 : MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000 ? MiniCDI::Player.ikat->read8(address)
 		 : MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.dsp->read8(address)
 		 : MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00 ? MiniCDI::Player.mcd212->read8(address)
-		 : MiniCDI::Player.memory[address & 0x00ffffff];
+		 : address < 8*1024*1024 ? MiniCDI::Player.memory[address & 0xFFFFFF] : 0;
 }
 
 unsigned int  m68k_read_memory_16(unsigned int address)
@@ -81,7 +81,7 @@ void m68k_write_memory_8(unsigned int address, unsigned int value)
 	else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.slave->write8(address, value);
 	else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.ikat->write8(address, value, MiniCDI::Player.ciap);
 	else if (MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.dsp->write8(address, value);
-	else MiniCDI::Player.memory[address & 0x00ffffff] = value;
+	else if (address < 8*1024*1024) MiniCDI::Player.memory[address & 0xFFFFFF] = value;
 }
 
 void m68k_write_memory_16(unsigned int address, unsigned int value)
@@ -210,7 +210,11 @@ MonoI::~MonoI()
 		this->vpu = NULL;
 	}
 	if (this->memory != NULL) {
+		#ifdef _WIN32
+		_aligned_free(this->memory);
+		#else
 		free(this->memory);
+		#endif
 		this->memory = NULL;
 	}
 	MiniCDI::Player = {NULL};
@@ -235,7 +239,7 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 		this->vpu = new MCD212(&this->cpu, this->memory);
 
 		// Load system ROM data and memory map
-		std::ifstream romStream(bios);
+		std::ifstream romStream(bios, std::ios::binary);
 		std::vector<char> rom((std::istreambuf_iterator<char>(romStream)),(std::istreambuf_iterator<char>()));
 		romStream.close();
 		this->cpu.load_rom(rom);

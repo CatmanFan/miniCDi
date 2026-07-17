@@ -370,7 +370,7 @@ class MCD212
 			int fb_xy = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width % 360 == 0 ? 24 : 0);
 			for (int x = 0; x < FG[0].width; x++)
 			{
-				matte_set_icf(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
+				matte_set_icf(FG[0].width < 400 ? x*2 : x);
 				uint8_t rA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 24 & 0xFF), reg.ICF[PLANEA]),
 						gA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 16 & 0xFF), reg.ICF[PLANEA]),
 						bA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 8 & 0xFF), reg.ICF[PLANEA]),
@@ -472,7 +472,7 @@ class MCD212
 
 			for (int x = 0; x < FG[Path].width;)
 			{
-				matte_set_flag<Path>(FG[0].width < 400 ? (x > 0 ? x+1 : x)*2 : x);
+				matte_set_flag<Path>(FG[0].width < 400 ? x*2 : x);
 				uint8_t* src = &memory[vsr];
 				uint32_t* dst = &FG[Path].decoded[(y * 768) + x];
 

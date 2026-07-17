@@ -33,22 +33,22 @@ class CDIC
 	uint32_t SDL_audio_id = 0;
 	int SDL_audio_valid = -1;
 	SDL_AudioSpec SDL_audio_specs;
-	std::vector<int16_t> SDL_audio_buffer;
 	#endif
+
+	AdpcmDecoder ADPCM;
 
 	inline void audio_process()
 	{
 		if (AUDCTL & 0x0800)
 		{
-			// TO-DO
 			if (disc->Sector.CodingInfo[1] == 0xFF)
 			{
 				AUDCTL |= 0x0001; // audio playback ended
 				AUDCTL &= ~0x0800; // unset playback started
-				goto irq;
 			}
-
-			#ifdef MINICDI_AUDIO_SDL2
+			else
+			{
+				#ifdef MINICDI_AUDIO_SDL2
 				switch (SDL_audio_valid)
 				{
 					case -1:
@@ -88,15 +88,17 @@ class CDIC
 						break;
 				}
 
-				AdpcmDecoder ADPCM;
-				if (!ADPCM.decode(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)], SDL_audio_buffer))
+				if (!ADPCM.decode_sector(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)]))
+				{
 					return;
-			#endif
+				}
+				SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
+				#endif
 
-			irq:
-			if (AUDCTL & 0x2000) {
-				ABUF |= 0x8000; // audio playback IRQ
-				update_irq();
+				if (AUDCTL & 0x2000) {
+					ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
+					update_irq();
+				}
 			}
 		}
 	}
@@ -117,7 +119,7 @@ class CDIC
 		{
 			// Use order from MAME
 			if ((disc->Sector.FileNum[1] << 8) != FILE) {
-				MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector.FileNum[1]);
+				//MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector.FileNum[1]);
 				return false;
 			}
 
@@ -129,18 +131,18 @@ class CDIC
 					MiniCDI::Log("[CDIC] MODE2: reached EOF");
 					CdicController.reading = false;
 				}
-				MiniCDI::Log("[CDIC] MODE2 autoread");
+				//MiniCDI::Log("[CDIC] MODE2 autoread");
 				return true;
 			}
 
 			if (!(disc->Sector.Submode[1] & 0b00001110)) {
 				// Either message or empty sector (Green Book II.4.9.1)
-				MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
+				//MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
 				return false;
 			}
 
 			if (!(CHAN & (1<<disc->Sector.ChNum[1]))) {
-				MiniCDI::Log("[CDIC] MODE2 skip: CHAN %08X is not AND (1 << %d)", CHAN, disc->Sector.ChNum[1]);
+				//MiniCDI::Log("[CDIC] MODE2 skip: CHAN %08X is not AND (1 << %d)", CHAN, disc->Sector.ChNum[1]);
 				return false;
 			}
 		}
@@ -241,14 +243,18 @@ public:
 
 	inline void reset()
 	{
+		AUDCTL = 0;
+		ABUF = 0;
 		XBUF = 0;
+		DBUF = 0;
+		_68070->interrupt(SCC68070::IPL_IN4N, false);
 		CdicController = {0};
 	}
 
 	inline void tick()
 	{
 		disc_process_sector();
-		// audio_process();
+		audio_process();
 	}
 
 	inline uint16_t read16(uint32_t addr)

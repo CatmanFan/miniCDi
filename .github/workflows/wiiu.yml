@@ -15,7 +15,7 @@ jobs:
       with:
         submodules: recursive
     
-    - name: Install devkit packages
+    - name: Install dependencies
       run: |
         dkp-pacman -Syu --noconfirm
         dkp-pacman -S --needed --noconfirm wiiu-dev wiiu-sdl2 wiiu-sdl2_image wut-tools

@@ -15,7 +15,7 @@ jobs:
       with:
         submodules: recursive
     
-    - name: Install devkit packages
+    - name: Install dependencies
       run: |
         dkp-pacman -Syu --noconfirm
         dkp-pacman -S --needed --noconfirm gamecube-sdl2 gamecube-sdl2_image

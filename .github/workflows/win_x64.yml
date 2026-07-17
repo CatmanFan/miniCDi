@@ -1,0 +1,48 @@
+name: Build (Windows x64)
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+
+  build-win_x64:
+    name: Build (Windows x64)
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        submodules: recursive
+
+    - name: "Setup"
+      run: |
+        gcc --version
+    
+    - name: Install packages
+      run: |
+        pacman -Syu --noconfirm
+        pacman -S --needed --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-SDL2
+    
+    - name: Create build directory
+      run: mkdir -p build
+    
+    - name: Configure with CMake
+      run: cmake -S. -B build
+    
+    - name: Build
+      run: cmake --build build
+    
+    - name: Prepare structure
+      run: |
+        mkdir -p pkg/win_x64
+        cp ./build/miniCDi.exe ./pkg/win_x64/miniCDi.exe
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: miniCDi
+        path: ./pkg/win_x64/

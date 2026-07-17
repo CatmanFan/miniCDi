@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SDL2/SDL.h>
+#include <filesystem>
 #include "cdi/common.hpp"
 
 class SDL
@@ -31,7 +32,7 @@ public:
 	{
 		if (SDL_Init(SDL_INIT_VIDEO) == 0) {
 			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-			// SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+			SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 384, 280, SDL_WINDOW_RESIZABLE);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
@@ -53,7 +54,7 @@ public:
 	}
 };
 
-static void RUN_CDI(const char *biosPath, const char *discPath)
+static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem::path &discPath)
 {
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
@@ -72,8 +73,12 @@ static void RUN_CDI(const char *biosPath, const char *discPath)
 	MiniCDI::Config::NvramFile = "";
 
 	MonoI cdi;
-	cdi.init(biosPath, CDi::MonoI);
-	cdi.disc.open(discPath);
+	cdi.init(biosPath.string(), biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI);
+	if (biosPath.stem().compare("cdi490a") == 0) {
+		printf("[miniCDi] Warning: Mono-IV driver does not support discs\n");
+	} else {
+		cdi.disc.open(discPath.string());
+	}
 	SDL screen;
 
 	bool has_quit = false;
@@ -118,7 +123,7 @@ int main(int argc, char** argv)
 {
     if (argc < 2)
     {
-        printf("usage: miniCDi <bootrom> [disc]\n");
+        printf("usage: miniCDi <boot.rom> [disc.bin]\n");
         return 1;
     }
 

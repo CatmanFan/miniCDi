@@ -10,11 +10,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { sys: mingw32, env: i686, name: 32, runs-on: 'windows-latest' }
-          - { sys: mingw64, env: x86_64, name: 64, runs-on: 'windows-latest' }
+          - { sys: mingw32, env: i686, name: 32-bit, runs-on: 'windows-latest' }
+          - { sys: mingw64, env: x86_64, name: 64-bit, runs-on: 'windows-latest' }
           # - { sys: ucrt64, env: ucrt-x86_64, runs-on: 'windows-latest' }
           # - { sys: clang64, env: clang-x86_64, runs-on: 'windows-latest' }
-          # - { sys: clangarm64, env: clang-aarch64, name: aarch64, runs-on: 'windows-11-arm' }
+          - { sys: clangarm64, env: clang-aarch64, name: ARM64, runs-on: 'windows-11-arm' }
 
     name: Build (Windows ${{ matrix.name }})
     defaults:
@@ -52,11 +52,11 @@ jobs:
 
     - name: Prepare structure
       run: |
-        mkdir -p pkg/windows/${{matrix.name}}
-        cp ./build/miniCDi.exe ./pkg/windows/${{matrix.name}}/miniCDi.exe
+        mkdir -p pkg/win
+        cp ./build/miniCDi.exe ./pkg/win/miniCDi.exe
     
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
         name: miniCDi
-        path: ./pkg/windows/
+        path: ./pkg/win/

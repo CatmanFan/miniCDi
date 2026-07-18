@@ -105,12 +105,12 @@ static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem
         }
 
 		// Ensure that drawing is done at 30fps
-		if (MiniCDI::Config::FrameSkip > 0) {
+		if (MiniCDI::Config::FrameSkip != 0) {
 			cdi.run(MiniCDI::Config::FrameSkip+1);
 			// fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
-			cdi.run();
-			// fps.update();
+			cdi.run(1);
+			// fps.update(1);
 		}
 
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr, cdi.get_cd_read_status());

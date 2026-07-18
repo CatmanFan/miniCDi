@@ -55,7 +55,8 @@ public:
 	inline void run(int frames = 1) override
 	{
 		const auto t1 = std::chrono::steady_clock::now();
-		for (int total_frames = 0; total_frames < frames; total_frames++)
+		bool skip_draw = false;
+		while (frames > 0)
 		{
 			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
@@ -77,7 +78,7 @@ public:
 
 							case VPU:
 								#ifndef MINICDI_RAW_68K_MODE
-								if (vpu != NULL) vpu->tick(total_frames > 0);
+								if (vpu != NULL) vpu->tick(skip_draw);
 								#endif
 								break;
 
@@ -92,6 +93,8 @@ public:
 
 				total_cycles += cycles;
 			}
+			skip_draw = true;
+			frames--;
 		}
 
 		// Print verbose CPU

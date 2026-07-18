@@ -65,6 +65,9 @@ class SCC68070
 						 DMA[index].OCR & 0x80 ? "to" : "from",
 						 DMA[index].MAC);
 
+			// Avoid segmentation fault
+			if (DMA[index].MAC >= 8*1024*1024 || start_address >= 8*1024*1024) goto end;
+
 			while (DMA[index].MTC > 0) {
 				if (DMA[index].CCR & 0x10) {
 					MiniCDI::Log("[SCC68070:DMA%d] transfer aborted", index+1);
@@ -109,6 +112,7 @@ class SCC68070
 				}
 			}
 
+			end:
 			DMA[index].CSR |= 0b10000000; // COC set
 			DMA[index].CSR &= 0b11110111; // Channel Active unset
 			interrupt(index == 1 ? SCC68070::IPL_DMA2 : SCC68070::IPL_DMA1, true);

@@ -19,8 +19,12 @@ class AdpcmDecoder
 	uint8_t ranges[8];
 	uint8_t filters[8];
 	int8_t sound_data[8][28]; // A: 4 sound units, BC: 8 sound units -- 28 sound data bytes
+	size_t sample_bits = 4;
+	size_t sample_freq = 37800;
+	size_t sample_chan = 1;
+	bool stereo = false;
 
-    inline uint8_t decode_adpcm(int max_units, int gain, bool low_freq, bool stereo)
+    inline uint8_t decode_adpcm(int max_units, int gain, bool low_freq)
     {
 		for (int sample_unit = 0; sample_unit < max_units; sample_unit++)
 		{
@@ -61,6 +65,11 @@ public:
 
 	std::vector<int16_t> left, right;
 
+	inline bool has_sector_played()
+	{
+		return (stereo ? left.size() + right.size() : left.size()) >= sample_bits*28;
+	}
+
 	/**
 	 * @brief  Decodes a CD-i audio sector to a 16-bit sample buffer.
 	 *
@@ -80,9 +89,10 @@ public:
 		if (coding & 0b10'10'10)
 			return false;
 
-		int sample_bits = (coding & 0b01'00'00) ? 8 : 4;
-		int sample_freq = (coding & 0b00'01'00) ? 18900 : 37800;
-		int sample_chan = (coding & 0b00'00'01) ? 2 : 1;
+		sample_bits = (coding & 0b01'00'00) ? 8 : 4;
+		sample_freq = (coding & 0b00'01'00) ? 18900 : 37800;
+		sample_chan = (coding & 0b00'00'01) ? 2 : 1;
+		stereo = sample_chan == 2;
 		enum SoundQualityLevel level = sample_freq != 37800 ? CDI_C : sample_bits == 8 ? CDI_A : CDI_B;
 		// bool emphasis = coding >> 6 & 0b01;
 		// uint16_t num_samples = 8 >> ((sample_bits == 8) + (sample_chan == 2));
@@ -118,7 +128,7 @@ public:
 						}
 					}
 
-					index = decode_adpcm(4, 8, sample_freq, sample_chan == 2);
+					index = decode_adpcm(4, 8, sample_freq != 37800);
 				}
 				break;
 
@@ -149,7 +159,7 @@ public:
 						}
 					}
 
-					index = decode_adpcm(8, 12, sample_freq != 37800, sample_chan == 2);
+					index = decode_adpcm(8, 12, sample_freq != 37800);
 				}
 				break;
 			}

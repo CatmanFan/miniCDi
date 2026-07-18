@@ -54,11 +54,12 @@ class CDIC
 
 				if (!adpcm_played) {
 					#ifdef MINICDI_AUDIO_SDL2
-					if (SDL_audio_valid) {
+					if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < 112) {
 						SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
+						ADPCM.left.clear();
 					}
 					#endif
-					adpcm_played = true;
+					adpcm_played = false;
 				}
 			}
 
@@ -216,7 +217,7 @@ public:
 		} else {
 			// Audio
 			SDL_AudioSpec preset = { 0 };
-			preset.freq = 18900;
+			preset.freq = 37800;
 			preset.format = AUDIO_S16SYS;
 			preset.channels = 1;
 			preset.samples = 224;

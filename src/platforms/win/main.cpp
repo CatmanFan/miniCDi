@@ -31,11 +31,10 @@ public:
 	SDL()
 	{
 		if (SDL_Init(SDL_INIT_VIDEO) == 0) {
-			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-			SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+			// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 
-			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 384, 280, SDL_WINDOW_RESIZABLE);
-			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
+			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 560, SDL_WINDOW_RESIZABLE);
+			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
 
@@ -107,8 +106,7 @@ static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem
 
 		// Ensure that drawing is done at 30fps
 		if (MiniCDI::Config::FrameSkip > 0) {
-			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
-			cdi.run();
+			cdi.run(MiniCDI::Config::FrameSkip+1);
 			// fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
 			cdi.run();

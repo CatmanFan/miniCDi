@@ -1,4 +1,4 @@
-name: Build (Windows)
+name: Build (Windows x86/x64)
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -10,11 +10,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { sys: mingw32, env: i686, name: 32-bit, runs-on: 'windows-latest' }
-          - { sys: mingw64, env: x86_64, name: 64-bit, runs-on: 'windows-latest' }
+          - { sys: mingw32, env: i686, name: x86, runs-on: 'windows-latest' }
+          - { sys: mingw64, env: x86_64, name: x64, runs-on: 'windows-latest' }
           # - { sys: ucrt64, env: ucrt-x86_64, runs-on: 'windows-latest' }
           # - { sys: clang64, env: clang-x86_64, runs-on: 'windows-latest' }
-          - { sys: clangarm64, env: clang-aarch64, name: ARM64, runs-on: 'windows-11-arm' }
+          # - { sys: clangarm64, env: clang-aarch64, name: ARM64, runs-on: 'windows-11-arm' }
 
     name: Build (Windows ${{ matrix.name }})
     defaults:

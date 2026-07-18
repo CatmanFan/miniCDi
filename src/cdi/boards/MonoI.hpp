@@ -1,6 +1,9 @@
 #ifndef MINICDI_BOARDS_MONO1
 #define MINICDI_BOARDS_MONO1
 
+#include <chrono>
+#include <thread>
+
 /** ******* Mono-I memory map *******
 	$00000000   512KB.ram    name=planea
 	$00200000   512KB.ram    name=planeb
@@ -49,42 +52,46 @@ private:
 public:
 	bool init(const std::string &bios, enum BoardType board) override;
 
-	inline void run(bool skip_draw = false) override
+	inline void run(int frames = 1) override
 	{
-		for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
+		const auto t1 = std::chrono::steady_clock::now();
+		for (int total_frames = 0; total_frames < frames; total_frames++)
 		{
-			int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
-			cpu.run(cycles);
-
-			for (int i = 0; i < EVTNUM; i++)
+			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
-				event_cycles[i] -= cycles;
-				while (event_cycles[i] <= 0)
+				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
+				cpu.run(cycles);
+
+				for (int i = 0; i < EVTNUM; i++)
 				{
-					switch (i)
+					event_cycles[i] -= cycles;
+					while (event_cycles[i] <= 0)
 					{
-						case SECTOR:
-							if (cdic != NULL) cdic->tick();
-							else if (dsp != NULL) dsp->tick();
-							else if (ciap != NULL) ciap->tick();
-							break;
+						switch (i)
+						{
+							case SECTOR:
+								if (cdic != NULL) cdic->tick();
+								else if (dsp != NULL) dsp->tick();
+								else if (ciap != NULL) ciap->tick();
+								break;
 
-						case VPU:
-							#ifndef MINICDI_RAW_68K_MODE
-							if (vpu != NULL) vpu->tick(skip_draw);
-							#endif
-							break;
+							case VPU:
+								#ifndef MINICDI_RAW_68K_MODE
+								if (vpu != NULL) vpu->tick(total_frames > 0);
+								#endif
+								break;
 
-						case UART_TX:
-							cpu.uart_tx_tick();
-							break;
+							case UART_TX:
+								cpu.uart_tx_tick();
+								break;
+						}
+
+						event_cycles[i] += event_rates[i];
 					}
-
-					event_cycles[i] += event_rates[i];
 				}
-			}
 
-			total_cycles += cycles;
+				total_cycles += cycles;
+			}
 		}
 
 		// Print verbose CPU
@@ -98,6 +105,14 @@ public:
 
 		// Update microcontroller
 		if (ikat != NULL) ikat->update();
+
+		// integral duration: requires duration_cast
+		const auto t2 = std::chrono::steady_clock::now();
+		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+		if (fp_ms.count() < (MiniCDI::Config::PAL ? 20.0 : 16.67)) {
+			const int wait_ms = (int)((MiniCDI::Config::PAL ? 20.0 : 16.67) - fp_ms.count());
+			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+		}
 	}
 
 	inline void reset() override {

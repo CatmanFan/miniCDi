@@ -123,7 +123,7 @@ public:
 	/**
 	 * @brief  Runs until VSync signal on video driver (i.e. a frame).
 	 */
-	inline virtual void run(bool skip_draw = false) { ; }
+	inline virtual void run(int frames = 1) { ; }
 	inline virtual void reset() { ; }
 
 	inline virtual uint32_t* get_display() { return nullptr; }

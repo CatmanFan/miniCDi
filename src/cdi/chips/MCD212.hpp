@@ -711,8 +711,7 @@ class MCD212
 					break;
 			}
 		}
-	};
-	VDSC vdsc;
+	} vdsc;
 
 	size_t linesV, line;
 	bool interlace;

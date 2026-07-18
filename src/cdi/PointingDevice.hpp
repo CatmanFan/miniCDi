@@ -110,7 +110,7 @@ public:
 			y = std::clamp(y + (buttons[Up] && !buttons[Down] ? MiniCDI::Config::PointerAdvance * -1
 															  : !buttons[Up] && buttons[Down] ? MiniCDI::Config::PointerAdvance
 															  : 0), 0, 559);
-			MiniCDI::Log("[PD] x=%d,y=%d", x, y);
+			// MiniCDI::Log("[PD] x=%d,y=%d", x, y);
 		}
 		else
 			poll_movement = false;

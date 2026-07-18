@@ -31,11 +31,12 @@ class CDIC
 
 	#ifdef MINICDI_AUDIO_SDL2
 	uint32_t SDL_audio_id = 0;
-	int SDL_audio_valid = -1;
+	bool SDL_audio_valid = false;
 	SDL_AudioSpec SDL_audio_specs;
 	#endif
 
 	AdpcmDecoder ADPCM;
+	bool adpcm_played = false;
 
 	inline void audio_process()
 	{
@@ -48,57 +49,22 @@ class CDIC
 			}
 			else
 			{
-				#ifdef MINICDI_AUDIO_SDL2
-				switch (SDL_audio_valid)
-				{
-					case -1:
-					{
-						if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-							MiniCDI::Log("[Audio:SDL2] failed to init audio subsystem");
-							SDL_audio_valid = 0;
-						} else {
-							// Audio
-							SDL_AudioSpec preset = { 0 };
-							preset.freq = 44100;
-							preset.format = AUDIO_S16SYS;
-							preset.channels = 2;
-							preset.samples = 4096;
-							SDL_OpenAudio(&preset, 0);
-
-							SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &preset, &SDL_audio_specs, 0);
-							SDL_audio_valid = !SDL_audio_id ? 0 : 1;
-							if (SDL_audio_id != 0)
-							{
-								SDL_PauseAudioDevice(SDL_audio_id, 0);
-								MiniCDI::Log("[Audio:SDL2] initialized audio device #%d", SDL_audio_id);
-								MiniCDI::Log("[Audio:SDL2] audiospec frequency: %d", SDL_audio_specs.freq);
-								MiniCDI::Log("[Audio:SDL2] audiospec format: %d", SDL_audio_specs.format);
-								MiniCDI::Log("[Audio:SDL2] audiospec channels: %d", SDL_audio_specs.channels);
-								MiniCDI::Log("[Audio:SDL2] audiospec samples: %d", SDL_audio_specs.samples);
-							}
-						}
-					}
-					break;
-
-					default:
-					case 0:
-						break;
-
-					case 1:
-						break;
-				}
-
 				if (!ADPCM.decode_sector(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)]))
-				{
 					return;
-				}
-				SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
-				#endif
 
-				if (AUDCTL & 0x2000) {
-					ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
-					update_irq();
+				if (!adpcm_played) {
+					#ifdef MINICDI_AUDIO_SDL2
+					if (SDL_audio_valid) {
+						SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
+					}
+					#endif
+					adpcm_played = true;
 				}
+			}
+
+			if (AUDCTL & 0x2000) {
+				ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
+				update_irq();
 			}
 		}
 	}
@@ -183,11 +149,15 @@ class CDIC
 						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
 			if (is_adpcm) {
 				targetAddr += 0x2800; // switch to ADPCM buffer
+				adpcm_played = false;
 
 				// set audio index bit and schedule playback of audio sector
 				DBUF |= 0x0004;
 				if ((AUDCTL & 0x0800) == 0x0000 && (DBUF & 0x000F) == 0x0004)
+				{
+					MiniCDI::Log("[CDIC] starting audio playback from CD");
 					AUDCTL |= 0x0800;
+				}
 			}
 			MiniCDI::Log("[CDIC] read %s sector %02X:%02X:%02X", is_adpcm ? "audio" : "data", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 
@@ -239,6 +209,32 @@ class CDIC
 public:
 	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), disc(disc), CdicController({0})
 	{
+		#ifdef MINICDI_AUDIO_SDL2
+		if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+			MiniCDI::Log("[Audio:SDL2] failed to init audio subsystem");
+			SDL_audio_valid = false;
+		} else {
+			// Audio
+			SDL_AudioSpec preset = { 0 };
+			preset.freq = 18900;
+			preset.format = AUDIO_S16SYS;
+			preset.channels = 1;
+			preset.samples = 224;
+			SDL_OpenAudio(&preset, 0);
+
+			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &preset, &SDL_audio_specs, 0);
+			SDL_audio_valid = SDL_audio_id > 0;
+			if (SDL_audio_valid)
+			{
+				MiniCDI::Log("[Audio:SDL2] initialized audio device #%d", SDL_audio_id);
+				MiniCDI::Log("[Audio:SDL2] audiospec frequency: %d", SDL_audio_specs.freq);
+				MiniCDI::Log("[Audio:SDL2] audiospec format: %d", SDL_audio_specs.format);
+				MiniCDI::Log("[Audio:SDL2] audiospec channels: %d", SDL_audio_specs.channels);
+				MiniCDI::Log("[Audio:SDL2] audiospec samples: %d", SDL_audio_specs.samples);
+				SDL_PauseAudioDevice(SDL_audio_id, 0);
+			}
+		}
+		#endif
 	}
 
 	inline void reset()
@@ -265,24 +261,24 @@ public:
 				return (memory[addr] << 8) | memory[addr+1];
 
 			case 0x303C00: case 0x303C01:
-				MiniCDI::Log("[CDIC] CMD => %04X", CMD);
+				//MiniCDI::Log("[CDIC] CMD => %04X", CMD);
 				return CMD;
 
 			case 0x303C06: case 0x303C07:
-				MiniCDI::Log("[CDIC] FILE => %04X", FILE);
+				//MiniCDI::Log("[CDIC] FILE => %04X", FILE);
 				return FILE;
 
 			case 0x303C0C: case 0x303C0D:
-				MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN);
+				//MiniCDI::Log("[CDIC] ACHAN => %04X", ACHAN);
 				return ACHAN;
 
 			case 0x303C80: case 0x303C81:
-				MiniCDI::Log("[CDIC] DSEL => %04X", DSEL);
+				//MiniCDI::Log("[CDIC] DSEL => %04X", DSEL);
 				return DSEL;
 
 			case 0x303FF4: case 0x303FF5:
 			{
-				MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
+				//MiniCDI::Log("[CDIC] ABUF => %04X", ABUF);
 				const uint16_t value = ABUF;
 				if (ABUF & 0x8000) {
 					ABUF &= 0x7FFF;
@@ -293,7 +289,7 @@ public:
 
 			case 0x303FF6: case 0x303FF7:
 			{
-				MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
+				//MiniCDI::Log("[CDIC] XBUF => %04X", XBUF);
 				const uint16_t value = XBUF;
 				if (XBUF & 0x8000) {
 					XBUF &= 0x7FFF;
@@ -303,20 +299,20 @@ public:
 			}
 
 			case 0x303FF8: case 0x303FF9:
-				MiniCDI::Log("[CDIC] DMACTL => %04X", DMACTL);
+				//MiniCDI::Log("[CDIC] DMACTL => %04X", DMACTL);
 				return DMACTL;
 
 			case 0x303FFA: case 0x303FFB:
 				AUDCTL &= ~0x0001; // reset ADPCM playback stopped bit
-				MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
+				//MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
 				return AUDCTL;
 
 			case 0x303FFC: case 0x303FFD:
-				MiniCDI::Log("[CDIC] IVEC => %04X", IVEC);
+				//MiniCDI::Log("[CDIC] IVEC => %04X", IVEC);
 				return IVEC;
 
 			case 0x303FFE: case 0x303FFF:
-				MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
+				//MiniCDI::Log("[CDIC] DBUF => %04X", DBUF);
 				return DBUF;
 		}
 	}
@@ -328,6 +324,12 @@ public:
 			default:
 				memory[addr] = value >> 8 & 0xFF;
 				memory[addr+1] = value & 0xFF;
+				if (addr == 0x30280C || addr == 0x30320C || addr == 0x30280C+2302 || addr == 0x30320C+2302)
+				{
+					MiniCDI::Log("[CDIC] starting audio playback from CPU");
+					AUDCTL = 0x2800;
+					adpcm_played = false;
+				}
 				break;
 
 			case 0x303C00: case 0x303C01:
@@ -361,7 +363,7 @@ public:
 				break;
 
 			case 0x303FF8: case 0x303FF9:
-				MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
+				// MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
 				DMACTL = value;
 				if (value & 0x8000) _68070->dma_call(0, 0x300000 + (value & 0x3FFF));
 				break;
@@ -465,11 +467,11 @@ public:
 				return (read16(addr) << 16) | read16(addr+2);
 
 				case 0x303C02:
-					MiniCDI::Log("[CDIC] TIME => %08X", TIME);
+					//MiniCDI::Log("[CDIC] TIME => %08X", TIME);
 					return TIME;
 
 				case 0x303C08:
-					MiniCDI::Log("[CDIC] CHAN => %08X", CHAN);
+					//MiniCDI::Log("[CDIC] CHAN => %08X", CHAN);
 					return CHAN;
 		}
 	}

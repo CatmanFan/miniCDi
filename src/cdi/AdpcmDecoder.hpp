@@ -1,6 +1,11 @@
 #ifndef MINICDI_ADPCMDECODER
 #define MINICDI_ADPCMDECODER
 
+/*****
+  DISCLAIMER:
+  Partially sourced from ogarvey's https://github.com/ogarvey/OGLibCD-i and algorithm used in Stovent's CeDImu.
+ *****/
+
 class AdpcmDecoder
 {
     int K0[4] = { 0, 240, 460, 392 };

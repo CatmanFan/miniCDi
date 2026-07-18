@@ -117,6 +117,8 @@ public:
 
 	inline void reset() override {
 		MiniCDI::Log("[CDI] reset");
+		MiniCDI::OS9::clear_modules();
+
 		nvram_save();
 		cpu.reset();
 		vpu->reset();

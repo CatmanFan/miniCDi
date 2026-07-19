@@ -891,7 +891,7 @@ public:
 		MF[1] = FT[1] = 0;
 
 		// initialization
-		CF = MiniCDI::Config::PAL ? 0 : 1; // crystal frequency
+		CF = 1; // crystal frequency
 		FD = MiniCDI::Config::PAL ? 0 : 1; // frame duration
 		SM = 0; // interlace (unnecessary)
 

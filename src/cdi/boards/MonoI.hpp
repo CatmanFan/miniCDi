@@ -121,8 +121,8 @@ public:
 		// integral duration: requires duration_cast
 		const auto t2 = std::chrono::steady_clock::now();
 		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-		if (fp_ms.count() < (MiniCDI::Config::PAL ? 20.0 : 16.67)) {
-			const int wait_ms = (int)((MiniCDI::Config::PAL ? 20.0 : 16.67) - fp_ms.count());
+		if (fp_ms.count() < (/*MiniCDI::Config::PAL ? 20.0 :*/ 16.67)) {
+			const int wait_ms = (int)((/*MiniCDI::Config::PAL ? 20.0 :*/ 16.67) - fp_ms.count());
 
 			#ifdef MINICDI_AUDIO_SDL2
 			SDL_Delay(wait_ms);

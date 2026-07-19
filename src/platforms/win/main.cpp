@@ -88,6 +88,16 @@ int main(int argc, char** argv)
 							  : CDi::MonoI;
 	MonoI cdi;
 	cdi.init(biosPath.string(), board);
+	if (argc >= 3 && access(argv[3], F_OK) != 0)
+    {
+		switch (board)
+		{
+			default: cdi.swap_disc(argv[3]); break;
+			case CDi::MonoII: printf("[miniCDi] Warning: DRVDSP not supported, cannot run discs.\n"); break;
+			case CDi::MonoIII:
+			case CDi::MonoIV: printf("[miniCDi] Warning: CIAP not supported, cannot run discs.\n"); break;
+		}
+    }
 	SDL screen;
 
 	bool has_quit = false;

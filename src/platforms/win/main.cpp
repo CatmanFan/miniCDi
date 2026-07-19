@@ -72,12 +72,18 @@ static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem
 	MiniCDI::Config::NvramFile = "";
 
 	MonoI cdi;
-	cdi.init(biosPath.string(), biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI);
-	if (biosPath.stem().compare("cdi490a") == 0) {
-		printf("[miniCDi] Warning: Mono-IV driver does not support discs\n");
-	} else {
-		cdi.disc.open(discPath.string());
+	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
+							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
+							  : CDi::MonoI;
+	cdi.init(biosPath.string(), board);
+	switch (board)
+	{
+		default: cdi.disc.open(discPath.string()); break;
+		case CDi::MonoII: printf("[miniCDi] Warning: DRVDSP not supported, cannot run discs.\n"); break;
+		case CDi::MonoIII:
+		case CDi::MonoIV: printf("[miniCDi] Warning: CIAP not supported, cannot run discs.\n"); break;
 	}
+
 	SDL screen;
 
 	bool has_quit = false;

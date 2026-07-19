@@ -375,15 +375,10 @@ static void DISPLAY_BIOS_ERROR();
 
 static void RUN_CDI(const std::string &discName)
 {
-	#ifdef MINICDI_FORCE_MONOIV
-	std::string biosName = "cdi490a";
-	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
-	#else
 	std::string biosName = "";
 	if (access((devicePrefix + "wiiu/apps/miniCDi/rom/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
 	else if (access((devicePrefix + "wiiu/apps/miniCDi/rom/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
 	else {
-	#endif
 		WHBLogPrintf("[miniCDi] error: BIOS not found in required path");
 		DISPLAY_BIOS_ERROR();
 		return;

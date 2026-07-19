@@ -188,15 +188,10 @@ static void RUN_CDI(const std::string &discName)
 	printf("miniCDi\n");
 
 	// Check for BIOS
-	#ifdef MINICDI_FORCE_MONOIV
-	const std::string biosName = "cdi490a";
-	if (access(("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom").c_str(), F_OK) != 0) {
-	#else
 	std::string biosName = "";
 	if (access("sdmc:/3ds/miniCDi/rom/cdi220b.rom", F_OK) == 0) biosName = "cdi220b";
 	else if (access("sdmc:/3ds/miniCDi/rom/cdi200.rom", F_OK) == 0) biosName = "cdi200";
 	else {
-	#endif
 		printf("BIOS not found, exiting");
 		sleep(5);
 		exit(0);

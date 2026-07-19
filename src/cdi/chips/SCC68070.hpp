@@ -613,9 +613,6 @@ public:
 				interrupt(SCC68070::IPL_TIMER, true);
 			} else {
 				T[0]++;
-				#ifdef MINICDI_ALTERNATE_TIMER_IRQ
-				interrupt(SCC68070::IPL_TIMER, false);
-				#endif
 			}
 
 			T_cycles[0] -= 96;

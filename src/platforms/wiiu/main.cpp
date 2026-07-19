@@ -440,6 +440,7 @@ static void RUN_CDI(const std::string &discName)
 		/*if (status.tpNormal.touched && !touchDown) { touchDown = true; paused = !paused; }
 		if (!status.tpNormal.touched && touchDown) { touchDown = false; }*/
 		if (status.trigger & (VPAD_BUTTON_ZR)) break; // exit
+		if (status.trigger & (VPAD_BUTTON_PLUS)) cdi.play_disc();
 		if (status.trigger & (VPAD_BUTTON_MINUS)) cdi.reset();
 
 		cdi.pd.set_button(PointingDevice::Button1, status.hold & VPAD_BUTTON_A);

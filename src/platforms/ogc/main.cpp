@@ -247,6 +247,7 @@ static void RUN_CDI(const std::string &discName)
 
 			if (data->exp.type & WPAD_EXP_CLASSIC) {
 				if (down & WPAD_CLASSIC_BUTTON_HOME) break;
+				if (down & WPAD_CLASSIC_BUTTON_PLUS) cdi.play_disc();
 				if (down & WPAD_CLASSIC_BUTTON_MINUS) cdi.reset();
 
 				cdi.pd.set_button(PointingDevice::Button1, held & WPAD_CLASSIC_BUTTON_A);

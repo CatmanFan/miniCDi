@@ -248,6 +248,7 @@ static void RUN_CDI(const std::string &discName)
 		u32 kDown = hidKeysDown();
 		u32 kHeld = hidKeysHeld();
 		if (kDown & KEY_ZR) return; // break in order to return to hbmenu
+		if (kDown & KEY_START) cdi.play_disc();
 		if (kDown & KEY_SELECT) cdi.reset();
 
 		cdi.pd.set_button(PointingDevice::Left, kHeld & KEY_LEFT);

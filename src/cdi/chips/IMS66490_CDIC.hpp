@@ -35,7 +35,7 @@ class CDIC
 	#endif
 
 	AdpcmDecoder ADPCM;
-	bool adpcm_played = false;
+	bool play_adpcm = false;
 
 	inline void disc_process_audio()
 	{
@@ -45,21 +45,21 @@ class CDIC
 			{
 				AUDCTL |= 0x0001; // audio playback ended
 				AUDCTL &= ~0x0800; // unset playback started
+				update_irq();
+				return;
 			}
-			else
+
+			if (!ADPCM.decode_sector(&memory[0x302800 + ((DBUF & 0x01)*0xA00)]))
+				return;
+
+			if (play_adpcm)
 			{
-				if (!adpcm_played) {
-					if (!(disc->Sector.Submode[1] & 0x04))
-						return;
+				#ifdef MINICDI_AUDIO_SDL2
+				if (SDL_audio_valid)
+					SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size() * sizeof(int16_t));
+				#endif
 
-					if (!ADPCM.decode_sector(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)]))
-						return;
-
-					#ifdef MINICDI_AUDIO_SDL2
-					if (SDL_audio_valid) SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
-					#endif
-					adpcm_played = true;
-				}
+				play_adpcm = false;
 			}
 
 			if (AUDCTL & 0x2000) {
@@ -118,14 +118,6 @@ class CDIC
 
 	inline void disc_process_sector()
 	{
-		if (!CdicController.reading)
-			return;
-
-		if (CdicController.delayed_sectors > 0) {
-			CdicController.delayed_sectors--;
-			return;
-		}
-
 		// Skip if MODE2 not satisfied
 		if (disc_check_filter())
 		{
@@ -149,7 +141,7 @@ class CDIC
 						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
 			if (is_adpcm) {
 				targetAddr += 0x2800; // switch to ADPCM buffer
-				adpcm_played = false;
+				play_adpcm = true;
 
 				// set audio index bit and schedule playback of audio sector
 				DBUF |= 0x0004;
@@ -185,17 +177,6 @@ class CDIC
 			XBUF |= 0x8000; // sector filled for processing
 			DBUF |= 0x4000; // send DATA to CPU
 			update_irq();
-		}
-
-		if (CdicController.reading && !CdicController.seek) {
-			CdicController.curr_lba++;
-			disc->read_sector(CdicController.curr_lba);
-		} else {
-			CdicController.reading = false;
-			CdicController.seek = false;
-			CdicController.delayed_sectors = 0;
-			CdicController.curr_lba = 0;
-			CdicController.is_mode2 = false;
 		}
 	}
 
@@ -237,20 +218,56 @@ public:
 		#endif
 	}
 
+	inline void abort()
+	{
+		MiniCDI::Log("[CDIC] abort");
+		CdicController.reading = false;
+		CdicController.seek = false;
+		CdicController.delayed_sectors = 0;
+		CdicController.curr_lba = 0;
+		CdicController.is_mode2 = false;
+		_68070->interrupt(SCC68070::IPL_IN4N, false);
+	}
+
 	inline void reset()
 	{
+		CdicController.reading = false;
+		CdicController.seek = false;
+		CdicController.delayed_sectors = 0;
+		CdicController.curr_lba = 0;
+		CdicController.is_mode2 = false;
+
 		AUDCTL = 0;
 		ABUF = 0;
 		XBUF = 0;
 		DBUF = 0;
 		_68070->interrupt(SCC68070::IPL_IN4N, false);
-		CdicController = {0};
 	}
 
 	inline void tick()
 	{
+		if (!CdicController.reading)
+			return;
+
+		if (CdicController.delayed_sectors > 0) {
+			CdicController.delayed_sectors--;
+			return;
+		}
+
 		disc_process_sector();
 		disc_process_audio();
+
+		// Update LBA
+		if (CdicController.reading && !CdicController.seek) {
+			CdicController.curr_lba++;
+			disc->read_sector(CdicController.curr_lba);
+		} else {
+			CdicController.reading = false;
+			CdicController.seek = false;
+			CdicController.delayed_sectors = 0;
+			CdicController.curr_lba = 0;
+			CdicController.is_mode2 = false;
+		}
 	}
 
 	inline uint16_t read16(uint32_t addr)
@@ -327,8 +344,15 @@ public:
 				if (addr == 0x30280C || addr == 0x30320C || addr == 0x30280C+2302 || addr == 0x30320C+2302)
 				{
 					MiniCDI::Log("[CDIC] starting audio playback from CPU");
+
+					// Set submode audio bit
+					if (addr >= 0x303200)
+						memory[0x30320A] |= 0x04;
+					else
+						memory[0x30280A] |= 0x04;
+
+					play_adpcm = true;
 					AUDCTL = 0x2800;
-					adpcm_played = false;
 				}
 				break;
 
@@ -448,12 +472,7 @@ public:
 
 				if (!(value & 0x4000))
 				{
-					MiniCDI::Log("[CDIC] abort");
-					CdicController.reading = false;
-					CdicController.seek = false;
-					CdicController.delayed_sectors = 0;
-					CdicController.curr_lba = 0;
-					CdicController.is_mode2 = false;
+					abort();
 				}
 				break;
 		}

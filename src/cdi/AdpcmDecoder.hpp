@@ -20,13 +20,8 @@ class AdpcmDecoder
 	uint8_t filters[8];
 	int8_t sound_data[8][28]; // A: 4 sound units, BC: 8 sound units -- 28 sound data bytes
 
-	size_t sample_bits = 4;
-	size_t sample_freq = 37800;
-	size_t sample_chan = 1;
-	bool stereo = false;
-
 	template <size_t max_units, int gain>
-	inline uint8_t decode_adpcm()
+	inline void decode_adpcm(bool stereo, bool low_freq)
 	{
 		for (size_t sample_unit = 0; sample_unit < max_units; sample_unit++)
 		{
@@ -51,8 +46,6 @@ class AdpcmDecoder
 				}
 			}
 		}
-
-		return 28 * max_units;
 	}
 
 public:
@@ -67,47 +60,47 @@ public:
 
 	std::vector<int16_t> left, right;
 
-	inline bool has_sector_played()
-	{
-		return (stereo ? left.size() + right.size() : left.size()) >= sample_bits*28;
-	}
-
 	/**
 	 * @brief  Decodes a CD-i audio sector to a 16-bit sample buffer.
 	 *
-	 * @param  coding:  The coding byte as obtained from the sector.
-	 * @param  src:     pointer to the sector buffer
-	 * @param  dst:     destination std::vector
+	 * @param  buffer:  pointer to the sector buffer, including header
 	 *
 	 * @return Whether the sector is valid or not.
 	 */
-	inline bool decode_sector(uint8_t coding, uint8_t *src)
+	inline bool decode_sector(uint8_t *buffer)
 	{
+		/// Green Book IV.3:
+		/// Audio sectors comprise 18 "sound groups" of size 128 bytes.
+		/// Each "sound group" is divided into 16 parameter bytes and sampled audio data.
+
+		uint8_t coding = buffer[0x0B];
+		uint8_t submode = buffer[0x0A];
+		if (!(submode & 0x04))
+			return false;
+
 		// Skip if any set to reserved
 		if (coding & 0b10'10'10)
 			return false;
 
+		// Clear previous sample data
+		memset(sound_data, 0, sizeof(sound_data));
+		memset(ranges, 0, sizeof(ranges));
+		memset(filters, 0, sizeof(filters));
 		left.clear();
 		right.clear();
 
-		sample_bits = (coding & 0b01'00'00) ? 8 : 4;
-		sample_freq = (coding & 0b00'01'00) ? 18900 : 37800;
-		sample_chan = (coding & 0b00'00'01) ? 2 : 1;
-		stereo = sample_chan == 2;
-
+		int sample_bits = (coding & 0b01'00'00) != 0 ? 8 : 4;
+		int sample_freq = (coding & 0b00'01'00) != 0 ? 18900 : 37800;
+		int sample_chan = (coding & 0b00'00'01) != 0 ? 2 : 1;
+		bool stereo = sample_chan == 2;
 		enum SoundQualityLevel level = sample_freq != 37800 ? CDI_C : sample_bits == 8 ? CDI_A : CDI_B;
 		// MiniCDI::Log("[Audio:ADPCM] bps: %d, freq: %d, stereo: %d", sample_bits, sample_freq, stereo);
 
 		// We are currently ONLY working with CD-i (not CD-DA) sectors (see CDiDisc.hpp).
 		// ***************************
-		/// Green Book IV.3:
-		/// Audio sectors comprise 18 "sound groups" of size 128 bytes.
-		/// Each "sound group" is divided into 16 parameter bytes and sampled audio data.
-		memset(sound_data, 0, sizeof(sound_data));
-		memset(ranges, 0, sizeof(ranges));
-		memset(filters, 0, sizeof(filters));
 		for (size_t SG = 0; SG < 18; SG++)
 		{
+			uint8_t *data = buffer+(SG*128)+12;
 			switch (level)
 			{
 				default:
@@ -115,34 +108,36 @@ public:
 
 				case CDI_A:
 				{
-					for (int i = 0; i < 4; i++) {
-						ranges[i] = (uint8_t)(src[(SG*128)+i] & 0x0F);
-						filters[i] = (uint8_t)(src[(SG*128)+i] >> 4);
+					for (int i = 0; i < 4; i++)
+					{
+						ranges[i] = (uint8_t)(data[i] & 0x0F);
+						filters[i] = (uint8_t)(data[i] >> 4);
 					}
 
-					size_t index = (SG*128)+16;
+					uint8_t index = 16;
 					for (uint8_t sample_data = 0; sample_data < 28; sample_data++) {
 						for (uint8_t sample_unit = 0; sample_unit < 4; sample_unit++) {
-							sound_data[sample_unit][sample_data] = src[index++];
+							sound_data[sample_unit][sample_data] = data[index++];
 						}
 					}
 
-					decode_adpcm<4,8>();
+					decode_adpcm<4, 8>(stereo, (coding & 0b00'01'00) != 0);
 				}
 				break;
 
 				case CDI_B:
 				case CDI_C:
 				{
-					for (int i = 0; i < 8; i++) {
-						ranges[i] = (uint8_t)(src[(SG*128)+i+4] & 0x0F);
-						filters[i] = (uint8_t)(src[(SG*128)+i+4] >> 4);
+					for (int i = 0; i < 8; i++)
+					{
+						ranges[i] = (uint8_t)(data[i+4] & 0x0F);
+						filters[i] = (uint8_t)(data[i+4] >> 4);
 					}
 
-					size_t index = (SG*128)+16;
+					uint8_t index = 16;
 					for (uint8_t sample_data = 0; sample_data < 28; sample_data++) {
-						for (uint8_t sample_unit = 0; sample_unit < 8; sample_unit += 2) {
-							const uint8_t SB = src[index++];
+						for (uint8_t sample_unit = 0; sample_unit < 8;) {
+							const uint8_t SB = data[index++];
 
 							int8_t SD0 = SB & 0x0F;
 							if (SD0 >= 8) SD0 -= 16;
@@ -150,12 +145,12 @@ public:
 							int8_t SD1 = SB >> 4 & 0x0F;
 							if (SD1 >= 8) SD1 -= 16;
 
-							sound_data[sample_unit][sample_data] = SD0;
-							sound_data[sample_unit+1][sample_data] = SD1;
+							sound_data[sample_unit++][sample_data] = SD0;
+							sound_data[sample_unit++][sample_data] = SD1;
 						}
 					}
 
-					decode_adpcm<8,12>();
+					decode_adpcm<8, 12>(stereo, (coding & 0b00'01'00) != 0);
 				}
 				break;
 			}

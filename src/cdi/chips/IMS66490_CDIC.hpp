@@ -37,7 +37,7 @@ class CDIC
 	AdpcmDecoder ADPCM;
 	bool adpcm_played = false;
 
-	inline void audio_process()
+	inline void disc_process_audio()
 	{
 		if (AUDCTL & 0x0800)
 		{
@@ -49,13 +49,15 @@ class CDIC
 			else
 			{
 				if (!adpcm_played) {
+					if (!(disc->Sector.Submode[1] & 0x04))
+						return;
+
 					if (!ADPCM.decode_sector(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)]))
 						return;
 
 					#ifdef MINICDI_AUDIO_SDL2
-					SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
+					if (SDL_audio_valid) SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
 					#endif
-
 					adpcm_played = true;
 				}
 			}
@@ -248,7 +250,7 @@ public:
 	inline void tick()
 	{
 		disc_process_sector();
-		audio_process();
+		disc_process_audio();
 	}
 
 	inline uint16_t read16(uint32_t addr)

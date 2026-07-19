@@ -54,10 +54,13 @@ public:
 
 	inline void run(int frames = 1) override
 	{
+		#if defined(_WIN32) || defined(__APPLE__)
 		const auto t1 = std::chrono::steady_clock::now();
-		bool skip_draw = false;
-		while (frames > 0)
+		#endif
+
+		do
 		{
+			frames--;
 			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
 				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
@@ -78,7 +81,7 @@ public:
 
 							case VPU:
 								#ifndef MINICDI_RAW_68K_MODE
-								if (vpu != NULL) vpu->tick(skip_draw);
+								if (vpu != NULL) vpu->tick(frames > 0);
 								#endif
 								break;
 
@@ -93,9 +96,7 @@ public:
 
 				total_cycles += cycles;
 			}
-			skip_draw = true;
-			frames--;
-		}
+		} while (frames > 0);
 
 		// Print verbose CPU
 		cpu.print();
@@ -109,6 +110,7 @@ public:
 		// Update microcontroller
 		if (ikat != NULL) ikat->update();
 
+		#if defined(_WIN32) || defined(__APPLE__)
 		// integral duration: requires duration_cast
 		const auto t2 = std::chrono::steady_clock::now();
 		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
@@ -116,6 +118,7 @@ public:
 			const int wait_ms = (int)((MiniCDI::Config::PAL ? 20.0 : 16.67) - fp_ms.count());
 			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 		}
+		#endif
 	}
 
 	inline void reset() override {

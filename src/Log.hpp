@@ -15,6 +15,7 @@ namespace MiniCDI
 	inline static void Log(const char* fmt, ...)
 	{
 	#if defined(_WIN32) || defined(__APPLE__)
+
 		// Copy arguments to string and allocate buffer
 		char szBuff[512];
 		va_list args;
@@ -22,7 +23,6 @@ namespace MiniCDI
 		vsnprintf(szBuff, sizeof(szBuff), fmt, args);
 		va_end(args);
 		printf("[@%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
-		return;
 
 	#else
 
@@ -70,8 +70,7 @@ namespace MiniCDI
 				#else
 				WHBLogPrintf("%s", szBuff);
 				#endif
-			#else
-			#ifdef MINICDI_DEBUG
+			#elif defined(MINICDI_DEBUG)
 				#ifdef MINICDI_DEBUG_MODULE
 				if (module != nullptr)
 					printf("[@%08X(%s)]%s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
@@ -80,7 +79,6 @@ namespace MiniCDI
 				#else
 				printf("%s\n", szBuff);
 				#endif
-			#endif
 			#endif
 		}
 

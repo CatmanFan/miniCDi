@@ -455,13 +455,12 @@ static void RUN_CDI(const std::string &discName)
 		cdi.pd.set_button(PointingDevice::Down, status.hold & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
 		cdi.pd.set_button(PointingDevice::Up, status.hold & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
 
-		if (MiniCDI::Config::FrameSkip > 0) {
-			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
-			cdi.run();
+		if (MiniCDI::Config::FrameSkip != 0) {
+			cdi.run(MiniCDI::Config::FrameSkip+1);
 			fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
-			cdi.run();
-			fps.update();
+			cdi.run(1);
+			fps.update(1);
 		}
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
 

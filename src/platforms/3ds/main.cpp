@@ -264,15 +264,12 @@ static void RUN_CDI(const std::string &discName)
 		cdi.pd.set_button(PointingDevice::Button2, kHeld & KEY_B);
 
 		static FPS fps;
-
-		// Ensure that drawing is done at 30fps
-		if (MiniCDI::Config::FrameSkip > 0) {
-			for (size_t i = 0; i < MiniCDI::Config::FrameSkip; i++) { cdi.run(true); }
-			cdi.run();
+		if (MiniCDI::Config::FrameSkip != 0) {
+			cdi.run(MiniCDI::Config::FrameSkip+1);
 			fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
-			cdi.run();
-			fps.update();
+			cdi.run(1);
+			fps.update(1);
 		}
 
 		TOPSCREEN.Update(cdi.get_display(), cdi.get_display_width());

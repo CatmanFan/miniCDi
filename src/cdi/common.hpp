@@ -43,8 +43,8 @@
 #endif
 
 // Global defs
-#include "m68k/m68k.h"
-#include "os9/OS9.hpp"
+#include "cdi/m68k/m68k.h"
+#include "cdi/os9/OS9.hpp"
 #include "../Config.hpp"
 #include "../Log.hpp"
 #include "cdi/CDiDisc.hpp"

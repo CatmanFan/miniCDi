@@ -1,4 +1,4 @@
-#include "m68k/m68kcpu.h"
+#include "cdi/m68k/m68kcpu.h"
 #include "cdi/common.hpp"
 
 namespace MiniCDI

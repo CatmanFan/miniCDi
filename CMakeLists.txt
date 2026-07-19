@@ -77,24 +77,24 @@ set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 
 # Core source files
 # -------------------------------------------
-target_include_directories(${PROJECT_NAME} PRIVATE src src/m68k)
+target_include_directories(${PROJECT_NAME} PRIVATE src src/cdi/m68k)
 target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/common.cpp
-	src/os9/OS9.cpp
+	src/cdi/os9/OS9.cpp
 
 	# Musashi core for M68K
-	src/m68k/m68k.h
-	src/m68k/m68kconf.h
-	src/m68k/m68kcpu.c
-	src/m68k/m68kcpu.h
-	src/m68k/m68kdasm.c
-	src/m68k/m68kfpu.c
-	src/m68k/m68kmmu.h
-	src/m68k/m68kops.c
-	src/m68k/m68kops.h
-	src/m68k/softfloat/softfloat.c
-	src/m68k/softfloat/softfloat.h
-	src/m68k/softfloat/softfloat-macros
+	src/cdi/m68k/m68k.h
+	src/cdi/m68k/m68kconf.h
+	src/cdi/m68k/m68kcpu.c
+	src/cdi/m68k/m68kcpu.h
+	src/cdi/m68k/m68kdasm.c
+	src/cdi/m68k/m68kfpu.c
+	src/cdi/m68k/m68kmmu.h
+	src/cdi/m68k/m68kops.c
+	src/cdi/m68k/m68kops.h
+	src/cdi/m68k/softfloat/softfloat.c
+	src/cdi/m68k/softfloat/softfloat.h
+	src/cdi/m68k/softfloat/softfloat-macros
 )
 
 # Platform build specific
@@ -108,6 +108,7 @@ if (WIN32 OR APPLE)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
+	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
 	if (WIN32)
 		target_sources(${PROJECT_NAME} PRIVATE res/win/windows.rc)

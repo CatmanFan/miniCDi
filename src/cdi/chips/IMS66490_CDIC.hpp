@@ -218,6 +218,17 @@ public:
 		#endif
 	}
 
+	~CDIC()
+	{
+		#ifdef MINICDI_AUDIO_SDL2
+		if (SDL_audio_valid) {
+			SDL_CloseAudioDevice(SDL_audio_id);
+			SDL_QuitSubSystem(SDL_INIT_AUDIO);
+			SDL_audio_valid = false;
+		}
+		#endif
+	}
+
 	inline void abort()
 	{
 		MiniCDI::Log("[CDIC] abort");

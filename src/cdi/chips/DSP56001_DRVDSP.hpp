@@ -124,18 +124,23 @@ public:
 							break;
 						case 0x00:
 							MiniCDI::Log("[DSP] run program (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x08:
 							MiniCDI::Log("[DSP] submit buffer 4 (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x09:
 							MiniCDI::Log("[DSP] submit buffer 5 (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x0E:
 							MiniCDI::Log("[DSP] set read mode (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x12:
 							MiniCDI::Log("[DSP] read audio status (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 
 						case 0x13:
@@ -151,9 +156,11 @@ public:
 
 						case 0x14:
 							MiniCDI::Log("[DSP] audio-related? 1 (0x%02X : %06X)", value, RTX);
+							CVR &= 0x1F;
 							break;
 						case 0x15:
 							MiniCDI::Log("[DSP] audio-related? 2 (0x%02X : %06X)", value, RTX);
+							CVR &= 0x1F;
 							break;
 						case 0x16:
 							MiniCDI::Log("[DSP] start sector (0x%02X : %06X)", value, RTX);
@@ -161,24 +168,31 @@ public:
 							break;
 						case 0x17:
 							MiniCDI::Log("[DSP] start DMA read (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x18:
 							MiniCDI::Log("[DSP] start DMA write (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x19:
 							MiniCDI::Log("[DSP] stop DMA (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x1A:
 							MiniCDI::Log("[DSP] read memory (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x1B:
 							MiniCDI::Log("[DSP] write memory (0x%02X : %06X)", value, RTX);
+							assert(0); // Not implemented
 							break;
 						case 0x1C:
 							MiniCDI::Log("[DSP] get unknown status (0x%02X : %06X)", value, RTX);
+							CVR &= 0x1F;
 							break;
 						case 0x1D:
 							MiniCDI::Log("[DSP] select sectors (0x%02X : %06X)", value, RTX);
+							CVR &= 0x1F;
 							break;
 						case 0x1F:
 							MiniCDI::Log("[DSP] set volume (0x%02X : %06X)", value, RTX);

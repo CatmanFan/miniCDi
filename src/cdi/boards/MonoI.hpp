@@ -3,9 +3,6 @@
 
 #include <chrono>
 #include <thread>
-#ifdef MINICDI_AUDIO_SDL2
-#include <SDL2/SDL.h>
-#endif
 
 /** ******* Mono-I memory map *******
 	$00000000   512KB.ram    name=planea
@@ -58,8 +55,8 @@ public:
 
 	inline void run(int frames = 1) override
 	{
-		#ifndef MINICDI_NO_THROTTLING
 		#if defined(_WIN32) || defined(__APPLE__)
+		#ifndef MINICDI_NO_THROTTLING
 		const auto t1 = std::chrono::steady_clock::now();
 		#endif
 		#endif
@@ -116,19 +113,14 @@ public:
 		// Update microcontroller
 		if (ikat != NULL) ikat->update();
 
-		#ifndef MINICDI_NO_THROTTLING
 		#if defined(_WIN32) || defined(__APPLE__)
+		#ifndef MINICDI_NO_THROTTLING
 		// integral duration: requires duration_cast
 		const auto t2 = std::chrono::steady_clock::now();
 		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 		if (fp_ms.count() < (/*MiniCDI::Config::PAL ? 20.0 :*/ 16.67)) {
 			const int wait_ms = (int)((/*MiniCDI::Config::PAL ? 20.0 :*/ 16.67) - fp_ms.count());
-
-			#ifdef MINICDI_AUDIO_SDL2
-			SDL_Delay(wait_ms);
-			#else
 			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
-			#endif
 		}
 		#endif
 		#endif

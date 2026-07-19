@@ -1,48 +1,53 @@
 # miniCDi
-An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U. Currently has no support for audio or NVRAM saving.
+<div align=center><a href=""><img src="https://github.com/CatmanFan/miniCDi/blob/master/res/wii/icon.png" /></a></div>
+
+An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U.
 
 ## Usage
-Place the system ROM in `miniCDi/rom/cdi220b.rom` and any disc images/games in `miniCDi/discs`. Depending on the platform the full path may be structured as follows:
-- `[SD or USB root] :/apps/miniCDi/` (Wii)
-- `sdmc:/3ds/miniCDi/` (3DS)
-- `/vol/external01/wiiu/apps/miniCDi/` (Wii U)
+### Windows
+Run miniCDi using the command line arguments `miniCDi <boot.rom> [disc.bin]`.
 
-Once opened, select a disc image from the menu. Press ZR (Wii U), Home (Wii) or Z (GameCube) to exit emulation and return to the menu.
+### Nintendo Wii
+Place the system ROM(s) in `sd:/miniCDi/rom` and any disc images/games in `sd:/miniCDi/discs`.
 
-### Bugs
-In some cases the CD-i machine may not start properly. If this happens try exiting back to the emulator menu and starting over (this may take several tries).
+Once opened, select a disc image from the menu. Press Home (Wii) or Z (GameCube) to exit emulation and return to the emulator menu.
+In some cases the CD-i machine may not start properly. If this happens try going back to the emulator menu and starting over (this may take several tries).
 
-## Credits
-Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me where possible on this project. This project uses partial emulation code ported from the MAME CD-i driver ([see license](https://github.com/mamedev/mame?tab=License-1-ov-file#readme)) as well as Stovent's implementations of the relevant components in [CeDImu](https://github.com/Stovent/CeDImu), and is also based off of CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documentation of several components including the MCD212, SCC68070 (UART), IKAT and SLAVE and Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer)). The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.
+### Nintendo 3DS
+Place the system ROM(s) in `sdmc:/3ds/miniCDi/rom` and any disc images/games in `sdmc:/3ds/miniCDi/discs`.
+
+Once opened, select a disc image from the menu. Press ZR to quit the emulator.
+
+### Nintendo Wii U
+Place the system ROM(s) in `/vol/external01/wiiu/apps/miniCDi/rom` and any disc images/games in `/vol/external01/wiiu/apps/miniCDi/discs`.
+
+Once opened, select a disc image from the menu. Press ZR to exit emulation and return to the emulator menu.
+In some cases the CD-i machine may not start properly. If this happens try going back to the emulator menu and starting over (this may take several tries).
 
 ## Compatibility
 The following boards and chips have been implemented. CD-i Fan has more information regarding hardware at [cdichips](https://github.com/cdifan/cdichips) repository.
 
-* ***Mono-I***: SCC68070, MCD212, CDIC (partial, no audio), SLAVE
-* ***~~Mono-II~~***: SCC68070, MCD212, DSP (stub), SLAVE
+* ***Mono-I***: SCC68070, MCD212, CDIC, SLAVE
+* ***Mono-II***: SCC68070, MCD212, DRVDSP (stub), SLAVE
 * ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (stub), IKAT
+
+Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated.
+
+## Credits
+Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me where possible on this project. This project uses partial emulation code ported from the MAME CD-i driver ([see license](https://github.com/mamedev/mame?tab=License-1-ov-file#readme)) as well as Stovent's implementations of the relevant components in [CeDImu](https://github.com/Stovent/CeDImu), and is also based off of CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documentation of several components including the MCD212, SCC68070 (UART), IKAT and SLAVE and Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer)). The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.
 
 ## To-Do
 
 ### Before official v0.1 beta release
-- [X] Proper reset sequence
-- Fix VDSC rendering
-   - [X] Color key
-   - [X] Mixing
-   - [X] DYUV decoder formula
-- [X] Outline instructions/how-to for users
+- [ ] Fix audio
 - [ ] Update compatibility information
-- [X] Update licensing information
-
-### Next beta release
-- [ ] CDIC audio status and handling
 
 ### Potential
 - [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
 - [ ] Emulate timekeeper on Mono-I/Mono-IV? (should handle NVRAM saving)
 - Disc-related:
-   - [ ] Address slowdown during CDIC reading active status
-   - [ ] Make CIAP read discs properly
+   - [ ] CDIC: Address slowdown when reading sectors (not necessary anymore?)
+   - [ ] CIAP: Read discs properly
 - [ ] LibRetro API compatibility?
 
 ## Building

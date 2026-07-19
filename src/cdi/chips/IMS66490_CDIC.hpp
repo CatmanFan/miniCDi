@@ -48,17 +48,15 @@ class CDIC
 			}
 			else
 			{
-				if (!ADPCM.decode_sector(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)]))
-					return;
-
 				if (!adpcm_played) {
+					if (!ADPCM.decode_sector(disc->Sector.CodingInfo[1], &memory[0x30280C + ((DBUF & 0x01)*0xA00)]))
+						return;
+
 					#ifdef MINICDI_AUDIO_SDL2
-					if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < 112) {
-						SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
-						ADPCM.left.clear();
-					}
+					SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size());
 					#endif
-					adpcm_played = false;
+
+					adpcm_played = true;
 				}
 			}
 
@@ -220,7 +218,7 @@ public:
 			input.freq = 37800;
 			input.format = AUDIO_S16SYS;
 			input.channels = 1;
-			input.samples = 224;
+			input.samples = 448;
 
 			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);
 			SDL_audio_valid = SDL_audio_id > 0;

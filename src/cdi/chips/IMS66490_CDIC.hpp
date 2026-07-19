@@ -32,7 +32,6 @@ class CDIC
 	#ifdef MINICDI_AUDIO_SDL2
 	uint32_t SDL_audio_id = 0;
 	bool SDL_audio_valid = false;
-	SDL_AudioSpec SDL_audio_specs;
 	#endif
 
 	AdpcmDecoder ADPCM;
@@ -216,22 +215,22 @@ public:
 			SDL_audio_valid = false;
 		} else {
 			// Audio
-			SDL_AudioSpec preset = { 0 };
-			preset.freq = 37800;
-			preset.format = AUDIO_S16SYS;
-			preset.channels = 1;
-			preset.samples = 224;
-			SDL_OpenAudio(&preset, 0);
+			SDL_AudioSpec input, output;
+			SDL_zero(input);
+			input.freq = 37800;
+			input.format = AUDIO_S16SYS;
+			input.channels = 1;
+			input.samples = 224;
 
-			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &preset, &SDL_audio_specs, 0);
+			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);
 			SDL_audio_valid = SDL_audio_id > 0;
 			if (SDL_audio_valid)
 			{
 				MiniCDI::Log("[Audio:SDL2] initialized audio device #%d", SDL_audio_id);
-				MiniCDI::Log("[Audio:SDL2] audiospec frequency: %d", SDL_audio_specs.freq);
-				MiniCDI::Log("[Audio:SDL2] audiospec format: %d", SDL_audio_specs.format);
-				MiniCDI::Log("[Audio:SDL2] audiospec channels: %d", SDL_audio_specs.channels);
-				MiniCDI::Log("[Audio:SDL2] audiospec samples: %d", SDL_audio_specs.samples);
+				MiniCDI::Log("[Audio:SDL2] audiospec frequency: %d", output.freq);
+				MiniCDI::Log("[Audio:SDL2] audiospec format: %d", output.format);
+				MiniCDI::Log("[Audio:SDL2] audiospec channels: %d", output.channels);
+				MiniCDI::Log("[Audio:SDL2] audiospec samples: %d", output.samples);
 				SDL_PauseAudioDevice(SDL_audio_id, 0);
 			}
 		}

@@ -22,7 +22,19 @@ namespace MiniCDI
 		va_start(args, fmt);
 		vsnprintf(szBuff, sizeof(szBuff), fmt, args);
 		va_end(args);
-		printf("[@%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+
+		#ifdef MINICDI_DEBUG_MODULE
+		MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module_from_addr(m68k_get_reg(NULL, M68K_REG_PC));
+		#endif
+
+		#ifdef MINICDI_DEBUG_MODULE
+		if (module != nullptr)
+			printf("[@%08X(%s)]%s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+		else
+			printf("[@%08X]%s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+		#else
+		printf("%s\n", szBuff);
+		#endif
 
 	#else
 

@@ -69,16 +69,16 @@ public:
 	 */
 	inline bool decode_sector(uint8_t *buffer)
 	{
-		/// Green Book IV.3:
+		/// Green Book IV.3.3:
 		/// Audio sectors comprise 18 "sound groups" of size 128 bytes.
 		/// Each "sound group" is divided into 16 parameter bytes and sampled audio data.
 
-		uint8_t coding = buffer[0x0B];
-		uint8_t submode = buffer[0x0A];
-		if (!(submode & 0x04))
+		/// Green Book IV.3.2.3: check submode for audio bits
+		if ((buffer[0x0A] & 0b00101110) != 0b00100100)
 			return false;
 
 		// Skip if any set to reserved
+		uint8_t coding = buffer[0x0B];
 		if (coding & 0b10'10'10)
 			return false;
 

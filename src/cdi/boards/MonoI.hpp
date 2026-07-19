@@ -55,7 +55,9 @@ public:
 	inline void run(int frames = 1) override
 	{
 		#if defined(_WIN32) || defined(__APPLE__)
+		#ifndef MINICDI_NO_THROTTLING
 		const auto t1 = std::chrono::steady_clock::now();
+		#endif
 		#endif
 
 		do
@@ -111,6 +113,7 @@ public:
 		if (ikat != NULL) ikat->update();
 
 		#if defined(_WIN32) || defined(__APPLE__)
+		#ifndef MINICDI_NO_THROTTLING
 		// integral duration: requires duration_cast
 		const auto t2 = std::chrono::steady_clock::now();
 		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
@@ -118,6 +121,7 @@ public:
 			const int wait_ms = (int)((MiniCDI::Config::PAL ? 20.0 : 16.67) - fp_ms.count());
 			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 		}
+		#endif
 		#endif
 	}
 

@@ -24,6 +24,7 @@ option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file opt
 option(MINICDI_ENABLE_RAW68KMODE "Only use the 68K processor."									OFF)
 
 # Emulation options
+option(MINICDI_DISABLE_THROTTLING "Disable throttling on Windows and macOS." OFF)
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper (breaks player shell if no NVRAM settings data exists)." OFF)
 option(MINICDI_ENABLE_FORCEMONOIV "Force Mono-IV emulation." OFF)
@@ -56,6 +57,10 @@ if (MINICDI_ENABLE_RAW68KMODE)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_RAW_68K_MODE)
 endif()
 
+if (MINICDI_DISABLE_THROTTLING)
+	MESSAGE(STATUS "MINICDI_DISABLE_THROTTLING")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NO_THROTTLING)
+endif()
 if (MINICDI_ENABLE_NATIVERES)
 	MESSAGE(STATUS "MINICDI_ENABLE_NATIVERES")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NATIVERES)

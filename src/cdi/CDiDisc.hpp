@@ -323,15 +323,16 @@ public:
 	friend class CDIC;
 	friend class CIAP;
 
-	inline void open(const std::string &path)
+	inline bool open(const std::string &path)
 	{
-		if (path.empty()) return;
+		if (path.empty()) return false;
 
-		if (access(path.c_str(), F_OK) == 0) {
+		if (access(path.c_str(), F_OK) == 0)
+		{
 			disc.open(path, std::ios::in | std::ios::binary);
-			if (disc.is_open()) {
-				MiniCDI::Config::HasDisc = true;
-				MiniCDI::Log("[Disc] Inserted disc: %s", path.c_str());
+			if (disc.is_open())
+			{
+				// MiniCDI::Log("[Disc] Inserted disc: %s", path.c_str());
 
 				disc.seekg(0x9340, std::ios::beg); // 00'02'16 LBA, address of title
 				for (int i = 0; i < 32; i++) {
@@ -344,22 +345,27 @@ public:
 				}
 
 				if (Label.empty())
-					MiniCDI::Log("[Disc] Label not found at LBA $9300");
+					MiniCDI::Log("[Disc] Unknown label (not found at LBA $9300)");
 				else
 					MiniCDI::Log("[Disc] Label: %s", Label.c_str());
-			} else {
-				MiniCDI::Log("[Disc] Failed to open %s", path.c_str());
+
+				return true;
 			}
-		} else {
+
+			MiniCDI::Log("[Disc] Failed to open %s", path.c_str());
+		}
+		else
+		{
 			MiniCDI::Log("[Disc] File not found at %s", path.c_str());
 		}
+		return false;
 	}
 
 	inline void eject()
 	{
 		if (disc.is_open()) {
 			disc.close();
-			MiniCDI::Config::HasDisc = false;
+			Label.clear();
 			MiniCDI::Log("[Disc] Ejected");
 		}
 	}

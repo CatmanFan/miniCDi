@@ -418,7 +418,6 @@ static void RUN_CDI(const std::string &discName)
 	#endif
 	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
@@ -427,7 +426,7 @@ static void RUN_CDI(const std::string &discName)
 		// OSSleepTicks(OSSecondsToTicks(5));
 		return;
 	}
-	cdi.disc.open(devicePrefix + "wiiu/apps/miniCDi/discs/" + discName);
+	cdi.swap_disc(devicePrefix + "wiiu/apps/miniCDi/discs/" + discName);
 
 	FPS fps;
 	EmuDisplay screen;

@@ -24,6 +24,7 @@ class SLAVE
 		bool posChanged;
 		int x, y;
 	} PointerInterface;
+	bool Disc = false;
 
 	uint32_t DR[4]; // addresses to data registers
 
@@ -52,6 +53,22 @@ public:
 		Ch[1].InSize = 0;
 		Ch[2].InSize = 0;
 		Ch[3].InSize = 0;
+	}
+
+	inline void send_play_button()
+	{
+		Ch[1].Out = { 0xA1, 0x87, 0x20, 0xFF };
+		assert_irq();
+	}
+
+	inline void send_disc_status(bool value)
+	{
+		Disc = value;
+		if (Disc)
+			Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
+		else
+			Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+		assert_irq();
 	}
 
 	inline uint8_t read8(uint32_t addr)
@@ -152,6 +169,10 @@ public:
 								Ch[c].InSize = 17;
 							}
 							break;
+
+						case 0xA1:
+							MiniCDI::Log("[SLAVE] disc-related? (0x%02X)", value);
+							break;
 					}
 					break;
 
@@ -182,9 +203,10 @@ public:
 								switch (Ch[c].In[0]) {
 									case 0xB0:
 										MiniCDI::Log("[SLAVE] get disc status (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
-										if (MiniCDI::Config::HasDisc) Ch[c].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
-										else Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
-										assert_irq();
+										if (Disc)
+											Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
+										else
+											Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
 										break;
 									case 0xB1:
 										MiniCDI::Log("[SLAVE] get disc base (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);

@@ -3,6 +3,9 @@
 
 #include <chrono>
 #include <thread>
+#ifdef MINICDI_AUDIO_SDL2
+#include <SDL2/SDL.h>
+#endif
 
 /** ******* Mono-I memory map *******
 	$00000000   512KB.ram    name=planea
@@ -51,6 +54,7 @@ private:
 
 public:
 	bool init(const std::string &bios, enum BoardType board) override;
+	~MonoI();
 
 	inline void run(int frames = 1) override
 	{
@@ -119,7 +123,12 @@ public:
 		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
 		if (fp_ms.count() < (MiniCDI::Config::PAL ? 20.0 : 16.67)) {
 			const int wait_ms = (int)((MiniCDI::Config::PAL ? 20.0 : 16.67) - fp_ms.count());
+
+			#ifdef MINICDI_AUDIO_SDL2
+			SDL_Delay(wait_ms);
+			#else
 			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+			#endif
 		}
 		#endif
 		#endif
@@ -144,7 +153,20 @@ public:
 		event_cycles[VPU] = event_rates[VPU];
 		event_cycles[UART_TX] = event_rates[UART_TX];
 	}
-	~MonoI();
+
+	inline void play_disc() {
+		if (slave != NULL) slave->send_play_button();
+	}
+
+	inline void swap_disc(const std::string &path) {
+		if (cdic != NULL) cdic->abort();
+
+		disc.eject();
+		const bool was_disc_valid = disc.open(path);
+
+		if (slave != NULL) slave->send_disc_status(was_disc_valid);
+		if (ikat != NULL) ikat->send_disc_status(was_disc_valid);
+	}
 
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }

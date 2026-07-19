@@ -37,14 +37,6 @@ class IKAT
 			_68070->interrupt(SCC68070::IPL_IN2N, true);
 	}
 
-	inline void unset_ISR(uint8_t flag)
-	{
-		ISR &= ~flag;
-		//MiniCDI::Log("[IKAT] ISR %02X != IMR %02X", ISR, IMR);
-		if (IMR & flag)
-			_68070->interrupt(SCC68070::IPL_IN2N, false);
-	}
-
 	struct
 	{
 		bool connected;
@@ -53,6 +45,7 @@ class IKAT
 		int x, y;
 		bool absolute;
 	} PointerInterface;
+	bool Disc = false;
 
 	uint8_t LCD[16];
 
@@ -124,6 +117,16 @@ public:
 		Ch[3].InSize = 0;
 	}
 
+	inline void send_disc_status(bool value)
+	{
+		Disc = value;
+		if (Disc)
+			Ch[3].Out = { 0xB0, 0x00, 0x02, 0x10 };
+		else
+			Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+		poll_packet(3, 2);
+	}
+
 	inline uint8_t read8(uint32_t addr)
 	{
 		switch (addr)
@@ -134,6 +137,7 @@ public:
 			case 0x31000F:
 				{
 					size_t c = (addr - 0x310009) / 2;
+					if (_68070) _68070->interrupt(SCC68070::IPL_IN2N, false);
 
 					if (Ch[c].Out.size() > 0)
 					{
@@ -142,7 +146,6 @@ public:
 
 						if (Ch[c].Out.size() == 0)
 						{
-							unset_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
 							Ch[c].SR &= ~0b01000000; // RRDY OFF
 							Ch[c].SR |= 0b00010000; // REMTY ON
 							//MiniCDI::Log("[IKAT] %sDR read completed", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
@@ -307,16 +310,17 @@ public:
 
 										case 0xA6:
 											MiniCDI::Log("[IKAT] eject disc drive (0x%02X)", Ch[c].In[0]);
-											MiniCDI::Config::HasDisc = false;
 											Ch[c].Out = { 0xA6, 0x00, 0x00, 0x00 };
 											poll_packet(c, 2);
+											Disc = false;
 											break;
 
 										case 0xB0:
 											MiniCDI::Log("[IKAT] report disc status (0x%02X)", Ch[c].In[0]);
-											if (MiniCDI::Config::HasDisc) Ch[c].Out = { 0xB0, 0x00, 0x02, 0x10 }; // cdifan: $00060E for SLAVE 5.0 (CD-i rev 450), $000210 for IKAT 6.x-9.x
-											else Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
-											poll_packet(c, 2);
+											if (Disc)
+												Ch[3].Out = { 0xB0, 0x00, 0x02, 0x10 };
+											else
+												Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
 											break;
 
 										case 0xB1:

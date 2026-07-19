@@ -219,7 +219,6 @@ static void RUN_CDI(const std::string &discName)
 	#endif
 	MiniCDI::Config::ShowFPS = false;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? appPath + "rom/" + biosName + ".nvram" : "";
 
 	// Declare the CD-i machine
@@ -229,7 +228,7 @@ static void RUN_CDI(const std::string &discName)
 		sleep(5);
 		return;
 	}
-	cdi.disc.open(appPath + "discs/" + discName);
+	cdi.swap_disc(appPath + "discs/" + discName);
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;

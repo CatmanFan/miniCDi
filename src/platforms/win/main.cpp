@@ -53,8 +53,20 @@ public:
 	}
 };
 
-static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem::path &discPath)
+int main(int argc, char** argv)
 {
+    if (argc < 2)
+    {
+        printf("usage: miniCDi <boot.rom> [disc.bin]\n");
+        return 1;
+    }
+
+	if (access(argv[1], F_OK) != 0)
+    {
+        printf("unable to access bootrom, exiting\n");
+        return 1;
+    }
+
 	MiniCDI::Config::TestPlug = false;
 	MiniCDI::Config::PAL = true;
 	MiniCDI::Config::AnalogColors = false;
@@ -68,22 +80,14 @@ static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem
 	#endif
 	MiniCDI::Config::ShowFPS = false;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::NvramFile = "";
 
-	MonoI cdi;
+	const std::filesystem::path biosPath = argv[1];
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
 							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
 							  : CDi::MonoI;
+	MonoI cdi;
 	cdi.init(biosPath.string(), board);
-	switch (board)
-	{
-		default: cdi.disc.open(discPath.string()); break;
-		case CDi::MonoII: printf("[miniCDi] Warning: DRVDSP not supported, cannot run discs.\n"); break;
-		case CDi::MonoIII:
-		case CDi::MonoIV: printf("[miniCDi] Warning: CIAP not supported, cannot run discs.\n"); break;
-	}
-
 	SDL screen;
 
 	bool has_quit = false;
@@ -102,10 +106,25 @@ static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem
 					cdi.pd.set_button(PointingDevice::Up, e.key.keysym.sym == SDLK_UP && e.type == SDL_KEYDOWN);
 					cdi.pd.set_button(PointingDevice::Left, e.key.keysym.sym == SDLK_LEFT && e.type == SDL_KEYDOWN);
 					cdi.pd.set_button(PointingDevice::Right, e.key.keysym.sym == SDLK_RIGHT && e.type == SDL_KEYDOWN);
-					if (e.key.keysym.sym == SDLK_n && e.type == SDL_KEYDOWN) cdi.reset();
+
+					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
+					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
 					break;
+
 				case SDL_QUIT:
 					has_quit = true;
+					break;
+
+				case SDL_DROPFILE:
+					cdi.swap_disc(e.drop.file);
+					if (e.drop.file) free(e.drop.file);
+					switch (board)
+					{
+						default: break;
+						case CDi::MonoII: printf("[miniCDi] Warning: DRVDSP not properly supported, cannot run discs.\n"); break;
+						case CDi::MonoIII:
+						case CDi::MonoIV: printf("[miniCDi] Warning: CIAP not properly supported, cannot run discs.\n"); break;
+					}
 					break;
             }
         }
@@ -120,26 +139,6 @@ static void RUN_CDI(const std::filesystem::path &biosPath, const std::filesystem
 
 		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr, cdi.get_cd_read_status());
 	}
-}
-
-int main(int argc, char** argv)
-{
-    if (argc < 2)
-    {
-        printf("usage: miniCDi <boot.rom> [disc.bin]\n");
-        return 1;
-    }
-
-	if (access(argv[1], F_OK) != 0)
-    {
-        printf("unable to access bootrom, exiting\n");
-        return 1;
-    }
-
-	if (argc >= 3 && access(argv[2], F_OK) == 0)
-		RUN_CDI(argv[1], argv[2]);
-	else
-		RUN_CDI(argv[1], "");
 	
 	return 0;
 }

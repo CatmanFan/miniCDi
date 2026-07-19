@@ -10,7 +10,6 @@ namespace MiniCDI
 		extern bool ShowFPS;
 		extern bool ShowLCD;
 		extern bool AnalogColors;
-		extern bool HasDisc;
 		extern size_t FrameSkip;
 		extern int PointerAdvance;
 

@@ -234,12 +234,11 @@ static void RUN_CDI(const std::string &discName)
 	#endif
 	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
 	MiniCDI::Config::ShowLCD = false;
-	MiniCDI::Config::HasDisc = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? "sdmc:/3ds/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
 	cdi.init("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI);
-	cdi.disc.open("sdmc:/3ds/miniCDi/discs/" + discName);
+	cdi.swap_disc("sdmc:/3ds/miniCDi/discs/" + discName);
 
 	EmulatorWindow TOPSCREEN(768,280);
 

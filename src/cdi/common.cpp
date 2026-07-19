@@ -10,7 +10,6 @@ namespace MiniCDI
 		bool ShowFPS = false;
 		bool ShowLCD = false;
 		bool AnalogColors = false;
-		bool HasDisc = false;
 		size_t FrameSkip = 0;
 		int PointerAdvance = 1;
 

@@ -5,7 +5,7 @@ An experimental Philips CD-i emulator for the Wii, New 3DS and Wii U.
 
 ## Usage
 ### Windows
-Run miniCDi using the command line arguments `miniCDi <boot.rom> [disc.bin]`.
+Run miniCDi using the command line arguments `miniCDi <boot.rom> [disc.bin]`. Alternatively, drag the system ROM file itself into miniCDi to boot the emulated system from the ROM, then drag the disc image into the emulator window.
 
 ### Nintendo Wii
 Place the system ROM(s) in `sd:/miniCDi/rom` and any disc images/games in `sd:/miniCDi/discs`.

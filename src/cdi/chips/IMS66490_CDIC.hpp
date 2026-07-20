@@ -34,12 +34,15 @@ class CDIC
 	bool SDL_audio_valid = false;
 	#endif
 
+	// ****************************
+	// AUDIO HANDLING
+	// ****************************
 	AdpcmDecoder ADPCM;
 	struct {
-		bool has_soundmap;
-		size_t index;
-		size_t pending_sectors;
-	} AdpcmController; // Equivalent to a soundmap unit in Green Book?
+		bool active;
+		size_t buffer;
+		bool played;
+	} SoundmapUnit; // Implementation based on Green Book
 
 	inline void adpcm_decode_and_play(int buffer, bool soundmap)
 	{
@@ -57,26 +60,24 @@ class CDIC
 		#endif
 	}
 
-	inline void adpcm_update_soundmap()
+	inline void update_soundmap_unit()
 	{
-		if (!AdpcmController.has_soundmap) return;
+		if (!SoundmapUnit.active) return;
 
-		if (memory[AdpcmController.index+11] == 0xFF) // coding byte
+		if (memory[SoundmapUnit.buffer+11] == 0xFF) // coding byte
 		{
 			MiniCDI::Log("[CDIC] ADPCM playback ended due to $FF coding");
-			AdpcmController.has_soundmap = false;
+			SoundmapUnit.active = false;
 			AUDCTL |= 0x0001; // audio playback ended
 			AUDCTL &= ~0x0800; // unset playback started
-			update_irq();
 			return;
 		}
 
-		adpcm_decode_and_play(AdpcmController.index, true);
-		AdpcmController.index = (AdpcmController.index+1) % 2;
-		AdpcmController.pending_sectors--;
-
-		if (AdpcmController.pending_sectors == 0)
-			AdpcmController.has_soundmap = false;
+		if (!SoundmapUnit.played)
+		{
+			adpcm_decode_and_play(SoundmapUnit.buffer, true);
+			SoundmapUnit.played = true;
+		}
 
 		if (AUDCTL & 0x2000)
 		{
@@ -85,6 +86,9 @@ class CDIC
 		}
 	}
 
+	// ****************************
+	// DISC HANDLING
+	// ****************************
 	CDiDisc *disc;
 
 	struct {
@@ -226,7 +230,7 @@ class CDIC
 	}
 
 public:
-	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), AdpcmController({0}), disc(disc), CdicController({0})
+	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), SoundmapUnit({0}), disc(disc), CdicController({0})
 	{
 		#ifdef MINICDI_AUDIO_SDL2
 		if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
@@ -239,7 +243,7 @@ public:
 			input.freq = 37800;
 			input.format = AUDIO_S16SYS;
 			input.channels = 1;
-			input.samples = 1024;
+			input.samples = 448;
 
 			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);
 			SDL_audio_valid = SDL_audio_id > 0;
@@ -275,9 +279,7 @@ public:
 		CdicController.delayed_sectors = 0;
 		CdicController.curr_lba = 0;
 		CdicController.is_mode2 = false;
-		AdpcmController = {0};
-
-		_68070->interrupt(SCC68070::IPL_IN4N, false);
+		SoundmapUnit = {0};
 	}
 
 	inline void reset()
@@ -287,7 +289,7 @@ public:
 		CdicController.delayed_sectors = 0;
 		CdicController.curr_lba = 0;
 		CdicController.is_mode2 = false;
-		AdpcmController = {0};
+		SoundmapUnit = {0};
 
 		AUDCTL = 0;
 		ABUF = 0;
@@ -299,7 +301,7 @@ public:
 	inline void tick()
 	{
 		disc_process_sector();
-		adpcm_update_soundmap();
+		update_soundmap_unit();
 	}
 
 	inline uint16_t read16(uint32_t addr)
@@ -352,7 +354,8 @@ public:
 				return DMACTL;
 
 			case 0x303FFA: case 0x303FFB:
-				AUDCTL &= ~0x0001; // reset ADPCM playback stopped bit
+				if (!SoundmapUnit.active)
+					AUDCTL ^= 0x0001; // reset ADPCM playback stopped bit
 				//MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
 				return AUDCTL;
 
@@ -411,18 +414,26 @@ public:
 				if (value & 0x8000) _68070->dma_call(0, 0x300000 + (value & 0x3FFF));
 
 				// Record the number of ADPCM sectors transferred
-				if ((value & 0x3FFF) >= 0x2800 && (value & 0x3FFF) <= 0x3BFF)
-					AdpcmController.pending_sectors++;
+				if ((value & 0x3FFF) >= 0x2800 && (value & 0x3FFF) <= 0x3BFF
+				  && SoundmapUnit.buffer != ((value & 0x3FFF) >= 0x3200))
+				{
+					SoundmapUnit.buffer = (value & 0x3FFF) >= 0x3200;
+					SoundmapUnit.played = false;
+				}
 				break;
 
 			case 0x303FFA: case 0x303FFB:
 				MiniCDI::Log("[CDIC] AUDCTL <= %04X", value);
 				AUDCTL = value;
-				if (value == 0x2800 && !AdpcmController.has_soundmap)
+
+				// from MAME
+				if (!(value & 0x2000))
+					SoundmapUnit.active = false;
+
+				if (value == 0x2800 && !SoundmapUnit.active)
 				{
 					MiniCDI::Log("[CDIC] start audio playback from soundmap");
-					AdpcmController.has_soundmap = true;
-					AdpcmController.index = 0;
+					SoundmapUnit.active = true;
 				}
 				break;
 

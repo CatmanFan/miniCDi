@@ -69,18 +69,18 @@ public:
 	 *
 	 * @return Whether the sector is valid or not.
 	 */
-	inline bool decode_sector(uint8_t *buffer)
+	inline bool decode_sector(uint8_t *buffer, bool soundmap)
 	{
 		/// Green Book IV.3.3:
 		/// Audio sectors comprise 18 "sound groups" of size 128 bytes.
 		/// Each "sound group" is divided into 16 parameter bytes and sampled audio data.
 
 		/// Green Book IV.3.2.3: check submode for audio bits
-		if ((buffer[0x0A] & 0b00101110) != 0b00100100)
+		if (!soundmap && (buffer[10] & 0b00101110) != 0b00100100)
 			return false;
 
 		// Skip if any set to reserved
-		uint8_t coding = buffer[0x0B];
+		uint8_t coding = buffer[11];
 		if (coding & 0b10'10'10)
 			return false;
 

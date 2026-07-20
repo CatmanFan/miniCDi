@@ -35,34 +35,35 @@ class CDIC
 	#endif
 
 	AdpcmDecoder ADPCM;
-	bool play_adpcm = false;
+	struct {
+		bool direct; // Continuous reading from CPU
+		size_t index;
+	} AdpcmController;
 
-	inline void disc_process_audio()
+	inline void disc_process_audio(int buffer)
 	{
 		if (AUDCTL & 0x0800)
 		{
-			if (disc->Sector.CodingInfo[1] == 0xFF)
+			if (memory[buffer ? 0x30320A : 0x30280A] == 0xFF) // coding byte
 			{
+				MiniCDI::Log("[CDIC] ADPCM playback ended due to $FF coding");
+				AdpcmController = {false, 0};
 				AUDCTL |= 0x0001; // audio playback ended
 				AUDCTL &= ~0x0800; // unset playback started
 				update_irq();
 				return;
 			}
 
-			if (!ADPCM.decode_sector(&memory[0x302800 + ((DBUF & 0x01)*0xA00)]))
+			if (!ADPCM.decode_sector(&memory[buffer ? 0x303200 : 0x302800]))
 				return;
 
-			if (play_adpcm)
+			#ifdef MINICDI_AUDIO_SDL2
+			if (SDL_audio_valid)
+				SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size() * sizeof(int16_t));
+			#endif
+
+			if ((AUDCTL & 0x2000) && AdpcmController.direct)
 			{
-				#ifdef MINICDI_AUDIO_SDL2
-				if (SDL_audio_valid)
-					SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size() * sizeof(int16_t));
-				#endif
-
-				play_adpcm = false;
-			}
-
-			if (AUDCTL & 0x2000) {
 				ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
 				update_irq();
 			}
@@ -141,13 +142,13 @@ class CDIC
 						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
 			if (is_adpcm) {
 				targetAddr += 0x2800; // switch to ADPCM buffer
-				play_adpcm = true;
 
 				// set audio index bit and schedule playback of audio sector
 				DBUF |= 0x0004;
 				if ((AUDCTL & 0x0800) == 0x0000 && (DBUF & 0x000F) == 0x0004)
 				{
-					MiniCDI::Log("[CDIC] starting audio playback from CD");
+					MiniCDI::Log("[CDIC] begin ADPCM playback from CD");
+					AdpcmController = {false, 0};
 					AUDCTL |= 0x0800;
 				}
 			}
@@ -177,6 +178,8 @@ class CDIC
 			XBUF |= 0x8000; // sector filled for processing
 			DBUF |= 0x4000; // send DATA to CPU
 			update_irq();
+
+			if (is_adpcm && !AdpcmController.direct) disc_process_audio(DBUF & 0x01);
 		}
 	}
 
@@ -188,7 +191,7 @@ class CDIC
 	}
 
 public:
-	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), disc(disc), CdicController({0})
+	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), AdpcmController({false, 0}), disc(disc), CdicController({0})
 	{
 		#ifdef MINICDI_AUDIO_SDL2
 		if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
@@ -237,6 +240,8 @@ public:
 		CdicController.delayed_sectors = 0;
 		CdicController.curr_lba = 0;
 		CdicController.is_mode2 = false;
+		AdpcmController = {false, 0};
+
 		_68070->interrupt(SCC68070::IPL_IN4N, false);
 	}
 
@@ -247,6 +252,7 @@ public:
 		CdicController.delayed_sectors = 0;
 		CdicController.curr_lba = 0;
 		CdicController.is_mode2 = false;
+		AdpcmController = {false, 0};
 
 		AUDCTL = 0;
 		ABUF = 0;
@@ -266,7 +272,6 @@ public:
 		}
 
 		disc_process_sector();
-		disc_process_audio();
 
 		// Update LBA
 		if (CdicController.reading && !CdicController.seek) {
@@ -352,19 +357,6 @@ public:
 			default:
 				memory[addr] = value >> 8 & 0xFF;
 				memory[addr+1] = value & 0xFF;
-				if (addr == 0x30280C || addr == 0x30320C || addr == 0x30280C+2302 || addr == 0x30320C+2302)
-				{
-					MiniCDI::Log("[CDIC] starting audio playback from CPU");
-
-					// Set submode audio bit
-					if (addr >= 0x303200)
-						memory[0x30320A] |= 0x04;
-					else
-						memory[0x30280A] |= 0x04;
-
-					play_adpcm = true;
-					AUDCTL = 0x2800;
-				}
 				break;
 
 			case 0x303C00: case 0x303C01:
@@ -401,11 +393,27 @@ public:
 				// MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
 				DMACTL = value;
 				if (value & 0x8000) _68070->dma_call(0, 0x300000 + (value & 0x3FFF));
+
+				// If ADPCM data was transferred and is in CPU-direct mode, decode
+				if ((value & 0x3FFF) >= 0x2800 && (value & 0x3FFF) <= 0x3BFF)
+				{
+					AdpcmController.index = (value & 0x3FFF) >= 0x3200 ? 1 : 0;
+					if (AdpcmController.direct) {
+						MiniCDI::Log("[CDIC] decoding ADPCM buffer %d from DMA", AdpcmController.index);
+						disc_process_audio(AdpcmController.index);
+					}
+				}
 				break;
 
 			case 0x303FFA: case 0x303FFB:
 				MiniCDI::Log("[CDIC] AUDCTL <= %04X", value);
 				AUDCTL = value;
+				if (value == 0x2800 && !AdpcmController.direct)
+				{
+					MiniCDI::Log("[CDIC] begin ADPCM playback from CPU");
+					AdpcmController.direct = true;
+					disc_process_audio(AdpcmController.index);
+				}
 				break;
 
 			case 0x303FFC: case 0x303FFD:

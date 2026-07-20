@@ -35,6 +35,7 @@ class AdpcmDecoder
 					rk1 = rk0;
 					rk0 = sample;
 					right.push_back(sample);
+					if (low_freq) right.push_back(sample);
 				}
 				else
 				{
@@ -43,6 +44,7 @@ class AdpcmDecoder
 					lk1 = lk0;
 					lk0 = sample;
 					left.push_back(sample);
+					if (low_freq) left.push_back(sample);
 				}
 			}
 		}

@@ -57,6 +57,7 @@ public:
 
 	inline void send_play_button()
 	{
+		MiniCDI::Log("[SLAVE] report Play Button status (0xA1 ?)");
 		Ch[1].Out = { 0xA1, 0x87, 0x20, 0xFF };
 		assert_irq();
 	}

@@ -25,16 +25,15 @@ class SLAVE
 		int x, y;
 	} PointerInterface;
 	bool Disc = false;
+	FPD* fpd;
 
 	uint32_t DR[4]; // addresses to data registers
-
-	uint8_t LCD[16];
 
 	// For PointingDevice !!
 	void assert_irq() { _68070->interrupt(SCC68070::IPL_IN2N, true); }
 
 public:
-	friend class PlayerLCD;
+	friend class FPD;
 	friend class PointingDevice;
 
 	SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start) : _68070(_68070), memory(memory), PointerInterface({0})
@@ -48,11 +47,15 @@ public:
 
 	inline void reset()
 	{
-		memset(&LCD[0], 0, 16);
 		Ch[0].InSize = 0;
 		Ch[1].InSize = 0;
 		Ch[2].InSize = 0;
 		Ch[3].InSize = 0;
+	}
+
+	inline void set_fpd(FPD* fpd)
+	{
+		this->fpd = fpd;
 	}
 
 	inline void send_play_button()
@@ -121,13 +124,12 @@ public:
 								Ch[c].InSize = 0;
 								Ch[c].ReadSize = 0;
 								return;
-							} else {
-								/** Set Pointer Pos **/
-								if (PointerInterface.enabled && value >= 0xC0 && value <= 0xFF
-								 && Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-									Ch[c].InSize = 3;
-									return;
-								}
+							}
+
+							/** Set Pointer Pos **/
+							if (value >= 0xC0 && value <= 0xFF && Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
+								Ch[c].InSize = 3;
+								return;
 							}
 							break;
 
@@ -150,16 +152,26 @@ public:
 					switch (value)
 					{
 						default:
-							switch (Ch[c].InSize) {
-								case 16:
-								case 17:
-									LCD[Ch[c].In.size() - (Ch[c].InSize == 16 ? 1 : 2)] = value;
-									if (Ch[c].In.size() >= Ch[c].InSize) {
-										Ch[c].In.clear();
-										Ch[c].InSize = 0;
-										Ch[c].ReadSize = 0;
-									}
-									return;
+							if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
+								switch (Ch[c].In[0]) {
+									case 0xF0:
+										/*MiniCDI::Log("[SLAVE] set LCD (0x%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X)",
+													 Ch[c].In[0],
+													 // The following is valid for CDi 220
+													 Ch[c].In[1], Ch[c].In[2],
+													 Ch[c].In[3], Ch[c].In[4], // Digit 6
+													 Ch[c].In[5], Ch[c].In[6], // Digit 5
+													 Ch[c].In[7], Ch[c].In[8], // Digit 4
+													 Ch[c].In[9], Ch[c].In[10], // Digit 3
+													 Ch[c].In[11], Ch[c].In[12], // Digit 2
+													 Ch[c].In[13], Ch[c].In[14], // Digit 1
+													 Ch[c].In[15], Ch[c].In[16]); // Digit 0*/
+										if (fpd != NULL) fpd->update(Ch[c].In);
+										break;
+								}
+								Ch[c].In.clear();
+								Ch[c].InSize = 0;
+								Ch[c].ReadSize = 0;
 							}
 							break;
 
@@ -189,8 +201,11 @@ public:
 
 						/** Set Front Panel LCD **/
 						case 0xF0:
-							//MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
-							Ch[1].InSize = 16; // redirects LCD display input to BDR
+							//MiniCDI::Log("[SLAVE] set LCD from CDRW (0x%02X)", value);
+							// redirects LCD display input to BDR
+							Ch[1].In.clear();
+							Ch[1].In.push_back(value);
+							Ch[1].InSize = 17;
 							break;
 					}
 					break;
@@ -238,7 +253,7 @@ public:
 						/** SLAVE rev **/
 						case 0xF0:
 							MiniCDI::Log("[SLAVE] get SLAVE revision (0x%02X)", value);
-							Ch[2].Out = { 0xF0, 0x32 }; // use response data from MAME
+							Ch[2].Out = { 0xF0, 0x32 }; // use response data from cdiemu (SLAVE 3.2?)
 							assert_irq();
 							break;
 

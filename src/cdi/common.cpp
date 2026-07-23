@@ -168,6 +168,10 @@ MonoI::~MonoI()
 	m68k_set_fc_callback(NULL);
 
 	// Free peripherals and player structure
+	if (this->fpd != NULL) {
+		delete this->fpd;
+		this->fpd = NULL;
+	}
 	switch (this->board) {
 		default:
 		case CDi::MonoI:
@@ -256,8 +260,10 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 		switch (this->board) {
 			default:
 			case CDi::MonoI:
+				this->fpd = new FPD(FPD::FPD_220);
 				this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+				this->slave->set_fpd(this->fpd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
 				MiniCDI::Player.slave = this->slave;
@@ -265,8 +271,10 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 				break;
 
 			case CDi::MonoII:
+				this->fpd = new FPD(FPD::FPD_220);
 				this->dsp = new DRVDSP(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+				this->slave->set_fpd(this->fpd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
 				MiniCDI::Player.slave = this->slave;
@@ -275,14 +283,17 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 
 			case CDi::MonoIII:
 			case CDi::MonoIV:
+				this->fpd = new FPD(FPD::FPD_470_490);
 				this->ciap = new CIAP(&this->cpu, this->memory, &this->disc);
 				this->ikat = new IKAT(&this->cpu, this->memory);
+				this->ikat->set_fpd(this->fpd);
 				this->pd.IO.ikat = this->ikat;
 				this->nvram = 0x00320000;
 				MiniCDI::Player.ikat = this->ikat;
 				MiniCDI::Player.ciap = this->ciap;
 				break;
 		}
+
 		#endif
 
 		// Init Musashi last (expects memory to already be setup in player struct)

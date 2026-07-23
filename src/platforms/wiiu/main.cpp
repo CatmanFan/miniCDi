@@ -457,7 +457,7 @@ static void RUN_CDI(const std::string &discName)
 			cdi.run(1);
 			fps.update(1);
 		}
-		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_lcd() : nullptr);
+		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_fpd() : nullptr);
 
 		// Clear screen
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);

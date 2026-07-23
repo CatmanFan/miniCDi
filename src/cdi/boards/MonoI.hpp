@@ -24,7 +24,8 @@ private:
 	DRVDSP* dsp = NULL;
 	IKAT* ikat = NULL;
 	MCD212* vpu = NULL;
-	// PlayerLCD lcd;
+
+	FPD* fpd;
 
 	// Scheduler values
 	enum EventType
@@ -133,6 +134,7 @@ public:
 		nvram_save();
 		cpu.reset();
 		vpu->reset();
+		if (fpd != NULL) fpd->clear();
 
 		// Microcontroller
 		if (slave != NULL) slave->reset();
@@ -151,7 +153,7 @@ public:
 	}
 
 	inline void swap_disc(const std::string &path) {
-		if (cdic != NULL) cdic->abort();
+		if (cdic != NULL) cdic->reset();
 
 		disc.eject();
 		const bool was_disc_valid = disc.open(path);
@@ -163,14 +165,10 @@ public:
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
-	inline uint32_t* get_lcd() override {
-		/*if (slave != NULL) {
-			lcd.get_from_slave(slave);
-			return &lcd.display[0];
-		}*/
+	inline uint8_t* get_fpd() { return fpd != NULL ? fpd->get_display() : NULL; }
+	inline size_t get_fpd_width() { return fpd != NULL ? fpd->get_display_width() : 0; }
+	inline size_t get_fpd_height() { return fpd != NULL ? fpd->get_display_height() : 0; }
 
-		return NULL;
-	}
 	inline bool get_cd_read_status() override {
 		if (cdic != NULL) return cdic->is_reading();
 		if (ciap != NULL) return ciap->is_reading();

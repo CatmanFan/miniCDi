@@ -46,11 +46,10 @@ class IKAT
 		bool absolute;
 	} PointerInterface;
 	bool Disc = false;
-
-	uint8_t LCD[16];
+	FPD* fpd;
 
 public:
-	friend class PlayerLCD;
+	friend class FPD;
 	friend class PointingDevice;
 
 	IKAT(SCC68070* _68070, uint8_t* memory) : _68070(_68070), memory(memory), PointerInterface({0})
@@ -97,8 +96,6 @@ public:
 
 	inline void reset()
 	{
-		memset(&LCD[0], 0, 16);
-
 		// REMTY ON (per MC68HC05i8 datasheet)
 		Ch[0].SR |= 0b00010000;
 		Ch[1].SR |= 0b00010000;
@@ -115,6 +112,11 @@ public:
 		Ch[1].InSize = 0;
 		Ch[2].InSize = 0;
 		Ch[3].InSize = 0;
+	}
+
+	inline void set_fpd(FPD* fpd)
+	{
+		this->fpd = fpd;
 	}
 
 	inline void send_disc_status(bool value)
@@ -224,8 +226,11 @@ public:
 						{
 							/** Set Front Panel LCD **/
 							case 0x9A:
-								MiniCDI::Log("[IKAT] set LCD (0x%02X)", value);
-								Ch[1].InSize = 6; // redirects LCD display input to BDR
+								//MiniCDI::Log("[IKAT] set LCD (0x%02X)", value);
+								// redirects LCD display input to BDR
+								Ch[1].In.clear();
+								Ch[1].In.push_back(value);
+								Ch[1].InSize = 6;
 								break;
 						}
 						break;
@@ -235,15 +240,21 @@ public:
 						switch (value)
 						{
 							default:
-								switch (Ch[c].InSize) {
-									case 6:
-										LCD[Ch[c].In.size() - 1] = value;
-										if (Ch[c].In.size() >= Ch[c].InSize) {
-											Ch[c].In.clear();
-											Ch[c].InSize = 0;
-										}
-										break;
+								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
+									switch (Ch[c].In[0]) {
+										case 0x9A:
+											/*MiniCDI::Log("[SLAVE] set LCD (0x%02X:%02X%02X:%02X%02X:%02X%02X)",
+														 Ch[c].In[0],
+														 // The following is valid for CDi 490
+														 Ch[c].In[1], Ch[c].In[2], // Digit 1
+														 Ch[c].In[3], Ch[c].In[4], // Digit 2
+														 Ch[c].In[5], Ch[c].In[6]); // Digit 3*/
+											if (fpd != NULL) fpd->update(Ch[c].In);
+											break;
+									}
 								}
+								Ch[c].In.clear();
+								Ch[c].InSize = 0;
 								break;
 						}
 						break;
@@ -276,8 +287,8 @@ public:
 							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
-								Ch[c].Out = { 0xA5, 0xF3, 0x54, 0x4D };
-								PointerInterface.absolute = Ch[c].Out[2] == 0x54;
+								Ch[c].Out = { 0xA5, 0xF3, 'J', 'J' };
+								PointerInterface.absolute = Ch[c].Out[2] == 'T' || Ch[c].Out[2] == 'S';
 								poll_packet(c);
 								break;
 

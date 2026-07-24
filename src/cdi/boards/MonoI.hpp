@@ -56,6 +56,7 @@ public:
 
 	inline void run(int frames = 1) override
 	{
+		// Throttling
 		#if defined(_WIN32) || defined(__APPLE__)
 		#ifndef MINICDI_NO_THROTTLING
 		const auto t1 = std::chrono::steady_clock::now();
@@ -114,6 +115,8 @@ public:
 		// Update microcontroller
 		if (ikat != NULL) ikat->update();
 
+
+		// Throttling end
 		#if defined(_WIN32) || defined(__APPLE__)
 		#ifndef MINICDI_NO_THROTTLING
 		// integral duration: requires duration_cast

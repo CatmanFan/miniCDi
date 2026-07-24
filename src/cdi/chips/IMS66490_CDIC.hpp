@@ -52,7 +52,7 @@ class CDIC
 			return;
 
 		#ifdef MINICDI_AUDIO_SDL2
-		if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < 224)
+		if (SDL_audio_valid)
 		{
 			SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size() * sizeof(int16_t));
 			// SDL_QueueAudio(SDL_audio_id, &ADPCM.right[0], ADPCM.right.size() * sizeof(int16_t));
@@ -205,6 +205,7 @@ class CDIC
 			DBUF |= 0x4000; // send DATA to CPU
 			update_irq();
 
+			// Play the ADPCM sector if it was fetched using this method, without affecting ABUF/AUDCTL.
 			if (is_adpcm)
 				adpcm_decode_and_play(DBUF & 0x01, false);
 		}
@@ -243,7 +244,7 @@ public:
 			input.freq = 37800;
 			input.format = AUDIO_S16SYS;
 			input.channels = 1;
-			input.samples = 448;
+			input.samples = 224;
 
 			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);
 			SDL_audio_valid = SDL_audio_id > 0;

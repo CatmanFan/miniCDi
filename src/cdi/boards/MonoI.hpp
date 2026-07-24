@@ -134,6 +134,7 @@ public:
 		nvram_save();
 		cpu.reset();
 		vpu->reset();
+		if (fpd != NULL) fpd->reset();
 
 		// Microcontroller
 		if (slave != NULL) slave->reset();

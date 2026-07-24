@@ -45,6 +45,11 @@ public:
 		display.assign(get_display_width() * get_display_height(), 0x00);
 	}
 
+	inline void reset()
+	{
+		std::fill(begin(display), end(display), 0x00);
+	}
+
 	inline void update(std::deque<uint8_t> &cmd)
 	{
 		std::fill(begin(display), end(display), 0x00);

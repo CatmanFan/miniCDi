@@ -218,6 +218,8 @@ public:
 	 */
 	inline void interrupt(size_t index, bool assert)
 	{
+		if ((assert && Ipl.levels[index] > 0) || (!assert && Ipl.levels[index] == 0)) return;
+
 		switch (index)
 		{
 			default:

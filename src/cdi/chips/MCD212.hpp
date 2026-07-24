@@ -799,7 +799,9 @@ class MCD212
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
-					IT[Path] = 0b01u; if (!DI[Path]) { _68070->interrupt(SCC68070::IPL_INT1, true); }
+					IT[Path] = 0b01u;
+					if (IT[Path] && !DI[Path])
+						_68070->interrupt(SCC68070::IPL_INT1, true);
 					break;
 
 				case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
@@ -859,7 +861,9 @@ class MCD212
 
 				case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
 				case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6e: case 0x6f: // INTERRUPT
-					IT[Path] = 0b01u; if (!DI[Path]) { _68070->interrupt(SCC68070::IPL_INT1, true); }
+					IT[Path] = 0b01u;
+					if (IT[Path] && !DI[Path])
+						_68070->interrupt(SCC68070::IPL_INT1, true);
 					break;
 
 				default:
@@ -966,8 +970,8 @@ public:
 			case 0x4FFFE0:
 			case 0x4FFFE1: // CSR2R
 				const uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
+				if (IT[1] || IT[0]) _68070->interrupt(SCC68070::IPL_INT1, false);
 				BE[0] = IT[1] = IT[0] = 0;
-				if (value & 0b0110) _68070->interrupt(SCC68070::IPL_INT1, false);
 				return value;
 		}
 	}
@@ -982,8 +986,8 @@ public:
 				return 0xFF00 | (PA << 5) | (DA << 7);
 			case 0x4FFFE0: // CSR2R
 				const uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
+				if (IT[1] || IT[0]) _68070->interrupt(SCC68070::IPL_INT1, false);
 				BE[0] = IT[1] = IT[0] = 0;
-				if (value & 0b0110) _68070->interrupt(SCC68070::IPL_INT1, false);
 				return 0xFF00 | value;
 		}
 	}

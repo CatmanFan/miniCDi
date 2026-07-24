@@ -33,13 +33,24 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 
 Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated.
 
+### Profiling
+Time taken to render a single frame on:
+
+* Windows (x64, Nvidia + Intel i5-12400F): ***~1.7ms*** (fullspeed)
+* Wii (vWii overclock): ***~33.77ms*** (~29 fps)
+* Wii (normal): ***~56.44ms*** (~18 fps)
+* Wii U (WUHB): ***~58.51ms*** (~17 fps)
+* New 3DS: ***~78.79ms*** (~13 fps)
+* Old 3DS: ***~237ms*** (~4 fps)
+
+All profiled times with the exception of the Windows version are longer than the minimum needed for throttling (16.667ms or 1/60 secs).
+
 ## Credits
 Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me where possible on this project. This project uses partial emulation code ported from the MAME CD-i driver ([see license](https://github.com/mamedev/mame?tab=License-1-ov-file#readme)) as well as Stovent's implementations of the relevant components in [CeDImu](https://github.com/Stovent/CeDImu), and is also based off of CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documentation of several components including the MCD212, SCC68070 (UART), IKAT and SLAVE and Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer)). The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.
 
 ## To-Do
 
 ### Before official v0.1 beta release
-- [X] Fix audio
 - [ ] Update compatibility information
 
 ### Potential

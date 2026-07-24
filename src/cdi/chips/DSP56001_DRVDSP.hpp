@@ -62,6 +62,15 @@ public:
 	{
 	}
 
+	inline void reset()
+	{
+		ICR = 0;
+		CVR = 0;
+		ISR = 0x02;
+		IVR = 0;
+		RTX = 0;
+	}
+
 	inline void tick()
 	{
 		// TO-DO

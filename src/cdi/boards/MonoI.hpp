@@ -18,12 +18,12 @@
 class MonoI : public CDi
 {
 private:
-	CDIC* cdic = NULL;
-	SLAVE* slave = NULL;
-	CIAP* ciap = NULL;
-	DRVDSP* dsp = NULL;
-	IKAT* ikat = NULL;
 	MCD212* vpu = NULL;
+	SLAVE* slave = NULL;
+	IKAT* ikat = NULL;
+	CDIC* cdic = NULL;
+	DRVDSP* dsp = NULL;
+	CIAP* ciap = NULL;
 
 	FPD* fpd;
 
@@ -141,6 +141,8 @@ public:
 
 		// CD-Audio
 		if (cdic != NULL) cdic->reset();
+		if (dsp != NULL) dsp->reset();
+		if (ciap != NULL) ciap->reset();
 
 		event_cycles[SECTOR] = event_rates[SECTOR];
 		event_cycles[VPU] = event_rates[VPU];

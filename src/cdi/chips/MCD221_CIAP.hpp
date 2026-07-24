@@ -206,6 +206,31 @@ public:
 	{
 	}
 
+	inline void reset()
+	{
+		CdStatus = {0};
+		IER = 0;
+		ISR = 0;
+		TACS = 0;
+		AACS = 0;
+		TCM1 = 0;
+		ACM1 = 0;
+		ACM2 = 0;
+		FILE = 0;
+		BMAN = 0x0054; // default starting value according to cdiemu ?
+		CCR = 0;
+		A_SHDW = 0;
+		AP_Left = 0;
+		AP_Right = 0;
+		AP_Vol = 0;
+		APCR = 0;
+		ACONF = 0;
+		ASTAT = 0;
+		ICR = 0;
+		DMACTL = 0;
+		DLOAD = 0;
+	}
+
 	inline void tick()
 	{
 		disc_process_sector();

@@ -54,7 +54,7 @@ public:
 	{
 		std::fill(begin(display), end(display), 0x00);
 
-		for (size_t i = cmd.size() - 2, digit = 0; i > 0 && digit < (cmd.size()-1)/2; i-=2, digit++)
+		for (size_t i = cmd.size() - 2, digit = 0; i > 0 && digit < std::min((cmd.size()-1)/2, digit_count); i-=2, digit++)
 		{
 			uint8_t glyph[digit_width*digit_height];
 			memset(glyph, 0, sizeof(glyph));

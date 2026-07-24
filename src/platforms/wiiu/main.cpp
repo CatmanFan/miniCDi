@@ -22,6 +22,7 @@
 #include <swkbd/rpl_interface.h>
 #include <coreinit/memdefaultheap.h>
 #include <coreinit/userconfig.h>
+#include <coreinit/time.h>
 
 #ifdef MINICDI_USE_IMGUI
 #include "imgui.h"
@@ -316,55 +317,56 @@ public:
 class EmuDisplay
 {
 	SDL_Texture* texture = nullptr;
-	SDL_Texture* lcd = nullptr;
+	SDL_Texture* texture_fpd = nullptr;
 
 public:
-	void update(void* display_output, size_t width, void* lcd_output)
+	void draw(void* display_output, size_t width)
 	{
-		if (display_output) {
-			// Draw screen
+		if (display_output)
+		{
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
 
-			// Draw LCD if available
-			/*if (lcd_output)
+			#ifdef MINICDI_NATIVERES
+			SDL_Rect dest = {1920/2-384,1080/2-280, 384*2,280*2};
+			#else
+			SDL_Rect dest =
 			{
-				SDL_UpdateTexture(this->lcd, NULL, lcd_output, (20*7)*sizeof(uint32_t));
-			}*/
+				MiniCDI::Config::PAL ? 219 : 96,
+				MiniCDI::Config::PAL ? 0 : -90,
+				MiniCDI::Config::PAL ? 1481 : 1728,
+				MiniCDI::Config::PAL ? 1080 : 1260
+			};
+			#endif
+			SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 		}
 	}
 
-	void draw()
+	void draw_fpd(void* display_output, int width, int height)
 	{
-		#ifdef MINICDI_NATIVERES
-		SDL_Rect dest = {1920/2-384,1080/2-280, 384*2,280*2};
-		#else
-		SDL_Rect dest =
+		if (display_output)
 		{
-			MiniCDI::Config::PAL ? 219 : 96,
-			MiniCDI::Config::PAL ? 0 : -90,
-			MiniCDI::Config::PAL ? 1481 : 1728,
-			MiniCDI::Config::PAL ? 1080 : 1260
-		};
-		#endif
-		SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
-
-		if (MiniCDI::Config::ShowFPD)
-		{
-			dest = {1920-(20*7), 0, (20*7), 22};
-			SDL_RenderCopy(SDL_renderer, this->lcd, NULL, &dest);
+			SDL_UpdateTexture(this->texture_fpd, NULL, display_output, width*sizeof(uint8_t));
+			SDL_Rect dest = {
+				1920-width*2, 1080-height*2, width*2, height*2
+			};
+			SDL_RenderCopy(SDL_renderer, this->texture_fpd, NULL, &dest);
 		}
+	}
+
+	void add_fpd(int width, int height)
+	{
+		this->texture_fpd = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
 	}
 
 	EmuDisplay()
 	{
 		this->texture = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
-		this->lcd = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
 	}
 
 	~EmuDisplay()
 	{
+		if (this->texture_fpd) SDL_DestroyTexture(this->texture_fpd);
 		if (this->texture) SDL_DestroyTexture(this->texture);
-		if (this->lcd) SDL_DestroyTexture(this->lcd);
 	}
 };
 
@@ -417,7 +419,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-	MiniCDI::Config::ShowFPD = false;
+	MiniCDI::Config::ShowFPD = true;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
@@ -430,6 +432,7 @@ static void RUN_CDI(const std::string &discName)
 
 	FPS fps;
 	EmuDisplay screen;
+	screen.add_fpd(cdi.get_fpd_width(), cdi.get_fpd_height());
 	/*bool paused = false;
 	bool touchDown = false;*/
 
@@ -457,12 +460,14 @@ static void RUN_CDI(const std::string &discName)
 			cdi.run(1);
 			fps.update(1);
 		}
-		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowFPD ? cdi.get_fpd() : nullptr);
 
-		// Clear screen
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
-		screen.draw();
+
+		screen.draw(cdi.get_display(), cdi.get_display_width());
+		if (MiniCDI::Config::ShowFPD && cdi.get_fpd())
+			screen.draw_fpd(cdi.get_fpd(), cdi.get_fpd_width(), cdi.get_fpd_height());
+
 		/*if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};
 			SDL_SetRenderDrawColor(SDL_renderer, 0,0,0,192);
@@ -475,6 +480,7 @@ static void RUN_CDI(const std::string &discName)
 			SDL_print(2,2,25,{255,255,255,255},"FPS:",true);
 			SDL_print(72,2,25,{255,255,0,255},std::to_string(fps.get()),true);
 		}
+
 		SDL_RenderPresent(SDL_renderer);
 	}
 }

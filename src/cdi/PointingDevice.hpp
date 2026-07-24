@@ -159,8 +159,12 @@ public:
 		}
 	}
 
-	inline void set_coord(int x, int y)
+	inline void set_coord(int x, int y, int w, int h)
 	{
+		// Convert to native CD-i highres
+		x = static_cast<int>((float)x / (float)w * 768.0f);
+		y = static_cast<int>((float)y / (float)h * 560.0f);
+
 		if (x < 0 || y < 0 || x > MAX_POINTER_X || y > MAX_POINTER_Y) return;
 
 		poll_movement = this->xA != x || this->yA != y;

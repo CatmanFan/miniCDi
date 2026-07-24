@@ -57,10 +57,10 @@ class SDL
 	SDL_Window* window = nullptr;
 	SDL_Renderer* renderer = nullptr;
 	SDL_Texture* texture = nullptr;
-	SDL_Texture* lcd = nullptr;
+	SDL_Texture* texture_fpd = nullptr;
 
 public:
-	void update(void* display_output, int width, void* lcd_output, bool cd_read_status)
+	void update(void* display_output, int width)
 	{
 		if (display_output) {
 			// Clear screen
@@ -75,44 +75,39 @@ public:
 			#else
 			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
 			#endif
-
-			// Draw LCD if available
-			if (lcd_output != NULL)
-			{
-				SDL_UpdateTexture(this->lcd, NULL, lcd_output, (20*7)*sizeof(uint32_t));
-				#ifdef MINICDI_NATIVERES
-				dest = {
-				#else
-				SDL_Rect dest = {
-				#endif
-					640-(20*7), 480-22, (20*7), 22
-				};
-				SDL_RenderCopy(this->renderer, this->lcd, NULL, &dest);
-			}
-
-			#ifdef MINICDI_CDINDICATOR
-			SDL_Rect cd_led = {0,0,24,24};
-			if (cd_read_status)
-				SDL_SetRenderDrawColor(this->renderer, 0,255,0,128);
-			else
-				SDL_SetRenderDrawColor(this->renderer, 0,0,0,128);
-			SDL_RenderFillRect(this->renderer, &cd_led);
-			#endif
-
-			SDL_RenderPresent(this->renderer);
 		}
+	}
+
+	void update_fpd(void* display_output, int width, int height)
+	{
+		if (display_output) {
+			SDL_UpdateTexture(this->texture_fpd, NULL, display_output, width*sizeof(uint8_t));
+			SDL_Rect dest = {
+				640-width*2, 480-height*2, width*2, height*2
+			};
+			SDL_RenderCopy(this->renderer, this->texture_fpd, NULL, &dest);
+		}
+	}
+
+	void add_fpd(int width, int height)
+	{
+		this->texture_fpd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
+	}
+
+	void draw()
+	{
+		SDL_RenderPresent(this->renderer);
 	}
 
 	SDL()
 	{
 		if (SDL_Init(SDL_INIT_VIDEO) == 0) {
-			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+			// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 			SDL_ShowCursor(SDL_DISABLE);
 
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
 			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
-			this->lcd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, (20*7), 22);
 
 			SDL_SetRenderDrawBlendMode(this->renderer, SDL_BLENDMODE_BLEND);
 		}
@@ -120,7 +115,7 @@ public:
 
 	~SDL()
 	{
-		if (this->lcd) SDL_DestroyTexture(this->lcd);
+		if (this->texture_fpd) SDL_DestroyTexture(this->texture_fpd);
 		if (this->texture) SDL_DestroyTexture(this->texture);
 		if (this->renderer) SDL_DestroyRenderer(this->renderer);
 		if (this->window) SDL_DestroyWindow(this->window);
@@ -218,7 +213,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((appPath + "log.txt").c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = false;
-	MiniCDI::Config::ShowFPD = false;
+	MiniCDI::Config::ShowFPD = true;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? appPath + "rom/" + biosName + ".nvram" : "";
 
 	// Declare the CD-i machine
@@ -232,6 +227,7 @@ static void RUN_CDI(const std::string &discName)
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;
+	screen.add_fpd(cdi.get_fpd_width(), cdi.get_fpd_height());
 	#endif
 
 	#ifdef HW_RVL
@@ -264,7 +260,7 @@ static void RUN_CDI(const std::string &discName)
 				if (pointer && data->ir.valid) {
 					cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_A);
 					cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_B);
-					cdi.pd.set_coord(data->ir.x / 640.0f, data->ir.y / 480.0f);
+					cdi.pd.set_coord(data->ir.x, data->ir.y, 640, 480);
 				} else {
 					cdi.pd.set_button(PointingDevice::Button1, held & WPAD_BUTTON_1);
 					cdi.pd.set_button(PointingDevice::Button2, held & WPAD_BUTTON_2);
@@ -300,7 +296,11 @@ static void RUN_CDI(const std::string &discName)
 		#ifdef MINICDI_DEBUG
 		VIDEO_WaitVSync();
 		#else
-		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowFPD ? cdi.get_fpd() : nullptr, cdi.get_cd_read_status());
+		screen.update(cdi.get_display(), cdi.get_display_width());
+		if (MiniCDI::Config::ShowFPD && cdi.get_fpd())
+			screen.update_fpd(cdi.get_fpd(), cdi.get_fpd_width(), cdi.get_fpd_height());
+
+		screen.draw();
 		#endif
 	}
 }

@@ -260,7 +260,7 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 		switch (this->board) {
 			default:
 			case CDi::MonoI:
-				this->fpd = new FPD(FPD::FPD_220_00);
+				this->fpd = new FPD(FPD::FPD_220_20);
 				this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
 				this->slave->set_fpd(this->fpd);

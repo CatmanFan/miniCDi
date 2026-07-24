@@ -11,8 +11,9 @@ class FPD
 
 public:
 	enum FPDType {
-		FPD_220_00 = 0,
+		FPD_220_20 = 0,
 		FPD_220_40,
+		// FPD_450 (ABSENT)
 		FPD_470 // 490 uses same LCD?
 	};
 	enum FPDType type;
@@ -23,7 +24,7 @@ public:
 		switch (this->type)
 		{
 			default:
-			case FPD_220_00:
+			case FPD_220_20:
 				digit_width = 5;
 				digit_height = 7;
 				digit_count = 7;
@@ -62,7 +63,7 @@ public:
 			switch (type)
 			{
 				default:
-				case FPD_220_00:
+				case FPD_220_20:
 				case FPD_220_40:
 					if (cmd[i] & 0x01)
 					{

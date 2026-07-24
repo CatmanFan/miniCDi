@@ -218,7 +218,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((appPath + "log.txt").c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = false;
-	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::ShowFPD = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? appPath + "rom/" + biosName + ".nvram" : "";
 
 	// Declare the CD-i machine
@@ -300,7 +300,7 @@ static void RUN_CDI(const std::string &discName)
 		#ifdef MINICDI_DEBUG
 		VIDEO_WaitVSync();
 		#else
-		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_fpd() : nullptr, cdi.get_cd_read_status());
+		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowFPD ? cdi.get_fpd() : nullptr, cdi.get_cd_read_status());
 		#endif
 	}
 }

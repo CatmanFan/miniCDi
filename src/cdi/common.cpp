@@ -8,7 +8,7 @@ namespace MiniCDI
 		bool TestPlug = false;
 		bool PAL = true;
 		bool ShowFPS = false;
-		bool ShowLCD = false;
+		bool ShowFPD = false;
 		bool AnalogColors = false;
 		size_t FrameSkip = 0;
 		int PointerAdvance = 1;
@@ -260,7 +260,7 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 		switch (this->board) {
 			default:
 			case CDi::MonoI:
-				this->fpd = new FPD(FPD::FPD_220);
+				this->fpd = new FPD(FPD::FPD_220_00);
 				this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
 				this->slave->set_fpd(this->fpd);
@@ -271,7 +271,7 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 				break;
 
 			case CDi::MonoII:
-				this->fpd = new FPD(FPD::FPD_220);
+				this->fpd = new FPD(FPD::FPD_220_40);
 				this->dsp = new DRVDSP(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
 				this->slave->set_fpd(this->fpd);
@@ -283,7 +283,7 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 
 			case CDi::MonoIII:
 			case CDi::MonoIV:
-				this->fpd = new FPD(FPD::FPD_470_490);
+				this->fpd = new FPD(FPD::FPD_470);
 				this->ciap = new CIAP(&this->cpu, this->memory, &this->disc);
 				this->ikat = new IKAT(&this->cpu, this->memory);
 				this->ikat->set_fpd(this->fpd);

@@ -116,10 +116,10 @@ public:
 					{
 						default:
 							if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
-								PointerInterface.x = ((Ch[c].In[1] & 0x70) << 3) | (Ch[c].In[2] & 0x7F);
-								PointerInterface.y = ((Ch[c].In[0] & 0x3F) << 4) | (Ch[c].In[1] & 0x0F);
-								PointerInterface.posChanged = true;
-								//MiniCDI::Log("[SLAVE] pointer x=%d,y=%d", PointerInterface.x, PointerInterface.y);
+								PointerInterface.x = ((Ch[c].In[1] << 3) & 0b1110000000) | (Ch[c].In[2] & 0b01111111);
+								PointerInterface.y = ((Ch[c].In[0] << 4) & 0b1111110000) | (Ch[c].In[1] & 0b00001111);
+								// PointerInterface.posChanged = true;
+								// MiniCDI::Log("[SLAVE] set pointer pos (x=%d,y=%d)", PointerInterface.x, PointerInterface.y);
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
 								Ch[c].ReadSize = 0;
@@ -155,17 +155,9 @@ public:
 							if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
 								switch (Ch[c].In[0]) {
 									case 0xF0:
-										/*MiniCDI::Log("[SLAVE] set LCD (0x%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X)",
-													 Ch[c].In[0],
-													 // The following is valid for CDi 220
-													 Ch[c].In[1], Ch[c].In[2],
-													 Ch[c].In[3], Ch[c].In[4], // Digit 6
-													 Ch[c].In[5], Ch[c].In[6], // Digit 5
-													 Ch[c].In[7], Ch[c].In[8], // Digit 4
-													 Ch[c].In[9], Ch[c].In[10], // Digit 3
-													 Ch[c].In[11], Ch[c].In[12], // Digit 2
-													 Ch[c].In[13], Ch[c].In[14], // Digit 1
-													 Ch[c].In[15], Ch[c].In[16]); // Digit 0*/
+									case 0xF2:
+									case 0xF6:
+										MiniCDI::Log("[SLAVE] set LCD (0x%02X)", Ch[c].In[0]);
 										if (fpd != NULL) fpd->update(Ch[c].In);
 										break;
 								}
@@ -176,10 +168,11 @@ public:
 							break;
 
 						/** Set Front Panel LCD **/
-						case 0xF0:
+						case 0xF0: // Mono-I?
+						case 0xF6: // Mono-II?
 							if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
 								//MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
-								Ch[c].InSize = 17;
+								Ch[c].InSize = value == 0xF6 ? 9 : 17;
 							}
 							break;
 
@@ -201,11 +194,13 @@ public:
 
 						/** Set Front Panel LCD **/
 						case 0xF0:
+						case 0xF2: // Mono-I? (used at boot)
+						case 0xF6:
 							//MiniCDI::Log("[SLAVE] set LCD from CDRW (0x%02X)", value);
 							// redirects LCD display input to BDR
 							Ch[1].In.clear();
 							Ch[1].In.push_back(value);
-							Ch[1].InSize = 17;
+							Ch[1].InSize = value == 0xF6 || value == 0xF2 ? 9 : 17;
 							break;
 					}
 					break;

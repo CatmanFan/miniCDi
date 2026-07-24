@@ -45,6 +45,7 @@ Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://git
 ### Potential
 - [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
 - [ ] Emulate timekeeper on Mono-I/Mono-IV? (should handle NVRAM saving)
+- [ ] Fix PD on Mono-IV
 - Disc-related:
    - [ ] CDIC: Address slowdown when reading sectors (not necessary anymore?)
    - [ ] CIAP: Read discs properly

@@ -11,8 +11,9 @@ class FPD
 
 public:
 	enum FPDType {
-		FPD_220 = 0,
-		FPD_470_490
+		FPD_220_00 = 0,
+		FPD_220_40,
+		FPD_470 // 490 uses same LCD?
 	};
 	enum FPDType type;
 
@@ -22,34 +23,33 @@ public:
 		switch (this->type)
 		{
 			default:
-			case FPD_220:
+			case FPD_220_00:
 				digit_width = 5;
 				digit_height = 7;
-				// digit_count = 7;
+				digit_count = 7;
 				break;
-			case FPD_470_490:
+			case FPD_220_40:
 				digit_width = 5;
 				digit_height = 7;
-				// digit_count = 3;
+				digit_count = 7;
+				break;
+			case FPD_470:
+				digit_width = 5;
+				digit_height = 7;
+				digit_count = 3;
 				break;
 		}
-		digit_count = 6;
 		digit_spacingX = 3;
 		digit_spacingY = 1;
 
 		display.assign(get_display_width() * get_display_height(), 0x00);
 	}
 
-	inline void clear()
-	{
-		std::fill(begin(display), end(display), 0x00);
-	}
-
 	inline void update(std::deque<uint8_t> &cmd)
 	{
 		std::fill(begin(display), end(display), 0x00);
 
-		for (size_t i = cmd.size() - 2, digit = 0; i > 0 && digit < digit_count; i-=2, digit++)
+		for (size_t i = cmd.size() - 2, digit = 0; i > 0 && digit < (cmd.size()-1)/2; i-=2, digit++)
 		{
 			uint8_t glyph[digit_width*digit_height];
 			memset(glyph, 0, sizeof(glyph));
@@ -57,7 +57,8 @@ public:
 			switch (type)
 			{
 				default:
-				case FPD_220:
+				case FPD_220_00:
+				case FPD_220_40:
 					if (cmd[i] & 0x01)
 					{
 						glyph[0*digit_width + 1] = 0xFF;
@@ -131,13 +132,13 @@ public:
 						glyph[4*digit_width + 1] = 0xFF;
 						glyph[5*digit_width + 1] = 0xFF;
 					}
-					if ((cmd[i+1] & 0x20) && !(cmd[i+1] & 0x01))
+					if ((cmd[i+1] & 0x20) /*&& !(cmd[i+1] & 0x01)*/)
 					{
 						glyph[3*digit_width + 2] = 0xFF;
 					}
 					break;
 
-				case FPD_470_490:
+				case FPD_470:
 					if (cmd[i+1] & 0x08)
 					{
 						glyph[1*digit_width + 2] = 0xFF;

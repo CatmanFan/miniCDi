@@ -348,7 +348,7 @@ public:
 		#endif
 		SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 
-		if (MiniCDI::Config::ShowLCD)
+		if (MiniCDI::Config::ShowFPD)
 		{
 			dest = {1920-(20*7), 0, (20*7), 22};
 			SDL_RenderCopy(SDL_renderer, this->lcd, NULL, &dest);
@@ -417,7 +417,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-	MiniCDI::Config::ShowLCD = false;
+	MiniCDI::Config::ShowFPD = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
@@ -457,7 +457,7 @@ static void RUN_CDI(const std::string &discName)
 			cdi.run(1);
 			fps.update(1);
 		}
-		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowLCD ? cdi.get_fpd() : nullptr);
+		screen.update(cdi.get_display(), cdi.get_display_width(), MiniCDI::Config::ShowFPD ? cdi.get_fpd() : nullptr);
 
 		// Clear screen
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);

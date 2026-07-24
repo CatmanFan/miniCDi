@@ -54,7 +54,7 @@ public:
 
 	void add_fpd(int width, int height)
 	{
-		this->FPD.window = SDL_CreateWindow("FPD", 32, 32, width*4, height*4, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
+		this->FPD.window = SDL_CreateWindow("FPD", 32, 32, width*3, height*3, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
 		this->FPD.renderer = SDL_CreateRenderer(this->FPD.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->FPD.texture = SDL_CreateTexture(this->FPD.renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
 	}
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
 	MiniCDI::Config::LogFile = NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = false;
-	MiniCDI::Config::ShowLCD = true;
+	MiniCDI::Config::ShowFPD = true;
 	MiniCDI::Config::NvramFile = "";
 
 	const std::filesystem::path biosPath = argv[1];
@@ -155,14 +155,14 @@ int main(int argc, char** argv)
 
 					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
 					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
-					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowLCD = !MiniCDI::Config::ShowLCD;
+					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowFPD = !MiniCDI::Config::ShowFPD;
 					break;
 
 				case SDL_WINDOWEVENT:
 					if (e.window.event == SDL_WINDOWEVENT_CLOSE)
 					{
 						if (e.window.windowID == SDL_GetWindowID(screen.FPD.window))
-							MiniCDI::Config::ShowLCD = false;
+							MiniCDI::Config::ShowFPD = false;
 						else if (e.window.windowID == SDL_GetWindowID(screen.Video.window))
 							has_quit = true;
 					}
@@ -197,15 +197,15 @@ int main(int argc, char** argv)
 		screen.update_video(cdi.get_display(), cdi.get_display_width());
 
 		// FPD handling
-		if (MiniCDI::Config::ShowLCD && cdi.get_fpd())
+		if (MiniCDI::Config::ShowFPD && cdi.get_fpd())
 		{
 			if (screen.FPD.window == nullptr)
 				screen.add_fpd(cdi.get_fpd_width(), cdi.get_fpd_height());
 			else
 				SDL_ShowWindow(screen.FPD.window);
 		}
-		if (!MiniCDI::Config::ShowLCD && screen.FPD.window) SDL_HideWindow(screen.FPD.window);
-		if (MiniCDI::Config::ShowLCD && cdi.get_fpd()) screen.update_fpd(cdi.get_fpd(), cdi.get_fpd_width());
+		if (!MiniCDI::Config::ShowFPD && screen.FPD.window) SDL_HideWindow(screen.FPD.window);
+		if (MiniCDI::Config::ShowFPD && cdi.get_fpd()) screen.update_fpd(cdi.get_fpd(), cdi.get_fpd_width());
 	}
 	
 	return 0;

@@ -32,22 +32,12 @@ public:
 
 	inline void send_packet()
 	{
-		uint8_t x, y;
-		if (absolute)
-		{
-			x = std::clamp(static_cast<int>((xA / 768.0f) * 0x3FF), 0, 0x3FF);
-			y = std::clamp(static_cast<int>((yA / 560.0f) * 0x3FF), 0, 0x3FF);
-		}
-		else
-		{
-			x = xR > 0 ? std::clamp(xR, 0x01, 0x7F) : xR < 0 ? std::clamp(0x100 + xR, 0x80, 0xFF) : 0;
-			y = yR > 0 ? std::clamp(yR, 0x01, 0x7F) : yR < 0 ? std::clamp(0x100 + yR, 0x80, 0xFF) : 0;
-		}
+		uint16_t x, y;
 
 		if (IO.slave != NULL) {
 			if (IO.slave->PointerInterface.posChanged) {
-				// x = IO.slave->PointerInterface.x;
-				// y = IO.slave->PointerInterface.y;
+				xA = IO.slave->PointerInterface.x;
+				yA = IO.slave->PointerInterface.y;
 				IO.slave->PointerInterface.posChanged = false;
 			}
 
@@ -57,13 +47,25 @@ public:
 					IO.slave->PointerInterface.connected = true;
 
 					// Send identification byte to SLAVE
-					if (absolute) IO.slave->Ch[0].Out = {0b11010100}; // 'T'
-					else IO.slave->Ch[0].Out = {0b11001010}; // 'J'
+					x = MAX_POINTER_X/2;
+					y = MAX_POINTER_Y/2;
+					IO.slave->Ch[0].Out =
+					{
+						(uint8_t)((absolute ? 'T' : 'J') | 0x80),
+						(uint8_t)((x >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
+						(uint8_t)(x & 0x7f),
+						(uint8_t)(y >> 7 & 0x07),
+						(uint8_t)(y & 0x7f)
+					};
 					IO.slave->assert_irq();
 				}
 
 				else if (poll_movement || poll_stationary || poll_state_changed)
 				{
+					MiniCDI::Log("[PD] x=%d,y=%d", xA, yA);
+					x = xA;
+					y = yA;
+
 					// Convert to SLAVE response
 					IO.slave->Ch[0].Out =
 					{
@@ -79,6 +81,17 @@ public:
 
 		else if (IO.ikat != NULL) {
 			if (IO.ikat->PointerInterface.connected && (poll_movement || poll_stationary || poll_state_changed)) {
+				if (absolute)
+				{
+					x = std::clamp(static_cast<int>((xA / 768.0f) * 0x3FF), 0, 0x3FF);
+					y = std::clamp(static_cast<int>((yA / 560.0f) * 0x3FF), 0, 0x3FF);
+				}
+				else
+				{
+					x = xR > 0 ? std::clamp(xR, 0x01, 0x7F) : xR < 0 ? std::clamp(0x100 + xR, 0x80, 0xFF) : 0;
+					y = yR > 0 ? std::clamp(yR, 0x01, 0x7F) : yR < 0 ? std::clamp(0x100 + yR, 0x80, 0xFF) : 0;
+				}
+
 				// Convert to IKAT response
 				if (absolute)
 				{
@@ -98,8 +111,7 @@ public:
 					{
 						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 6) | (y & 0b11000000 >> 4)),
 						(uint8_t)(x & 0b00111111),
-						(uint8_t)(y & 0b00111111),
-						0,
+						(uint8_t)(y & 0b00111111)
 					};
 				}
 				IO.ikat->poll_packet(1);

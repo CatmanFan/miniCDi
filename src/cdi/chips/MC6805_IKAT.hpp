@@ -16,13 +16,13 @@ class IKAT
 
 	struct
 	{
-		uint8_t DR; // Data Register
-		uint8_t SR; // Status Register. for channel Status
+		uint8_t DR = 0; // Data Register
+		uint8_t SR = 0; // Status Register. for channel Status
 
 		std::deque<uint8_t> In;
 		std::deque<uint8_t> Out;
-		size_t InSize;
-		size_t Delay;
+		size_t InSize = 0;
+		size_t Delay = 0;
 	} Ch[4];
 
 	uint8_t ISR;

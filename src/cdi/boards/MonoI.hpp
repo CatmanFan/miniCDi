@@ -119,8 +119,8 @@ public:
 		// integral duration: requires duration_cast
 		const auto t2 = std::chrono::steady_clock::now();
 		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-		if (fp_ms.count() < (/*MiniCDI::Config::PAL ? 20.0 :*/ 16.67)) {
-			const int wait_ms = (int)((/*MiniCDI::Config::PAL ? 20.0 :*/ 16.67) - fp_ms.count());
+		if (fp_ms.count() < (1.0f/60.0f)) {
+			const int wait_ms = (int)((1.0f/60.0f) - fp_ms.count());
 			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 		}
 		#endif

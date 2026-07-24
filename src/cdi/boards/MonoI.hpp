@@ -115,7 +115,6 @@ public:
 		// Update microcontroller
 		if (ikat != NULL) ikat->update();
 
-
 		// Throttling end
 		#if defined(_WIN32) || defined(__APPLE__)
 		#ifndef MINICDI_NO_THROTTLING

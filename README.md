@@ -39,7 +39,7 @@ Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://git
 ## To-Do
 
 ### Before official v0.1 beta release
-- [ ] Fix audio
+- [X] Fix audio
 - [ ] Update compatibility information
 
 ### Potential

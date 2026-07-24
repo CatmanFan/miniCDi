@@ -34,7 +34,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated.
 
 ### Profiling
-Time taken to render a single frame on:
+Time taken to process and render a single frame on:
 
 * Windows (x64, Nvidia + Intel i5-12400F): ***~1.7ms*** (fullspeed)
 * Wii (vWii overclock): ***~33.77ms*** (~29 fps)

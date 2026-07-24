@@ -356,11 +356,13 @@ public:
 	void add_fpd(int width, int height)
 	{
 		this->texture_fpd = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
+		SDL_SetTextureScaleMode(this->texture_fpd, SDL_ScaleModeNearest);
 	}
 
 	EmuDisplay()
 	{
 		this->texture = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
+		SDL_SetTextureScaleMode(this->texture, SDL_ScaleModeLinear);
 	}
 
 	~EmuDisplay()

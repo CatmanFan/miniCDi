@@ -92,6 +92,7 @@ public:
 	void add_fpd(int width, int height)
 	{
 		this->texture_fpd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
+		SDL_SetTextureScaleMode(this->texture_fpd, SDL_ScaleModeNearest);
 	}
 
 	void draw()
@@ -108,6 +109,7 @@ public:
 			this->window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
 			this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
 			this->texture = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
+			SDL_SetTextureScaleMode(this->texture, SDL_ScaleModeLinear);
 
 			SDL_SetRenderDrawBlendMode(this->renderer, SDL_BLENDMODE_BLEND);
 		}

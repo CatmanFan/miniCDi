@@ -28,13 +28,17 @@ class IKAT
 	uint8_t ISR;
 	uint8_t IMR;
 	uint8_t MR; // always 8F (in "set on Receiver Ready" interrupt mode and enable all channels)
+	bool ISR_triggered = false;
 
 	inline void set_ISR(uint8_t flag)
 	{
 		ISR |= flag;
 		//MiniCDI::Log("[IKAT] ISR %02X |= IMR %02X", ISR, IMR);
-		if (IMR & flag)
+		if ((IMR & flag) && !ISR_triggered)
+		{
 			_68070->interrupt(SCC68070::IPL_IN2N, true);
+			ISR_triggered = true;
+		}
 	}
 
 	struct
@@ -155,6 +159,12 @@ public:
 					}
 					else
 						Ch[c].DR = 0xFF;
+
+					if (ISR_triggered)
+					{
+						_68070->interrupt(SCC68070::IPL_IN2N, false);
+						ISR_triggered = false;
+					}
 
 					//MiniCDI::Log("[IKAT] %sDRR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;

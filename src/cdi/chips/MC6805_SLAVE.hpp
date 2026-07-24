@@ -30,7 +30,13 @@ class SLAVE
 	uint32_t DR[4]; // addresses to data registers
 
 	// For PointingDevice !!
-	void assert_irq() { _68070->interrupt(SCC68070::IPL_IN2N, true); }
+	inline void assert_irq() {
+		if (!asserted_irq) {
+			_68070->interrupt(SCC68070::IPL_IN2N, true);
+			asserted_irq = true;
+		}
+	}
+	bool asserted_irq = false;
 
 public:
 	friend class FPD;
@@ -81,9 +87,6 @@ public:
 		{
 			size_t c = (addr - DR[0]) / 2;
 
-			// deassert IRQ
-			_68070->interrupt(SCC68070::IPL_IN2N, false);
-
 			if (Ch[c].Out.size() > 0)
 			{
 				//MiniCDI::Log("[SLAVE] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].Out[0]);
@@ -94,6 +97,12 @@ public:
 			}
 			else
 				memory[DR[c]] = 0xFF;
+
+			// deassert IRQ
+			if (asserted_irq) {
+				_68070->interrupt(SCC68070::IPL_IN2N, false);
+				asserted_irq = false;
+			}
 		}
 
 		return memory[addr];
@@ -218,6 +227,7 @@ public:
 											Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
 										else
 											Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+										assert_irq();
 										break;
 									case 0xB1:
 										MiniCDI::Log("[SLAVE] get disc base (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
@@ -271,7 +281,7 @@ public:
 						case 0xF6:
 							MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
 							Ch[2].Out = { 0xF6, (uint8_t)(MiniCDI::Config::PAL ? 0x02 : 0x01) };
-							assert_irq(); // interrupt not required on MAME ?
+							// assert_irq(); // interrupt not required on MAME ?
 							break;
 
 						/** Enable Polling **/

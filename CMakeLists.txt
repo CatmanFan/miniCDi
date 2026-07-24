@@ -209,6 +209,7 @@ if (NINTENDO_WIIU)
 	include_directories(${DEVKITPRO}/portlibs/wiiu/include ${FREETYPE_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2TTF_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -lSDL2_ttf -lfreetype -lpng -lz -lm -lharfbuzz -lbrotlidec -lbrotlicommon -lbz2 -lwut)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
+	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
 	# Source files/directories
 	# ************

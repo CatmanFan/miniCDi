@@ -431,10 +431,15 @@ public:
 				if (!(value & 0x2000))
 					SoundmapUnit.active = false;
 
-				if (value == 0x2800 && !SoundmapUnit.active)
+				if (value == 0x2800)
 				{
-					MiniCDI::Log("[CDIC] start audio playback from soundmap");
-					SoundmapUnit.active = true;
+					if (!SoundmapUnit.active)
+					{
+						MiniCDI::Log("[CDIC] start audio playback from soundmap");
+						SoundmapUnit.active = true;
+					}
+					else
+						SoundmapUnit.buffer = !SoundmapUnit.buffer;
 				}
 				break;
 

@@ -63,9 +63,8 @@ public:
 		#endif
 		#endif
 
-		do
+		for (int frames_left = frames; frames_left > 0; frames_left--)
 		{
-			frames--;
 			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
 				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
@@ -86,7 +85,7 @@ public:
 
 							case VPU:
 								#ifndef MINICDI_RAW_68K_MODE
-								if (vpu != NULL) vpu->tick(frames > 0);
+								if (vpu != NULL) vpu->tick(frames_left != frames);
 								#endif
 								break;
 
@@ -101,7 +100,7 @@ public:
 
 				total_cycles += cycles;
 			}
-		} while (frames > 0);
+		}
 
 		// Print verbose CPU
 		cpu.print();

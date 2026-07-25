@@ -23,9 +23,9 @@ Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CI
 ### Gameplay
 <div align=center>
 
-| Hotel Mario (CDI 200)        |
-|------------------------------|
-| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_hotelmario.png" /> |
+| Hotel Mario (CDI 200) | Frog Feast (CDI 200) |
+|-----------------------|----------------------|
+| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_hotelmario.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_frogfeast.png" /> |
 
 </div>
 

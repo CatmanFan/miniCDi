@@ -170,24 +170,15 @@ static void FAT_Exit()
 	#endif
 }
 
-static void RUN_CDI(const std::string &discName)
+static mINI::INIStructure ini;
+static void LOAD_CONFIG()
 {
-	std::string biosName = "";
-	if (access((appPath + "rom/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
-	else if (access((appPath + "rom/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
-	else {
-		printf("BIOS not found at %s.\nPlease supply a system ROM (either CD-i 220/20 or 200/00)", (appPath + "rom/").c_str());
-		sleep(5);
-		return;
-	}
-
 	// load whatever settings we have
 	mINI::INIFile file((appPath + "config.ini").c_str());
-	mINI::INIStructure ini;
 	bool recreateIni = true;
 	if (access((appPath + "config.ini").c_str(), F_OK) == 0) {
 		file.read(ini);
-		recreateIni = !(ini.has("CDI") && ini.has("MiniCDI") && ini["CDI"].size() == 4 && ini["MiniCDI"].size() == 4);
+		recreateIni = !(ini.has("CDI") && ini.has("MiniCDI") && ini["CDI"].size() == 4 && ini["MiniCDI"].size() == 6);
 	}
 	if (recreateIni) {
 		ini["CDI"].set({
@@ -197,6 +188,13 @@ static void RUN_CDI(const std::string &discName)
 			{"AnalogColors", "0"}
 		});
 		ini["MiniCDI"].set({
+			#ifdef HW_RVL
+			{"RomPath", "sd:/apps/miniCDi/rom"},
+			{"DiscPath", "sd:/apps/miniCDi/discs"},
+			#else // HW_DOL
+			{"RomPath", "/miniCDi/rom"},
+			{"DiscPath", "/miniCDi/discs"},
+			#endif
 			{"FPS", "0"},
 			{"FrameSkip", "1"},
 			{"PointerAdvance", "0"},
@@ -204,6 +202,21 @@ static void RUN_CDI(const std::string &discName)
 		});
 		file.generate(ini);
 	}
+}
+
+static void RUN_CDI(const std::string &discName)
+{
+	LOAD_CONFIG();
+
+	std::string biosName = "";
+	if (access((ini["MiniCDI"]["RomPath"] + "/cdi220b.rom").c_str(), F_OK) == 0) biosName = "cdi220b";
+	else if (access((ini["MiniCDI"]["RomPath"] + "/cdi200.rom").c_str(), F_OK) == 0) biosName = "cdi200";
+	else {
+		printf("BIOS not found at %s.\nPlease supply a system ROM (either CD-i 220/20 or 200/00)", ini["MiniCDI"]["RomPath"].c_str());
+		sleep(5);
+		return;
+	}
+
 	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
 	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
 	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
@@ -216,11 +229,11 @@ static void RUN_CDI(const std::string &discName)
 	#endif
 	MiniCDI::Config::ShowFPS = false;
 	MiniCDI::Config::ShowFPD = true;
-	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? appPath + "rom/" + biosName + ".nvram" : "";
+	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? ini["MiniCDI"]["RomPath"] + "/" + biosName + ".nvram" : "";
 
 	// Declare the CD-i machine
 	MonoI cdi;
-	if (!cdi.init(appPath + "rom/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI)) {
+	if (!cdi.init(ini["MiniCDI"]["RomPath"] + "/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI)) {
 		printf("Failed to init virtual machine");
 		sleep(5);
 		return;
@@ -233,7 +246,7 @@ static void RUN_CDI(const std::string &discName)
 	#endif
 
 	#ifdef HW_RVL
-	bool pointer = true;
+	bool pointer = false;
 	#endif
 
 	while (SYS_MainLoop()) {
@@ -311,14 +324,15 @@ static std::string selectedDisc;
 #include <filesystem>
 
 static bool MINICDI_CLI_MENU() {
-	if (!std::filesystem::is_directory(appPath + "discs")) {
+	LOAD_CONFIG();
+	if (!std::filesystem::is_directory(ini["MiniCDI"]["DiscPath"])) {
 		selectedDisc = "";
 		return true;
 	}
 	// Look for ROMs in directory
 	std::vector<std::string> discs;
-    for (const auto & disc : std::filesystem::directory_iterator(appPath + "discs")) {
-        if (!disc.path().extension().compare(".bin") || !disc.path().extension().compare(".BIN"))
+	for (const auto & disc : std::filesystem::directory_iterator(ini["MiniCDI"]["DiscPath"])) {
+		if (!disc.path().extension().compare(".bin") || !disc.path().extension().compare(".BIN"))
 			discs.push_back(disc.path().filename());
 	}
 	if (discs.size() == 0) {

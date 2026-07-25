@@ -40,7 +40,7 @@ public:
 				digit_count = 3;
 				break;
 		}
-		digit_spacingX = 2;
+		digit_spacingX = 3;
 		digit_spacingY = 1;
 		digit_count = 7;
 

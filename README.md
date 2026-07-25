@@ -1,7 +1,33 @@
-# miniCDi
-<div align=center><a href=""><img src="https://github.com/CatmanFan/miniCDi/blob/master/res/logo.png" width="50%" /></a></div>
+# <div align=center><img src="https://github.com/CatmanFan/miniCDi/blob/master/res/logo.png" width="25%" /></div>
 
 An experimental Philips CD-i emulator meant to run on embedded consoles such as the Wii, 3DS and Wii U.
+
+## Compatibility
+The following boards and chips have been implemented. CD-i Fan has more information regarding hardware at [cdichips](https://github.com/cdifan/cdichips) repository.
+
+* ***Mono-I***: SCC68070, MCD212, CDIC, SLAVE
+* ***Mono-II***: SCC68070, MCD212, DRVDSP (stub), SLAVE
+* ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (stub), IKAT
+
+Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated.
+
+## Screenshots
+### Player shell
+<div align=center>
+
+| CDI 200, CDI 220/20 (Mono-I) | CDI 220/40 (Mono-II) | CDI 490/00 (Mono-IV) |
+|------------------------------|----------------------|----------------------|
+| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_220b.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_220c.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_490.png" />
+</div>
+
+### Gameplay
+<div align=center>
+
+| Hotel Mario (CDI 200)        |
+|------------------------------|
+| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_hotelmario.png" /> |
+
+</div>
 
 ## Usage
 ### Windows / macOS
@@ -24,15 +50,6 @@ Place the system ROM(s) in `/vol/external01/wiiu/apps/miniCDi/rom` and any disc 
 Once opened, select a disc image from the menu. Press ZR to exit emulation and return to the emulator menu.
 In some cases the CD-i machine may not start properly. If this happens try going back to the emulator menu and starting over (this may take several tries).
 
-## Compatibility
-The following boards and chips have been implemented. CD-i Fan has more information regarding hardware at [cdichips](https://github.com/cdifan/cdichips) repository.
-
-* ***Mono-I***: SCC68070, MCD212, CDIC, SLAVE
-* ***Mono-II***: SCC68070, MCD212, DRVDSP (stub), SLAVE
-* ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (stub), IKAT
-
-Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated.
-
 ### Profiling
 Time taken to process and render a single frame on:
 
@@ -43,7 +60,7 @@ Time taken to process and render a single frame on:
 * New 3DS: ***~78.79ms*** (~13 fps)
 * Old 3DS: ***~237ms*** (~4 fps)
 
-All profiled times with the exception of the Windows version are longer than the minimum needed for throttling (16.667ms or 1/60 secs). All are compiled using the fastest compile optimizations available under GCC and are accurate as of commit https://github.com/CatmanFan/miniCDi/commit/2e14ffaf5d9d73b1a2df3745225006fff5a1945f .
+All profiled times with the exception of the Windows version are longer than the minimum needed for throttling (16.667ms or 1/60 secs). All are compiled using the fastest compile optimizations available under GCC and are accurate as of commit [`2e14ffa`](https://github.com/CatmanFan/miniCDi/commit/2e14ffaf5d9d73b1a2df3745225006fff5a1945f).
 
 ## Credits
 Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me where possible on this project. This project uses partial emulation code ported from the MAME CD-i driver ([see license](https://github.com/mamedev/mame?tab=License-1-ov-file#readme)) as well as Stovent's implementations of the relevant components in [CeDImu](https://github.com/Stovent/CeDImu), and is also based off of CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documentation of several components including the MCD212, SCC68070 (UART), IKAT and SLAVE and Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer)). The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.

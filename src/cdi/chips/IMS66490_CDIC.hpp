@@ -44,12 +44,12 @@ class CDIC
 		bool played;
 	} SoundmapUnit; // Implementation based on Green Book
 
-	inline void adpcm_decode_and_play(int buffer, bool soundmap)
+	inline bool adpcm_decode_and_play(int buffer, bool soundmap)
 	{
-		if (!(AUDCTL & 0x0800)) return;
+		if (!(AUDCTL & 0x0800)) return false;
 
 		if (!ADPCM.decode_sector(&memory[buffer ? 0x303200 : 0x302800], soundmap))
-			return;
+			return false;
 
 		#ifdef MINICDI_AUDIO_SDL2
 		if (SDL_audio_valid)
@@ -58,6 +58,8 @@ class CDIC
 			// SDL_QueueAudio(SDL_audio_id, &ADPCM.right[0], ADPCM.right.size() * sizeof(int16_t));
 		}
 		#endif
+
+		return true;
 	}
 
 	inline void update_soundmap_unit()
@@ -75,14 +77,14 @@ class CDIC
 
 		if (!SoundmapUnit.played)
 		{
-			adpcm_decode_and_play(SoundmapUnit.buffer, true);
-			SoundmapUnit.played = true;
-		}
+			if (!adpcm_decode_and_play(SoundmapUnit.buffer, true)) return;
 
-		if (AUDCTL & 0x2000)
-		{
-			ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
-			update_irq();
+			if (AUDCTL & 0x2000)
+			{
+				ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
+				update_irq();
+			}
+			SoundmapUnit.played = true;
 		}
 	}
 
@@ -244,7 +246,7 @@ public:
 			input.freq = 37800;
 			input.format = AUDIO_S16SYS;
 			input.channels = 1;
-			input.samples = 224;
+			input.samples = 448;
 
 			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);
 			SDL_audio_valid = SDL_audio_id > 0;
@@ -431,15 +433,10 @@ public:
 				if (!(value & 0x2000))
 					SoundmapUnit.active = false;
 
-				if (value == 0x2800)
+				if (value == 0x2800 && !SoundmapUnit.active)
 				{
-					if (!SoundmapUnit.active)
-					{
-						MiniCDI::Log("[CDIC] start audio playback from soundmap");
-						SoundmapUnit.active = true;
-					}
-					else
-						SoundmapUnit.buffer = !SoundmapUnit.buffer;
+					MiniCDI::Log("[CDIC] start audio playback from soundmap");
+					SoundmapUnit.active = true;
 				}
 				break;
 

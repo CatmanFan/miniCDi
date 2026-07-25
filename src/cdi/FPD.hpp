@@ -40,8 +40,9 @@ public:
 				digit_count = 3;
 				break;
 		}
-		digit_spacingX = 3;
+		digit_spacingX = 2;
 		digit_spacingY = 1;
+		digit_count = 7;
 
 		display.assign(get_display_width() * get_display_height(), 0x00);
 	}
@@ -138,7 +139,7 @@ public:
 						glyph[4*digit_width + 1] = 0xFF;
 						glyph[5*digit_width + 1] = 0xFF;
 					}
-					if ((cmd[i+1] & 0x20) /*&& !(cmd[i+1] & 0x01)*/)
+					if ((cmd[i+1] & 0x20) && !(cmd[i+1] & 0x01))
 					{
 						glyph[3*digit_width + 2] = 0xFF;
 					}

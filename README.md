@@ -9,7 +9,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 * ***Mono-II***: SCC68070, MCD212, DRVDSP (stub), SLAVE
 * ***Mono-III***, ***Mono-IV***, ***Robocon***: SCC68070, MCD212, CIAP (stub), IKAT
 
-Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated.
+Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated. Certain software may softlock due to constant D-Pad movement polling by SLAVE (e.g. Zelda: Wand of Gamelon or [CDi_BadApple](https://github.com/Slamy/CDi_BadApple)).
 
 ## Screenshots
 ### Player shell
@@ -21,11 +21,13 @@ Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CI
 </div>
 
 ### Gameplay
+All captured under CDI 200 using Mono-I driver.
+
 <div align=center>
 
-| Hotel Mario (CDI 200) | Frog Feast (CDI 200) |
-|-----------------------|----------------------|
-| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_hotelmario.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_frogfeast.png" /> |
+| Hotel Mario | Frog Feast | Zelda: Wand of Gamelon |
+|-------------|------------|------------------------|
+| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_hotelmario.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_frogfeast.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_zelda.png" /> |
 
 </div>
 

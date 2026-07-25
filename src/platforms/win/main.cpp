@@ -90,10 +90,17 @@ int main(int argc, char** argv)
 
 	if (access(argv[1], F_OK) != 0)
     {
-        printf("unable to access bootrom, exiting\n");
+        printf("unable to access ROM file, exiting\n");
         return 1;
     }
-	
+
+    std::ifstream romcheck(argv[1], std::ifstream::ate | std::ifstream::binary);
+	if (romcheck.tellg() != 512*1024)
+    {
+        printf("ROM file is not 512kB, exiting\n");
+        return 1;
+    }
+
 	if (SDL_Init(SDL_INIT_VIDEO) != 0)
     {
         printf("unable to init SDL, exiting\n");

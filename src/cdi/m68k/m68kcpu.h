@@ -67,6 +67,10 @@ extern "C" {
 #undef sint
 #undef uint
 
+typedef signed   char  int8;  		/* ASG: changed from char to signed char */
+typedef signed   short int16;
+typedef signed   int   int32; 		/* AWJ: changed from long to int */
+
 typedef signed   char  sint8;  		/* ASG: changed from char to signed char */
 typedef signed   short sint16;
 typedef signed   int   sint32; 		/* AWJ: changed from long to int */
@@ -96,8 +100,8 @@ typedef uint32 uint64;
 #define S64(val) val
 #endif
 
-#include "softfloat/milieu.h"
-#include "softfloat/softfloat.h"
+// #include "softfloat/milieu.h"
+// #include "softfloat/softfloat.h"
 
 
 /* Allow for architectures that don't have 8-bit sizes */
@@ -952,7 +956,7 @@ typedef struct
 	uint cacr;         /* Cache Control Register (m68020, unemulated) */
 	uint caar;         /* Cache Address Register (m68020, unemulated) */
 	uint ir;           /* Instruction Register */
-	floatx80 fpr[8];     /* FPU Data Register (m68030/040) */
+	fp_reg fpr[8];     /* FPU Data Register (m68030/040) */
 	uint fpiar;        /* FPU Instruction Address Register (m68040) */
 	uint fpsr;         /* FPU Status Register (m68040) */
 	uint fpcr;         /* FPU Control Register (m68040) */

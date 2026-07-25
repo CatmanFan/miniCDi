@@ -13,7 +13,7 @@ elseif (APPLE)
 else()
 dkp_target_generate_symbol_list(${PROJECT_NAME})
 endif()
-target_compile_options(${PROJECT_NAME} PRIVATE -O2 -g -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -Ofast -g -Wall)
 
 # Debug options
 option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)
@@ -88,13 +88,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/m68k/m68kcpu.c
 	src/cdi/m68k/m68kcpu.h
 	src/cdi/m68k/m68kdasm.c
-	src/cdi/m68k/m68kfpu.c
-	src/cdi/m68k/m68kmmu.h
 	src/cdi/m68k/m68kops.c
 	src/cdi/m68k/m68kops.h
-	src/cdi/m68k/softfloat/softfloat.c
-	src/cdi/m68k/softfloat/softfloat.h
-	src/cdi/m68k/softfloat/softfloat-macros
 )
 
 # Platform build specific
@@ -108,7 +103,6 @@ if (WIN32 OR APPLE)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
-	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
 	if (WIN32)
 		target_sources(${PROJECT_NAME} PRIVATE res/win/windows.rc)
@@ -131,7 +125,6 @@ if (NINTENDO_3DS)
 	# Libraries
 	# ************
 	target_link_libraries(${PROJECT_NAME} PRIVATE -lcitro2d -lcitro3d)
-	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
 	# Source files/directories
 	# ************
@@ -209,7 +202,6 @@ if (NINTENDO_WIIU)
 	include_directories(${DEVKITPRO}/portlibs/wiiu/include ${FREETYPE_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2TTF_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -lSDL2_ttf -lfreetype -lpng -lz -lm -lharfbuzz -lbrotlidec -lbrotlicommon -lbz2 -lwut)
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
-	add_compile_options(${PROJECT_NAME} -mfloat-abi=softfp)
 
 	# Source files/directories
 	# ************

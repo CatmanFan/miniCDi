@@ -156,6 +156,11 @@ int main(int argc, char** argv)
 					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
 					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
 					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowFPD = !MiniCDI::Config::ShowFPD;
+					if (e.key.keysym.sym == SDLK_v && e.type == SDL_KEYDOWN) {
+						int w, h;
+						SDL_GetWindowSize(screen.Video.window, &w, &h);
+						SDL_SetWindowSize(screen.Video.window, w == 768 ? 384 : 768, h == 560 ? 280 : 560);
+					}
 					break;
 
 				case SDL_WINDOWEVENT:

@@ -291,6 +291,7 @@ static void RUN_CDI(const std::string &discName)
 			uint32_t held = PAD_ButtonsHeld(0);
 
 			if (down & PAD_TRIGGER_Z) break;
+			if (down & PAD_BUTTON_START) cdi.play_disc();
 			cdi.pd.set_button(PointingDevice::Button1, held & PAD_BUTTON_A);
 			cdi.pd.set_button(PointingDevice::Button2, held & PAD_BUTTON_B);
 			cdi.pd.set_button(PointingDevice::Left, held & PAD_BUTTON_LEFT);

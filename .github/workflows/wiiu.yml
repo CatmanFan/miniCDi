@@ -1,6 +1,16 @@
 name: Build (Nintendo Wii U)
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - src/**
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - src/**
+  workflow_dispatch:
+    branches: [ "master" ]
 
 jobs:
 

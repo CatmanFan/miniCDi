@@ -172,7 +172,9 @@ class SCC68070
 			if (Ipl.nxt_irq != 0)
 			{
 				// Log interrupt information
-				/*MiniCDI::Log("[SCC68070:IPL] IPL%d(%d) <= IPL%d(%d)  IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
+				/*if (Ipl.nxt_index != IPL_TIMER)
+				{
+					MiniCDI::Log("[SCC68070:IPL] IPL%d(%d) <= IPL%d(%d)  IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
 							 Ipl.cur_index, Ipl.cur_irq,
 							 Ipl.nxt_index, Ipl.nxt_irq,
 							 Ipl.levels[IPL_IN7N],
@@ -187,7 +189,6 @@ class SCC68070
 							 Ipl.levels[IPL_I2C],
 							 Ipl.levels[IPL_DMA1],
 							 Ipl.levels[IPL_DMA2]);
-				if (Ipl.nxt_index != IPL_TIMER)
 					MiniCDI::Log("[SCC68070:IPL] IPL <= %s(%d)",
 							 Ipl.nxt_index == IPL_IN7N ? "IN7N"
 						   : Ipl.nxt_index == IPL_IN5N ? "IN5N"
@@ -202,7 +203,8 @@ class SCC68070
 						   : Ipl.nxt_index == IPL_DMA1 ? "DMA1"
 						   : Ipl.nxt_index == IPL_DMA2 ? "DMA2"
 						   : "undefined",
-							 Ipl.nxt_irq);*/
+							 Ipl.nxt_irq);
+				}*/
 
 				Ipl.cur_index = Ipl.nxt_index;
 				Ipl.cur_irq = Ipl.nxt_irq;

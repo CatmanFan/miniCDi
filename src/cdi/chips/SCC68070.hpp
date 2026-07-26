@@ -172,39 +172,6 @@ class SCC68070
 			if (Ipl.nxt_irq != 0)
 			{
 				// Log interrupt information
-				/*if (Ipl.nxt_index != IPL_TIMER)
-				{
-					MiniCDI::Log("[SCC68070:IPL] IPL%d(%d) <= IPL%d(%d)  IN7N=%d,IN5N=%d,IN4N=%d,IN2N=%d,INT1=%d,INT2=%d,T=%d,URX=%d,UTX=%d,I2C=%d,DMA1=%d,DMA2=%d",
-							 Ipl.cur_index, Ipl.cur_irq,
-							 Ipl.nxt_index, Ipl.nxt_irq,
-							 Ipl.levels[IPL_IN7N],
-							 Ipl.levels[IPL_IN5N],
-							 Ipl.levels[IPL_IN4N],
-							 Ipl.levels[IPL_IN2N],
-							 Ipl.levels[IPL_INT1],
-							 Ipl.levels[IPL_INT2],
-							 Ipl.levels[IPL_TIMER],
-							 Ipl.levels[IPL_UART_RX],
-							 Ipl.levels[IPL_UART_TX],
-							 Ipl.levels[IPL_I2C],
-							 Ipl.levels[IPL_DMA1],
-							 Ipl.levels[IPL_DMA2]);
-					MiniCDI::Log("[SCC68070:IPL] IPL <= %s(%d)",
-							 Ipl.nxt_index == IPL_IN7N ? "IN7N"
-						   : Ipl.nxt_index == IPL_IN5N ? "IN5N"
-						   : Ipl.nxt_index == IPL_IN4N ? "IN4N"
-						   : Ipl.nxt_index == IPL_IN2N ? "IN2N"
-						   : Ipl.nxt_index == IPL_INT1 ? "INT1"
-						   : Ipl.nxt_index == IPL_INT2 ? "INT2"
-						   : Ipl.nxt_index == IPL_TIMER ? "TIMER"
-						   : Ipl.nxt_index == IPL_UART_RX ? "UART_RX"
-						   : Ipl.nxt_index == IPL_UART_TX ? "UART_TX"
-						   : Ipl.nxt_index == IPL_I2C ? "I2C"
-						   : Ipl.nxt_index == IPL_DMA1 ? "DMA1"
-						   : Ipl.nxt_index == IPL_DMA2 ? "DMA2"
-						   : "undefined",
-							 Ipl.nxt_irq);
-				}*/
 
 				Ipl.cur_index = Ipl.nxt_index;
 				Ipl.cur_irq = Ipl.nxt_irq;
@@ -391,11 +358,7 @@ public:
 			case 0x80002003: return IAR;
 			case 0x80002005: return ISR;
 			case 0x80002007: return ICR;
-			#ifdef MINICDI_68070_ACCURACY
-			case 0x80002009: return ICCR | 0xE0;
-			#else
-			case 0x80002009: return ICCR;
-			#endif
+			case 0x80002009: return ICCR | 0b11100000; // undefined/unreserved bits
 
 			/** Timer **/
 			case 0x80002020: return TSR;
@@ -463,15 +426,8 @@ public:
 				if (value & 0x08) interrupt(SCC68070::IPL_INT2, false);
 				break;
 
-			/** I²C **/
-			#ifdef MINICDI_68070_ACCURACY
-			case 0x80002001: IDR = value;
-				ISR |= 0x10; // set PIN bit
-				ISR &= ~0x0C; // reset AL and AAS
-				break;
-			#else
+			/** I²C **/ // Not even trying with these
 			case 0x80002001: IDR = value; break;
-			#endif
 			case 0x80002003: IAR = value; break;
 			case 0x80002005: ISR = value; break;
 			case 0x80002007: ICR = value; break;

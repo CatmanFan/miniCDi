@@ -32,7 +32,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 
 Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated. Certain software may softlock due to constant D-Pad movement polling by SLAVE (e.g. Zelda: Wand of Gamelon or [CDi_BadApple](https://github.com/Slamy/CDi_BadApple)).
 
-### Profiling
+### Benchmarking
 Time taken to process and render a single frame on:
 
 * Windows (x64, Nvidia + Intel i5-12400F): ***~1.7ms*** (fullspeed)
@@ -64,9 +64,6 @@ All captured under CDI 200 using Mono-I driver.
 
 </div>
 
-## Credits
-Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me where possible on this project. This project uses partial emulation code ported from the MAME CD-i driver ([see license](https://github.com/mamedev/mame?tab=License-1-ov-file#readme)) as well as Stovent's implementations of the relevant components in [CeDImu](https://github.com/Stovent/CeDImu), and is also based off of CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documentation of several components including the MCD212, SCC68070 (UART), IKAT and SLAVE and Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer)). The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.
-
 ## To-Do
 
 ### Before official v0.1 beta release
@@ -74,6 +71,7 @@ Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://git
 - [ ] Update compatibility information
 
 ### Potential
+- [ ] Use global namespace instead of class? (e.g. `CDi::init()`)
 - [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
 - [ ] Emulate timekeeper on Mono-I/Mono-IV? (should handle NVRAM saving)
 - [ ] Fix PD on Mono-IV
@@ -85,5 +83,15 @@ Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://git
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS). This is automatically done by GitHub Actions on every commit.
 
+## Credits
+Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me where possible on this project. The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.
+
+Some of the emulation code is ported or adapted from:
+* CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documentation of several components including the MCD212, SCC68070 (UART), IKAT and SLAVE
+* Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer))
+* Stovent's implementations of the relevant components in [CeDImu](https://github.com/Stovent/CeDImu) (license unknown)
+* the MAME CD-i driver by Vincent Halver and Ryan Holtz (licensed under BSD-3) ([global MAME license](https://github.com/mamedev/mame?tab=License-1-ov-file))
+* reverse engineering of the [CD-i Emulator](https://www.cdiemu.org/) trace log
+
 ## License
-General code is licensed under GPLv3. The original source code for the MAME CD-i driver is by Vincent Halver and Ryan Holtz and is licensed under BSD-3 (see [here](https://github.com/mamedev/mame?tab=License-1-ov-file) for global MAME license).
+The general code for this emulator is released under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html) (see above credits for other licenses).

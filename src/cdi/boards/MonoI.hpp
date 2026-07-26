@@ -75,9 +75,11 @@ public:
 
 			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
-				// TO-DO: Find a less-memory intensive method?
-				int cycles = 96;
-				// int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
+				// Setting `cycles` at 96 results in more cycle-accurate timer which makes player shell more stable, but breaks Hotel Mario graphics.
+				// TL;DR: More cycles, more stable gameplay, less stable system menu (especially 2nd revision). Best if value is multiple of 96.
+				// Find a less-memory intensive method?
+				// int cycles = 480;
+				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 				cpu.run(cycles);
 
 				for (int i = 0; i < EVTNUM; i++)

@@ -593,12 +593,15 @@ public:
 		ran += m68k_execute(cycles);
 		#endif*/
 
-		m68k_execute(cycles);
 
-		// Poll timer.
+		// Poll timer. Key is that it should be cycle-accurate while also not sacrificing performance(?).
 		T_cycles[0] += cycles;
 		while (T_cycles[0] >= 96)
 		{
+			m68k_execute(96);
+			T_cycles[0] -= 96;
+			cycles -= 96;
+
 			if (T[0] == 0xFFFF) {
 				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
 				TSR |= 0x80; // OV in T0
@@ -607,8 +610,12 @@ public:
 			} else {
 				T[0]++;
 			}
+		}
 
-			T_cycles[0] -= 96;
+		if (cycles > 0)
+		{
+			m68k_execute(cycles);
+			T_cycles[0] = 0;
 		}
 	}
 };

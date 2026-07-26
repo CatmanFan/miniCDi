@@ -146,12 +146,41 @@ public:
 					break;
 
 				case FPD_470:
-					if (cmd[i+1] & 0x08)
+					if (cmd[i+1] & 0x10)
 					{
-						glyph[1*digit_width + 2] = 0xFF;
-						glyph[2*digit_width + 2] = 0xFF;
-						glyph[4*digit_width + 2] = 0xFF;
-						glyph[5*digit_width + 2] = 0xFF;
+						glyph[3*digit_width + 2] = 0xFF;
+					}
+					if (cmd[i+1] & 0x40)
+					{
+						glyph[0*digit_width + 4] = 0xFF;
+						glyph[1*digit_width + 4] = 0xFF;
+						glyph[2*digit_width + 4] = 0xFF;
+						glyph[3*digit_width + 4] = 0xFF;
+						glyph[4*digit_width + 4] = 0xFF;
+						glyph[5*digit_width + 4] = 0xFF;
+						glyph[6*digit_width + 4] = 0xFF;
+					}
+					if (cmd[i] & 0x08)
+					{
+						glyph[3*digit_width + 1] = 0xFF;
+						glyph[3*digit_width + 3] = 0xFF;
+					}
+					if (cmd[i] & 0x04)
+					{
+						glyph[3*digit_width + 2] = 0xFF;
+					}
+					if (cmd[i] & 0x02)
+					{
+						glyph[6*digit_width + 0] = 0xFF;
+						glyph[6*digit_width + 1] = 0xFF;
+						glyph[6*digit_width + 2] = 0xFF;
+						glyph[6*digit_width + 3] = 0xFF;
+					}
+					if (cmd[i] & 0x01)
+					{
+						glyph[3*digit_width + 0] = 0xFF;
+						glyph[4*digit_width + 0] = 0xFF;
+						glyph[5*digit_width + 0] = 0xFF;
 					}
 					break;
 			}

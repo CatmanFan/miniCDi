@@ -28,17 +28,13 @@ class IKAT
 	uint8_t ISR;
 	uint8_t IMR;
 	uint8_t MR; // always 8F (in "set on Receiver Ready" interrupt mode and enable all channels)
-	bool ISR_triggered = false;
+				// known as YCTL in cdiemu trace log
 
 	inline void set_ISR(uint8_t flag)
 	{
 		ISR |= flag;
+		if (IMR & flag) _68070->interrupt(SCC68070::IPL_IN2N, true);
 		//MiniCDI::Log("[IKAT] ISR %02X |= IMR %02X", ISR, IMR);
-		if ((IMR & flag) && !ISR_triggered)
-		{
-			_68070->interrupt(SCC68070::IPL_IN2N, true);
-			ISR_triggered = true;
-		}
 	}
 
 	struct
@@ -64,17 +60,17 @@ public:
 	inline void poll_packet(size_t c, size_t delay = 0)
 	{
 		if (delay > 0)
-		{
 			Ch[c].Delay = delay;
+
+		if (Ch[c].Delay > 0 || Ch[c].Out.size() == 0)
 			return;
-		}
 
 		// Per MC68HC05i8 datasheet: under MRH's current mode RRDY when set is supposed to trigger the Rx/Tx bits in ISR.
 		Ch[c].SR |= 0b01000000; // RRDY ON
 		Ch[c].SR &= ~0b00010000; // REMTY OFF
 
 		// set corresponding Rx bit
-		set_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
+		set_ISR(1 << (1+2*c));
 		//MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 	}
 
@@ -83,34 +79,20 @@ public:
 		for (size_t c = 0; c < 4; c++)
 		{
 			if (Ch[c].Delay != 0)
-			{
 				Ch[c].Delay--;
-				if (Ch[c].Delay == 0)
-				{
-					Ch[c].SR |= 0b01000000; // RRDY ON
-					Ch[c].SR &= ~0b00010000; // REMTY OFF
 
-					// set corresponding Rx bit
-					set_ISR(c == 3 ? 0b10'00'00'00 : c == 2 ? 0b00'10'00'00 : c == 1 ? 0b00'00'10'00 : 0b00'00'00'10);
-					//MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
-				}
-			}
+			if (Ch[c].Delay == 0)
+				poll_packet(c);
 		}
 	}
 
 	inline void reset()
 	{
-		// REMTY ON (per MC68HC05i8 datasheet)
-		Ch[0].SR |= 0b00010000;
-		Ch[1].SR |= 0b00010000;
-		Ch[2].SR |= 0b00010000;
-		Ch[3].SR |= 0b00010000;
-
-		// TEMTY ON (mimic cdiemu behaviour ?)
-		Ch[0].SR |= 0b00000001;
-		Ch[1].SR |= 0b00000001;
-		Ch[2].SR |= 0b00000001;
-		Ch[3].SR |= 0b00000001;
+		// REMTY ON (per MC68HC05i8 datasheet) + TEMTY ON (mimic cdiemu behaviour ?)
+		Ch[0].SR |= 0x11;
+		Ch[1].SR |= 0x11;
+		Ch[2].SR |= 0x11;
+		Ch[3].SR |= 0x11;
 
 		Ch[0].InSize = 0;
 		Ch[1].InSize = 0;
@@ -143,7 +125,7 @@ public:
 			case 0x31000F:
 				{
 					size_t c = (addr - 0x310009) / 2;
-					if (_68070) _68070->interrupt(SCC68070::IPL_IN2N, false);
+					_68070->interrupt(SCC68070::IPL_IN2N, false);
 
 					if (Ch[c].Out.size() > 0)
 					{
@@ -152,19 +134,16 @@ public:
 
 						if (Ch[c].Out.size() == 0)
 						{
+							ISR &= ~(1 << (1+2*c)); // imitate CeDImu
 							Ch[c].SR &= ~0b01000000; // RRDY OFF
 							Ch[c].SR |= 0b00010000; // REMTY ON
 							//MiniCDI::Log("[IKAT] %sDR read completed", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 						}
+						else
+							Ch[c].SR &= ~0b00010000; // REMTY OFF
 					}
 					else
 						Ch[c].DR = 0xFF;
-
-					if (ISR_triggered)
-					{
-						_68070->interrupt(SCC68070::IPL_IN2N, false);
-						ISR_triggered = false;
-					}
 
 					//MiniCDI::Log("[IKAT] %sDRR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].DR);
 					return Ch[c].DR;
@@ -215,7 +194,7 @@ public:
 				break;
 
 			case 0x31001D:
-				//MiniCDI::Log("[IKAT] MR <= %02X", MR);
+				//MiniCDI::Log("[IKAT] MR <= %02X", value);
 				MR = value;
 				break;
 
@@ -240,7 +219,7 @@ public:
 								// redirects LCD display input to BDR
 								Ch[1].In.clear();
 								Ch[1].In.push_back(value);
-								Ch[1].InSize = 6;
+								Ch[1].InSize = 7;
 								break;
 						}
 						break;
@@ -297,7 +276,7 @@ public:
 							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
-								Ch[c].Out = { 0xA5, 0xF3, 'J', 'J' };
+								Ch[c].Out = { 0xA5, 0xF3, 0x4B, 0x4D }; // use cdiemu return ?
 								PointerInterface.absolute = Ch[c].Out[2] == 'T' || Ch[c].Out[2] == 'S';
 								poll_packet(c);
 								break;
@@ -327,6 +306,12 @@ public:
 									switch (Ch[c].In[0]) {
 										case 0xA1:
 											MiniCDI::Log("[IKAT] SS_Enable? (0x%02X)", Ch[c].In[0]);
+											// imitate CeDImu
+											if (Disc)
+												Ch[c].Out = { 0xB0, 0x00, 0x02, 0x10 };
+											else
+												Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
+											poll_packet(c, 2);
 											break;
 
 										case 0xA6:
@@ -339,9 +324,10 @@ public:
 										case 0xB0:
 											MiniCDI::Log("[IKAT] report disc status (0x%02X)", Ch[c].In[0]);
 											if (Disc)
-												Ch[3].Out = { 0xB0, 0x00, 0x02, 0x10 };
+												Ch[c].Out = { 0xB0, 0x00, 0x02, 0x10 };
 											else
-												Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+												Ch[c].Out = { 0xB0, 0x00, 0x00, 0x00 };
+											poll_packet(c, 2);
 											break;
 
 										case 0xB1:

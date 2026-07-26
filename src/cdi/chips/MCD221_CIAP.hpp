@@ -32,7 +32,7 @@ class CIAP
 	uint16_t ACM1 = 0;
 	uint16_t ACM2 = 0;
 	uint16_t FILE = 0;
-	uint16_t BMAN = 0x0054; // default starting value according to cdiemu ?
+	uint16_t BMAN = 0b01010100; // default starting value according to cdiemu ?
 	uint16_t CCR = 0;
 	uint16_t A_SHDW = 0;
 	uint16_t AP_Left = 0;
@@ -45,7 +45,7 @@ class CIAP
 	uint16_t DMACTL = 0;
 	uint16_t DLOAD = 0;
 
-	void assert_irq()
+	/*void assert_irq()
 	{
 		if (((ISR & 0x01) && (IER & 0x01)) || ((ISR & 0x04) && (IER & 0x04))
 		 || ((ISR & 0x08) && (IER & 0x08)) || ((ISR & 0x0800) && (IER & 0x0800)))
@@ -55,8 +55,16 @@ class CIAP
 
 			_68070->interrupt(SCC68070::IPL_IN4N, true);
 		}
-	}
+	}*/
 
+	// ****************************
+	// AUDIO HANDLING
+	// ****************************
+	// TO-DO
+
+	// ****************************
+	// DISC HANDLING
+	// ****************************
 	CDiDisc *disc;
 
 	struct {
@@ -69,9 +77,6 @@ class CIAP
 		bool flipped_subcode;
 		bool flipped_audio;
 	} CdStatus;
-
-	// struct {
-	// } DAC;
 
 	bool disc_check_filter()
 	{
@@ -111,6 +116,12 @@ class CIAP
 				return false;
 			}
 		}
+		else if (disc->Sector.Submode[1] & 0b10000000) {
+			MiniCDI::Log("[CIAP] %02X:%02X:%02X: reached EOF",
+						 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			CdStatus.reading = false;
+			return true;
+		}
 
 		return true;
 	}
@@ -121,19 +132,13 @@ class CIAP
 			return;
 
 		if (CdStatus.delayed_sectors > 0) {
-			MiniCDI::Log("[CIAP] disc speedup: %d", CdStatus.delayed_sectors--);
+			CdStatus.delayed_sectors--;
 			return;
 		}
-
-		disc->read_sector(CdStatus.curr_lba++);
 
 		// Skip if MODE2 not satisfied
 		if (disc_check_filter())
 		{
-			if (disc->Sector.Submode[1] & 0b10000000) {
-				return;
-			}
-
 			MiniCDI::Log("[CIAP] %02X:%02X:%02X: copy to memory", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
 
 			// Select target DATA buffer
@@ -149,10 +154,8 @@ class CIAP
 			memory[targetAddr++] = disc->Sector.Submode[0];
 			memory[targetAddr++] = disc->Sector.CodingInfo[0];
 
-			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
-			// `use_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
 			// TACS contains audio channel.
-			/// TO-DO
+			// Should switch to ADPCM buffer at this point?
 
 			memory[targetAddr++] = disc->Sector.FileNum[1];
 			memory[targetAddr++] = disc->Sector.ChNum[1];
@@ -162,12 +165,13 @@ class CIAP
 
 			// Mark mainchannel DATA as full
 			ISR |= 0x01;
+			if (IER & 0x01) _68070->interrupt(SCC68070::IPL_IN4N, true);
 
 			// switch to subchannel
-			targetAddr = 0x300000 + ((BMAN & 0b100000) ? 0x24E6 : 0x1B24);
+			/*targetAddr = 0x300000 + ((BMAN & 0b100000) ? 0x24E6 : 0x1B24);
 
 			// 10 bytes for subchannel Q
-			/*memory[targetAddr++] = 0x41; // Control
+			memory[targetAddr++] = 0x41; // Control
 			memory[targetAddr++] = 0x01; // Track
 			memory[targetAddr++] = 0x01; // Index
 			memory[targetAddr++] = disc->Sector.Min;
@@ -195,9 +199,17 @@ class CIAP
 				memory[targetAddr++] = 0xFF; // CRC
 			}
 
-			// Mark SUBCODE as full and send IRQ
-			ISR |= 0x04;*/
-			assert_irq();
+			// Mark SUBCODE as full
+			ISR |= 0x04;
+			if (IER & 0x04) _68070->interrupt(SCC68070::IPL_IN4N, true);*/
+		}
+
+		// Update LBA
+		if (CdStatus.reading) {
+			CdStatus.curr_lba++;
+			disc->read_sector(CdStatus.curr_lba);
+		} else {
+			abort();
 		}
 	}
 
@@ -217,7 +229,7 @@ public:
 		ACM1 = 0;
 		ACM2 = 0;
 		FILE = 0;
-		BMAN = 0x0054; // default starting value according to cdiemu ?
+		BMAN = 0b01010100;
 		CCR = 0;
 		A_SHDW = 0;
 		AP_Left = 0;
@@ -229,6 +241,15 @@ public:
 		ICR = 0;
 		DMACTL = 0;
 		DLOAD = 0;
+	}
+
+	inline void abort()
+	{
+		MiniCDI::Log("[CIAP] abort");
+		CdStatus.reading = false;
+		CdStatus.selection = false;
+		CdStatus.audio = false;
+		CdStatus.delayed_sectors = 6;
 	}
 
 	inline void tick()
@@ -247,6 +268,7 @@ public:
 
 		MiniCDI::Log("[CIAP] load LBA <= %02X:%02X:%02X", min, sec, frame);
 		CdStatus.curr_lba = disc->get_lba_from_time((min << 24) | (sec << 16) | (frame << 8));
+		disc->read_sector(CdStatus.curr_lba);
 	}
 
 	inline uint16_t read16(uint32_t addr)
@@ -260,7 +282,7 @@ public:
 			case 0x302586: {
 				const uint16_t value = ISR;
 				ISR = 0;
-				if (_68070 != nullptr) _68070->interrupt(SCC68070::IPL_IN4N, false);
+				_68070->interrupt(SCC68070::IPL_IN4N, false);
 				MiniCDI::Log("[CIAP] ISR => %04X  QERROR=%d, AUDIO=%d, SUBCODE=%d, DATA=%d", value,
 							 value & 0x800 ? 1 : 0, value & 0x08 ? 1 : 0, value & 0x04 ? 1 : 0, value & 0x01 ? 1 : 0);
 				return value;
@@ -296,18 +318,8 @@ public:
 				memory[addr+1] = value & 0xFF;
 				break;
 
-			case 0x302584:
-				MiniCDI::Log("[CIAP] IER <= %04X  QERROR=%d, AUDIO=%d, SUBCODE=%d, DATA=%d", value,
-							 value & 0x800 ? 1 : 0, value & 0x08 ? 1 : 0, value & 0x04 ? 1 : 0, value & 0x01 ? 1 : 0);
-				IER = value;
-				assert_irq();
-				break;
-			case 0x302586:
-				MiniCDI::Log("[CIAP] ISR <= %04X  QERROR=%d, AUDIO=%d, SUBCODE=%d, DATA=%d", value,
-							 value & 0x800 ? 1 : 0, value & 0x08 ? 1 : 0, value & 0x04 ? 1 : 0, value & 0x01 ? 1 : 0);
-				ISR = value;
-				assert_irq();
-				break;
+			case 0x302584: MiniCDI::Log("[CIAP] IER <= %04X", value); IER = value; break;
+			case 0x302586: MiniCDI::Log("[CIAP] ISR <= %04X", value); ISR = value; break;
 			case 0x302588: MiniCDI::Log("[CIAP] TACS <= %04X", value); TACS = value; break;
 			case 0x30258A: MiniCDI::Log("[CIAP] AACS <= %04X", value); AACS = value; break;
 			case 0x30258C: MiniCDI::Log("[CIAP] TCM1 <= %04X", value); TCM1 = value; break;
@@ -328,10 +340,7 @@ public:
 							break;
 						case 0x0100:
 							MiniCDI::Log("[CIAP] RESET (0x%04X)", value);
-							CdStatus.reading = false;
-							CdStatus.selection = false;
-							CdStatus.audio = false;
-							CdStatus.delayed_sectors = 6;
+							abort();
 							break;
 						case 0x3000:
 							MiniCDI::Log("[CIAP] PREPA (0x%04X)", value);
@@ -362,13 +371,13 @@ public:
 							break;
 						case 0x0020:
 							MiniCDI::Log("[CIAP] audio interrupt - wait (%04X)", value);
-							ISR |= 0x0008;
-							assert_irq();
+							ISR |= 0x08;
+							if (IER & 0x08) _68070->interrupt(SCC68070::IPL_IN4N, true);
 							break;
 						case 0x00A0:
 							MiniCDI::Log("[CIAP] audio interrupt - now (%04X)", value);
-							ISR |= 0x0008;
-							assert_irq();
+							ISR |= 0x08;
+							if (IER & 0x08) _68070->interrupt(SCC68070::IPL_IN4N, true);
 							break;
 						case 0x0140:
 							MiniCDI::Log("[CIAP] audio playback ADPCM0 (%04X)", value);

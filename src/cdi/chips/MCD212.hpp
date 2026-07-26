@@ -278,9 +278,9 @@ class MCD212
 		{
 			if (!isTransparent<Path>(src)) {
 				uint16_t rgb555 = (*src << 8) | *(src+1);
-				uint8_t r = std::clamp((rgb555 & 0b0111110000000000) >> 7, 0, 255);
-				uint8_t g = std::clamp((rgb555 & 0b0000001111100000) >> 2, 0, 255);
-				uint8_t b = std::clamp((rgb555 & 0b0000000000011111) << 3, 0, 255);
+				uint8_t r = std::clamp((int)((float)((rgb555 & 0x1F) >> 10) / 32.0f * 255.0f), 0, 255);
+				uint8_t g = std::clamp((int)((float)((rgb555 & 0x1F) >> 5) / 32.0f * 255.0f), 0, 255);
+				uint8_t b = std::clamp((int)((float)(rgb555 & 0x1F) / 32.0f * 255.0f), 0, 255);
 
 				*dst = (r << 24) | (g << 16) | (b << 8) | 0xFF;
 			}

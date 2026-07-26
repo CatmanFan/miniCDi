@@ -56,6 +56,11 @@ public:
 
 	inline void run(int frames = 1) override
 	{
+		#ifndef MINICDI_PDTICK
+		// Tick pointing device
+		pd.send_packet();
+		#endif
+
 		// Throttling
 		#if defined(_WIN32) || defined(__APPLE__)
 		#ifndef MINICDI_NO_THROTTLING
@@ -100,19 +105,14 @@ public:
 
 				total_cycles += cycles;
 			}
+
+			// Print verbose CPU
+			cpu.print();
+			MiniCDI::OS9::scan_modules(memory);
+
+			// Update microcontroller
+			if (ikat != NULL) ikat->update();
 		}
-
-		// Print verbose CPU
-		cpu.print();
-		MiniCDI::OS9::scan_modules(memory);
-
-		#ifndef MINICDI_PDTICK
-		// Tick pointing device
-		pd.send_packet();
-		#endif
-
-		// Update microcontroller
-		if (ikat != NULL) ikat->update();
 
 		// Throttling end
 		#if defined(_WIN32) || defined(__APPLE__)

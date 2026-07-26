@@ -118,6 +118,7 @@ public:
 			}
 		}
 
+		poll_movement = false;
 		poll_stationary = false;
 		poll_state_changed = false;
 	}

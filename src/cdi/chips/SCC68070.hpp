@@ -186,7 +186,23 @@ class SCC68070
 							 Ipl.levels[IPL_UART_TX],
 							 Ipl.levels[IPL_I2C],
 							 Ipl.levels[IPL_DMA1],
-							 Ipl.levels[IPL_DMA2]);*/
+							 Ipl.levels[IPL_DMA2]);
+				if (Ipl.nxt_index != IPL_TIMER)
+					MiniCDI::Log("[SCC68070:IPL] IPL <= %s(%d)",
+							 Ipl.nxt_index == IPL_IN7N ? "IN7N"
+						   : Ipl.nxt_index == IPL_IN5N ? "IN5N"
+						   : Ipl.nxt_index == IPL_IN4N ? "IN4N"
+						   : Ipl.nxt_index == IPL_IN2N ? "IN2N"
+						   : Ipl.nxt_index == IPL_INT1 ? "INT1"
+						   : Ipl.nxt_index == IPL_INT2 ? "INT2"
+						   : Ipl.nxt_index == IPL_TIMER ? "TIMER"
+						   : Ipl.nxt_index == IPL_UART_RX ? "UART_RX"
+						   : Ipl.nxt_index == IPL_UART_TX ? "UART_TX"
+						   : Ipl.nxt_index == IPL_I2C ? "I2C"
+						   : Ipl.nxt_index == IPL_DMA1 ? "DMA1"
+						   : Ipl.nxt_index == IPL_DMA2 ? "DMA2"
+						   : "undefined",
+							 Ipl.nxt_irq);*/
 
 				Ipl.cur_index = Ipl.nxt_index;
 				Ipl.cur_irq = Ipl.nxt_irq;
@@ -333,8 +349,8 @@ public:
 	inline void reset()
 	{
 		// Clear DRAM banks
-		memset(&memory[0x000000], 0, 512*1024);
-		memset(&memory[0x200000], 0, 512*1024);
+		memset(&memory[0x000000], 0, 512*1024*sizeof(char));
+		memset(&memory[0x200000], 0, 512*1024*sizeof(char));
 
 		// Copy ROM's starting SSP and PC to DRAM
 		memcpy(&memory[0], &memory[0x400000], 8*sizeof(char));

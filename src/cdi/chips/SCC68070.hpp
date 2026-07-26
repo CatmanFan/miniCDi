@@ -45,6 +45,23 @@ class SCC68070
 		uint8_t CPR = 0;
 	} DMA[2];
 
+	inline void uart_log_tx()
+	{
+		if (UART_T.chars.size() > 0)
+		{
+			std::string line;
+			for (size_t i = 0; i < UART_T.chars.size(); i++)
+			{
+				if (!std::iscntrl(UART_T.chars[i]))
+					line += UART_T.chars[i];
+			}
+			if (!line.empty())
+				MiniCDI::Log("[SCC68070:UART_TX] %s", line.c_str());
+		}
+
+		UART_T.chars.clear();
+	}
+
 	inline void dma_call(size_t index, uint32_t start_address)
 	{
 		if (DMA[index].CCR & 0x80) {
@@ -293,10 +310,7 @@ public:
 		UCS = 0x08; // unused bit
 		UCR = 0x80; // unused bit
 		UART_T.HR = UART_T.clock = 0;
-		if (UART_T.chars.size() > 0) {
-			MiniCDI::Log("[SCC68070:UART] TX log at reset:\n%s\n", &UART_T.chars[0]);
-			UART_T.chars.clear();
-		}
+		uart_log_tx();
 		URH = 0;
 
 		PICR[0] = PICR[1] = 0;
@@ -471,8 +485,11 @@ public:
 				}
 				break;
 			case 0x80002019: UART_T.HR = value;
-				UART_T.chars.push_back(value);
 				USR &= ~0x08; // unset TXE
+				if (value == '\n' || value == '\0')
+					uart_log_tx();
+				else
+					UART_T.chars.push_back(value);
 				break;
 			case 0x8000201B: URH = value; break;
 

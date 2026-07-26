@@ -70,6 +70,9 @@ public:
 
 		for (int frames_left = frames; frames_left > 0; frames_left--)
 		{
+			// Update microcontroller
+			if (ikat != NULL) ikat->update();
+
 			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
 				// TO-DO: Find a less-memory intensive method?
@@ -110,9 +113,6 @@ public:
 			// Print verbose CPU
 			cpu.print();
 			MiniCDI::OS9::scan_modules(memory);
-
-			// Update microcontroller
-			if (ikat != NULL) ikat->update();
 		}
 
 		// Throttling end

@@ -116,11 +116,11 @@ class CIAP
 				return false;
 			}
 		}
-		else if (disc->Sector.Submode[1] & 0b10000000) {
-			MiniCDI::Log("[CIAP] %02X:%02X:%02X: reached EOF",
-						 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+
+		if (disc->Sector.Submode[1] & 0b10000000) {
+			/*MiniCDI::Log("[CIAP] %02X:%02X:%02X: reached EOF",
+						 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);*/
 			CdStatus.reading = false;
-			return true;
 		}
 
 		return true;
@@ -165,7 +165,6 @@ class CIAP
 
 			// Mark mainchannel DATA as full
 			ISR |= 0x01;
-			if (IER & 0x01) _68070->interrupt(SCC68070::IPL_IN4N, true);
 
 			// switch to subchannel
 			/*targetAddr = 0x300000 + ((BMAN & 0b100000) ? 0x24E6 : 0x1B24);
@@ -197,11 +196,16 @@ class CIAP
 				memory[targetAddr++] = disc->Sector.Frame;
 				memory[targetAddr++] = 0xFF; // CRC
 				memory[targetAddr++] = 0xFF; // CRC
-			}
+			}*/
 
 			// Mark SUBCODE as full
 			ISR |= 0x04;
-			if (IER & 0x04) _68070->interrupt(SCC68070::IPL_IN4N, true);*/
+
+			// Trigger interrupt request
+			if ((IER & 0x01) || ((ISR & 0x04) && (IER & 0x04))) {
+				MiniCDI::Log("[CIAP] INT %02X", IER & 0x05);
+				_68070->interrupt(SCC68070::IPL_IN4N, true);
+			}
 		}
 
 		// Update LBA
@@ -245,7 +249,7 @@ public:
 
 	inline void abort()
 	{
-		MiniCDI::Log("[CIAP] abort");
+		// MiniCDI::Log("[CIAP] abort");
 		CdStatus.reading = false;
 		CdStatus.selection = false;
 		CdStatus.audio = false;
@@ -259,13 +263,6 @@ public:
 
 	inline void disc_set_lba(uint8_t min, uint8_t sec, uint8_t frame)
 	{
-		// Hack
-		if (sec == 0x01 && frame == 0x72) {
-			MiniCDI::Log("[CIAP] warning: illegal LBA, adjusting");
-			sec = 0x32;
-			frame = 0x16;
-		}
-
 		MiniCDI::Log("[CIAP] load LBA <= %02X:%02X:%02X", min, sec, frame);
 		CdStatus.curr_lba = disc->get_lba_from_time((min << 24) | (sec << 16) | (frame << 8));
 		disc->read_sector(CdStatus.curr_lba);
@@ -283,8 +280,7 @@ public:
 				const uint16_t value = ISR;
 				ISR = 0;
 				_68070->interrupt(SCC68070::IPL_IN4N, false);
-				MiniCDI::Log("[CIAP] ISR => %04X  QERROR=%d, AUDIO=%d, SUBCODE=%d, DATA=%d", value,
-							 value & 0x800 ? 1 : 0, value & 0x08 ? 1 : 0, value & 0x04 ? 1 : 0, value & 0x01 ? 1 : 0);
+				MiniCDI::Log("[CIAP] ISR => %04X", value);
 				return value;
 			}
 			case 0x302588: return TACS;
@@ -391,7 +387,7 @@ public:
 				if (_68070 != nullptr) _68070->Ipl.vectors[SCC68070::IPL_IN4N] = value >> 3 & 0xFF;
 				break;
 			case 0x3025C2: MiniCDI::Log("[CIAP] DMACTL <= %04X", value); DMACTL = value;
-				if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF));
+				if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF)); // check if the direction is automatically determined by OCR?
 				break;
 			case 0x3025FE: DLOAD = value; break;
 		}

@@ -96,25 +96,22 @@ public:
 				if (absolute)
 				{
 					// Absolute coordinates
-					IO.ikat->Ch[1].Out =
-					{
-						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b1111000000 >> 6)),
-						(uint8_t)((poll_movement << 4) | (y & 0b1111000000 >> 6)),
-						(uint8_t)(x & 0b0000111111),
-						(uint8_t)(0x80 | (y & 0b0000111111)),
-					};
+					IO.ikat->poll_packet(1,
+						0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b1111000000 >> 6),
+						(poll_movement << 4) | (y & 0b1111000000 >> 6),
+						x & 0b0000111111,
+						0x80 | (y & 0b0000111111)
+					);
 				}
 				else
 				{
 					// Relative coordinates
-					IO.ikat->Ch[1].Out =
-					{
-						(uint8_t)(0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 6) | (y & 0b11000000 >> 4)),
-						(uint8_t)(x & 0b00111111),
-						(uint8_t)(y & 0b00111111)
-					};
+					IO.ikat->poll_packet(1,
+						0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 6) | (y & 0b11000000 >> 4),
+						x & 0b00111111,
+						y & 0b00111111
+					);
 				}
-				IO.ikat->poll_packet(1);
 			}
 		}
 

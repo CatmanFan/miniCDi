@@ -76,7 +76,8 @@ public:
 			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
 				// TO-DO: Find a less-memory intensive method?
-				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
+				int cycles = 96;
+				// int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 				cpu.run(cycles);
 
 				for (int i = 0; i < EVTNUM; i++)

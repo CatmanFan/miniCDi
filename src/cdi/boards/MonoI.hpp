@@ -65,6 +65,8 @@ public:
 
 		for (int frames_left = frames; frames_left > 0; frames_left--)
 		{
+			MiniCDI::OS9::scan_modules(memory);
+
 			// Update microcontroller
 			if (ikat != NULL) ikat->update();
 
@@ -111,10 +113,6 @@ public:
 				}
 				#endif
 			}
-
-			// Print verbose CPU
-			cpu.print();
-			MiniCDI::OS9::scan_modules(memory);
 		}
 
 		// Benchmark end

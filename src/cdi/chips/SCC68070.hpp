@@ -527,35 +527,6 @@ public:
 		}
 	}
 
-	inline void print()
-	{
-		#ifdef MINICDI_DEBUG_CPU
-		printf("\x1b[%d;%dH", 4, 0);
-		printf("PC: %08X SR: %s%s-%s%s%s%s%s FC: %d\n",
-			m68k_get_reg(NULL, M68K_REG_PC),
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 15) & 0x01 ? "T" : "-",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 13) & 0x01 ? "S" : "-",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 4) & 0x01 ? "X" : "-",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 3) & 0x01 ? "N" : "-",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 2) & 0x01 ? "Z" : "-",
-			(m68k_get_reg(NULL, M68K_REG_SR) >> 1) & 0x01 ? "V" : "-",
-			m68k_get_reg(NULL, M68K_REG_SR) & 0x01 ? "C" : "-",
-			fc
-		);
-
-		for (int i = 0; i < 8; i++)
-			printf("D%d: %08X A%d: %08X\n",
-			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_D0 + i)),
-			i, m68k_get_reg(NULL, (m68k_register_t)((int)M68K_REG_A0 + i)));
-
-		/// Timer ticks at an average of 6155 ns. One cycle takes about 64 ns (4 cycles = ~256 ns).
-		printf("                                             ");
-		// printf("\nUCR: %02X URH: %02X USR: %02X LIR: %02X\n", UCR, URH, USR, LIR);
-		printf("\n[DMA1] CSR: %02X MTC: %04X MAC: %08X\n", DMA[0].CSR, DMA[0].MTC, DMA[0].MAC);
-		printf("\x1b[%d;%dH", 16, 0);
-		#endif
-	}
-
 	inline void uart_tx_tick()
 	{
 		if ((UCR & 0b1100) != 0b0100) return;
@@ -576,29 +547,20 @@ public:
 
 	inline void run(int cycles)
 	{
-		/*#ifdef MINICDI_DEBUG_CPU
-		if (MiniCDI::Config::LogFile != 0) {
-			uint32_t pcLog;
-			pcLog = m68k_get_reg(NULL, M68K_REG_PC);
-			ran += m68k_execute(cycles);
-			if (pcLog != m68k_get_reg(NULL, M68K_REG_PC)) {
-				char text[192];
-				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-				fprintf(MiniCDI::Config::LogFile, "[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
-				// printf("\n$%08X: %s                            \n", m68k_get_reg(NULL, M68K_REG_PC), text);
-			}
-		} else
-			ran += m68k_execute(cycles);
-		#else
-		ran += m68k_execute(cycles);
-		#endif*/
-
-
-		// Poll timer. Key is that it should be cycle-accurate while also not sacrificing performance(?).
+		// Run CPU cycles relative to timer (96/CLKOUT per datasheet??).
+		// Key is that it should be cycle-accurate while also not sacrificing performance(?).
 		T_cycles[0] += cycles;
 		while (T_cycles[0] >= 96)
 		{
+			#ifdef MINICDI_DEBUG_CPU
+			if (MiniCDI::Config::LogFile != 0) {
+				char text[192];
+				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
+				MiniCDI::Log("[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+			}
+			#endif
 			m68k_execute(96);
+
 			T_cycles[0] -= 96;
 			cycles -= 96;
 
@@ -615,7 +577,7 @@ public:
 		if (cycles > 0)
 		{
 			m68k_execute(cycles);
-			T_cycles[0] = 0;
+			T_cycles[0] -= cycles;
 		}
 	}
 };

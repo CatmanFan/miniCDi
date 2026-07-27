@@ -165,10 +165,10 @@ public:
 		if (cdic != NULL) cdic->reset();
 
 		disc.eject();
-		const bool was_disc_valid = disc.open(path);
+		if (!disc.open(path)) return;
 
-		if (slave != NULL) slave->send_disc_status(was_disc_valid);
-		if (ikat != NULL) ikat->send_disc_status(was_disc_valid);
+		if (slave != NULL) slave->send_disc_status(true);
+		if (ikat != NULL) ikat->send_disc_status(true);
 	}
 
 	inline uint32_t* get_display() override { return vpu->get_display(); }

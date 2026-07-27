@@ -40,8 +40,8 @@ class CDIC
 	AdpcmDecoder ADPCM;
 	struct {
 		bool active;
-		size_t buffer;
-		bool played;
+		size_t buffer_index;
+		size_t next_playback;
 	} SoundmapUnit; // Implementation based on Green Book
 
 	inline bool adpcm_decode_and_play(int buffer, bool soundmap)
@@ -66,7 +66,7 @@ class CDIC
 	{
 		if (!SoundmapUnit.active) return;
 
-		if (memory[SoundmapUnit.buffer+11] == 0xFF) // coding byte
+		if (memory[SoundmapUnit.buffer_index+11] == 0xFF) // coding byte
 		{
 			MiniCDI::Log("[CDIC] ADPCM playback ended due to $FF coding");
 			SoundmapUnit.active = false;
@@ -75,16 +75,58 @@ class CDIC
 			return;
 		}
 
-		if (!SoundmapUnit.played)
+		if (SoundmapUnit.next_playback > 0)
+			SoundmapUnit.next_playback--;
+		else
 		{
-			if (!adpcm_decode_and_play(SoundmapUnit.buffer, true)) return;
+			if (!adpcm_decode_and_play(SoundmapUnit.buffer_index, true)) return;
 
+			// Determine number of sectors until next playback based on coding information (partially taken from MAME).
+			SoundmapUnit.next_playback = 1;
+			switch (memory[SoundmapUnit.buffer_index+11] & 0x03)
+			{
+				case 0x00: // mono
+					SoundmapUnit.next_playback *= 2;
+					break;
+				case 0x01: // stereo
+					break;
+				case 0x03: // MPEG
+				default: // unsupported
+					SoundmapUnit.next_playback = 0;
+					break;
+			}
+			switch (memory[SoundmapUnit.buffer_index+11] & 0x30)
+			{
+				case 0x00: // 4bps
+					SoundmapUnit.next_playback *= 2;
+					break;
+				case 0x10: // 8bps
+				case 0x20: // 16bps
+					break;
+				default: // unsupported
+				case 0x30: // MPEG
+					SoundmapUnit.next_playback = 0;
+					break;
+			}
+			switch (memory[SoundmapUnit.buffer_index+11] & 0x0C)
+			{
+				case 0x00: // 37.8 kHz
+				case 0x0C: // 44.1 kHz
+					break;
+				case 0x04: // 18.9 kHz
+					SoundmapUnit.next_playback *= 2;
+					break;
+				default: // unsupported
+					SoundmapUnit.next_playback = 0;
+					break;
+			}
+
+			SoundmapUnit.buffer_index = !SoundmapUnit.buffer_index;
 			if (AUDCTL & 0x2000)
 			{
 				ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
 				update_irq();
 			}
-			SoundmapUnit.played = true;
 		}
 	}
 
@@ -382,47 +424,39 @@ public:
 				break;
 
 			case 0x303C00: case 0x303C01:
-				MiniCDI::Log("[CDIC] CMD <= %04X", value);
+				//MiniCDI::Log("[CDIC] CMD <= %04X", value);
 				CMD = value;
 				break;
 
 			case 0x303C06: case 0x303C07:
-				MiniCDI::Log("[CDIC] FILE <= %04X", value);
+				//MiniCDI::Log("[CDIC] FILE <= %04X", value);
 				FILE = value;
 				break;
 
 			case 0x303C0C: case 0x303C0D:
-				MiniCDI::Log("[CDIC] ACHAN <= %04X", value);
+				//MiniCDI::Log("[CDIC] ACHAN <= %04X", value);
 				ACHAN = value;
 				break;
 
 			case 0x303C80: case 0x303C81:
-				MiniCDI::Log("[CDIC] DSEL <= %04X", value);
+				//MiniCDI::Log("[CDIC] DSEL <= %04X", value);
 				DSEL = value;
 				break;
 
 			case 0x303FF4: case 0x303FF5:
-				MiniCDI::Log("[CDIC] ABUF <= %04X", value);
+				//MiniCDI::Log("[CDIC] ABUF <= %04X", value);
 				ABUF = value;
 				break;
 
 			case 0x303FF6: case 0x303FF7:
-				MiniCDI::Log("[CDIC] XBUF <= %04X", value);
+				//MiniCDI::Log("[CDIC] XBUF <= %04X", value);
 				XBUF = value;
 				break;
 
 			case 0x303FF8: case 0x303FF9:
-				// MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
+				//MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
 				DMACTL = value;
 				if (value & 0x8000) _68070->dma_call(0, 0x300000 + (value & 0x3FFF));
-
-				// Record the number of ADPCM sectors transferred
-				if ((value & 0x3FFF) >= 0x2800 && (value & 0x3FFF) <= 0x3BFF
-				  && SoundmapUnit.buffer != ((value & 0x3FFF) >= 0x3200))
-				{
-					SoundmapUnit.buffer = (value & 0x3FFF) >= 0x3200;
-					SoundmapUnit.played = false;
-				}
 				break;
 
 			case 0x303FFA: case 0x303FFB:
@@ -437,17 +471,19 @@ public:
 				{
 					MiniCDI::Log("[CDIC] start audio playback from soundmap");
 					SoundmapUnit.active = true;
+					SoundmapUnit.next_playback = 0;
+					SoundmapUnit.buffer_index = 0;
 				}
 				break;
 
 			case 0x303FFC: case 0x303FFD:
-				MiniCDI::Log("[CDIC] IVEC <= %04X", value);
+				//MiniCDI::Log("[CDIC] IVEC <= %04X", value);
 				IVEC = value;
 				_68070->Ipl.vectors[SCC68070::IPL_IN4N] = value & 0x00FF;
 				break;
 
 			case 0x303FFE: case 0x303FFF:
-				MiniCDI::Log("[CDIC] DBUF <= %04X", value);
+				//MiniCDI::Log("[CDIC] DBUF <= %04X", value);
 				DBUF = value;
 				if (value & 0x8000)
 				{
@@ -548,12 +584,12 @@ public:
 				break;
 
 			case 0x303C02:
-				MiniCDI::Log("[CDIC] TIME <= %08X", value);
+				//MiniCDI::Log("[CDIC] TIME <= %08X", value);
 				TIME = value;
 				break;
 
 			case 0x303C08:
-				MiniCDI::Log("[CDIC] CHAN <= %08X", value);
+				//MiniCDI::Log("[CDIC] CHAN <= %08X", value);
 				CHAN = value;
 				break;
 		}

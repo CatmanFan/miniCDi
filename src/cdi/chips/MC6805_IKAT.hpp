@@ -138,7 +138,6 @@ public:
 			case 0x31000F:
 				{
 					size_t c = (addr - 0x310009) / 2;
-					_68070->interrupt(SCC68070::IPL_IN2N, false);
 
 					if (Ch[c].Out.size() > 0)
 					{
@@ -148,6 +147,7 @@ public:
 						if (Ch[c].Out.size() == 0)
 						{
 							ISR &= ~(1 << (1+2*c)); // imitate CeDImu
+							if ((ISR & IMR) == 0) _68070->interrupt(SCC68070::IPL_IN2N, false);
 							// Ch[c].SR &= ~0b01000000; // RRDY OFF
 							Ch[c].SR |= 0b00010000; // REMTY ON
 							//MiniCDI::Log("[IKAT] %sDR read completed", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
@@ -247,7 +247,6 @@ public:
 										case 0x9A:
 											MiniCDI::Log("[IKAT] set LCD (0x%02X)", Ch[c].In[0]);
 											if (fpd != NULL) fpd->update(Ch[c].In);
-											_68070->interrupt(SCC68070::IPL_IN2N, false);
 											break;
 									}
 									Ch[c].In.clear();

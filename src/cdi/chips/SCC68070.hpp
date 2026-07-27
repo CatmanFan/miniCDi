@@ -553,7 +553,7 @@ public:
 
 		// Step timer for however many multiples of 96.
 		T_cycles[0] += cycles;
-		while (T_cycles[0] >= 96)
+		while (T_cycles[0] >= 96) {
 			T_cycles[0] -= 96;
 			if (T[0] == 0xFFFF) {
 				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");

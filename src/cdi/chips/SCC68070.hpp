@@ -160,9 +160,6 @@ class SCC68070
 
 			if (Ipl.cur_irq != 0)
 			{
-				// Log interrupt information
-				/*MiniCDI::Log("[SCC68070:IPL] IPL%d(%d) <= reset", Ipl.cur_index, Ipl.cur_irq);*/
-
 				Ipl.cur_index = 0;
 				Ipl.cur_irq = 0;
 
@@ -171,8 +168,6 @@ class SCC68070
 
 			if (Ipl.nxt_irq != 0)
 			{
-				// Log interrupt information
-
 				Ipl.cur_index = Ipl.nxt_index;
 				Ipl.cur_irq = Ipl.nxt_irq;
 
@@ -547,23 +542,19 @@ public:
 
 	inline void run(int cycles)
 	{
-		// Run CPU cycles relative to timer (96/CLKOUT per datasheet??).
-		// Key is that it should be cycle-accurate while also not sacrificing performance(?).
+		#ifdef MINICDI_DEBUG_CPU
+		if (MiniCDI::Config::LogFile != 0) {
+			char text[192];
+			m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
+			MiniCDI::Log("[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
+		}
+		#endif
+		m68k_execute(cycles);
+
+		// Step timer for however many multiples of 96.
 		T_cycles[0] += cycles;
 		while (T_cycles[0] >= 96)
-		{
-			#ifdef MINICDI_DEBUG_CPU
-			if (MiniCDI::Config::LogFile != 0) {
-				char text[192];
-				m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
-				MiniCDI::Log("[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
-			}
-			#endif
-			m68k_execute(96);
-
 			T_cycles[0] -= 96;
-			cycles -= 96;
-
 			if (T[0] == 0xFFFF) {
 				//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
 				TSR |= 0x80; // OV in T0
@@ -572,12 +563,6 @@ public:
 			} else {
 				T[0]++;
 			}
-		}
-
-		if (cycles > 0)
-		{
-			m68k_execute(cycles);
-			T_cycles[0] -= cycles;
 		}
 	}
 };

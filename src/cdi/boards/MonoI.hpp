@@ -76,8 +76,6 @@ public:
 			for (bool vblank = false; !vblank;)
 			#endif
 			{
-				// Setting `cycles` at 96 results in more cycle-accurate timer which makes player shell more stable, but breaks Hotel Mario graphics.
-				// TL;DR: More cycles, more stable gameplay, less stable system menu (especially 2nd revision). Best if value is multiple of 96.
 				// Find a less-memory intensive method?
 				// int cycles = 480;
 				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));

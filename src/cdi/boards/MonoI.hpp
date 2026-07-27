@@ -56,24 +56,23 @@ public:
 
 	inline void run(int frames = 1) override
 	{
-		#ifndef MINICDI_PDTICK
-		// Tick pointing device
+		#ifndef MINICDI_RAW_68K_MODE
 		pd.send_packet();
 		#endif
 
-		// Throttling
-		#if defined(_WIN32) || defined(__APPLE__)
-		#ifndef MINICDI_NO_THROTTLING
+		// Benchmark
 		const auto t1 = std::chrono::steady_clock::now();
-		#endif
-		#endif
 
 		for (int frames_left = frames; frames_left > 0; frames_left--)
 		{
 			// Update microcontroller
 			if (ikat != NULL) ikat->update();
 
+			#ifdef MINICDI_RAW_68K_MODE
 			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
+			#else
+			for (bool vblank = false; !vblank;)
+			#endif
 			{
 				// Setting `cycles` at 96 results in more cycle-accurate timer which makes player shell more stable, but breaks Hotel Mario graphics.
 				// TL;DR: More cycles, more stable gameplay, less stable system menu (especially 2nd revision). Best if value is multiple of 96.
@@ -82,6 +81,9 @@ public:
 				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 				cpu.run(cycles);
 
+				#ifdef MINICDI_RAW_68K_MODE
+				total_cycles += cycles;
+				#else
 				for (int i = 0; i < EVTNUM; i++)
 				{
 					event_cycles[i] -= cycles;
@@ -96,9 +98,7 @@ public:
 								break;
 
 							case VPU:
-								#ifndef MINICDI_RAW_68K_MODE
-								if (vpu != NULL) vpu->tick(frames_left != frames);
-								#endif
+								if (vpu != NULL) vblank = vpu->tick(frames_left != frames);
 								break;
 
 							case UART_TX:
@@ -109,8 +109,7 @@ public:
 						event_cycles[i] += event_rates[i];
 					}
 				}
-
-				total_cycles += cycles;
+				#endif
 			}
 
 			// Print verbose CPU
@@ -118,17 +117,24 @@ public:
 			MiniCDI::OS9::scan_modules(memory);
 		}
 
-		// Throttling end
-		#if defined(_WIN32) || defined(__APPLE__)
-		#ifndef MINICDI_NO_THROTTLING
+		// Benchmark end
 		// integral duration: requires duration_cast
 		const auto t2 = std::chrono::steady_clock::now();
-		const auto fp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+		const std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
+		#ifdef MINICDI_BENCHMARKING
+		MiniCDI::Log("[CDI] Executed %d %s in %.2f ms", frames, frames == 1 ? "frame" : "frames", fp_ms.count());
+		#endif
+
+		#ifdef MINICDI_NO_THROTTLING
+		return;
+		#endif
+
+		// Throttling
+		#if defined(_WIN32) || defined(__APPLE__)
 		if (fp_ms.count() < (1000.0f/60.0f)) {
 			const int wait_ms = (int)((1000.0f/60.0f) - fp_ms.count());
 			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 		}
-		#endif
 		#endif
 	}
 

@@ -253,7 +253,6 @@ public:
 		CdStatus.reading = false;
 		CdStatus.selection = false;
 		CdStatus.audio = false;
-		CdStatus.delayed_sectors = 6;
 	}
 
 	inline void tick()
@@ -328,28 +327,32 @@ public:
 					switch (CCR)
 					{
 						default:
-							MiniCDI::Log("[CIAP] CCR <= %04X", value);
+							MiniCDI::Log("[CIAP] CCR <= undefined (0x%04X)", value);
 							break;
 						case 0x0008:
-							MiniCDI::Log("[CIAP] ASEL (0x%04X)", value);
+							MiniCDI::Log("[CIAP] CCR <= ASEL (0x%04X)", value);
 							CdStatus.selection = true;
 							break;
 						case 0x0100:
-							MiniCDI::Log("[CIAP] RESET (0x%04X)", value);
+							MiniCDI::Log("[CIAP] CCR <= RESET (0x%04X)", value);
 							abort();
 							break;
 						case 0x3000:
-							MiniCDI::Log("[CIAP] PREPA (0x%04X)", value);
+							MiniCDI::Log("[CIAP] CCR <= PREPA (0x%04X)", value);
+							CdStatus.delayed_sectors = 6;
 							break;
 						case 0x7000:
-							MiniCDI::Log("[CIAP] PREPD (0x%04X)", value);
-							break;
-						case 0x0094: // STARTA
-						case 0x00C4: // STARTD
-							MiniCDI::Log("[CIAP] START read (0x%04X)", value);
-							CdStatus.reading = true;
-							CdStatus.audio = CCR == 0x0094;
+							MiniCDI::Log("[CIAP] CCR <= PREPD (0x%04X)", value);
 							CdStatus.delayed_sectors = 6;
+							break;
+						case 0x0094:
+							MiniCDI::Log("[CIAP] CCR <= STARTA (0x%04X)", value);
+							CdStatus.reading = true;
+							CdStatus.audio = true;
+						case 0x00C4:
+							MiniCDI::Log("[CIAP] CCR <= STARTD (0x%04X)", value);
+							CdStatus.reading = true;
+							CdStatus.audio = false;
 							break;
 					}
 				}
@@ -363,20 +366,20 @@ public:
 					switch (value)
 					{
 						default:
-							MiniCDI::Log("[CIAP] APCR <= %04X", value);
+							MiniCDI::Log("[CIAP] APCR <= undefined (0x%04X)", value);
 							break;
 						case 0x0020:
-							MiniCDI::Log("[CIAP] audio interrupt - wait (%04X)", value);
+							MiniCDI::Log("[CIAP] APCR <= INTDONE (%04X)", value);
 							ISR |= 0x08;
 							if (IER & 0x08) _68070->interrupt(SCC68070::IPL_IN4N, true);
 							break;
 						case 0x00A0:
-							MiniCDI::Log("[CIAP] audio interrupt - now (%04X)", value);
+							MiniCDI::Log("[CIAP] APCR <= INTNOW (%04X)", value);
 							ISR |= 0x08;
 							if (IER & 0x08) _68070->interrupt(SCC68070::IPL_IN4N, true);
 							break;
 						case 0x0140:
-							MiniCDI::Log("[CIAP] audio playback ADPCM0 (%04X)", value);
+							MiniCDI::Log("[CIAP] APCR <= PLAY0 (%04X)", value);
 							break;
 					}
 				}

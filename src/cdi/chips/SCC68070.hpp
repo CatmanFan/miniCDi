@@ -143,39 +143,6 @@ class SCC68070
 	uint8_t ICR = 0;
 	uint8_t ICCR = 0;
 
-	inline void update_ipl()
-	{
-		Ipl.nxt_index = 0;
-		Ipl.nxt_irq = 0;
-		for (int i = 11; i >= 0; i--) {
-			if (Ipl.levels[i] >= Ipl.nxt_irq) {
-				Ipl.nxt_index = i;
-				Ipl.nxt_irq = Ipl.levels[i];
-			}
-		}
-
-		if (Ipl.cur_irq != Ipl.nxt_irq)
-		{
-			// Mimic MAME behaviour, which is to clear the current interrupt line THEN check for any pending interrupt levels.
-
-			if (Ipl.cur_irq != 0)
-			{
-				Ipl.cur_index = 0;
-				Ipl.cur_irq = 0;
-
-				m68k_set_irq(0);
-			}
-
-			if (Ipl.nxt_irq != 0)
-			{
-				Ipl.cur_index = Ipl.nxt_index;
-				Ipl.cur_irq = Ipl.nxt_irq;
-
-				m68k_set_irq(Ipl.cur_irq > 0 && Ipl.cur_index >= IPL_INT1 ? Ipl.cur_irq + 32 : Ipl.cur_irq);
-			}
-		}
-	}
-
 public:
 	uint8_t fc = 0; // used for FC/address space callback
 	friend class PointingDevice;
@@ -198,12 +165,12 @@ public:
 		IPL_DMA2
 	};
 	struct {
-		int cur_index = 0; // Index of peripheral holding current IRQ
-		int nxt_index = 0; // Index of peripheral holding next IRQ
-		uint8_t cur_irq = 0; // Current pending interrupt level
+		uint8_t prv_irq = 0; // Current pending interrupt level
+		int prv_index = 0; // Index pointing to said level
 		uint8_t nxt_irq = 0; // Next pending interrupt level
+		int nxt_index = 0; // Ditto
 
-		uint8_t levels[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+		bool levels[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 		uint8_t vectors[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 	} Ipl;
 
@@ -215,52 +182,135 @@ public:
 	 */
 	inline void interrupt(size_t index, bool assert)
 	{
-		if ((assert && Ipl.levels[index] > 0) || (!assert && Ipl.levels[index] == 0)) return;
+		Ipl.levels[index] = assert;
+		/*MiniCDI::Log("[SCC68070:IPL] %s = %d",
+					index == IPL_IN7N ? "IPL_IN7N" :
+					index == IPL_IN5N ? "IPL_IN5N" :
+					index == IPL_IN4N ? "IPL_IN4N" :
+					index == IPL_IN2N ? "IPL_IN2N" :
+					index == IPL_INT1 ? "IPL_INT1" :
+					index == IPL_INT2 ? "IPL_INT2" :
+					index == IPL_TIMER ? "IPL_TIMER" :
+					index == IPL_UART_RX ? "IPL_UART_RX" :
+					index == IPL_UART_TX ? "IPL_UART_TX" :
+					index == IPL_I2C ? "IPL_I2C" :
+					index == IPL_DMA1 ? "IPL_DMA1" :
+					index == IPL_DMA2 ? "IPL_DMA2" :
+					"undefined",
+					assert);*/
 
-		switch (index)
+		// Update the IPL.
+		// **************************
+
+		int all_levels[] = {
+			Ipl.levels[IPL_IN7N] ? 7 : 0,
+			Ipl.levels[IPL_IN5N] ? 5 : 0,
+			Ipl.levels[IPL_IN4N] ? 4 : 0,
+			Ipl.levels[IPL_IN2N] ? 2 : 0,
+			Ipl.levels[IPL_INT1] ? LIR >> 4 & 0x07 : 0,
+			Ipl.levels[IPL_INT2] ? LIR & 0x07 : 0,
+			Ipl.levels[IPL_TIMER] ? PICR[0] & 0x07 : 0,
+			Ipl.levels[IPL_UART_RX] ? PICR[1] >> 4 & 0x07 : 0,
+			Ipl.levels[IPL_UART_TX] ? PICR[1] & 0x07 : 0,
+			Ipl.levels[IPL_I2C] ? PICR[0] >> 4 & 0x07 : 0,
+			Ipl.levels[IPL_DMA1] && (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0,
+			Ipl.levels[IPL_DMA2] && (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0
+		};
+
+		Ipl.nxt_irq = 0;
+		Ipl.nxt_index = 0;
+		for (int i = IPL_DMA2; i >= 0; i--)
 		{
-			default:
-				Ipl.levels[index] = assert;
+			if (all_levels[i] >= Ipl.nxt_irq)
+			{
+				Ipl.nxt_irq = all_levels[i];
+				Ipl.nxt_index = i;
+			}
+		}
+
+		if (Ipl.prv_irq != Ipl.nxt_irq)
+		{
+			if (Ipl.prv_irq != 0)
+			{
+				/*MiniCDI::Log("[SCC68070:IPL] %s deassert",
+							Ipl.prv_index == IPL_IN7N ? "IPL_IN7N" :
+							Ipl.prv_index == IPL_IN5N ? "IPL_IN5N" :
+							Ipl.prv_index == IPL_IN4N ? "IPL_IN4N" :
+							Ipl.prv_index == IPL_IN2N ? "IPL_IN2N" :
+							Ipl.prv_index == IPL_INT1 ? "IPL_INT1" :
+							Ipl.prv_index == IPL_INT2 ? "IPL_INT2" :
+							Ipl.prv_index == IPL_TIMER ? "IPL_TIMER" :
+							Ipl.prv_index == IPL_UART_RX ? "IPL_UART_RX" :
+							Ipl.prv_index == IPL_UART_TX ? "IPL_UART_TX" :
+							Ipl.prv_index == IPL_I2C ? "IPL_I2C" :
+							Ipl.prv_index == IPL_DMA1 ? "IPL_DMA1" :
+							Ipl.prv_index == IPL_DMA2 ? "IPL_DMA2" :
+							"undefined");*/
+
+				m68k_set_virq(Ipl.prv_irq, 0);
+				Ipl.prv_irq = 0;
+				Ipl.prv_index = 0;
+			}
+
+			if (Ipl.nxt_irq != 0)
+			{
+				/*MiniCDI::Log("[SCC68070:IPL] %s assert",
+							Ipl.nxt_index == IPL_IN7N ? "IPL_IN7N" :
+							Ipl.nxt_index == IPL_IN5N ? "IPL_IN5N" :
+							Ipl.nxt_index == IPL_IN4N ? "IPL_IN4N" :
+							Ipl.nxt_index == IPL_IN2N ? "IPL_IN2N" :
+							Ipl.nxt_index == IPL_INT1 ? "IPL_INT1" :
+							Ipl.nxt_index == IPL_INT2 ? "IPL_INT2" :
+							Ipl.nxt_index == IPL_TIMER ? "IPL_TIMER" :
+							Ipl.nxt_index == IPL_UART_RX ? "IPL_UART_RX" :
+							Ipl.nxt_index == IPL_UART_TX ? "IPL_UART_TX" :
+							Ipl.nxt_index == IPL_I2C ? "IPL_I2C" :
+							Ipl.nxt_index == IPL_DMA1 ? "IPL_DMA1" :
+							Ipl.nxt_index == IPL_DMA2 ? "IPL_DMA2" :
+							"undefined");*/
+
+				m68k_set_virq(Ipl.nxt_irq, 1);
+				if (Ipl.nxt_index >= IPL_INT1) m68k_set_irq(Ipl.nxt_irq + 32);
+
+				Ipl.prv_irq = Ipl.nxt_irq;
+				Ipl.prv_index = Ipl.nxt_index;
+				Ipl.nxt_irq = 0;
+				Ipl.nxt_index = 0;
+			}
+		}
+	}
+
+	inline int interrupt_ack(int int_level)
+	{
+		// MiniCDI::Log("[SCC68070:CPU] lvl=%d acknowledged", int_level);
+
+		// Return manually-set vectors in case of external interrupts (per MAME)
+		switch (int_level)
+		{
+			case 2:
+				if (Ipl.vectors[SCC68070::IPL_IN2N] > 0) { return Ipl.vectors[SCC68070::IPL_IN2N]; }
 				break;
-			case IPL_IN7N:
-				Ipl.levels[index] = assert ? 7 : 0;
+			case 4:
+				if (Ipl.vectors[SCC68070::IPL_IN4N] > 0) { return Ipl.vectors[SCC68070::IPL_IN4N]; }
 				break;
-			case IPL_IN5N:
-				Ipl.levels[index] = assert ? 5 : 0;
+			case 5:
+				if (Ipl.vectors[SCC68070::IPL_IN5N] > 0) { return Ipl.vectors[SCC68070::IPL_IN5N]; }
 				break;
-			case IPL_IN4N:
-				Ipl.levels[index] = assert ? 4 : 0;
-				break;
-			case IPL_IN2N:
-				Ipl.levels[index] = assert ? 2 : 0;
-				break;
-			case IPL_INT1:
-				Ipl.levels[index] = assert ? LIR >> 4 & 0x07 : 0;
-				break;
-			case IPL_INT2:
-				Ipl.levels[index] = assert ? LIR & 0x07 : 0;
-				break;
-			case IPL_TIMER:
-				Ipl.levels[index] = assert ? PICR[0] & 0x07 : 0;
-				break;
-			case IPL_UART_RX:
-				Ipl.levels[index] = assert ? PICR[1] >> 4 & 0x07 : 0;
-				break;
-			case IPL_UART_TX:
-				Ipl.levels[index] = assert ? PICR[1] & 0x07 : 0;
-				break;
-			case IPL_I2C:
-				Ipl.levels[index] = assert ? PICR[0] >> 4 & 0x07 : 0;
-				break;
-			case IPL_DMA1:
-				Ipl.levels[index] = assert && (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0;
-				break;
-			case IPL_DMA2:
-				Ipl.levels[index] = assert && (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0;
+			case 7:
+				if (Ipl.vectors[SCC68070::IPL_IN7N] > 0) { return Ipl.vectors[SCC68070::IPL_IN7N]; }
 				break;
 		}
 
-		update_ipl();
+		// Automatically deassert onchip timers (per MAME)
+		if ((int_level % 8) == (LIR >> 4 & 0x07)) { interrupt(IPL_INT1, false); }
+		if ((int_level % 8) == (LIR & 0x07)) { interrupt(IPL_INT2, false); }
+		if ((int_level % 8) == (PICR[0] & 0x07)) { interrupt(IPL_TIMER, false); }
+		if ((int_level % 8) == (PICR[1] >> 4 & 0x07)) { interrupt(IPL_UART_RX, false); }
+		if ((int_level % 8) == (PICR[1] & 0x07)) { interrupt(IPL_UART_TX, false); }
+		if ((int_level % 8) == (PICR[0] >> 4 & 0x07)) { interrupt(IPL_I2C, false); }
+
+		// If not handled, return autovector.
+		return 0xffffffff;
 	}
 
 	SCC68070(uint8_t* memory) : memory(memory)
@@ -463,7 +513,7 @@ public:
 			case 0x8000201B: URH = value; break;
 
 			/** Timer **/
-			case 0x80002020: TSR = value; break;
+			case 0x80002020: TSR &= ~value; break;
 			case 0x80002021: TCR = value; break;
 			case 0x80002022: RR &= 0x00FF; RR |= (value << 8); break;
 			case 0x80002023: RR &= 0xFF00; RR |= value; break;

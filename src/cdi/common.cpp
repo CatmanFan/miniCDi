@@ -136,25 +136,7 @@ static int MiniCDI_int_ack_handler(int int_level)
 	m68k_set_irq(0); // resets IRQ
 
 	if (MiniCDI::Player.scc68070)
-	{
-		/*MiniCDI::Log("[SCC68070:IPL] lvl=%d v=%d acknowledged",
-			int_level,
-			MiniCDI::Player.scc68070->Ipl.vectors[MiniCDI::Player.scc68070->Ipl.cur_index]);*/
-
-		// Deassert manually
-		switch (MiniCDI::Player.scc68070->Ipl.cur_index)
-		{
-			case SCC68070::IPL_TIMER:
-				MiniCDI::Player.scc68070->interrupt(SCC68070::IPL_TIMER, false);
-				break;
-			case SCC68070::IPL_UART_TX:
-				MiniCDI::Player.scc68070->interrupt(SCC68070::IPL_UART_TX, false);
-				break;
-		}
-
-		if (MiniCDI::Player.scc68070->Ipl.vectors[MiniCDI::Player.scc68070->Ipl.cur_index])
-			return MiniCDI::Player.scc68070->Ipl.vectors[MiniCDI::Player.scc68070->Ipl.cur_index];
-	}
+		return MiniCDI::Player.scc68070->interrupt_ack(int_level);
 
 	return M68K_INT_ACK_AUTOVECTOR;
 }

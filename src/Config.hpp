@@ -11,6 +11,7 @@ namespace MiniCDI
 		extern bool ShowFPD;
 		extern bool AnalogColors;
 		extern size_t FrameSkip;
+		extern bool NoFrameLimit;
 		extern int PointerAdvance;
 
 		extern FILE* LogFile;

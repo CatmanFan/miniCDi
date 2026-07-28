@@ -11,6 +11,7 @@ namespace MiniCDI
 		bool ShowFPD = false;
 		bool AnalogColors = false;
 		size_t FrameSkip = 0;
+		bool NoFrameLimit = false;
 		int PointerAdvance = 1;
 
 		FILE* LogFile = nullptr;

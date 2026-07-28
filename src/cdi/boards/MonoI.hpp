@@ -70,25 +70,20 @@ public:
 			// Update microcontroller
 			if (ikat != NULL) ikat->update();
 
-			#ifdef MINICDI_RAW_68K_MODE
-			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
-			#else
-			for (bool vblank = false; !vblank;)
-			#endif
+			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262); total_cycles += cycles)
 			{
 				// Find a less-memory intensive method?
 				// int cycles = 480;
 				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 				cpu.run(cycles);
 
-				#ifdef MINICDI_RAW_68K_MODE
-				total_cycles += cycles;
-				#else
+				#ifndef MINICDI_RAW_68K_MODE
 				for (int i = 0; i < EVTNUM; i++)
 				{
 					event_cycles[i] -= cycles;
 					while (event_cycles[i] <= 0)
 					{
+						event_cycles[i] += event_rates[i];
 						switch (i)
 						{
 							case SECTOR:
@@ -98,15 +93,13 @@ public:
 								break;
 
 							case VPU:
-								if (vpu != NULL) vblank = vpu->tick(frames_left != frames);
+								if (vpu != NULL) vpu->tick(frames_left != frames);
 								break;
 
 							case UART_TX:
 								cpu.uart_tx_tick();
 								break;
 						}
-
-						event_cycles[i] += event_rates[i];
 					}
 				}
 				#endif
@@ -127,7 +120,7 @@ public:
 
 		// Throttling
 		#if defined(_WIN32) || defined(__APPLE__)
-		if (fp_ms.count() < (1000.0f/60.0f)) {
+		if (fp_ms.count() < (1000.0f/60.0f) && !MiniCDI::Config::NoFrameLimit) {
 			const int wait_ms = (int)((1000.0f/60.0f) - fp_ms.count());
 			std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 		}

@@ -80,6 +80,27 @@ public:
 	}
 };
 
+static void SwapDisc(MonoI *cdi, enum CDi::BoardType board, const char *path)
+{
+	if (access(path, F_OK) != 0) return;
+
+	switch (board)
+	{
+		default: cdi->swap_disc(path); break;
+
+		case CDi::MonoII:
+			printf("[miniCDi] Warning: no full emulation of DRVDSP, discs will not play.\n");
+			cdi->swap_disc(path);
+			break;
+
+		case CDi::MonoIII:
+		case CDi::MonoIV:
+			printf("[miniCDi] Warning: no full emulation of CIAP, discs will not play.\n");
+			cdi->swap_disc(path);
+			break;
+	}
+}
+
 int main(int argc, char** argv)
 {
     if (argc < 2)
@@ -129,16 +150,7 @@ int main(int argc, char** argv)
 							  : CDi::MonoI;
 	MonoI cdi;
 	cdi.init(biosPath.string(), board);
-	if (argc >= 3 && access(argv[3], F_OK) != 0)
-    {
-		switch (board)
-		{
-			default: cdi.swap_disc(argv[3]); break;
-			case CDi::MonoII: printf("[miniCDi] Warning: DRVDSP not supported, cannot run discs.\n"); break;
-			case CDi::MonoIII:
-			case CDi::MonoIV: printf("[miniCDi] Warning: CIAP not supported, cannot run discs.\n"); break;
-		}
-    }
+	if (argc >= 3) SwapDisc(&cdi, board, argv[3]);
 
 	// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 	SDL screen;
@@ -163,6 +175,7 @@ int main(int argc, char** argv)
 					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
 					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
 					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowFPD = !MiniCDI::Config::ShowFPD;
+					if (e.key.keysym.sym == SDLK_t && e.type == SDL_KEYDOWN) MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
 					if (e.key.keysym.sym == SDLK_v && e.type == SDL_KEYDOWN) {
 						int w, h;
 						SDL_GetWindowSize(screen.Video.window, &w, &h);
@@ -185,15 +198,8 @@ int main(int argc, char** argv)
 					break;
 
 				case SDL_DROPFILE:
-					cdi.swap_disc(e.drop.file);
+					SwapDisc(&cdi, board, e.drop.file);
 					if (e.drop.file) free(e.drop.file);
-					switch (board)
-					{
-						default: break;
-						case CDi::MonoII: printf("[miniCDi] Warning: DRVDSP not properly supported, cannot run discs.\n"); break;
-						case CDi::MonoIII:
-						case CDi::MonoIV: printf("[miniCDi] Warning: CIAP not properly supported, cannot run discs.\n"); break;
-					}
 					break;
             }
         }

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <thread>
+#include <numeric>
 
 /** ******* Mono-I memory map *******
 	$00000000   512KB.ram    name=planea
@@ -67,14 +68,11 @@ public:
 		{
 			MiniCDI::OS9::scan_modules(memory);
 
-			// Update microcontroller
-			if (ikat != NULL) ikat->update();
-
-			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
+			for (int lines = 0; lines < (MiniCDI::Config::PAL ? 312 : 262);)
 			{
 				// Find a less-memory intensive method?
-				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
-				total_cycles += cycles;
+				const int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
+				// const int cycles = std::gcd(std::gcd(std::gcd(event_cycles[0], event_cycles[1]), event_cycles[2]), 96);
 				cpu.run(cycles);
 
 				#ifndef MINICDI_RAW_68K_MODE
@@ -93,7 +91,9 @@ public:
 								break;
 
 							case VPU:
-								if (vpu != NULL) vpu->tick(frames_left != frames);
+								lines++;
+								if (vpu != NULL) { vpu->tick(frames_left != frames); }
+								// if (vpu != NULL) { if (vpu->tick(frames_left != frames)) goto frame_end; }
 								break;
 
 							case UART_TX:
@@ -104,6 +104,10 @@ public:
 				}
 				#endif
 			}
+
+			frame_end:
+			// Update microcontroller
+			if (ikat != NULL) ikat->update();
 		}
 
 		// Benchmark end

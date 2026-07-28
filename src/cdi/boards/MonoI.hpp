@@ -70,11 +70,11 @@ public:
 			// Update microcontroller
 			if (ikat != NULL) ikat->update();
 
-			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262); total_cycles += cycles)
+			for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
 			{
 				// Find a less-memory intensive method?
-				// int cycles = 480;
 				int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
+				total_cycles += cycles;
 				cpu.run(cycles);
 
 				#ifndef MINICDI_RAW_68K_MODE

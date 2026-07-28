@@ -1,14 +1,45 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <app version="1">
 	<name>miniCDi</name>
-	<coder>Mr. Lechkar</coder>
+	<coder>Mr. Lechkar aka CatmanFan</coder>
 	<version>@PROJECT_VERSION@</version>
 	<release_date>@PROJECT_BUILDDATE@</release_date>
 	<short_description>Philips CD-i emulator</short_description>
-	<long_description>An experimental Philips CD-i emulator. Currently does not support sound or MPEG, and some games may not be compatible.
+	<long_description>An experimental Philips CD-i emulator.
 
-In order for it to run you must provide a copy of the system ROM (either CD-i 220/20 or CD-i 200) in apps/miniCDi/rom/*.rom.
+A system ROM is required to use the emulator and should be placed in sd:/apps/miniCDi/rom (this path can be changed in config.ini).
+The following ROMs are compatible and can run discs:
+- cdi200.rom (Magnavox/Philips CDI 200 - Mono-I)
+- cdi220b.rom (Philips CDI 220/20 - Mono-I)
+The following ROMs are capable of loading the player shell but cannot run discs due to lack of emulation of the relevant CD-Audio chip:
+- cdi220c.rom (Philips CDI 220/40 - Mono-II)
+- cdi490a.rom (Philips CDI 490/00 - Mono-IV)
+MPEG is not supported at present.
 
-Special thanks to members on the Philips CD-i Discord server for their varying assistance and documentation of the CD-i hardware. The source code was partially based off of official and unofficial (including CD-i Fan's cdichips repo on GitHub) documentation of the various peripherals of the CD-i players (available at icdia.co.uk), and also contains partial ports of mechanisms used in MAME's CD-i driver and Stovent's CeDImu. The emulator uses Musashi version 4.10 as a core for the 68070 processor.
+[Controls]
+Wii Remote (horizontal):
+  D-Pad - Directional movement
+  1 - Button 1
+  2 - Button 2
+  Minus - Reset machine
+  HOME - Shutdown machine
+  (To swap between using IR pointer and D-Pad for movement, press + on the Wiimote.)
+
+Wii Remote (motion controls):
+  IR pointer - Directional movement
+  A - Button 1
+  B - Button 2
+  Minus - Reset machine
+  HOME - Shutdown machine
+
+Classic Controller:
+  D-Pad - Directional movement
+  A - Button 1
+  B - Button 2
+  START - Front panel play button
+  SELECT - Reset machine
+  HOME - Shutdown machine
+
+For details and updates please check https://github.com/CatmanFan/miniCDi.
 </long_description>
 </app>

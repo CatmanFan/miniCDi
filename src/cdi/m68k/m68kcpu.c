@@ -885,7 +885,7 @@ void m68k_set_cpu_type(unsigned int cpu_type)
 			CPU_TYPE         = CPU_TYPE_SCC070;
 			CPU_ADDRESS_MASK = 0xffffffff;
 			CPU_SR_MASK      = 0xa71f; /* T1 -- S  -- -- I2 I1 I0 -- -- -- X  N  Z  V  C  */
-			CYC_INSTRUCTION  = m68ki_cycles[1];
+			CYC_INSTRUCTION  = m68ki_cycles[5];
 			CYC_EXCEPTION    = m68ki_exception_cycle_table[5];
 			CYC_BCC_NOTAKE_B = 0;
 			CYC_BCC_NOTAKE_W = 0;

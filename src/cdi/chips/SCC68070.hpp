@@ -165,11 +165,8 @@ public:
 		IPL_DMA2
 	};
 	struct {
-		uint8_t prv_irq = 0; // Current pending interrupt level
-		int prv_index = 0; // Index pointing to said level
-		uint8_t nxt_irq = 0; // Next pending interrupt level
-		int nxt_index = 0; // Ditto
-
+		uint8_t curr = 0; // Current pending interrupt level
+		uint8_t ack = 0; // Acknowledged interrupt level
 		bool levels[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 		uint8_t vectors[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 	} Ipl;
@@ -183,21 +180,6 @@ public:
 	inline void interrupt(size_t index, bool assert)
 	{
 		Ipl.levels[index] = assert;
-		/*MiniCDI::Log("[SCC68070:IPL] %s = %d",
-					index == IPL_IN7N ? "IPL_IN7N" :
-					index == IPL_IN5N ? "IPL_IN5N" :
-					index == IPL_IN4N ? "IPL_IN4N" :
-					index == IPL_IN2N ? "IPL_IN2N" :
-					index == IPL_INT1 ? "IPL_INT1" :
-					index == IPL_INT2 ? "IPL_INT2" :
-					index == IPL_TIMER ? "IPL_TIMER" :
-					index == IPL_UART_RX ? "IPL_UART_RX" :
-					index == IPL_UART_TX ? "IPL_UART_TX" :
-					index == IPL_I2C ? "IPL_I2C" :
-					index == IPL_DMA1 ? "IPL_DMA1" :
-					index == IPL_DMA2 ? "IPL_DMA2" :
-					"undefined",
-					assert);*/
 
 		// Update the IPL.
 		// **************************
@@ -216,73 +198,32 @@ public:
 			Ipl.levels[IPL_DMA1] && (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0,
 			Ipl.levels[IPL_DMA2] && (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0
 		};
-
-		Ipl.nxt_irq = 0;
-		Ipl.nxt_index = 0;
-		for (int i = IPL_DMA2; i >= 0; i--)
-		{
-			if (all_levels[i] >= Ipl.nxt_irq)
-			{
-				Ipl.nxt_irq = all_levels[i];
-				Ipl.nxt_index = i;
-			}
+		for (int i = IPL_INT1; i <= IPL_DMA2; i++) {
+			if (all_levels[i] > 0) all_levels[i] += 32;
 		}
 
-		if (Ipl.prv_irq != Ipl.nxt_irq)
-		{
-			if (Ipl.prv_irq != 0)
-			{
-				/*MiniCDI::Log("[SCC68070:IPL] %s deassert",
-							Ipl.prv_index == IPL_IN7N ? "IPL_IN7N" :
-							Ipl.prv_index == IPL_IN5N ? "IPL_IN5N" :
-							Ipl.prv_index == IPL_IN4N ? "IPL_IN4N" :
-							Ipl.prv_index == IPL_IN2N ? "IPL_IN2N" :
-							Ipl.prv_index == IPL_INT1 ? "IPL_INT1" :
-							Ipl.prv_index == IPL_INT2 ? "IPL_INT2" :
-							Ipl.prv_index == IPL_TIMER ? "IPL_TIMER" :
-							Ipl.prv_index == IPL_UART_RX ? "IPL_UART_RX" :
-							Ipl.prv_index == IPL_UART_TX ? "IPL_UART_TX" :
-							Ipl.prv_index == IPL_I2C ? "IPL_I2C" :
-							Ipl.prv_index == IPL_DMA1 ? "IPL_DMA1" :
-							Ipl.prv_index == IPL_DMA2 ? "IPL_DMA2" :
-							"undefined");*/
+		uint8_t new_irq = *(std::max_element(all_levels, all_levels + (sizeof(all_levels) / sizeof(all_levels[0]))));
 
-				m68k_set_virq(Ipl.prv_irq, 0);
-				Ipl.prv_irq = 0;
-				Ipl.prv_index = 0;
+		if (Ipl.curr != new_irq)
+		{
+			if (Ipl.curr != 0) {
+				Ipl.curr = 0;
+				m68k_set_irq(0);
 			}
 
-			if (Ipl.nxt_irq != 0)
-			{
-				/*MiniCDI::Log("[SCC68070:IPL] %s assert",
-							Ipl.nxt_index == IPL_IN7N ? "IPL_IN7N" :
-							Ipl.nxt_index == IPL_IN5N ? "IPL_IN5N" :
-							Ipl.nxt_index == IPL_IN4N ? "IPL_IN4N" :
-							Ipl.nxt_index == IPL_IN2N ? "IPL_IN2N" :
-							Ipl.nxt_index == IPL_INT1 ? "IPL_INT1" :
-							Ipl.nxt_index == IPL_INT2 ? "IPL_INT2" :
-							Ipl.nxt_index == IPL_TIMER ? "IPL_TIMER" :
-							Ipl.nxt_index == IPL_UART_RX ? "IPL_UART_RX" :
-							Ipl.nxt_index == IPL_UART_TX ? "IPL_UART_TX" :
-							Ipl.nxt_index == IPL_I2C ? "IPL_I2C" :
-							Ipl.nxt_index == IPL_DMA1 ? "IPL_DMA1" :
-							Ipl.nxt_index == IPL_DMA2 ? "IPL_DMA2" :
-							"undefined");*/
-
-				m68k_set_virq(Ipl.nxt_irq, 1);
-				if (Ipl.nxt_index >= IPL_INT1) m68k_set_irq(Ipl.nxt_irq + 32);
-
-				Ipl.prv_irq = Ipl.nxt_irq;
-				Ipl.prv_index = Ipl.nxt_index;
-				Ipl.nxt_irq = 0;
-				Ipl.nxt_index = 0;
+			if (new_irq != 0) {
+				Ipl.curr = new_irq;
+				m68k_set_irq(new_irq);
 			}
 		}
 	}
 
 	inline int interrupt_ack(int int_level)
 	{
-		// MiniCDI::Log("[SCC68070:CPU] lvl=%d acknowledged", int_level);
+		if (int_level != Ipl.ack) {
+			Ipl.ack = int_level;
+			// MiniCDI::Log("[SCC68070:CPU] irq lvl%d ack", int_level);
+		}
 
 		// Return manually-set vectors in case of external interrupts (per MAME)
 		switch (int_level)

@@ -68,14 +68,21 @@ public:
 		{
 			MiniCDI::OS9::scan_modules(memory);
 
-			for (int lines = 0; lines < (MiniCDI::Config::PAL ? 312 : 262);)
+			#ifdef MINICDI_RAW_68K_MODE
+			for (int total = 0; total < (MiniCDI::Config::PAL ? 312 : 262) * 960;)
+			#else
+			while (1)
+			#endif
 			{
 				// Find a less-memory intensive method?
-				const int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
+				// const int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 				// const int cycles = std::gcd(std::gcd(std::gcd(event_cycles[0], event_cycles[1]), event_cycles[2]), 96);
+				const int cycles = 960 / 2 / 2;
 				cpu.run(cycles);
 
-				#ifndef MINICDI_RAW_68K_MODE
+				#ifdef MINICDI_RAW_68K_MODE
+				total += cycles;
+				#else
 				for (int i = 0; i < EVTNUM; i++)
 				{
 					event_cycles[i] -= cycles;
@@ -91,9 +98,7 @@ public:
 								break;
 
 							case VPU:
-								lines++;
-								if (vpu != NULL) { vpu->tick(frames_left != frames); }
-								// if (vpu != NULL) { if (vpu->tick(frames_left != frames)) goto frame_end; }
+								if (vpu != NULL) { if (vpu->tick(frames_left != frames)) goto frame_end; }
 								break;
 
 							case UART_TX:

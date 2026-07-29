@@ -321,6 +321,7 @@ class CDiDisc
 
 public:
 	friend class CDIC;
+	friend class DRVDSP;
 	friend class CIAP;
 
 	inline bool open(const std::string &path)

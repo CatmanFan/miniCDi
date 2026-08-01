@@ -166,7 +166,7 @@ int main(int argc, char** argv)
 				case SDL_KEYDOWN:
 				case SDL_KEYUP:
 					cdi.pd.set_button(PointingDevice::Button1, e.key.keysym.sym == SDLK_RETURN && e.type == SDL_KEYDOWN);
-					cdi.pd.set_button(PointingDevice::Button2, e.key.keysym.sym == SDLK_ESCAPE && e.type == SDL_KEYDOWN);
+					cdi.pd.set_button(PointingDevice::Button2, e.key.keysym.sym == SDLK_SPACE && e.type == SDL_KEYDOWN);
 					cdi.pd.set_button(PointingDevice::Down, e.key.keysym.sym == SDLK_DOWN && e.type == SDL_KEYDOWN);
 					cdi.pd.set_button(PointingDevice::Up, e.key.keysym.sym == SDLK_UP && e.type == SDL_KEYDOWN);
 					cdi.pd.set_button(PointingDevice::Left, e.key.keysym.sym == SDLK_LEFT && e.type == SDL_KEYDOWN);

@@ -89,17 +89,17 @@ class CDIC
 				// Default data type is 37800 stereo 8bps (Level A).
 
 				// Coding info & results:
-				// Hotel Mario level BGM: B - 4bps, 37.8 MHz, stereo (100%)
-				// Pac Panic title BGM:   B - 4bps, 37.8 MHz, stereo (100%)
-				// Zelda BGM:             C - 4bps, 18.9 MHz, stereo (plays on and off)
-				// Frog Feast SFX:        C - 4bps, 18.9 MHz, mono (plays but causes delay)
+				// Hotel Mario level BGM: B - 4bps, 37.8 kHz, stereo (100%)
+				// Pac Panic title BGM:   B - 4bps, 37.8 kHz, stereo (100%)
+				// Zelda BGM:             C - 4bps, 18.9 kHz, stereo (plays on and off)
+				// Frog Feast SFX:        C - 4bps, 18.9 kHz, mono (plays but causes delay)
 
 				if (memory[SoundmapUnit.buffer_index+11] != 0b010001)
 				{
 					SoundmapUnit.sectors_to_hold = 1;
-					if (memory[SoundmapUnit.buffer_index+11] & 0b000100) { SoundmapUnit.sectors_to_hold *= 2; }
-					if (!(memory[SoundmapUnit.buffer_index+11] & 0b010000)) { SoundmapUnit.sectors_to_hold *= 2; }
-					if (!(memory[SoundmapUnit.buffer_index+11] & 0b000001)) { SoundmapUnit.sectors_to_hold *= 2; }
+					if (memory[SoundmapUnit.buffer_index+11] & 0b000100) { SoundmapUnit.sectors_to_hold *= 2; } // 18.9 kHz
+					if (!(memory[SoundmapUnit.buffer_index+11] & 0b010000)) { SoundmapUnit.sectors_to_hold *= 2; } // 4bps
+					if (!(memory[SoundmapUnit.buffer_index+11] & 0b000001)) { SoundmapUnit.sectors_to_hold *= 2; } // mono
 					SoundmapUnit.sectors_to_hold--;
 				}
 				// SoundmapUnit.played[SoundmapUnit.buffer_index] = true;

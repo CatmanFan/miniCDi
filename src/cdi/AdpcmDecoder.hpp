@@ -94,9 +94,8 @@ public:
 		int sample_bits = (coding & 0b01'00'00) != 0 ? 8 : 4;
 		int sample_freq = (coding & 0b00'01'00) != 0 ? 18900 : 37800;
 		int sample_chan = (coding & 0b00'00'01) != 0 ? 2 : 1;
-		bool stereo = sample_chan == 2;
 		enum SoundQualityLevel level = sample_freq != 37800 ? CDI_C : sample_bits == 8 ? CDI_A : CDI_B;
-		// MiniCDI::Log("[Audio:ADPCM] bps: %d, freq: %d, stereo: %d", sample_bits, sample_freq, stereo);
+		// MiniCDI::Log("[Audio:ADPCM] received sector of bps:%d, freq:%d, channels:%d", sample_bits, sample_freq, sample_chan);
 
 		// We are currently ONLY working with CD-i (not CD-DA) sectors (see CDiDisc.hpp).
 		// ***************************
@@ -123,7 +122,7 @@ public:
 						}
 					}
 
-					decode_adpcm<4, 8>(stereo, (coding & 0b00'01'00) != 0);
+					decode_adpcm<4, 8>(sample_chan == 2, (coding & 0b00'01'00) != 0);
 				}
 				break;
 
@@ -152,7 +151,7 @@ public:
 						}
 					}
 
-					decode_adpcm<8, 12>(stereo, (coding & 0b00'01'00) != 0);
+					decode_adpcm<8, 12>(sample_chan == 2, (coding & 0b00'01'00) != 0);
 				}
 				break;
 			}

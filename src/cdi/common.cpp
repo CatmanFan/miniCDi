@@ -70,12 +70,16 @@ unsigned int  m68k_read_memory_32(unsigned int address)
 
 void m68k_write_memory_8(unsigned int address, unsigned int value)
 {
-	// Supervisor mode mask
-	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
+	// ROM is not supposed to be writable
+	if ((address & 0x00FFFFFF) >= 0x400000 && (address & 0x00FFFFFF) < 0x480000) return;
 
 	#ifdef MINICDI_DEADNVRAM
+	// Dead Timekeeper/NVRAM will not allow writing
 	if ((address & 0x00FFFF00) == 0x00320000) return;
 	#endif
+
+	// Supervisor mode mask
+	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
 	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)			MiniCDI::Player.scc68070->write8(address, value);
 	else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.slave->write8(address, value);

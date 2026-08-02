@@ -198,11 +198,24 @@ public:
 			Ipl.levels[IPL_DMA1] && (DMA[0].CSR & 0x80) && (DMA[0].CCR & 0x08) ? DMA[0].CCR & 0x07 : 0,
 			Ipl.levels[IPL_DMA2] && (DMA[1].CSR & 0x80) && (DMA[1].CCR & 0x08) ? DMA[1].CCR & 0x07 : 0
 		};
+
+		// *******************************************
 		for (int i = IPL_INT1; i <= IPL_DMA2; i++) {
 			if (all_levels[i] > 0) all_levels[i] += 32;
 		}
 
 		uint8_t new_irq = *(std::max_element(all_levels, all_levels + (sizeof(all_levels) / sizeof(all_levels[0]))));
+		// *******************************************
+		// This method is more unstable
+		/*uint8_t new_irq = 0, new_irq_index = 0;
+		for (int i = IPL_DMA2; i >= 0; i--) {
+			if (new_irq <= all_levels[i]) {
+				new_irq = all_levels[i];
+				new_irq_index = i;
+			}
+		}
+		if (new_irq_index >= IPL_INT1 && new_irq > 0) new_irq += 32;*/
+		// *******************************************
 
 		if (Ipl.curr != new_irq)
 		{

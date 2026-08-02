@@ -40,8 +40,9 @@ class CDIC
 	AdpcmDecoder ADPCM;
 	struct {
 		bool active;
+		bool played[2];
 		size_t buffer_index;
-		size_t next_playback;
+		int sectors_to_hold;
 	} SoundmapUnit; // Implementation based on Green Book
 
 	inline bool adpcm_decode_and_play(int buffer, bool soundmap)
@@ -75,59 +76,42 @@ class CDIC
 			return;
 		}
 
-		if (SoundmapUnit.next_playback > 0)
-			SoundmapUnit.next_playback--;
-		else
+		if (SoundmapUnit.sectors_to_hold > 0) {
+			SoundmapUnit.sectors_to_hold--;
+			return;
+		}
+
+		if (!SoundmapUnit.played[SoundmapUnit.buffer_index])
 		{
-			if (!adpcm_decode_and_play(SoundmapUnit.buffer_index, true)) return;
+			if (adpcm_decode_and_play(SoundmapUnit.buffer_index, true))
+			{
+				// Determine number of sectors until next playback based on coding information (based on MAME formula).
+				// Default data type is 37800 stereo 8bps (Level A).
 
-			// Determine number of sectors until next playback based on coding information (partially taken from MAME).
-			SoundmapUnit.next_playback = 1;
-			switch (memory[SoundmapUnit.buffer_index+11] & 0x03)
-			{
-				case 0x00: // mono
-					SoundmapUnit.next_playback *= 2;
-					break;
-				case 0x01: // stereo
-					break;
-				case 0x03: // MPEG
-				default: // unsupported
-					SoundmapUnit.next_playback = 0;
-					break;
-			}
-			switch (memory[SoundmapUnit.buffer_index+11] & 0x30)
-			{
-				case 0x00: // 4bps
-					SoundmapUnit.next_playback *= 2;
-					break;
-				case 0x10: // 8bps
-				case 0x20: // 16bps
-					break;
-				default: // unsupported
-				case 0x30: // MPEG
-					SoundmapUnit.next_playback = 0;
-					break;
-			}
-			switch (memory[SoundmapUnit.buffer_index+11] & 0x0C)
-			{
-				case 0x00: // 37.8 kHz
-				case 0x0C: // 44.1 kHz
-					break;
-				case 0x04: // 18.9 kHz
-					SoundmapUnit.next_playback *= 2;
-					break;
-				default: // unsupported
-					SoundmapUnit.next_playback = 0;
-					break;
-			}
+				// Coding info & results:
+				// Hotel Mario level BGM: B - 4bps, 37.8 MHz, stereo (100%)
+				// Pac Panic title BGM:   B - 4bps, 37.8 MHz, stereo (100%)
+				// Zelda BGM:             C - 4bps, 18.9 MHz, stereo (plays on and off)
+				// Frog Feast SFX:        C - 4bps, 18.9 MHz, mono (plays but causes delay)
 
-			SoundmapUnit.buffer_index = !SoundmapUnit.buffer_index;
-			if (AUDCTL & 0x2000)
-			{
-				ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
-				update_irq();
+				if (memory[SoundmapUnit.buffer_index+11] != 0b010001)
+				{
+					SoundmapUnit.sectors_to_hold = 1;
+					if (memory[SoundmapUnit.buffer_index+11] & 0b000100) { SoundmapUnit.sectors_to_hold *= 2; }
+					if (!(memory[SoundmapUnit.buffer_index+11] & 0b010000)) { SoundmapUnit.sectors_to_hold *= 2; }
+					if (!(memory[SoundmapUnit.buffer_index+11] & 0b000001)) { SoundmapUnit.sectors_to_hold *= 2; }
+					SoundmapUnit.sectors_to_hold--;
+				}
+				// SoundmapUnit.played[SoundmapUnit.buffer_index] = true;
+
+				if (AUDCTL & 0x2000) {
+					ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
+					update_irq();
+				}
 			}
 		}
+
+		SoundmapUnit.buffer_index = !SoundmapUnit.buffer_index;
 	}
 
 	// ****************************
@@ -456,7 +440,10 @@ public:
 			case 0x303FF8: case 0x303FF9:
 				//MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
 				DMACTL = value;
-				if (value & 0x8000) _68070->dma_call(0, 0x300000 + (value & 0x3FFF));
+				if (value & 0x8000) {
+					_68070->dma_call(0, 0x300000 + (value & 0x3FFF));
+					SoundmapUnit.played[(value & 0x3FFF) >= 0x3200] = false;
+				}
 				break;
 
 			case 0x303FFA: case 0x303FFB:
@@ -471,7 +458,7 @@ public:
 				{
 					MiniCDI::Log("[CDIC] start audio playback from soundmap");
 					SoundmapUnit.active = true;
-					SoundmapUnit.next_playback = 0;
+					SoundmapUnit.sectors_to_hold = 0;
 					SoundmapUnit.buffer_index = 0;
 				}
 				break;

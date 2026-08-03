@@ -171,7 +171,7 @@ public:
 					size_t c = (addr - 0x310011) / 2;
 
 					//MiniCDI::Log("[IKAT] %sSR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].SR);
-					return Ch[c].SR | 0x01;
+					return Ch[c].SR;
 				}
 				break;
 
@@ -282,8 +282,8 @@ public:
 							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
-								poll_packet(c, 0xA5, 0xF3, 'J', 0x4D); // use cdiemu return ?
-								PointerInterface.absolute = Ch[c].Out[2] == 'T' || Ch[c].Out[2] == 'S';
+								poll_packet(c, 0xA5, 0xF3, (uint8_t)(0x80 | 'T'), 0);
+								PointerInterface.absolute = (Ch[c].Out[2] & 0x7F) == 'T' || (Ch[c].Out[2] & 0x7F) == 'S';
 								break;
 
 							/** Boot Mode **/

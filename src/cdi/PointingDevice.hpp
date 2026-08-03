@@ -11,7 +11,7 @@ class PointingDevice
 	bool poll_stationary = false; // only used for maneuvering devices
 	bool poll_state_changed = false;
 	int xR = 0, yR = 0, xA = MAX_POINTER_X/2, yA = MAX_POINTER_Y/2;
-	bool absolute = false;
+	bool absolute = true;
 
 public:
 	enum Buttons
@@ -32,8 +32,6 @@ public:
 
 	inline void send_packet()
 	{
-		uint16_t x, y;
-
 		if (IO.slave != NULL) {
 			if (IO.slave->PointerInterface.posChanged) {
 				xA = IO.slave->PointerInterface.x;
@@ -47,33 +45,33 @@ public:
 					IO.slave->PointerInterface.connected = true;
 
 					// Send identification byte to SLAVE
-					x = MAX_POINTER_X/2;
-					y = MAX_POINTER_Y/2;
-					IO.slave->Ch[0].Out =
-					{
-						(uint8_t)((absolute ? 'T' : 'J') | 0x80),
-						(uint8_t)((x >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
-						(uint8_t)(x & 0x7f),
-						(uint8_t)(y >> 7 & 0x07),
-						(uint8_t)(y & 0x7f)
-					};
+					IO.slave->Ch[0].Out = { (uint8_t)(0x80 | (absolute ? 'T' : 'J')) };
 					IO.slave->assert_irq();
 				}
 
 				else if (poll_movement || poll_stationary || poll_state_changed)
 				{
-					MiniCDI::Log("[PD] x=%d,y=%d", xA, yA);
-					x = xA;
-					y = yA;
-
 					// Convert to SLAVE response
-					IO.slave->Ch[0].Out =
+					if (absolute)
 					{
-						(uint8_t)((x >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
-						(uint8_t)(x & 0x7f),
-						(uint8_t)(y >> 7 & 0x07),
-						(uint8_t)(y & 0x7f)
-					};
+						IO.slave->Ch[0].Out =
+						{
+							(uint8_t)((xA >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
+							(uint8_t)(xA & 0x7f),
+							(uint8_t)(yA >> 7 & 0x07),
+							(uint8_t)(yA & 0x7f)
+						};
+					}
+					else
+					{
+						// Use spoon data bytes from https://github.com/MiSTer-devel/CDi_MiSTer/blob/main/doc/input_device.md
+						IO.slave->Ch[0].Out =
+						{
+							0xC0,
+							(uint8_t)(xR > 0 ? 0x82 : xR < 0 ? 0xBE : 0x80),
+							(uint8_t)(yR > 0 ? 0x82 : yR < 0 ? 0xBE : 0x80)
+						};
+					}
 					IO.slave->assert_irq();
 				}
 			}
@@ -81,6 +79,8 @@ public:
 
 		else if (IO.ikat != NULL) {
 			if (IO.ikat->PointerInterface.connected && (poll_movement || poll_stationary || poll_state_changed)) {
+				uint16_t x = 0, y = 0;
+
 				if (absolute)
 				{
 					x = std::clamp(static_cast<int>((xA / 768.0f) * 0x3FF), 0, 0x3FF);
@@ -93,14 +93,15 @@ public:
 				}
 
 				// Convert to IKAT response
+				// Data format partially taken from CeDImu
 				if (absolute)
 				{
 					// Absolute coordinates
 					IO.ikat->poll_packet(1,
-						0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b1111000000 >> 6),
-						(poll_movement << 4) | (y & 0b1111000000 >> 6),
-						x & 0b0000111111,
-						0x80 | (y & 0b0000111111)
+						0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0xF),
+						(poll_movement << 5) | (y >> 6 & 0xF),
+						x & 0x3F,
+						0x80 | (y & 0x3F)
 					);
 				}
 				else
@@ -108,8 +109,8 @@ public:
 					// Relative coordinates
 					IO.ikat->poll_packet(1,
 						0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 6) | (y & 0b11000000 >> 4),
-						x & 0b00111111,
-						y & 0b00111111
+						x & 0x3F,
+						y & 0x3F
 					);
 				}
 			}
@@ -133,12 +134,8 @@ public:
 			   : !buttons[Up] && buttons[Down] ? MiniCDI::Config::PointerAdvance
 			   : 0;
 
-			xA = std::clamp(xA + (buttons[Left] && !buttons[Right] ? 0 - MiniCDI::Config::PointerAdvance
-							   : !buttons[Left] && buttons[Right] ? MiniCDI::Config::PointerAdvance
-							   : 0), 0, MAX_POINTER_X);
-			yA = std::clamp(yA + (buttons[Up] && !buttons[Down] ? 0 - MiniCDI::Config::PointerAdvance
-							   : !buttons[Up] && buttons[Down] ? MiniCDI::Config::PointerAdvance
-							   : 0), 0, MAX_POINTER_Y);
+			xA = std::clamp(xA + xR, 0, MAX_POINTER_X);
+			yA = std::clamp(yA + yR, 0, MAX_POINTER_Y);
 			// MiniCDI::Log("[PD] x=%d,y=%d", x, y);
 		}
 		else
@@ -160,8 +157,8 @@ public:
 	inline void set_coord(int x, int y, int w, int h)
 	{
 		// Convert to native CD-i highres
-		x = static_cast<int>((float)x / (float)w * 768.0f);
-		y = static_cast<int>((float)y / (float)h * 560.0f);
+		x = static_cast<int>(((float)x / (float)w) * 768.0f);
+		y = static_cast<int>(((float)y / (float)h) * 560.0f);
 
 		if (x < 0 || y < 0 || x > MAX_POINTER_X || y > MAX_POINTER_Y) return;
 
@@ -172,6 +169,7 @@ public:
 		this->yR = poll_movement ? y - yA : 0;
 		this->xA = x;
 		this->yA = y;
+		// MiniCDI::Log("[PD] x=%d,y=%d", xA, yA);
 	}
 };
 

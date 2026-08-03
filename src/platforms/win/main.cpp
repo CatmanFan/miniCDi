@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <filesystem>
 #include "cdi/common.hpp"
+#include "../common/mINI.hpp"
 
 class SDL
 {
@@ -57,11 +58,12 @@ public:
 		this->FTD.window = SDL_CreateWindow("FTD", 32, 32, width*3, height*3, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
 		this->FTD.renderer = SDL_CreateRenderer(this->FTD.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->FTD.texture = SDL_CreateTexture(this->FTD.renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
+		SDL_SetTextureScaleMode(this->FTD.texture, SDL_ScaleModeNearest);
 	}
 
 	SDL()
 	{
-		this->Video.window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 560, SDL_WINDOW_RESIZABLE);
+		this->Video.window = SDL_CreateWindow("miniCDi v0.1(beta)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 560, SDL_WINDOW_RESIZABLE);
 		this->Video.renderer = SDL_CreateRenderer(this->Video.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->Video.texture = SDL_CreateTexture(this->Video.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 		this->FTD.window = nullptr;
@@ -129,22 +131,49 @@ int main(int argc, char** argv)
     }
 	atexit(SDL_Quit);
 
-	MiniCDI::Config::TestPlug = false;
-	MiniCDI::Config::PAL = true;
-	MiniCDI::Config::AnalogColors = false;
-	MiniCDI::Config::FrameSkip = 0;
-	MiniCDI::Config::PointerAdvance = 2;
+	const std::filesystem::path biosPath = argv[1];
+	const std::string iniPath = "miniCDi.ini";
+	const std::string logPath = "log.txt";
+	const std::string nvramPath = (biosPath.stem().string() + ".nvram");
+
+	// load whatever settings we have
+	static mINI::INIStructure ini;
+	mINI::INIFile file(iniPath.c_str());
+	bool recreateIni = true;
+	if (access(iniPath.c_str(), F_OK) == 0) {
+		file.read(ini);
+		recreateIni = !(ini.has("CDI") && ini.has("MiniCDI") && ini["CDI"].size() == 4 && ini["MiniCDI"].size() == 4);
+	}
+	if (recreateIni) {
+		ini["CDI"].set({
+			{"AutosaveNVRAM", "0"},
+			{"TestPlug", "0"},
+			{"PAL", "1"},
+			{"AnalogColors", "0"}
+		});
+		ini["MiniCDI"].set({
+			{"HideCursor", "0"},
+			{"FrameSkip", "0"},
+			{"PointerAdvance", "0"},
+			{"Logging", "0"},
+		});
+		file.generate(ini);
+	}
+
+	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
-	// MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
-	MiniCDI::Config::LogFile = NULL;
+	MiniCDI::Config::LogFile = fopen(logPath.c_str(), "wt");
 	#else
-	MiniCDI::Config::LogFile = NULL;
+	MiniCDI::Config::LogFile = ini["CDI"]["Logging"].compare("1") == 0 ? fopen(logPath.c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = false;
 	MiniCDI::Config::ShowFTD = true;
-	MiniCDI::Config::NvramFile = "";
+	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? nvramPath : "";
 
-	const std::filesystem::path biosPath = argv[1];
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
 							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
 							  : CDi::MonoI;
@@ -153,7 +182,7 @@ int main(int argc, char** argv)
 	if (argc >= 3) SwapDisc(&cdi, board, argv[3]);
 
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-	// SDL_ShowCursor(SDL_DISABLE);
+	if (ini["MiniCDI"]["HideCursor"].compare("1") == 0) { SDL_ShowCursor(SDL_DISABLE); }
 	SDL screen;
 
 	bool has_quit = false;

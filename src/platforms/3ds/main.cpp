@@ -165,7 +165,7 @@ static std::string RUN_MENU()
 		if (render) {
 			render = false;
 			printf("\033[2J\033[H"); // Clear screen
-			printf("miniCDi v0.1 for 3DS\n");
+			printf("miniCDi v0.1-beta\n");
 			printf("select a disc\n\n");
 
 			for (size_t i = 0; i < discs.size(); i++) {
@@ -216,7 +216,7 @@ static void RUN_CDI(const std::string &discName)
 		});
 		ini["MiniCDI"].set({
 			{"FPS", "0"},
-			{"FrameSkip", "1"},
+			{"FrameSkip", "0"},
 			{"PointerAdvance", "0"},
 			{"Logging", "0"}
 		});

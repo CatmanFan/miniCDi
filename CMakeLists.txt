@@ -16,12 +16,13 @@ endif()
 target_compile_options(${PROJECT_NAME} PRIVATE -Ofast -g -Wall)
 
 # Debug options
-option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR."			OFF)
-option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)."	OFF)
-option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose."								OFF)
-option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses."			ON)
-option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file option."			OFF)
-option(MINICDI_ENABLE_RAW68KMODE "Only use the 68K processor."									OFF)
+option(MINICDI_DISABLE_VERBOSE "Completely disable verbose logging of any kind (ignored for Windows/Mac build)." ON)
+option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR." OFF)
+option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)." OFF)
+option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose." OFF)
+option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses." ON)
+option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file option." OFF)
+option(MINICDI_ENABLE_RAW68KMODE "Only use the 68K processor." OFF)
 
 # Emulation options
 option(MINICDI_DISABLE_THROTTLING "Disable throttling on Windows and macOS." OFF)
@@ -31,6 +32,10 @@ option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper, just for funsies (b
 option(MINICDI_ENABLE_CDINDICATOR "Show an on-screen indicator for when the CD is being read." OFF)
 # -------------------------------------------
 
+if (MINICDI_DISABLE_VERBOSE AND NOT WIN32 AND NOT APPLE)
+	MESSAGE(STATUS "MINICDI_DISABLE_VERBOSE")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NOLOG)
+endif()
 if (MINICDI_ENABLE_VERBOSE_DISPLAY)
 	MESSAGE(STATUS "MINICDI_ENABLE_VERBOSE_DISPLAY")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_DEBUG)

@@ -404,7 +404,7 @@ static void RUN_CDI(const std::string &discName)
 		});
 		ini["MiniCDI"].set({
 			{"FPS", "0"},
-			{"FrameSkip", "1"},
+			{"FrameSkip", "0"},
 			{"PointerAdvance", "0"},
 			{"Logging", "0"}
 		});
@@ -540,23 +540,26 @@ static std::string RUN_MENU()
 			if (status.trigger & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN)) {
 				selected = (selected + 1) % discs.size();
 			}
-			if (status.trigger & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP)) {
+			else if (status.trigger & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP)) {
 				if (selected == 0) { selected = discs.size() - 1; }
 				else selected--;
 			}
-			if (status.trigger & VPAD_BUTTON_A) {
+			else if (status.trigger & VPAD_BUTTON_A) {
 				return discs[selected];
 			}
 		}
-		if (status.trigger & VPAD_BUTTON_B) {
+		if (status.trigger & VPAD_BUTTON_ZR) {
+			MiniCDI_WiiU::Close = true;
+		}
+		else if (status.trigger & VPAD_BUTTON_B) {
 			break;
 		}
 
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
-		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
+		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi v0.1(beta)");
 
-		SDL_print(1920/2,150,34,{255,255,255,255},menu,false,true);
+		SDL_print(1920/2,150,33,{255,255,255,255},menu,false,true);
 		if (!noDiscs) {
 			for (size_t i = 0; i < discs.size(); i++) {
 				SDL_print(1920/2,250+(i*38),28,{255,255,(uint8_t)(i == selected ? 0 : 255),255},discs[i]);
@@ -583,7 +586,7 @@ static void DISPLAY_WARNING()
 
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
-		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
+		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi v0.1(beta)");
 		SDL_print(1920/2,1080/2,40,{255,255,255,255},warning,false,true);
 		SDL_RenderPresent(SDL_renderer);
 	}
@@ -601,7 +604,7 @@ static void DISPLAY_BIOS_ERROR()
 
 		SDL_SetRenderDrawColor(SDL_renderer, 0, 0, 0, 255);
 		SDL_RenderClear(SDL_renderer);
-		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi");
+		SDL_print(1920/2,70,34,{255,255,0,255},"miniCDi v0.1(beta)");
 		SDL_print(1920/2,1080/2,40,{255,255,255,255},"Error: BIOS not found in required path\n\nPress \ue000 to return to menu",false,true);
 		SDL_RenderPresent(SDL_renderer);
 	}
@@ -635,7 +638,7 @@ int main(int argc, char **argv) {
 	switch (MiniCDI_WiiU::UILanguage)
 	{
 		default:
-			menu = "Select a disc or press \ue001 to boot without disc";
+			menu = "Select a disc, press \ue001 to boot without disc, or exit with \ue055";
 			empty = "No files found";
 			warning = "This is an experimental build of miniCDi.\n\n"
 					 "Emulation may not function properly.\n"
@@ -647,7 +650,7 @@ int main(int argc, char **argv) {
 			break;
 
 		case MiniCDI_WiiU::JAPANESE:
-			menu = "ディスクを選んで\ue000を押してください。\n \ue001を押すとディスクなしで起動します。";
+			menu = "ディスクを選んで\ue000を押してください\n\ue001を押すとディスクなしで起動します。\ue055を押すと終了します。";
 			empty = "ディスクファイルはありません";
 			warning = "こちらはminiCDiの実験版です。\n\n"
 					 "エミュレーションは、適切に機能しない場合があります。\n"
@@ -658,19 +661,8 @@ int main(int argc, char **argv) {
 			break;
 
 		case MiniCDI_WiiU::FRENCH_EU:
-			menu = "Choisissez un fichier de disque.\nPour démarrer le système sans disque, appuyez sur \ue001.";
-			empty = "Aucun fichier disponible";
-			warning = "Attention : vous utilisez une version préliminaire de miniCDi.\n\n"
-					 "Il est possible que l'émulation ne puisse pas fonctionner complètement.\n"
-					 "Si le système ne semble pas se démarrer, appuyez sur \ue055 afin de\n"
-					 "terminer l'émulation, puis réessayez.\n\n"
-					 "Pour plus d'informations, veuillez vous référer au site du dépôt\n"
-					 "GitHub de miniCDi : https://github.com/CatmanFan/miniCDi.\n\n"
-					 "Appuyez sur \ue000 ou \ue045 pour accéder au menu principal";
-			break;
-
 		case MiniCDI_WiiU::FRENCH_US:
-			menu = "Choisissez un fichier de disque ou appuyez sur \ue001 pour démarrer la console sans disque";
+			menu = "Choisissez un fichier de disque, appuyez sur \ue001 pour démarrer le système\nsans disque ou appuyez sur \ue055 pour quitter";
 			empty = "Aucun fichier disponible";
 			warning = "Attention : vous utilisez une version préliminaire de miniCDi.\n\n"
 					 "Il est possible que l'émulation ne puisse pas fonctionner complètement.\n"
@@ -682,7 +674,7 @@ int main(int argc, char **argv) {
 			break;
 
 		case MiniCDI_WiiU::SPANISH_EU:
-			menu = "Selecciona una imagen de disco.\nPara arrancar la consola sin disco, pulsa \ue001";
+			menu = "Selecciona una imagen de disco, pulsa \ue001 para arrancar la consola\nsin disco o pulsa \ue055 para salir";
 			empty = "No hay ninguna imagen de disco.";
 			warning = "Estás utilizando una versión preliminar de miniCDi.\n\n"
 					 "Es posible que la emulación no pueda funcionar correctamente.\n"
@@ -693,7 +685,7 @@ int main(int argc, char **argv) {
 					 "Pulsa \ue000 o \ue045 para acceder al menú principal";
 
 		case MiniCDI_WiiU::SPANISH_US:
-			menu = "Elige una imagen de disco u oprime \ue001 para iniciar la consola sin disco";
+			menu = "Elige una imagen de disco, oprime \ue001 para iniciar la consola sin\ndisco u oprime \ue055 para salir";
 			empty = "No hay ninguna imagen de disco.";
 			warning = "Estás utilizando una versión preliminar de miniCDi.\n\n"
 					 "Es posible que la emulación no pueda funcionar correctamente.\n"

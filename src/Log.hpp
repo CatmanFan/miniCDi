@@ -36,6 +36,8 @@ namespace MiniCDI
 		printf("%s\n", szBuff);
 		#endif
 
+	#elif defined(MINICDI_NOLOG)
+		// skip
 	#else
 
 		#ifdef MINICDI_DEBUG

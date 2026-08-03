@@ -196,7 +196,7 @@ static void LOAD_CONFIG()
 			{"DiscPath", "/miniCDi/discs"},
 			#endif
 			{"FPS", "0"},
-			{"FrameSkip", "1"},
+			{"FrameSkip", "0"},
 			{"PointerAdvance", "0"},
 			{"Logging", "0"}
 		});
@@ -399,9 +399,9 @@ static bool MINICDI_CLI_MENU() {
 		if (render) {
 			printf("\033[2J\033[H"); // Clear screen
 			#ifdef HW_RVL
-			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)                  Wii version\n");
+			printf("miniCDi v0.1(beta) - Philips CD-i emulator                      Wii version\n");
 			#else // HW_DOL
-			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)             GameCube version\n");
+			printf("miniCDi v0.1(beta) - Philips CD-i emulator                 GameCube version\n");
 			#endif
 			printf("___________________________________________________________________________\n\n");
 
@@ -456,9 +456,9 @@ int main(int argc, char **argv) {
 		if (MINICDI_CLI_MENU()) {
 			printf("\033[2J\033[H"); // Clear screen
 			#ifdef HW_RVL
-			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)                  Wii version\n");
+			printf("miniCDi v0.1(beta) - Philips CD-i emulator                      Wii version\n");
 			#else // HW_DOL
-			printf("miniCDi - Philips CD-i emulator (EXPERIMENTAL)             GameCube version\n");
+			printf("miniCDi v0.1(beta) - Philips CD-i emulator                 GameCube version\n");
 			#endif
 			printf("___________________________________________________________________________\n\nLoading");
 			RUN_CDI(selectedDisc);

@@ -58,10 +58,10 @@ class IKAT
 		bool absolute;
 	} PointerInterface;
 	bool Disc = false;
-	FPD* fpd;
+	FTD* ftd;
 
 public:
-	friend class FPD;
+	friend class FTD;
 	friend class PointingDevice;
 
 	IKAT(SCC68070* _68070, uint8_t* memory) : _68070(_68070), memory(memory), PointerInterface({0})
@@ -114,9 +114,9 @@ public:
 		MR = 0;
 	}
 
-	inline void set_fpd(FPD* fpd)
+	inline void set_ftd(FTD* ftd)
 	{
-		this->fpd = fpd;
+		this->ftd = ftd;
 	}
 
 	inline void send_disc_status(bool value)
@@ -246,7 +246,7 @@ public:
 									switch (Ch[c].In[0]) {
 										case 0x9A:
 											MiniCDI::Log("[IKAT] set LCD (0x%02X)", Ch[c].In[0]);
-											if (fpd != NULL) fpd->update(Ch[c].In);
+											if (ftd != NULL) ftd->update(Ch[c].In);
 											break;
 									}
 									Ch[c].In.clear();

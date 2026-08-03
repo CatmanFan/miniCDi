@@ -317,7 +317,7 @@ public:
 class EmuDisplay
 {
 	SDL_Texture* texture = nullptr;
-	SDL_Texture* texture_fpd = nullptr;
+	SDL_Texture* texture_ftd = nullptr;
 
 public:
 	void draw(void* display_output, size_t width)
@@ -341,22 +341,22 @@ public:
 		}
 	}
 
-	void draw_fpd(void* display_output, int width, int height)
+	void draw_ftd(void* display_output, int width, int height)
 	{
 		if (display_output)
 		{
-			SDL_UpdateTexture(this->texture_fpd, NULL, display_output, width*sizeof(uint8_t));
+			SDL_UpdateTexture(this->texture_ftd, NULL, display_output, width*sizeof(uint8_t));
 			SDL_Rect dest = {
 				1920-width*2, 1080-height*2, width*2, height*2
 			};
-			SDL_RenderCopy(SDL_renderer, this->texture_fpd, NULL, &dest);
+			SDL_RenderCopy(SDL_renderer, this->texture_ftd, NULL, &dest);
 		}
 	}
 
-	void add_fpd(int width, int height)
+	void add_ftd(int width, int height)
 	{
-		this->texture_fpd = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
-		SDL_SetTextureScaleMode(this->texture_fpd, SDL_ScaleModeNearest);
+		this->texture_ftd = SDL_CreateTexture(SDL_renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
+		SDL_SetTextureScaleMode(this->texture_ftd, SDL_ScaleModeNearest);
 	}
 
 	EmuDisplay()
@@ -367,7 +367,7 @@ public:
 
 	~EmuDisplay()
 	{
-		if (this->texture_fpd) SDL_DestroyTexture(this->texture_fpd);
+		if (this->texture_ftd) SDL_DestroyTexture(this->texture_ftd);
 		if (this->texture) SDL_DestroyTexture(this->texture);
 	}
 };
@@ -421,7 +421,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-	MiniCDI::Config::ShowFPD = true;
+	MiniCDI::Config::ShowFTD = true;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;
@@ -434,7 +434,7 @@ static void RUN_CDI(const std::string &discName)
 
 	FPS fps;
 	EmuDisplay screen;
-	screen.add_fpd(cdi.get_fpd_width(), cdi.get_fpd_height());
+	screen.add_ftd(cdi.get_ftd_width(), cdi.get_ftd_height());
 	/*bool paused = false;
 	bool touchDown = false;*/
 
@@ -467,8 +467,8 @@ static void RUN_CDI(const std::string &discName)
 		SDL_RenderClear(SDL_renderer);
 
 		screen.draw(cdi.get_display(), cdi.get_display_width());
-		if (MiniCDI::Config::ShowFPD && cdi.get_fpd())
-			screen.draw_fpd(cdi.get_fpd(), cdi.get_fpd_width(), cdi.get_fpd_height());
+		if (MiniCDI::Config::ShowFTD && cdi.get_ftd())
+			screen.draw_ftd(cdi.get_ftd(), cdi.get_ftd_width(), cdi.get_ftd_height());
 
 		/*if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};

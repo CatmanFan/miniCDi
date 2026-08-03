@@ -89,12 +89,6 @@ class CDIC
 				// Determine number of sectors until next playback based on coding information (based on MAME formula).
 				// Default data type is 37800 stereo 8bps (Level A).
 
-				// Coding info & results:
-				// Hotel Mario level BGM: B - 4bps, 37.8 kHz, stereo (100%)
-				// Pac Panic title BGM:   B - 4bps, 37.8 kHz, stereo (100%)
-				// Zelda BGM:             C - 4bps, 18.9 kHz, stereo (plays on and off)
-				// Frog Feast SFX:        C - 4bps, 18.9 kHz, mono (plays but causes delay)
-
 				SoundmapUnit.sectors_to_hold = 2;
 				if (coding & 0b000100) { SoundmapUnit.sectors_to_hold *= 2; } // 18.9 kHz
 				if (!(coding & 0b010000)) { SoundmapUnit.sectors_to_hold *= 2; } // 4bps

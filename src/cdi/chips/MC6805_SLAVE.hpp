@@ -25,7 +25,7 @@ class SLAVE
 		int x, y;
 	} PointerInterface;
 	bool Disc = false;
-	FPD* fpd;
+	FTD* ftd;
 
 	uint32_t DR[4]; // addresses to data registers
 
@@ -39,7 +39,7 @@ class SLAVE
 	bool asserted_irq = false;
 
 public:
-	friend class FPD;
+	friend class FTD;
 	friend class PointingDevice;
 
 	SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start) : _68070(_68070), memory(memory), PointerInterface({0})
@@ -59,9 +59,9 @@ public:
 		Ch[3].InSize = 0;
 	}
 
-	inline void set_fpd(FPD* fpd)
+	inline void set_ftd(FTD* ftd)
 	{
-		this->fpd = fpd;
+		this->ftd = ftd;
 	}
 
 	inline void send_play_button()
@@ -167,7 +167,7 @@ public:
 									case 0xF2:
 									case 0xF6:
 										MiniCDI::Log("[SLAVE] set LCD (0x%02X)", Ch[c].In[0]);
-										if (fpd != NULL) fpd->update(Ch[c].In);
+										if (ftd != NULL) ftd->update(Ch[c].In);
 										break;
 								}
 								Ch[c].In.clear();

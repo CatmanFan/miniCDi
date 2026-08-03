@@ -233,7 +233,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen("sdmc:/3ds/miniCDi/log.txt", "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-	MiniCDI::Config::ShowFPD = false;
+	MiniCDI::Config::ShowFTD = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? "sdmc:/3ds/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	MonoI cdi;

@@ -1,40 +1,40 @@
-#ifndef MINICDI_FPD
-#define MINICDI_FPD
+#ifndef MINICDI_FTD
+#define MINICDI_FTD
 
 #include <deque>
 
-class FPD
+class FTD
 {
 	std::vector<uint8_t> display = {0x00};
 	size_t digit_width = 1, digit_height = 1, digit_count = 1;
 	size_t digit_spacingX = 0, digit_spacingY = 0;
 
 public:
-	enum FPDType {
-		FPD_220_20 = 0,
-		FPD_220_40,
-		// FPD_450 (ABSENT)
-		FPD_470 // 490 uses same LCD?
+	enum FTDType {
+		FTD_220_20 = 0,
+		FTD_220_40,
+		// FTD_450 (ABSENT)
+		FTD_470 // 490 uses same LCD?
 	};
-	enum FPDType type;
+	enum FTDType type;
 
-	FPD(enum FPDType type)
+	FTD(enum FTDType type)
 	{
 		this->type = type;
 		switch (this->type)
 		{
 			default:
-			case FPD_220_20:
+			case FTD_220_20:
 				digit_width = 5;
 				digit_height = 7;
 				digit_count = 7;
 				break;
-			case FPD_220_40:
+			case FTD_220_40:
 				digit_width = 5;
 				digit_height = 7;
 				digit_count = 7;
 				break;
-			case FPD_470:
+			case FTD_470:
 				digit_width = 5;
 				digit_height = 7;
 				digit_count = 3;
@@ -64,8 +64,8 @@ public:
 			switch (type)
 			{
 				default:
-				case FPD_220_20:
-				case FPD_220_40:
+				case FTD_220_20:
+				case FTD_220_40:
 					if (cmd[i] & 0x01)
 					{
 						glyph[0*digit_width + 1] = 0xFF;
@@ -145,7 +145,7 @@ public:
 					}
 					break;
 
-				case FPD_470:
+				case FTD_470:
 					if (cmd[i+1] & 0x10)
 					{
 						glyph[3*digit_width + 2] = 0xFF;

@@ -20,7 +20,7 @@ public:
 		SDL_Window* window = nullptr;
 		SDL_Renderer* renderer = nullptr;
 		SDL_Texture* texture = nullptr;
-	} FPD;
+	} FTD;
 
 	void update_video(void* buffer, int width)
 	{
@@ -37,26 +37,26 @@ public:
 		SDL_RenderPresent(this->Video.renderer);
 	}
 
-	void update_fpd(void* buffer, int width)
+	void update_ftd(void* buffer, int width)
 	{
 		// Clear screen
-		SDL_SetRenderDrawColor(this->FPD.renderer, 128, 128, 128, 255);
-		SDL_RenderClear(this->FPD.renderer);
+		SDL_SetRenderDrawColor(this->FTD.renderer, 128, 128, 128, 255);
+		SDL_RenderClear(this->FTD.renderer);
 
 		if (buffer) {
 			// Draw screen
-			SDL_UpdateTexture(this->FPD.texture, NULL, buffer, width*sizeof(uint8_t));
-			SDL_RenderCopy(this->FPD.renderer, this->FPD.texture, NULL, NULL);
+			SDL_UpdateTexture(this->FTD.texture, NULL, buffer, width*sizeof(uint8_t));
+			SDL_RenderCopy(this->FTD.renderer, this->FTD.texture, NULL, NULL);
 		}
 
-		SDL_RenderPresent(this->FPD.renderer);
+		SDL_RenderPresent(this->FTD.renderer);
 	}
 
-	void add_fpd(int width, int height)
+	void add_ftd(int width, int height)
 	{
-		this->FPD.window = SDL_CreateWindow("FPD", 32, 32, width*3, height*3, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
-		this->FPD.renderer = SDL_CreateRenderer(this->FPD.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
-		this->FPD.texture = SDL_CreateTexture(this->FPD.renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
+		this->FTD.window = SDL_CreateWindow("FTD", 32, 32, width*3, height*3, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
+		this->FTD.renderer = SDL_CreateRenderer(this->FTD.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
+		this->FTD.texture = SDL_CreateTexture(this->FTD.renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
 	}
 
 	SDL()
@@ -64,15 +64,15 @@ public:
 		this->Video.window = SDL_CreateWindow("miniCDi", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 560, SDL_WINDOW_RESIZABLE);
 		this->Video.renderer = SDL_CreateRenderer(this->Video.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->Video.texture = SDL_CreateTexture(this->Video.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
-		this->FPD.window = nullptr;
+		this->FTD.window = nullptr;
 		// SDL_SetRenderDrawBlendMode(this->Video.renderer, SDL_BLENDMODE_BLEND);
 	}
 
 	~SDL()
 	{
-		if (this->FPD.texture) SDL_DestroyTexture(this->FPD.texture);
-		if (this->FPD.renderer) SDL_DestroyRenderer(this->FPD.renderer);
-		if (this->FPD.window) SDL_DestroyWindow(this->FPD.window);
+		if (this->FTD.texture) SDL_DestroyTexture(this->FTD.texture);
+		if (this->FTD.renderer) SDL_DestroyRenderer(this->FTD.renderer);
+		if (this->FTD.window) SDL_DestroyWindow(this->FTD.window);
 
 		if (this->Video.texture) SDL_DestroyTexture(this->Video.texture);
 		if (this->Video.renderer) SDL_DestroyRenderer(this->Video.renderer);
@@ -141,7 +141,7 @@ int main(int argc, char** argv)
 	MiniCDI::Config::LogFile = NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = false;
-	MiniCDI::Config::ShowFPD = true;
+	MiniCDI::Config::ShowFTD = true;
 	MiniCDI::Config::NvramFile = "";
 
 	const std::filesystem::path biosPath = argv[1];
@@ -174,7 +174,7 @@ int main(int argc, char** argv)
 
 					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
 					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
-					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowFPD = !MiniCDI::Config::ShowFPD;
+					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowFTD = !MiniCDI::Config::ShowFTD;
 					if (e.key.keysym.sym == SDLK_t && e.type == SDL_KEYDOWN) MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
 					if (e.key.keysym.sym == SDLK_v && e.type == SDL_KEYDOWN) {
 						int w, h;
@@ -186,8 +186,8 @@ int main(int argc, char** argv)
 				case SDL_WINDOWEVENT:
 					if (e.window.event == SDL_WINDOWEVENT_CLOSE)
 					{
-						if (e.window.windowID == SDL_GetWindowID(screen.FPD.window))
-							MiniCDI::Config::ShowFPD = false;
+						if (e.window.windowID == SDL_GetWindowID(screen.FTD.window))
+							MiniCDI::Config::ShowFTD = false;
 						else if (e.window.windowID == SDL_GetWindowID(screen.Video.window))
 							has_quit = true;
 					}
@@ -214,16 +214,16 @@ int main(int argc, char** argv)
 
 		screen.update_video(cdi.get_display(), cdi.get_display_width());
 
-		// FPD handling
-		if (MiniCDI::Config::ShowFPD && cdi.get_fpd())
+		// FTD handling
+		if (MiniCDI::Config::ShowFTD && cdi.get_ftd())
 		{
-			if (screen.FPD.window == nullptr)
-				screen.add_fpd(cdi.get_fpd_width(), cdi.get_fpd_height());
+			if (screen.FTD.window == nullptr)
+				screen.add_ftd(cdi.get_ftd_width(), cdi.get_ftd_height());
 			else
-				SDL_ShowWindow(screen.FPD.window);
+				SDL_ShowWindow(screen.FTD.window);
 		}
-		if (!MiniCDI::Config::ShowFPD && screen.FPD.window) SDL_HideWindow(screen.FPD.window);
-		if (MiniCDI::Config::ShowFPD && cdi.get_fpd()) screen.update_fpd(cdi.get_fpd(), cdi.get_fpd_width());
+		if (!MiniCDI::Config::ShowFTD && screen.FTD.window) SDL_HideWindow(screen.FTD.window);
+		if (MiniCDI::Config::ShowFTD && cdi.get_ftd()) screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
 	}
 	
 	return 0;

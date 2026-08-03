@@ -8,7 +8,7 @@ namespace MiniCDI
 		bool TestPlug = false;
 		bool PAL = true;
 		bool ShowFPS = false;
-		bool ShowFPD = false;
+		bool ShowFTD = false;
 		bool AnalogColors = false;
 		size_t FrameSkip = 0;
 		bool NoFrameLimit = false;
@@ -161,9 +161,9 @@ MonoI::~MonoI()
 	m68k_set_fc_callback(NULL);
 
 	// Free peripherals and player structure
-	if (this->fpd != NULL) {
-		delete this->fpd;
-		this->fpd = NULL;
+	if (this->ftd != NULL) {
+		delete this->ftd;
+		this->ftd = NULL;
 	}
 	switch (this->board) {
 		default:
@@ -253,10 +253,10 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 		switch (this->board) {
 			default:
 			case CDi::MonoI:
-				this->fpd = new FPD(FPD::FPD_220_20);
+				this->ftd = new FTD(FTD::FTD_220_20);
 				this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
-				this->slave->set_fpd(this->fpd);
+				this->slave->set_ftd(this->ftd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
 				MiniCDI::Player.slave = this->slave;
@@ -264,10 +264,10 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 				break;
 
 			case CDi::MonoII:
-				this->fpd = new FPD(FPD::FPD_220_40);
+				this->ftd = new FTD(FTD::FTD_220_40);
 				this->dsp = new DRVDSP(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
-				this->slave->set_fpd(this->fpd);
+				this->slave->set_ftd(this->ftd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
 				MiniCDI::Player.slave = this->slave;
@@ -276,10 +276,10 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 
 			case CDi::MonoIII:
 			case CDi::MonoIV:
-				this->fpd = new FPD(FPD::FPD_470);
+				this->ftd = new FTD(FTD::FTD_470);
 				this->ciap = new CIAP(&this->cpu, this->memory, &this->disc);
 				this->ikat = new IKAT(&this->cpu, this->memory);
-				this->ikat->set_fpd(this->fpd);
+				this->ikat->set_ftd(this->ftd);
 				this->pd.IO.ikat = this->ikat;
 				this->nvram = 0x00320000;
 				MiniCDI::Player.ikat = this->ikat;

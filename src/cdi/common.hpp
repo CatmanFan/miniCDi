@@ -49,7 +49,7 @@
 #include "../Log.hpp"
 #include "cdi/CDiDisc.hpp"
 #include "cdi/AdpcmDecoder.hpp"
-#include "FPD.hpp"
+#include "FTD.hpp"
 
 // Hardware
 #include "cdi/chips/SCC68070.hpp"

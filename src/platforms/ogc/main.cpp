@@ -57,7 +57,7 @@ class SDL
 	SDL_Window* window = nullptr;
 	SDL_Renderer* renderer = nullptr;
 	SDL_Texture* texture = nullptr;
-	SDL_Texture* texture_fpd = nullptr;
+	SDL_Texture* texture_ftd = nullptr;
 
 public:
 	void update(void* display_output, int width)
@@ -78,21 +78,21 @@ public:
 		}
 	}
 
-	void update_fpd(void* display_output, int width, int height)
+	void update_ftd(void* display_output, int width, int height)
 	{
 		if (display_output) {
-			SDL_UpdateTexture(this->texture_fpd, NULL, display_output, width*sizeof(uint8_t));
+			SDL_UpdateTexture(this->texture_ftd, NULL, display_output, width*sizeof(uint8_t));
 			SDL_Rect dest = {
 				640-width*2, 480-height*2, width*2, height*2
 			};
-			SDL_RenderCopy(this->renderer, this->texture_fpd, NULL, &dest);
+			SDL_RenderCopy(this->renderer, this->texture_ftd, NULL, &dest);
 		}
 	}
 
-	void add_fpd(int width, int height)
+	void add_ftd(int width, int height)
 	{
-		this->texture_fpd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
-		SDL_SetTextureScaleMode(this->texture_fpd, SDL_ScaleModeNearest);
+		this->texture_ftd = SDL_CreateTexture(this->renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
+		SDL_SetTextureScaleMode(this->texture_ftd, SDL_ScaleModeNearest);
 	}
 
 	void draw()
@@ -117,7 +117,7 @@ public:
 
 	~SDL()
 	{
-		if (this->texture_fpd) SDL_DestroyTexture(this->texture_fpd);
+		if (this->texture_ftd) SDL_DestroyTexture(this->texture_ftd);
 		if (this->texture) SDL_DestroyTexture(this->texture);
 		if (this->renderer) SDL_DestroyRenderer(this->renderer);
 		if (this->window) SDL_DestroyWindow(this->window);
@@ -228,7 +228,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((appPath + "log.txt").c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config::ShowFPS = false;
-	MiniCDI::Config::ShowFPD = true;
+	MiniCDI::Config::ShowFTD = true;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? ini["MiniCDI"]["RomPath"] + "/" + biosName + ".nvram" : "";
 
 	// Declare the CD-i machine
@@ -242,7 +242,7 @@ static void RUN_CDI(const std::string &discName)
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;
-	screen.add_fpd(cdi.get_fpd_width(), cdi.get_fpd_height());
+	screen.add_ftd(cdi.get_ftd_width(), cdi.get_ftd_height());
 	#endif
 
 	#ifdef HW_RVL
@@ -313,8 +313,8 @@ static void RUN_CDI(const std::string &discName)
 		VIDEO_WaitVSync();
 		#else
 		screen.update(cdi.get_display(), cdi.get_display_width());
-		if (MiniCDI::Config::ShowFPD && cdi.get_fpd())
-			screen.update_fpd(cdi.get_fpd(), cdi.get_fpd_width(), cdi.get_fpd_height());
+		if (MiniCDI::Config::ShowFTD && cdi.get_ftd())
+			screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width(), cdi.get_ftd_height());
 
 		screen.draw();
 		#endif

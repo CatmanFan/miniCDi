@@ -26,7 +26,7 @@ private:
 	DRVDSP* dsp = NULL;
 	CIAP* ciap = NULL;
 
-	FPD* fpd;
+	FTD* ftd;
 
 	// Scheduler values
 	enum EventType
@@ -143,7 +143,7 @@ public:
 		nvram_save();
 		cpu.reset();
 		vpu->reset();
-		if (fpd != NULL) fpd->reset();
+		if (ftd != NULL) ftd->reset();
 
 		// Microcontroller
 		if (slave != NULL) slave->reset();
@@ -176,9 +176,9 @@ public:
 	inline uint32_t* get_display() override { return vpu->get_display(); }
 	inline size_t get_display_width() override { return vpu->get_display_width(); }
 
-	inline uint8_t* get_fpd() { return fpd != NULL ? fpd->get_display() : NULL; }
-	inline size_t get_fpd_width() { return fpd != NULL ? fpd->get_display_width() : 0; }
-	inline size_t get_fpd_height() { return fpd != NULL ? fpd->get_display_height() : 0; }
+	inline uint8_t* get_ftd() { return ftd != NULL ? ftd->get_display() : NULL; }
+	inline size_t get_ftd_width() { return ftd != NULL ? ftd->get_display_width() : 0; }
+	inline size_t get_ftd_height() { return ftd != NULL ? ftd->get_display_height() : 0; }
 
 	inline bool get_cd_read_status() override {
 		if (cdic != NULL) return cdic->is_reading();

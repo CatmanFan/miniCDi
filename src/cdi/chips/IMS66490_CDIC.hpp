@@ -67,7 +67,7 @@ class CDIC
 	{
 		if (!SoundmapUnit.active) return;
 
-		if (memory[SoundmapUnit.buffer_index+11] == 0xFF) // coding byte
+		if (memory[SoundmapUnit.buffer_index ? 0x30320A : 0x30280A] == 0xFF) // coding byte
 		{
 			MiniCDI::Log("[CDIC] ADPCM playback ended due to $FF coding");
 			SoundmapUnit.active = false;
@@ -75,6 +75,7 @@ class CDIC
 			AUDCTL &= ~0x0800; // unset playback started
 			return;
 		}
+		uint8_t coding = memory[(SoundmapUnit.buffer_index ? 0x303200 : 0x302800) + 11];
 
 		if (SoundmapUnit.sectors_to_hold > 0) {
 			SoundmapUnit.sectors_to_hold--;
@@ -94,15 +95,12 @@ class CDIC
 				// Zelda BGM:             C - 4bps, 18.9 kHz, stereo (plays on and off)
 				// Frog Feast SFX:        C - 4bps, 18.9 kHz, mono (plays but causes delay)
 
-				if (memory[SoundmapUnit.buffer_index+11] != 0b010001)
-				{
-					SoundmapUnit.sectors_to_hold = 1;
-					if (memory[SoundmapUnit.buffer_index+11] & 0b000100) { SoundmapUnit.sectors_to_hold *= 2; } // 18.9 kHz
-					if (!(memory[SoundmapUnit.buffer_index+11] & 0b010000)) { SoundmapUnit.sectors_to_hold *= 2; } // 4bps
-					if (!(memory[SoundmapUnit.buffer_index+11] & 0b000001)) { SoundmapUnit.sectors_to_hold *= 2; } // mono
-					SoundmapUnit.sectors_to_hold--;
-				}
-				// SoundmapUnit.played[SoundmapUnit.buffer_index] = true;
+				SoundmapUnit.sectors_to_hold = 2;
+				if (coding & 0b000100) { SoundmapUnit.sectors_to_hold *= 2; } // 18.9 kHz
+				if (!(coding & 0b010000)) { SoundmapUnit.sectors_to_hold *= 2; } // 4bps
+				// if (coding & 0b000001) { SoundmapUnit.sectors_to_hold *= 2; } // stereo
+				SoundmapUnit.sectors_to_hold--;
+				SoundmapUnit.played[SoundmapUnit.buffer_index] = true;
 
 				if (AUDCTL & 0x2000) {
 					ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ

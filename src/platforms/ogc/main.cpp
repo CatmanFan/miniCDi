@@ -238,7 +238,7 @@ static void RUN_CDI(const std::string &discName)
 		sleep(5);
 		return;
 	}
-	cdi.swap_disc(ini["MiniCDI"]["DiscPath"] + discName);
+	cdi.swap_disc(ini["MiniCDI"]["DiscPath"] + "/" + discName);
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;
@@ -444,7 +444,7 @@ int main(int argc, char **argv) {
 	VIDEO_WaitVSync();
 	if (rmode->viTVMode & VI_NON_INTERLACE) { VIDEO_WaitVSync(); }
 
-	printf("miniCDi - Philips CD-i emulator\n");
+	printf("miniCDi v0.1(beta) - Philips CD-i emulator\n");
 
 	if (!FAT_Init()) {
 		printf("failed to init FAT, exiting");

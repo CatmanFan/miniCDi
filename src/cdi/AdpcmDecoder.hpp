@@ -75,6 +75,12 @@ public:
 		/// Audio sectors comprise 18 "sound groups" of size 128 bytes.
 		/// Each "sound group" is divided into 16 parameter bytes and sampled audio data.
 
+		/// Some coding info:
+		/// Hotel Mario level BGM: B - 4bps, 37.8 kHz, stereo
+		/// Pac Panic title BGM:   B - 4bps, 37.8 kHz, stereo
+		/// Zelda BGM:             C - 4bps, 18.9 kHz, stereo
+		/// Frog Feast SFX:        C - 4bps, 18.9 kHz, mono
+
 		/// Green Book IV.3.2.3: check submode for audio bits
 		if (!soundmap && (buffer[10] & 0b00101110) != 0b00100100)
 			return false;

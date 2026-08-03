@@ -238,7 +238,7 @@ static void RUN_CDI(const std::string &discName)
 		sleep(5);
 		return;
 	}
-	cdi.swap_disc(appPath + "discs/" + discName);
+	cdi.swap_disc(ini["MiniCDI"]["DiscPath"] + discName);
 
 	#ifndef MINICDI_DEBUG
 	SDL screen;

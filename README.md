@@ -7,6 +7,8 @@ An experimental multiplatform Philips CD-i emulator written in C++17. (∩ ͡° 
 * Mono-II and Mono-IV boards are partially supported, can run player shell but disc emulation is not available.
 * Emulation of the fluorescent tube display (FTD) on the player's front-facing panel
 * Partial audio support (soundmap playback via CPU is not 100%, but can read audio sectors from disc fine)
+* Experimental controller emulation
+   * This is still not sorted out due to the nature of the CD-i pointing device being an absolute and not relative (i.e. tablet-style) type. This works fine for the player shell but translates to wanky controls on actual CD-i games.
 * And most importantly: confirmed to run on Windows, macOS (courtesy of [yeah-its-gloria](https://github.com/yeah-its-gloria)), (v)Wii, Wii U (WUHB) and 3DS. May not run up to fullspeed on all builds.
 
 ## Credits

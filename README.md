@@ -54,6 +54,8 @@ In some cases the CD-i machine may not start properly. If this happens try going
 | Button 1             | 1          | A                      |
 | Button 2             | 2          | B                      |
 | Directional buttons  | D-Pad      | D-Pad                  |
+| *Play button on FP*  | -          | Plus                   |
+| *Reset emulator*     | Minus      | Minus                  |
 
 GameCube controller support is currently only available in the GameCube build.
 
@@ -69,6 +71,8 @@ Once opened, select a disc image from the menu. Press ZR to quit the emulator.
 | Button 1             | A                   |
 | Button 2             | B                   |
 | Directional buttons  | D-Pad or Circle Pad |
+| *Play button on FP*  | START               |
+| *Reset emulator*     | SELECT              |
 
 ### Nintendo Wii U
 Place the system ROM(s) in `/vol/external01/wiiu/apps/miniCDi/rom` and any disc images/games in `/vol/external01/wiiu/apps/miniCDi/discs`.
@@ -83,6 +87,8 @@ In some cases the CD-i machine may not start properly. If this happens try going
 | Button 1             | A                   |
 | Button 2             | B                   |
 | Directional buttons  | D-Pad or left stick |
+| *Play button on FP*  | START               |
+| *Reset emulator*     | SELECT              |
 
 ### Configuration
 The emulation settings can be configured in `config.ini` relative to the emulator's executable (e.g. .exe, .dol, .3dsx, etc).

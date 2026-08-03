@@ -82,6 +82,23 @@ In some cases the CD-i machine may not start properly. If this happens try going
 | Button 2             | B                   |
 | Directional buttons  | D-Pad or left stick |
 
+### Configuration
+The emulation settings can be configured in `config.ini` relative to the emulator's executable (e.g. .exe, .dol, .3dsx, etc).
+
+An example of the default settings:
+```[cdi]
+autosavenvram=0
+testplug=0
+pal=1
+analogcolors=0
+
+[minicdi]
+frameskip=0
+pointeradvance=0
+logging=0```
+
+Setting the video mode setting to `0` (NTSC) may negatively affect emulation speed. Frameskip may help on slower consoles but may not reach 100% speed.
+
 ## Technical details
 ### Compatibility
 The following boards and chips have been implemented. CD-i Fan has more information regarding hardware at [cdichips](https://github.com/cdifan/cdichips) repository.

@@ -152,7 +152,8 @@ int main(int argc, char** argv)
 	cdi.init(biosPath.string(), board);
 	if (argc >= 3) SwapDisc(&cdi, board, argv[3]);
 
-	// SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+	// SDL_ShowCursor(SDL_DISABLE);
 	SDL screen;
 
 	bool has_quit = false;
@@ -161,25 +162,43 @@ int main(int argc, char** argv)
         SDL_Event e;
         if(SDL_PollEvent(&e)) 
         {
+			int w, h;
+			SDL_GetWindowSize(screen.Video.window, &w, &h);
+			bool mouse_active = e.motion.x >= 0 && e.motion.x < w && e.motion.y >= 0 && e.motion.y < h;
+
             switch (e.type)
             {
 				case SDL_KEYDOWN:
 				case SDL_KEYUP:
-					cdi.pd.set_button(PointingDevice::Button1, e.key.keysym.sym == SDLK_RETURN && e.type == SDL_KEYDOWN);
-					cdi.pd.set_button(PointingDevice::Button2, e.key.keysym.sym == SDLK_SPACE && e.type == SDL_KEYDOWN);
-					cdi.pd.set_button(PointingDevice::Down, e.key.keysym.sym == SDLK_DOWN && e.type == SDL_KEYDOWN);
-					cdi.pd.set_button(PointingDevice::Up, e.key.keysym.sym == SDLK_UP && e.type == SDL_KEYDOWN);
-					cdi.pd.set_button(PointingDevice::Left, e.key.keysym.sym == SDLK_LEFT && e.type == SDL_KEYDOWN);
-					cdi.pd.set_button(PointingDevice::Right, e.key.keysym.sym == SDLK_RIGHT && e.type == SDL_KEYDOWN);
+					if (!mouse_active)
+					{
+						cdi.pd.set_button(PointingDevice::Button1, e.key.keysym.sym == SDLK_RETURN && e.key.state == SDL_PRESSED);
+						cdi.pd.set_button(PointingDevice::Button2, e.key.keysym.sym == SDLK_SPACE && e.key.state == SDL_PRESSED);
+						cdi.pd.set_button(PointingDevice::Down, e.key.keysym.sym == SDLK_DOWN && e.key.state == SDL_PRESSED);
+						cdi.pd.set_button(PointingDevice::Up, e.key.keysym.sym == SDLK_UP && e.key.state == SDL_PRESSED);
+						cdi.pd.set_button(PointingDevice::Left, e.key.keysym.sym == SDLK_LEFT && e.key.state == SDL_PRESSED);
+						cdi.pd.set_button(PointingDevice::Right, e.key.keysym.sym == SDLK_RIGHT && e.key.state == SDL_PRESSED);
+					}
 
 					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
 					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
 					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowFTD = !MiniCDI::Config::ShowFTD;
 					if (e.key.keysym.sym == SDLK_t && e.type == SDL_KEYDOWN) MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
 					if (e.key.keysym.sym == SDLK_v && e.type == SDL_KEYDOWN) {
-						int w, h;
-						SDL_GetWindowSize(screen.Video.window, &w, &h);
 						SDL_SetWindowSize(screen.Video.window, w == 768 ? 384 : 768, h == 560 ? 280 : 560);
+					}
+					break;
+
+				case SDL_MOUSEMOTION:
+					if (mouse_active) {
+						cdi.pd.set_coord(e.motion.x, e.motion.y, w, h);
+					}
+					break;
+				case SDL_MOUSEBUTTONDOWN:
+				case SDL_MOUSEBUTTONUP:
+					if (mouse_active) {
+						cdi.pd.set_button(PointingDevice::Button1, e.button.button == 1 && e.button.state == SDL_PRESSED);
+						cdi.pd.set_button(PointingDevice::Button2, e.button.button == 3 && e.button.state == SDL_PRESSED);
 					}
 					break;
 

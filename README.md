@@ -1,10 +1,23 @@
 # <div align=center><img src="https://github.com/CatmanFan/miniCDi/blob/master/res/logo.png" width="25%" /></div>
 
-An experimental Philips CD-i emulator meant to run on embedded consoles such as the Wii, 3DS and Wii U.
+An experimental Philips CD-i emulator meant to run on embedded consoles such as the Wii, 3DS and Wii U. Audio support is currently partially broken but it can run commercial games and homebrew and is designed to be somewhat portable.
 
 ## Usage
 ### Windows / macOS
 Run miniCDi using the command line arguments `miniCDi <boot.rom> [disc.bin]`. Alternatively, drag the system ROM file itself into miniCDi to boot the emulated system from the ROM, then drag the disc image into the emulator window.
+
+#### Controls
+
+| CD-i pointing device | Mouse (if focused) | Keyboard   |
+|----------------------|--------------------|------------|
+| Button 1             | Left-click         | Enter      |
+| Button 2             | Right-click        | Space bar  |
+| Directional buttons  | Cursor movement    | Arrow keys |
+| *Reset emulator*     | -                  | R          |
+| *Play button on FP*  | -                  | E          |
+| *Toggle FTD*         | -                  | F          |
+| *Toggle frame limit* | -                  | T          |
+| *Change resolution*  | -                  | V          |
 
 ### Nintendo Wii
 Place the system ROM(s) in `sd:/miniCDi/rom` and any disc images/games in `sd:/miniCDi/discs`.
@@ -12,16 +25,42 @@ Place the system ROM(s) in `sd:/miniCDi/rom` and any disc images/games in `sd:/m
 Once opened, select a disc image from the menu. Press Home (Wii) or Z (GameCube) to exit emulation and return to the emulator menu.
 In some cases the CD-i machine may not start properly. If this happens try going back to the emulator menu and starting over (this may take several tries).
 
+#### Controls
+
+| CD-i pointing device | Wii Remote | Wii Classic Controller |
+|----------------------|------------|------------------------|
+| Button 1             | 1          | A                      |
+| Button 2             | 2          | B                      |
+| Directional buttons  | D-Pad      | D-Pad                  |
+
+GameCube controller support is currently only available in the GameCube build.
+
 ### Nintendo 3DS
 Place the system ROM(s) in `sdmc:/3ds/miniCDi/rom` and any disc images/games in `sdmc:/3ds/miniCDi/discs`.
 
 Once opened, select a disc image from the menu. Press ZR to quit the emulator.
+
+#### Controls
+
+| CD-i pointing device | Nintendo 3DS        |
+|----------------------|---------------------|
+| Button 1             | A                   |
+| Button 2             | B                   |
+| Directional buttons  | D-Pad or Circle Pad |
 
 ### Nintendo Wii U
 Place the system ROM(s) in `/vol/external01/wiiu/apps/miniCDi/rom` and any disc images/games in `/vol/external01/wiiu/apps/miniCDi/discs`.
 
 Once opened, select a disc image from the menu. Press ZR to exit emulation and return to the emulator menu.
 In some cases the CD-i machine may not start properly. If this happens try going back to the emulator menu and starting over (this may take several tries).
+
+#### Controls
+
+| CD-i pointing device | Wii U GamePad       |
+|----------------------|---------------------|
+| Button 1             | A                   |
+| Button 2             | B                   |
+| Directional buttons  | D-Pad or left stick |
 
 ## Compatibility
 The following boards and chips have been implemented. CD-i Fan has more information regarding hardware at [cdichips](https://github.com/cdifan/cdichips) repository.
@@ -67,7 +106,7 @@ All captured under CDI 200 using Mono-I driver.
 ## To-Do
 
 ### Before official v0.1 beta release
-- [ ] Fix soundmap issue
+- [X] Fix soundmap issue
 - [ ] Update compatibility information
 
 ### Potential

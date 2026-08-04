@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13...4.3)
-project(miniCDi VERSION 0.1 LANGUAGES C CXX)
+project(miniCDi VERSION 0.11 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -216,19 +216,20 @@ if (NINTENDO_WIIU)
 	# Source files/directories
 	# ************
 	target_include_directories(${PROJECT_NAME} PRIVATE
-		# src/platforms/common/imgui
+		src/platforms/common/imgui
 		src/platforms/wiiu
 	)
 	target_sources(${PROJECT_NAME} PRIVATE
-		# src/platforms/common/imgui/imgui.cpp
-		# src/platforms/common/imgui/imgui_demo.cpp
-		# src/platforms/common/imgui/imgui_draw.cpp
-		# src/platforms/common/imgui/imgui_tables.cpp
-		# src/platforms/common/imgui/imgui_widgets.cpp
-		# src/platforms/common/imgui/backends/imgui_impl_sdl2.cpp
-		# src/platforms/common/imgui/backends/imgui_impl_sdlrenderer2.cpp
-		src/platforms/wiiu/SDL_FontCache.c
-		src/platforms/wiiu/main.cpp
+		# Dear ImGUI library
+		src/platforms/common/imgui/imgui.cpp
+		src/platforms/common/imgui/imgui_demo.cpp
+		src/platforms/common/imgui/imgui_draw.cpp
+		src/platforms/common/imgui/imgui_tables.cpp
+		src/platforms/common/imgui/imgui_widgets.cpp
+		src/platforms/common/imgui/backends/imgui_impl_sdl2.cpp
+		src/platforms/common/imgui/backends/imgui_impl_sdlrenderer2.cpp
+
+		src/frontends/imgui/main.cpp
 	)
 
 	# Build package
@@ -236,6 +237,7 @@ if (NINTENDO_WIIU)
 	wut_create_rpx(${PROJECT_NAME})
 	wut_create_wuhb(${PROJECT_NAME}
 		NAME "${PROJECT_NAME} v${PROJECT_VERSION}"
+		CONTENT res/wiiu/content
 		AUTHOR "${APP_AUTHOR}"
 
 		ICON res/wiiu/iconTex.png

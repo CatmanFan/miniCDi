@@ -55,7 +55,7 @@ public:
 	bool init(const std::string &bios, enum BoardType board) override;
 	~MonoI();
 
-	inline void run(int frames = 1) override
+	inline void run(int frames = 1, bool no_draw = false) override
 	{
 		#ifndef MINICDI_RAW_68K_MODE
 		pd.send_packet();
@@ -98,7 +98,7 @@ public:
 								break;
 
 							case VPU:
-								if (vpu != NULL) { if (vpu->tick(frames_left != frames)) goto frame_end; }
+								if (vpu != NULL) { if (vpu->tick(no_draw || frames_left != frames)) goto frame_end; }
 								break;
 
 							case UART_TX:

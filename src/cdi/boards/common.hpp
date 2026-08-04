@@ -15,6 +15,7 @@ public:
 
 protected:
 	uint8_t *memory; // Contains full memory map
+	static constexpr int memsize = 8*1024*1024;
 
 	uint32_t nvram;
 	bool nvram_save() {
@@ -97,7 +98,6 @@ public:
 		8) Executing RAM/ROM search
 		9) Starting the kernel */
 
-		int memsize = 8*1024*1024;
 		// TO-DO: reduce overhead ?
 		// The memory size is allocated this way to allow for addresses used by DMA transfer.
 		// In practice Mono-I only has 5.5 MB total (not including DVC RAM).
@@ -119,6 +119,7 @@ public:
 	}
 
 	CDi() : memory(nullptr), cpu(memory) {}
+	virtual ~CDi() {}
 
 	/**
 	 * @brief  Runs until VSync signal on video driver (i.e. a frame).
@@ -130,6 +131,9 @@ public:
 	inline virtual size_t get_display_width() { return 0; }
 
 	inline virtual bool get_cd_read_status() { return false; }
+
+	inline uint8_t* get_memory() { return memory; }
+	inline int get_memory_size() { return memsize; }
 };
 
 #endif

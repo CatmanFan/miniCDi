@@ -55,8 +55,10 @@ class CDIC
 		#ifdef MINICDI_AUDIO_SDL2
 		if (SDL_audio_valid)
 		{
-			SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size() * sizeof(int16_t));
-			// SDL_QueueAudio(SDL_audio_id, &ADPCM.right[0], ADPCM.right.size() * sizeof(int16_t));
+			if (ADPCM.right.size())
+				SDL_QueueAudio(SDL_audio_id, &ADPCM.right[0], ADPCM.right.size() * sizeof(int16_t));
+			else
+				SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size() * sizeof(int16_t));
 		}
 		#endif
 
@@ -67,7 +69,8 @@ class CDIC
 	{
 		if (!SoundmapUnit.active) return;
 
-		if (memory[SoundmapUnit.buffer_index ? 0x30320A : 0x30280A] == 0xFF) // coding byte
+		uint8_t coding = memory[(SoundmapUnit.buffer_index ? 0x303200 : 0x302800) + 11];
+		if (coding == 0xFF) // coding byte
 		{
 			MiniCDI::Log("[CDIC] ADPCM playback ended due to $FF coding");
 			SoundmapUnit.active = false;
@@ -75,7 +78,6 @@ class CDIC
 			AUDCTL &= ~0x0800; // unset playback started
 			return;
 		}
-		uint8_t coding = memory[(SoundmapUnit.buffer_index ? 0x303200 : 0x302800) + 11];
 
 		if (SoundmapUnit.sectors_to_hold > 0) {
 			SoundmapUnit.sectors_to_hold--;

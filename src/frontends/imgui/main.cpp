@@ -18,6 +18,8 @@
 #endif
 
 // Dear ImGUI
+// The code is partially copied from https://github.com/dkosmari/imgui-test-wiiu.
+// The backend which is listed on ImGUI's official wiki (by GaryOderNichts) uses GX2, and just linking the SDL2 renderer by itself is still missing GamePad input.
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 #include "backends/imgui_impl_sdl2.h"

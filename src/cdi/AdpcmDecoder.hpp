@@ -36,10 +36,6 @@ class AdpcmDecoder
 					rk0 = sample;
 					right.push_back(sample);
 					if (low_freq) right.push_back(sample);
-
-					// Push also to output buffer
-					output.push_back(sample / 2);
-					if (low_freq) output.push_back(sample / 2);
 				}
 				else
 				{
@@ -49,14 +45,29 @@ class AdpcmDecoder
 					lk0 = sample;
 					left.push_back(sample);
 					if (low_freq) left.push_back(sample);
-
-					// Push also to output buffer
-					for (int i = 0; i < (stereo ? 1 : 2); i++)
-					{
-						output.push_back(sample / (stereo ? 2 : 1));
-						if (low_freq) output.push_back(sample / (stereo ? 2 : 1));
-					}
 				}
+			}
+		}
+
+		// Push also to output buffer
+		// In the case of soundmap XA data in mono format, this replicates the MAME behaviour and is not
+		// accurate to actual CD-i sound quality (i.e. BGM on left and SFX on right instead of mixing for both channels).
+		// See Slamy's https://github.com/MiSTer-devel/CDi_MiSTer/blob/main/doc/cdic.md#experience
+		output.clear();
+		if (stereo)
+		{
+			for (size_t i = 0; i < std::min(left.size(), right.size()); i++)
+			{
+				output.push_back(left[i]);
+				output.push_back(right[i]);
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < left.size(); i++)
+			{
+				output.push_back(left[i]);
+				output.push_back(left[i]);
 			}
 		}
 	}
@@ -108,7 +119,6 @@ public:
 		memset(filters, 0, sizeof(filters));
 		left.clear();
 		right.clear();
-		output.clear();
 
 		int sample_bits = (coding & 0b01'00'00) != 0 ? 8 : 4;
 		int sample_freq = (coding & 0b00'01'00) != 0 ? 18900 : 37800;

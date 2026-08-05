@@ -53,13 +53,7 @@ class CDIC
 			return false;
 
 		#ifdef MINICDI_AUDIO_SDL2
-		if (SDL_audio_valid)
-		{
-			if (ADPCM.right.size())
-				SDL_QueueAudio(SDL_audio_id, &ADPCM.right[0], ADPCM.right.size() * sizeof(int16_t));
-			else
-				SDL_QueueAudio(SDL_audio_id, &ADPCM.left[0], ADPCM.left.size() * sizeof(int16_t));
-		}
+		if (SDL_audio_valid) SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output.size() * sizeof(int16_t));
 		#endif
 
 		return true;
@@ -265,7 +259,7 @@ public:
 			SDL_zero(input);
 			input.freq = 37800;
 			input.format = AUDIO_S16SYS;
-			input.channels = 1;
+			input.channels = 2;
 			input.samples = 448;
 
 			SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);

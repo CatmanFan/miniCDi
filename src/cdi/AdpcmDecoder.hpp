@@ -36,6 +36,10 @@ class AdpcmDecoder
 					rk0 = sample;
 					right.push_back(sample);
 					if (low_freq) right.push_back(sample);
+
+					// Push also to output buffer
+					output.push_back(sample / 2);
+					if (low_freq) output.push_back(sample / 2);
 				}
 				else
 				{
@@ -45,6 +49,13 @@ class AdpcmDecoder
 					lk0 = sample;
 					left.push_back(sample);
 					if (low_freq) left.push_back(sample);
+
+					// Push also to output buffer
+					for (int i = 0; i < (stereo ? 1 : 2); i++)
+					{
+						output.push_back(sample / (stereo ? 2 : 1));
+						if (low_freq) output.push_back(sample / (stereo ? 2 : 1));
+					}
 				}
 			}
 		}
@@ -60,7 +71,7 @@ public:
 		CDI_C  // sampling frequency: 18900 Hz ; bps: 4bps ; bandwidth: 8.5 kHz
 	};
 
-	std::vector<int16_t> left, right;
+	std::vector<int16_t> left, right, output;
 
 	/**
 	 * @brief  Decodes a CD-i audio sector to a 16-bit sample buffer.
@@ -80,6 +91,7 @@ public:
 		/// Pac Panic title BGM:   B - 4bps, 37.8 kHz, stereo
 		/// Zelda BGM:             C - 4bps, 18.9 kHz, stereo
 		/// Frog Feast SFX:        C - 4bps, 18.9 kHz, mono
+		/// Hotel Mario and Zelda use right channel for SFX and left channel for BGM (soundmap mode).
 
 		/// Green Book IV.3.2.3: check submode for audio bits
 		if (!soundmap && (buffer[10] & 0b00101110) != 0b00100100)
@@ -96,6 +108,7 @@ public:
 		memset(filters, 0, sizeof(filters));
 		left.clear();
 		right.clear();
+		output.clear();
 
 		int sample_bits = (coding & 0b01'00'00) != 0 ? 8 : 4;
 		int sample_freq = (coding & 0b00'01'00) != 0 ? 18900 : 37800;

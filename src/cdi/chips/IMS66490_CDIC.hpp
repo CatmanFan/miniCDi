@@ -42,7 +42,7 @@ class CDIC
 		bool active;
 		bool played[2];
 		size_t buffer_index;
-		int sectors_to_hold;
+		int sector_interval;
 	} SoundmapUnit; // Implementation based on Green Book
 
 	inline bool adpcm_decode_and_play(int buffer, bool soundmap)
@@ -63,43 +63,49 @@ class CDIC
 	{
 		if (!SoundmapUnit.active) return;
 
-		uint8_t coding = memory[(SoundmapUnit.buffer_index ? 0x303200 : 0x302800) + 11];
-		if (coding == 0xFF) // coding byte
-		{
-			MiniCDI::Log("[CDIC] ADPCM playback ended due to $FF coding");
-			SoundmapUnit.active = false;
-			AUDCTL |= 0x0001; // audio playback ended
-			AUDCTL &= ~0x0800; // unset playback started
-			return;
-		}
-
-		if (SoundmapUnit.sectors_to_hold > 0) {
-			SoundmapUnit.sectors_to_hold--;
+		if (SoundmapUnit.sector_interval > 0) {
+			SoundmapUnit.sector_interval--;
 			return;
 		}
 
 		if (!SoundmapUnit.played[SoundmapUnit.buffer_index])
 		{
-			if (adpcm_decode_and_play(SoundmapUnit.buffer_index, true))
+			uint8_t coding = memory[(SoundmapUnit.buffer_index ? 0x303200 : 0x302800) + 11];
+			if (coding == 0xFF) // coding byte
+			{
+				MiniCDI::Log("[CDIC:Soundmap] Encountered $FF coding, stop playback");
+
+				SoundmapUnit.active = false;
+				AUDCTL |= 0x0001; // set Playback End bit
+				AUDCTL &= ~0x0800; // unset Playback Start bit
+				update_irq();
+			}
+
+			else if (adpcm_decode_and_play(SoundmapUnit.buffer_index, true))
 			{
 				// Determine number of sectors until next playback based on coding information (based on MAME formula).
 				// Default data type is 37800 stereo 8bps (Level A).
 
-				SoundmapUnit.sectors_to_hold = 2;
-				if (coding & 0b000100) { SoundmapUnit.sectors_to_hold *= 2; } // 18.9 kHz
-				if (!(coding & 0b010000)) { SoundmapUnit.sectors_to_hold *= 2; } // 4bps
-				// if (coding & 0b000001) { SoundmapUnit.sectors_to_hold *= 2; } // stereo
-				SoundmapUnit.sectors_to_hold--;
-				SoundmapUnit.played[SoundmapUnit.buffer_index] = true;
+				// Select sector interval for ADPCM (per Slamy documentation).
+				// CDDA has sample data on every sector so can be ignored.
+
+				SoundmapUnit.sector_interval = 2;
+				if (coding & 0b000100) { SoundmapUnit.sector_interval *= 2; } // XA 18.9 kHz
+				if (!(coding & 0b010000)) { SoundmapUnit.sector_interval *= 2; } // XA 4bps
+				if (!(coding & 0b000001)) { SoundmapUnit.sector_interval *= 2; } // XA Mono
+				SoundmapUnit.sector_interval--;
 
 				if (AUDCTL & 0x2000) {
 					ABUF |= 0x8000; // finished playback of single ADPCM buffer IRQ
 					update_irq();
 				}
 			}
-		}
 
-		SoundmapUnit.buffer_index = !SoundmapUnit.buffer_index;
+			else return;
+
+			SoundmapUnit.played[SoundmapUnit.buffer_index] = true;
+			SoundmapUnit.buffer_index = !SoundmapUnit.buffer_index;
+		}
 	}
 
 	// ****************************
@@ -165,8 +171,8 @@ class CDIC
 		// Skip if MODE2 not satisfied
 		if (disc_check_filter())
 		{
-			// Switch DBUF index and reset audio
-			DBUF &= 0b01110001; DBUF ^= 0x0001;
+			DBUF &= ~0x0004; // Reset audio (per MAME)
+			DBUF ^= 0x0001; // Update buffer index (per MAME). This has to be done BEFORE targetAddr is defined otherwise disc will not init.
 			uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
 
 			// Copy sector header as normal
@@ -182,13 +188,14 @@ class CDIC
 			// Decode frame into mainchannel (or ADPCM) data, followed by subchannel data.
 			// `is_adpcm` determines whether we should copy to the ADPCM or DATA bufer.
 			bool is_adpcm = disc->Sector.Mode == 2 && CdicController.is_mode2
-						  && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
+						 && (disc->Sector.Submode[1] & 0x04) && (ACHAN & (1 << disc->Sector.ChNum[1]));
 			if (is_adpcm) {
 				targetAddr += 0x2800; // switch to ADPCM buffer
 
 				// set audio index bit and schedule playback of audio sector
 				DBUF |= 0x0004;
-				if ((AUDCTL & 0x0800) == 0x0000 && (DBUF & 0x000F) == 0x0004)
+				SoundmapUnit = {0};
+				if ((AUDCTL & 0x0800) == 0x0000)
 				{
 					MiniCDI::Log("[CDIC] start audio playback from disc");
 					AUDCTL |= 0x0800;
@@ -231,19 +238,16 @@ class CDIC
 			CdicController.curr_lba++;
 			disc->read_sector(CdicController.curr_lba);
 		} else {
-			CdicController.reading = false;
-			CdicController.seek = false;
-			CdicController.delayed_sectors = 0;
-			CdicController.curr_lba = 0;
-			CdicController.is_mode2 = false;
+			CdicController = {0};
 		}
 	}
 
 	inline void update_irq()
 	{
+		bool audctl_raised = AUDCTL & 0x0001 ? true : false;
 		bool xbuf_raised = XBUF & 0x8000 ? true : false;
 		bool abuf_raised = ABUF & 0x8000 ? true : false;
-		_68070->interrupt(SCC68070::IPL_IN4N, xbuf_raised || abuf_raised);
+		_68070->interrupt(SCC68070::IPL_IN4N, audctl_raised || xbuf_raised || abuf_raised);
 	}
 
 public:
@@ -288,24 +292,9 @@ public:
 		#endif
 	}
 
-	inline void abort()
-	{
-		MiniCDI::Log("[CDIC] abort");
-		CdicController.reading = false;
-		CdicController.seek = false;
-		CdicController.delayed_sectors = 0;
-		CdicController.curr_lba = 0;
-		CdicController.is_mode2 = false;
-		SoundmapUnit = {0};
-	}
-
 	inline void reset()
 	{
-		CdicController.reading = false;
-		CdicController.seek = false;
-		CdicController.delayed_sectors = 0;
-		CdicController.curr_lba = 0;
-		CdicController.is_mode2 = false;
+		CdicController = {0};
 		SoundmapUnit = {0};
 
 		AUDCTL = 0;
@@ -371,10 +360,15 @@ public:
 				return DMACTL;
 
 			case 0x303FFA: case 0x303FFB:
-				if (!SoundmapUnit.active)
-					AUDCTL ^= 0x0001; // reset ADPCM playback stopped bit
+			{
 				//MiniCDI::Log("[CDIC] AUDCTL => %04X", AUDCTL);
-				return AUDCTL;
+				const uint16_t value = AUDCTL;
+				if (AUDCTL & 0x0001) {
+					AUDCTL &= 0xFFFE;
+					update_irq();
+				}
+				return value;
+			}
 
 			case 0x303FFC: case 0x303FFD:
 				//MiniCDI::Log("[CDIC] IVEC => %04X", IVEC);
@@ -438,16 +432,15 @@ public:
 				MiniCDI::Log("[CDIC] AUDCTL <= %04X", value);
 				AUDCTL = value;
 
-				// from MAME
-				if (!(value & 0x2000))
-					SoundmapUnit.active = false;
-
 				if (value == 0x2800 && !SoundmapUnit.active)
 				{
-					MiniCDI::Log("[CDIC] start audio playback from soundmap");
+					MiniCDI::Log("[CDIC:Soundmap] Set to playback data by AUDCTL");
 					SoundmapUnit.active = true;
-					SoundmapUnit.sectors_to_hold = 0;
-					SoundmapUnit.buffer_index = 0;
+				}
+				else if (value != 0x2800 && SoundmapUnit.active)
+				{
+					MiniCDI::Log("[CDIC:Soundmap] Set to stop playback by AUDCTL");
+					SoundmapUnit.active = false;
 				}
 				break;
 
@@ -526,7 +519,10 @@ public:
 
 				if (!(value & 0x4000))
 				{
-					abort();
+					MiniCDI::Log("[CDIC] abort");
+
+					// Reset only the disc read status
+					CdicController = {0};
 				}
 				break;
 		}
@@ -570,7 +566,7 @@ public:
 		}
 	}
 
-	inline bool is_reading() { return CdicController.reading; }
+	inline bool is_reading() { return CdicController.reading; } // do friend class MonoI?
 };
 
 #endif

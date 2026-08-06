@@ -74,9 +74,10 @@ class SCC68070
 
 			if (index == 1) start_address = DMA[1].DAC;
 
-			MiniCDI::Log("[SCC68070:DMA%d] $%08X <= $%08X (%d %s)", index+1,
-						 DMA[index].OCR & 0x80 ? DMA[index].MAC : start_address,
-						 DMA[index].OCR & 0x80 ? start_address : DMA[index].MAC,
+			MiniCDI::Log("[SCC68070:DMA%d] $%08X %s $%08X (%d %s)", index+1,
+						 start_address,
+						 DMA[index].OCR & 0x80 ? "=>" : "<=",
+						 DMA[index].MAC,
 						 DMA[index].MTC,
 						 DMA[index].OCR & 0x10 ? "words" : "bytes"/*,
 						 DMA[index].DCR & 0x80 ? "cycle-steal" : "burst"*/);

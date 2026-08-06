@@ -53,23 +53,14 @@ class AdpcmDecoder
 		// In the case of soundmap XA data in mono format, this replicates the MAME behaviour and is not
 		// accurate to actual CD-i sound quality (i.e. BGM on left and SFX on right instead of mixing for both channels).
 		// See Slamy's https://github.com/MiSTer-devel/CDi_MiSTer/blob/main/doc/cdic.md#experience
-		output.clear();
-		if (stereo)
+		memset(output, 0, sizeof(output));
+		output_size = stereo ? std::min(left.size(), right.size()) : left.size();
+		for (int i = 0; i < output_size; i++)
 		{
-			for (size_t i = 0; i < std::min(left.size(), right.size()); i++)
-			{
-				output.push_back(left[i]);
-				output.push_back(right[i]);
-			}
+			output[i*2] = left[i];
+			output[i*2+1] = stereo ? right[i] : left[i];
 		}
-		else
-		{
-			for (size_t i = 0; i < left.size(); i++)
-			{
-				output.push_back(left[i]);
-				output.push_back(left[i]);
-			}
-		}
+		output_size = std::min(output_size * 2, 16128);
 	}
 
 public:
@@ -82,7 +73,9 @@ public:
 		CDI_C  // sampling frequency: 18900 Hz ; bps: 4bps ; bandwidth: 8.5 kHz
 	};
 
-	std::vector<int16_t> left, right, output;
+	std::vector<int16_t> left, right;
+	int16_t output[16128]; // 8*28 * 2 (18.9 kHz) * 2 (stereo) * 18 (sound groups)
+	int output_size = 0;
 
 	/**
 	 * @brief  Decodes a CD-i audio sector to a 16-bit sample buffer.

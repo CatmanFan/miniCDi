@@ -53,7 +53,7 @@ class CDIC
 			return false;
 
 		#ifdef MINICDI_AUDIO_SDL2
-		if (SDL_audio_valid) SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output.size() * sizeof(int16_t));
+		if (SDL_audio_valid) SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output_size * sizeof(int16_t));
 		#endif
 
 		return true;

@@ -165,7 +165,7 @@ class MCD212
 		{
 			switch (reg.Icm[Path]) {
 				default:
-					assert(0);
+					assert(0 && "[VDSC] Image Coding Method is invalid.");
 					return 0;
 
 				case CLUT7:
@@ -198,7 +198,7 @@ class MCD212
 			switch (reg.TransparencyCtrl[Path])
 			{
 				default:
-					assert(0);
+					assert(0 && "[VDSC] Transparency Control is invalid.");
 					return false;
 				case 0b0000:
 					return true;
@@ -487,7 +487,7 @@ class MCD212
 							switch (reg.Icm[Path])
 							{
 								default:
-									assert(0);
+									assert(0 && "[VDSC] Image Coding Method is invalid.");
 									vsr++;
 									continue;
 
@@ -524,7 +524,7 @@ class MCD212
 					case Mosaic:
 						// TO-DO
 						// reg.ICF[Path] /= 2;
-						assert(0);
+						assert(0 && "[VDSC] Mosaic video decoding is not implemented.");
 						vsr++;
 						continue;
 				}

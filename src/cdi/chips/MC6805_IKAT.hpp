@@ -226,10 +226,9 @@ public:
 					case 0:
 						switch (value)
 						{
-							/** Set Front Panel LCD **/
+							/** Set Front Panel FTD **/
 							case 0x9A:
-								//MiniCDI::Log("[IKAT] set LCD (0x%02X)", value);
-								// redirects LCD display input to BDR
+								// redirects FTD display input to BDR
 								Ch[1].In.clear();
 								Ch[1].In.push_back(value);
 								Ch[1].InSize = 7;
@@ -245,7 +244,7 @@ public:
 								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
 									switch (Ch[c].In[0]) {
 										case 0x9A:
-											MiniCDI::Log("[IKAT] set LCD (0x%02X)", Ch[c].In[0]);
+											MiniCDI::Log("[IKAT] set FTD display (0x%02X)", Ch[c].In[0]);
 											if (ftd != NULL) ftd->update(Ch[c].In);
 											break;
 									}

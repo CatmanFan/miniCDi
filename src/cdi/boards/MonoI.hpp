@@ -92,6 +92,7 @@ public:
 						switch (i)
 						{
 							case SECTOR:
+								if (!disc.is_open()) continue;
 								if (cdic != NULL) cdic->tick();
 								else if (dsp != NULL) dsp->tick();
 								else if (ciap != NULL) ciap->tick();
@@ -154,9 +155,7 @@ public:
 		if (dsp != NULL) dsp->reset();
 		if (ciap != NULL) ciap->reset();
 
-		event_cycles[SECTOR] = event_rates[SECTOR];
-		event_cycles[VPU] = event_rates[VPU];
-		event_cycles[UART_TX] = event_rates[UART_TX];
+		for (int i = 0; i < EVTNUM; i++) { event_cycles[i] = event_rates[i]; }
 	}
 
 	inline void play_disc() {

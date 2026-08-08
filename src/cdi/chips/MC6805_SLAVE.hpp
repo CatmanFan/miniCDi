@@ -37,6 +37,7 @@ class SLAVE
 		}
 	}
 	bool asserted_irq = false;
+	uint8_t revision = 0;
 
 public:
 	friend class FTD;
@@ -67,7 +68,16 @@ public:
 	inline void send_play_button()
 	{
 		MiniCDI::Log("[SLAVE] report Play Button status (0xA1 ?)");
-		Ch[1].Out = { 0xA1, 0x87, 0x20, 0xFF };
+		if (revision == 0x20) { Ch[1].Out = { 0x87, 0x20, 0xFF }; }
+		else { Ch[1].Out = { 0xA1, 0x87, 0x20, 0xFF }; }
+		assert_irq();
+	}
+
+	inline void send_eject_button()
+	{
+		MiniCDI::Log("[SLAVE] report Eject Button status (0xA1 ?)");
+		if (revision == 0x20) { Ch[1].Out = { 0x87, 0x08, 0xFF }; }
+		else { Ch[1].Out = { 0xA1, 0x87, 0x00, 0xFF }; }
 		assert_irq();
 	}
 
@@ -75,9 +85,14 @@ public:
 	{
 		Disc = value;
 		if (Disc)
-			Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
-		else
-			Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+		{
+			if (revision == 0x60)
+				Ch[3].Out = { 0xB0, 0x00, 0x06, 0x10 }; // CDI 350 (per cdifan)
+			else
+				Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 };
+		}
+		else Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+
 		assert_irq();
 	}
 
@@ -166,7 +181,7 @@ public:
 									case 0xF0:
 									case 0xF2:
 									case 0xF6:
-										MiniCDI::Log("[SLAVE] set LCD (0x%02X)", Ch[c].In[0]);
+										MiniCDI::Log("[SLAVE] set FTD display (0x%02X)", Ch[c].In[0]);
 										if (ftd != NULL) ftd->update(Ch[c].In);
 										break;
 								}
@@ -176,11 +191,10 @@ public:
 							}
 							break;
 
-						/** Set Front Panel LCD **/
+						/** Set Front Panel FTD **/
 						case 0xF0: // Mono-I?
 						case 0xF6: // Mono-II?
 							if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-								//MiniCDI::Log("[SLAVE] set LCD (0x%02X)", value);
 								Ch[c].InSize = value == 0xF6 ? 9 : 17;
 							}
 							break;
@@ -201,12 +215,11 @@ public:
 							if (_68070 != NULL) _68070->reset();
 							break;
 
-						/** Set Front Panel LCD **/
+						/** Set Front Panel FTD **/
 						case 0xF0:
 						case 0xF2: // Mono-I? (used at boot)
 						case 0xF6:
-							//MiniCDI::Log("[SLAVE] set LCD from CDRW (0x%02X)", value);
-							// redirects LCD display input to BDR
+							// redirects FTD display input to BDR
 							Ch[1].In.clear();
 							Ch[1].In.push_back(value);
 							Ch[1].InSize = value == 0xF6 || value == 0xF2 ? 9 : 17;
@@ -223,11 +236,7 @@ public:
 								switch (Ch[c].In[0]) {
 									case 0xB0:
 										MiniCDI::Log("[SLAVE] get disc status (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
-										if (Disc)
-											Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 }; // cdifan: $000215 for SLAVE 1.x-4.x, $000610 for SLAVE 6.0 (CD-i rev 350)
-										else
-											Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
-										assert_irq();
+										send_disc_status(Disc);
 										break;
 									case 0xB1:
 										MiniCDI::Log("[SLAVE] get disc base (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
@@ -259,6 +268,7 @@ public:
 						case 0xF0:
 							MiniCDI::Log("[SLAVE] get SLAVE revision (0x%02X)", value);
 							Ch[2].Out = { 0xF0, 0x32 }; // use response data from cdiemu (SLAVE 3.2?)
+							revision = Ch[2].Out[1];
 							assert_irq();
 							break;
 

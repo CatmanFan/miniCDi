@@ -14,7 +14,7 @@ public:
 		FTD_220_20 = 0,
 		FTD_220_40,
 		// FTD_450 (ABSENT)
-		FTD_470 // 490 uses same LCD?
+		FTD_470 // 490 uses same layout?
 	};
 	enum FTDType type;
 

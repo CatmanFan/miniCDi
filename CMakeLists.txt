@@ -13,7 +13,7 @@ elseif (APPLE)
 else()
 dkp_target_generate_symbol_list(${PROJECT_NAME})
 endif()
-target_compile_options(${PROJECT_NAME} PRIVATE -Ofast -g -Wall)
+target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -g -Wall)
 
 # Debug options
 option(MINICDI_DISABLE_VERBOSE "Completely disable verbose logging of any kind (ignored for Windows/Mac build)." ON)
@@ -89,8 +89,10 @@ set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 # -------------------------------------------
 target_include_directories(${PROJECT_NAME} PRIVATE src src/cdi/m68k)
 target_sources(${PROJECT_NAME} PRIVATE
-	src/cdi/common.cpp
-	src/cdi/os9/OS9.cpp
+	# Hardware
+	src/cdi/chips/IMS66490_CDIC.cpp
+	src/cdi/chips/MCD212.cpp
+	src/cdi/chips/SCC68070.cpp
 
 	# Musashi core for M68K
 	src/cdi/m68k/m68k.h
@@ -100,6 +102,14 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/m68k/m68kdasm.c
 	src/cdi/m68k/m68kops.c
 	src/cdi/m68k/m68kops.h
+
+	# OS9
+	src/cdi/os9/OS9.cpp
+
+	# General
+	src/cdi/AdpcmDecoder.cpp
+	src/cdi/CDiDisc.cpp
+	src/cdi/common.cpp
 )
 
 # Platform build specific

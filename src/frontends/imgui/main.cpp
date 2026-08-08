@@ -40,6 +40,16 @@ const std::string roms_directory = (wiiu_sd_prefix + "wiiu/apps/miniCDi/rom/");
 #error Platform not supported, requires static path for games.
 #endif
 
+#ifdef __WIIU__
+const std::string config_path = (wiiu_sd_prefix + "wiiu/apps/miniCDi/config.ini");
+const std::string log_path = (wiiu_sd_prefix + "wiiu/apps/miniCDi/log.txt");
+#define USE_CONFIG
+#endif
+
+#ifdef USE_CONFIG
+#include "../common/mINI.hpp"
+#endif
+
 static MonoI* philips_player = NULL;
 static MemoryEditor mem_editor;
 static bool emulation_window_open = true;
@@ -57,6 +67,9 @@ static bool CreateCDI(const char* rom, const char* disc)
 {
 	ShutdownCDI();
 
+	// ------------------------
+	// Set up paths and board type
+	// ------------------------
 	#ifdef __WIIU__
 		const std::filesystem::path biosPath = (wiiu_sd_prefix + roms_directory + rom);
 		const std::filesystem::path discPath = (wiiu_sd_prefix + discs_directory + disc);
@@ -70,6 +83,52 @@ static bool CreateCDI(const char* rom, const char* disc)
 
 	if (access(biosPath.string().c_str(), F_OK) != 0) return false;
 
+	// ------------------------
+	// Load config.ini
+	// ------------------------
+	#ifdef USE_CONFIG
+		mINI::INIFile file(config_path.c_str());
+		mINI::INIStructure ini;
+		bool recreateIni = true;
+		if (access(config_path.c_str(), F_OK) == 0) {
+			file.read(ini);
+			recreateIni = !(ini.has("CDI") && ini.has("MiniCDI") && ini["CDI"].size() == 4 && ini["MiniCDI"].size() == 4);
+		}
+		if (recreateIni) {
+			ini["CDI"].set({
+				{"AutosaveNVRAM", "0"},
+				{"TestPlug", "0"},
+				{"PAL", "1"},
+				{"AnalogColors", "0"}
+			});
+			ini["MiniCDI"].set({
+				{"FPS", "0"},
+				{"FrameSkip", "0"},
+				{"PointerAdvance", "0"},
+				{"Logging", "0"}
+			});
+			file.generate(ini);
+		}
+		MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+		MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
+		MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+		MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+		MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+		#ifdef MINICDI_FORCE_LOGFILE
+		MiniCDI::Config::LogFile = fopen(log_path.c_str(), "wt");
+		#else
+		MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen(log_path.c_str(), "wt") : NULL;
+		#endif
+		MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
+		MiniCDI::Config::ShowFTD = true;
+		#ifdef __WIIU__
+			MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? (wiiu_sd_prefix + "wiiu/apps/miniCDi/rom/" + biosPath.stem().string() + ".nvram") : "";
+		#endif
+	#endif
+
+	// ------------------------
+	// Actually create the player
+	// ------------------------
 	philips_player = new MonoI();
 	philips_player->init(biosPath.string(), board);
 	if (access(discPath.string().c_str(), F_OK) == 0) philips_player->swap_disc(discPath.string());

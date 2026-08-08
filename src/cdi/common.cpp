@@ -37,6 +37,9 @@ unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read
 
 unsigned int  m68k_read_memory_8(unsigned int address)
 {
+	bool bus_error = (address >= 0x080000 && address <= 0x1fffff) || (address >= 0x500000 && address <= 0xcfffff);
+	if (bus_error) { m68k_pulse_bus_error(); return 0; }
+
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
@@ -50,6 +53,9 @@ unsigned int  m68k_read_memory_8(unsigned int address)
 
 unsigned int  m68k_read_memory_16(unsigned int address)
 {
+	bool bus_error = (address >= 0x080000 && address <= 0x1fffff) || (address >= 0x500000 && address <= 0xcfffff);
+	if (bus_error) { m68k_pulse_bus_error(); return 0; }
+
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 	
@@ -61,6 +67,9 @@ unsigned int  m68k_read_memory_16(unsigned int address)
 
 unsigned int  m68k_read_memory_32(unsigned int address)
 {
+	bool bus_error = (address >= 0x080000 && address <= 0x1fffff) || (address >= 0x500000 && address <= 0xcfffff);
+	if (bus_error) { m68k_pulse_bus_error(); return 0; }
+
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
@@ -70,6 +79,9 @@ unsigned int  m68k_read_memory_32(unsigned int address)
 
 void m68k_write_memory_8(unsigned int address, unsigned int value)
 {
+	bool bus_error = (address >= 0x080000 && address <= 0x1fffff) || (address >= 0x500000 && address <= 0xcfffff);
+	if (bus_error) { m68k_pulse_bus_error(); return; }
+
 	// ROM is not supposed to be writable
 	if ((address & 0x00FFFFFF) >= 0x400000 && (address & 0x00FFFFFF) < 0x480000) return;
 
@@ -90,6 +102,9 @@ void m68k_write_memory_8(unsigned int address, unsigned int value)
 
 void m68k_write_memory_16(unsigned int address, unsigned int value)
 {
+	bool bus_error = (address >= 0x080000 && address <= 0x1fffff) || (address >= 0x500000 && address <= 0xcfffff);
+	if (bus_error) { m68k_pulse_bus_error(); return; }
+
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
@@ -104,6 +119,9 @@ void m68k_write_memory_16(unsigned int address, unsigned int value)
 
 void m68k_write_memory_32(unsigned int address, unsigned int value)
 {
+	bool bus_error = (address >= 0x080000 && address <= 0x1fffff) || (address >= 0x500000 && address <= 0xcfffff);
+	if (bus_error) { m68k_pulse_bus_error(); return; }
+
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 

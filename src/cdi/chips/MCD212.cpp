@@ -254,13 +254,13 @@ void MCD212::VDSC::mix_to_frame(int y)
 		const int pos = (y*768)+x;
 		matte_set_icf(FG[0].width < 400 ? x*2 : x);
 
-		uint_fast8_t rA = CLAMP_TO_16(FG[p1].decoded[pos] >> 24 & 0xFF);
-		uint_fast8_t gA = CLAMP_TO_16(FG[p1].decoded[pos] >> 16 & 0xFF);
-		uint_fast8_t bA = CLAMP_TO_16(FG[p1].decoded[pos] >> 8 & 0xFF);
+		uint_fast16_t rA = CLAMP_TO_16(FG[p1].decoded[pos] >> 24 & 0xFF);
+		uint_fast16_t gA = CLAMP_TO_16(FG[p1].decoded[pos] >> 16 & 0xFF);
+		uint_fast16_t bA = CLAMP_TO_16(FG[p1].decoded[pos] >> 8 & 0xFF);
 		uint_fast8_t aA = FG[p1].decoded[pos] & 0xFF;
-		uint_fast8_t rB = CLAMP_TO_16(FG[p2].decoded[pos] >> 24 & 0xFF);
-		uint_fast8_t gB = CLAMP_TO_16(FG[p2].decoded[pos] >> 16 & 0xFF);
-		uint_fast8_t bB = CLAMP_TO_16(FG[p2].decoded[pos] >> 8 & 0xFF);
+		uint_fast16_t rB = CLAMP_TO_16(FG[p2].decoded[pos] >> 24 & 0xFF);
+		uint_fast16_t gB = CLAMP_TO_16(FG[p2].decoded[pos] >> 16 & 0xFF);
+		uint_fast16_t bB = CLAMP_TO_16(FG[p2].decoded[pos] >> 8 & 0xFF);
 		uint_fast8_t aB = FG[p2].decoded[pos] & 0xFF;
 
 		ICF_APPLY(rA, reg.ICF[p1]);

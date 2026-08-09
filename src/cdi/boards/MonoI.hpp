@@ -68,14 +68,13 @@ public:
 		MiniCDI::OS9::scan_modules(memory);
 		#endif
 
-		for (int total = 0; total < (MiniCDI::Config::PAL ? 312 : 262) * 960;)
+		while (1)
 		{
 			// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
-			const int cycles = std::min({192, event_rates[0], event_rates[1], event_rates[2]});
+			const int cycles = std::min({480, event_rates[0], event_rates[1], event_rates[2]});
 			// const int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
 			// const int cycles = std::gcd(std::gcd(std::gcd(event_cycles[0], event_cycles[1]), event_cycles[2]), 96);
 			cpu.run(cycles);
-			total += cycles;
 
 			for (int i = 0; i < EVTNUM; i++)
 			{

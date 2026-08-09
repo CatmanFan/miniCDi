@@ -2,35 +2,32 @@
 
 uint32_t CDiDisc::get_lba_from_time(uint32_t time)
 {
-	Sector[CDiDisc::H_MIN] = time >> 24 & 0xFF;
-	Sector[CDiDisc::H_SEC] = time >> 16 & 0xFF;
-	Sector[CDiDisc::H_FRAME] = time >> 8 & 0xFF;
+	const uint8_t min = time >> 24 & 0xFF;
+	const uint8_t sec = time >> 16 & 0xFF;
+	const uint8_t fra = time >> 8 & 0xFF;
 
 	// Values are stored in BCD.
 	// Check validity of nibbles for each value
-	assert(((Sector[CDiDisc::H_MIN] & 0xF0) >> 4) < 10);
-	assert((Sector[CDiDisc::H_MIN] & 0x0F) < 10);
-	assert(((Sector[CDiDisc::H_SEC] & 0xF0) >> 4) < 10);
-	assert((Sector[CDiDisc::H_SEC] & 0x0F) < 10);
-	assert(((Sector[CDiDisc::H_FRAME] & 0xF0) >> 4) < 10);
-	assert((Sector[CDiDisc::H_FRAME] & 0x0F) < 10);
+	assert(((min & 0xF0) >> 4) < 10);
+	assert((min & 0x0F) < 10);
+	assert(((sec & 0xF0) >> 4) < 10);
+	assert((sec & 0x0F) < 10);
+	assert(((fra & 0xF0) >> 4) < 10);
+	assert((fra & 0x0F) < 10);
 
-	const uint8_t min_raw = ((Sector[CDiDisc::H_MIN] & 0xF0) >> 4) * 10 + (Sector[CDiDisc::H_MIN] & 0x0F);
-	const uint8_t sec_raw = ((Sector[CDiDisc::H_SEC] & 0xF0) >> 4) * 10 + (Sector[CDiDisc::H_SEC] & 0x0F);
-	const uint8_t fra_raw = ((Sector[CDiDisc::H_FRAME] & 0xF0) >> 4) * 10 + (Sector[CDiDisc::H_FRAME] & 0x0F);
+	const uint8_t min_raw = ((min & 0xF0) >> 4) * 10 + (min & 0x0F);
+	const uint8_t sec_raw = ((sec & 0xF0) >> 4) * 10 + (sec & 0x0F);
+	const uint8_t fra_raw = ((fra & 0xF0) >> 4) * 10 + (fra & 0x0F);
 
 	uint32_t lba = ((min_raw * 60) + sec_raw) * 75 + fra_raw;
-	if (lba >= 150)
-		lba -= 150;
-
-	fseek(disc, lba*SECTOR_SIZE, SEEK_SET);
+	if (lba >= 150) lba -= 150;
 	return lba;
 }
 
 bool CDiDisc::is_byteswapped(int lba)
 {
 	char sync[2];
-	fseek(disc, lba*SECTOR_SIZE, SEEK_SET);
+	fseek(disc, lba * SECTOR_SIZE, SEEK_SET);
 	sync[0] = fgetc(disc);
 	sync[1] = fgetc(disc);
 
@@ -41,7 +38,7 @@ bool CDiDisc::is_byteswapped(int lba)
 bool CDiDisc::is_valid_sector(int lba)
 {
 	char raw[12];
-	fseek(disc, lba*SECTOR_SIZE+12, SEEK_SET);
+	fseek(disc, (lba * SECTOR_SIZE) + 12, SEEK_SET);
 	for (int i = 0; i < 12; i++)
 		raw[i] = fgetc(disc);
 
@@ -61,8 +58,8 @@ bool CDiDisc::is_valid_sector(int lba)
 void CDiDisc::read_sector(int lba)
 {
 	// seek and skip sync field
-	fseek(disc, lba*SECTOR_SIZE+12, SEEK_SET);
-	for (int i = 0; i < SECTOR_SIZE-12; i++)
+	fseek(disc, (lba * SECTOR_SIZE) + 12, SEEK_SET);
+	for (int i = 0; i < SECTOR_SIZE_NO_SYNC; i++)
 		Sector[i] = fgetc(disc);
 
 	if (is_byteswapped(lba))

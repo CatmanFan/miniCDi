@@ -23,7 +23,8 @@ class CDiDisc
 		SH_SUBMODE2,
 		SH_CODING2,
 
-		SECTOR_SIZE = 2352
+		SECTOR_SIZE = 2352,
+		SECTOR_SIZE_NO_SYNC = 2340
 	};
 
 	// CD-i sector, not CD-DA
@@ -62,6 +63,9 @@ public:
 	friend class CDIC;
 	friend class DRVDSP;
 	friend class CIAP;
+
+	CDiDisc() { disc = NULL; }
+	~CDiDisc() { eject(); }
 
 	inline bool is_open() { return disc != NULL; }
 	bool open(const std::string &path);

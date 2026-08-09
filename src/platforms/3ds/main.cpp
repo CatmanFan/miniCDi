@@ -51,6 +51,9 @@ class EmulatorWindow
 	uint16_t tWidth, tHeight;
 
 public:
+	int x, y;
+	float scaleX, scaleY;
+
 	/*!
 	 * @brief Creates a renderer with the specified width and height dimensions.
 	 */
@@ -96,7 +99,7 @@ public:
 
 	void Draw()
 	{
-		C2D_DrawImageAt(this->img, 8, -20, 0.5f, NULL, 0.5f, 1);
+		C2D_DrawImageAt(this->img, this->x, this->y, 0.5f, NULL, this->scaleX, this->scaleY);
 	}
 
 	void Update(uint32_t* display_output, int width)
@@ -182,16 +185,15 @@ static std::string RUN_MENU()
 
 static C3D_RenderTarget* top = NULL;
 
-static void RUN_CDI(const std::string &discName)
+static void RUN_CDI(const std::string &discName, const std::string &biosName)
 {
 	printf("\033[2J\033[H"); // Clear screen
 	printf("miniCDi\n");
 
 	// Check for BIOS
-	std::string biosName = "";
-	if (access("sdmc:/3ds/miniCDi/rom/cdi220b.rom", F_OK) == 0) biosName = "cdi220b";
-	else if (access("sdmc:/3ds/miniCDi/rom/cdi200.rom", F_OK) == 0) biosName = "cdi200";
-	else {
+	const std::filesystem::path biosPath = ("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom");
+	if (access(biosPath.string().c_str(), F_OK) != 0)
+	{
 		printf("BIOS not found, exiting");
 		sleep(5);
 		exit(0);
@@ -236,11 +238,19 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::ShowFTD = false;
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? "sdmc:/3ds/miniCDi/rom/" + biosName + ".nvram" : "";
 
+	// Actually create the CD-i Player
+	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
+							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
+							  : CDi::MonoI;
 	MonoI cdi;
-	cdi.init("sdmc:/3ds/miniCDi/rom/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI);
+	cdi.init(biosPath.string(), board);
 	cdi.swap_disc("sdmc:/3ds/miniCDi/discs/" + discName);
 
 	EmulatorWindow TOPSCREEN(768,280);
+	TOPSCREEN.x = MiniCDI::Config::PAL ? 35 : 8;
+	TOPSCREEN.y = MiniCDI::Config::PAL ? 0 : -20;
+	TOPSCREEN.scaleX = MiniCDI::Config::PAL ? 329.0f / 768.0f : 0.5f;
+	TOPSCREEN.scaleY = MiniCDI::Config::PAL ? 240.0f / 280.0f : 1.0f;
 
 	int frames_run = 0;
 	while (aptMainLoop())
@@ -263,6 +273,7 @@ static void RUN_CDI(const std::string &discName)
 		if (frames_run == 0) {
 			cdi.run(false);
 			frames_run += MiniCDI::Config::FrameSkip;
+			fps.update(MiniCDI::Config::FrameSkip+1);
 		} else {
 			cdi.run(true);
 			frames_run--;
@@ -297,7 +308,11 @@ int main(int argc, char* argv[])
 	while (aptMainLoop())
 	{
 		std::string disc = RUN_MENU();
-		if (aptMainLoop()) RUN_CDI(disc);
+		std::string bios = access("sdmc:/3ds/miniCDi/rom/cdi220b.rom", F_OK) == 0 ? "cdi220b"
+						 : access("sdmc:/3ds/miniCDi/rom/cdi200.rom", F_OK) == 0 ? "cdi200"
+						 : access("sdmc:/3ds/miniCDi/rom/cdi220c.rom", F_OK) == 0 ? "cdi220c"
+						 : "cdi490a";
+		if (aptMainLoop()) RUN_CDI(disc, bios);
 	}
 
 	// Deinit libs

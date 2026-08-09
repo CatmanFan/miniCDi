@@ -2,27 +2,15 @@ cmake_minimum_required(VERSION 3.13...4.3)
 project(miniCDi VERSION 0.11 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-# Compilation config
-# -------------------------------------------
-add_executable(${PROJECT_NAME})
-if (WIN32)
-target_compile_definitions(${PROJECT_NAME} PRIVATE _WIN32)
-elseif (APPLE)
-# ...
-else()
-dkp_target_generate_symbol_list(${PROJECT_NAME})
-endif()
-target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -g -Wall)
+set (APP_AUTHOR "Mr. Lechkar aka CatmanFan")
 
 # Debug options
 option(MINICDI_DISABLE_VERBOSE "Completely disable verbose logging of any kind (ignored for Windows/Mac build)." ON)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR." OFF)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)." OFF)
 option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose." OFF)
-option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses." ON)
+option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses." OFF)
 option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file option." OFF)
-option(MINICDI_ENABLE_RAW68KMODE "Only use the 68K processor." OFF)
 
 # Emulation options
 option(MINICDI_DISABLE_THROTTLING "Disable throttling on Windows and macOS." OFF)
@@ -30,7 +18,21 @@ option(MINICDI_ENABLE_BENCHMARK "Log duration of frame execution." OFF)
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper, just for funsies (breaks player shell if no NVRAM settings data exists)." OFF)
 option(MINICDI_ENABLE_CDINDICATOR "Show an on-screen indicator for when the CD is being read." OFF)
+
+# Compilation config
 # -------------------------------------------
+add_executable(${PROJECT_NAME})
+if (WIN32)
+	# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -no-pie -g -pg")
+	# target_compile_options(${PROJECT_NAME} PRIVATE -D_WIN32 -O3 -fno-math-errno -Wall)
+	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -Wall)
+elseif (APPLE)
+	# ...
+	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -Wall)
+else()
+	dkp_target_generate_symbol_list(${PROJECT_NAME})
+	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -Wall)
+endif()
 
 if (MINICDI_DISABLE_VERBOSE AND NOT WIN32 AND NOT APPLE)
 	MESSAGE(STATUS "MINICDI_DISABLE_VERBOSE")
@@ -56,10 +58,6 @@ if (MINICDI_ENABLE_FORCE_LOGFILE)
 	MESSAGE(STATUS "MINICDI_ENABLE_FORCE_LOGFILE")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_FORCE_LOGFILE)
 endif()
-if (MINICDI_ENABLE_RAW68KMODE)
-	MESSAGE(STATUS "MINICDI_ENABLE_RAW68KMODE")
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_RAW_68K_MODE)
-endif()
 
 if (MINICDI_DISABLE_THROTTLING)
 	MESSAGE(STATUS "MINICDI_DISABLE_THROTTLING")
@@ -81,9 +79,6 @@ if (MINICDI_ENABLE_CDINDICATOR)
 	MESSAGE(STATUS "MINICDI_ENABLE_CDINDICATOR")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_CDINDICATOR)
 endif()
-
-set (APP_AUTHOR "Mr. Lechkar aka CatmanFan")
-set (APP_DESCRIPTION "I hope she made lotsa spaghetti!!!")
 
 # Core source files
 # -------------------------------------------
@@ -110,6 +105,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/AdpcmDecoder.cpp
 	src/cdi/CDiDisc.cpp
 	src/cdi/common.cpp
+	src/cdi/PointingDevice.cpp
 )
 
 # Platform build specific
@@ -172,7 +168,7 @@ if (NINTENDO_3DS)
 	# ************
 	ctr_generate_smdh(${PROJECT_NAME}.smdh
 		NAME "${PROJECT_NAME} v${PROJECT_VERSION}"
-		DESCRIPTION "${APP_DESCRIPTION}"
+		DESCRIPTION "I hope she made lotsa spaghetti!!!"
 		AUTHOR "${APP_AUTHOR}"
 		ICON res/3ds/icon.png
 	)

@@ -54,38 +54,8 @@ static MonoI* philips_player = NULL;
 static MemoryEditor mem_editor;
 static bool emulation_window_open = true;
 
-static void ShutdownCDI()
+static void InitConfig(const std::filesystem::path &biosPath)
 {
-	if (philips_player != NULL)
-	{
-		delete philips_player;
-		philips_player = NULL;
-	}
-}
-
-static bool CreateCDI(const char* rom, const char* disc)
-{
-	ShutdownCDI();
-
-	// ------------------------
-	// Set up paths and board type
-	// ------------------------
-	#ifdef __WIIU__
-		const std::filesystem::path biosPath = (wiiu_sd_prefix + roms_directory + rom);
-		const std::filesystem::path discPath = (wiiu_sd_prefix + discs_directory + disc);
-	#else
-		const std::filesystem::path biosPath = (roms_directory + rom);
-		const std::filesystem::path discPath = (discs_directory + disc);
-	#endif
-	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
-							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
-							  : CDi::MonoI;
-
-	if (access(biosPath.string().c_str(), F_OK) != 0) return false;
-
-	// ------------------------
-	// Load config.ini
-	// ------------------------
 	#ifdef USE_CONFIG
 		mINI::INIFile file(config_path.c_str());
 		mINI::INIStructure ini;
@@ -125,6 +95,78 @@ static bool CreateCDI(const char* rom, const char* disc)
 			MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? (wiiu_sd_prefix + "wiiu/apps/miniCDi/rom/" + biosPath.stem().string() + ".nvram") : "";
 		#endif
 	#endif
+}
+
+static void ReloadConfig()
+{
+	#ifdef USE_CONFIG
+		mINI::INIFile file(config_path.c_str());
+		mINI::INIStructure ini;
+		bool recreateIni = true;
+		if (access(config_path.c_str(), F_OK) == 0) {
+			file.read(ini);
+			recreateIni = !(ini.has("CDI") && ini.has("MiniCDI") && ini["CDI"].size() == 4 && ini["MiniCDI"].size() == 4);
+		}
+		if (recreateIni) {
+			ini["CDI"].set({
+				{"AutosaveNVRAM", "0"},
+				{"TestPlug", "0"},
+				{"PAL", "1"},
+				{"AnalogColors", "0"}
+			});
+			ini["MiniCDI"].set({
+				{"FPS", "0"},
+				{"FrameSkip", "0"},
+				{"PointerAdvance", "0"},
+				{"Logging", "0"}
+			});
+			file.generate(ini);
+		}
+		MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+		// MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
+		MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+		MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+		MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+		// MiniCDI::Config::LogFile = fopen(log_path.c_str(), "wt");
+		MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
+		MiniCDI::Config::ShowFTD = true;
+		// MiniCDI::Config::NvramFile = biosPath.stem().string() + ".nvram");
+	#endif
+}
+
+static void ShutdownCDI()
+{
+	if (philips_player != NULL)
+	{
+		delete philips_player;
+		philips_player = NULL;
+	}
+}
+
+static bool CreateCDI(const char* rom, const char* disc)
+{
+	ShutdownCDI();
+
+	// ------------------------
+	// Set up paths and board type
+	// ------------------------
+	#ifdef __WIIU__
+		const std::filesystem::path biosPath = (wiiu_sd_prefix + roms_directory + rom);
+		const std::filesystem::path discPath = (wiiu_sd_prefix + discs_directory + disc);
+	#else
+		const std::filesystem::path biosPath = (roms_directory + rom);
+		const std::filesystem::path discPath = (discs_directory + disc);
+	#endif
+	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
+							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
+							  : CDi::MonoI;
+
+	if (access(biosPath.string().c_str(), F_OK) != 0) return false;
+
+	// ------------------------
+	// Load config.ini
+	// ------------------------
+	InitConfig(biosPath);
 
 	// ------------------------
 	// Actually create the player
@@ -324,12 +366,19 @@ int main(int argc, char** argv)
 					if (philips_player != NULL) {
 						philips_player->pd.set_button(PointingDevice::Button1, e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_A);
 						philips_player->pd.set_button(PointingDevice::Button2, e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_B);
+						philips_player->pd.set_button(PointingDevice::Left, e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT);
+						philips_player->pd.set_button(PointingDevice::Right, e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
+						philips_player->pd.set_button(PointingDevice::Up, e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP);
+						philips_player->pd.set_button(PointingDevice::Down, e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN);
 
 						if (e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) {
 							ShutdownCDI();
 						}
 						if (e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER) {
 							philips_player->reset();
+						}
+						if (e.cbutton.state == SDL_PRESSED && e.cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+							philips_player->play_disc();
 						}
 					}
                     break;
@@ -371,6 +420,7 @@ int main(int argc, char** argv)
 		else
 		{
 			if (frames_run == 0) {
+				ReloadConfig();
 				philips_player->run(false);
 				SDL_UpdateTexture(framebuffer, NULL, philips_player->get_display(), philips_player->get_display_width()*sizeof(uint32_t));
 				frames_run += MiniCDI::Config::FrameSkip;

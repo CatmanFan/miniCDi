@@ -1,6 +1,8 @@
 #include "cdi/m68k/m68kcpu.h"
 #include "cdi/common.hpp"
 
+// #define MINICDI_USE_SWITCH_FOR_BUS
+
 namespace MiniCDI
 {
 	namespace Config
@@ -46,12 +48,42 @@ unsigned int  m68k_read_memory_8(unsigned int address)
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
-	return MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000 ? MiniCDI::Player.scc68070->read8(address)
-		 : MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000 ? MiniCDI::Player.slave->read8(address)
-		 : MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000 ? MiniCDI::Player.ikat->read8(address)
-		 : MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.dsp->read8(address)
-		 : MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00 ? MiniCDI::Player.mcd212->read8(address)
-		 : address < 8*1024*1024 ? MiniCDI::Player.memory[address & 0xFFFFFF] : 0;
+	// Redirect bus
+	#ifdef MINICDI_USE_SWITCH_FOR_BUS
+		switch (MiniCDI::Player.board)
+		{
+			case CDi::MonoI:
+				if ((address & 0xC0000000) == 0x80000000) return MiniCDI::Player.scc68070->read8(address);
+				if ((address & 0x00FFFF00) == 0x00310000) return MiniCDI::Player.slave->read8(address);
+				if ((address & 0x00FFFF00) == 0x004FFF00) return MiniCDI::Player.mcd212->read8(address);
+				break;
+
+			case CDi::MonoII:
+				if ((address & 0xC0000000) == 0x80000000) return MiniCDI::Player.scc68070->read8(address);
+				if ((address & 0x00FFFF00) == 0x00310000) return MiniCDI::Player.slave->read8(address);
+				if ((address & 0x00FFFF00) == 0x004FFF00) return MiniCDI::Player.mcd212->read8(address);
+				if (address >= 0x00300000 && address < 0x00303FFF) return MiniCDI::Player.dsp->read8(address);
+				break;
+
+			case CDi::MonoIII:
+			case CDi::MonoIV:
+				if ((address & 0xC0000000) == 0x80000000) return MiniCDI::Player.scc68070->read8(address);
+				if ((address & 0x00FFFF00) == 0x00310000) return MiniCDI::Player.ikat->read8(address);
+				if ((address & 0x00FFFF00) == 0x004FFF00) return MiniCDI::Player.mcd212->read8(address);
+				break;
+
+			default:
+				break;
+		}
+		return address < 8*1024*1024 ? MiniCDI::Player.memory[address & 0xFFFFFF] : 0;
+	#else
+		return MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000 ? MiniCDI::Player.scc68070->read8(address)
+			 : MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000 ? MiniCDI::Player.slave->read8(address)
+			 : MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000 ? MiniCDI::Player.ikat->read8(address)
+			 : MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.dsp->read8(address)
+			 : MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00 ? MiniCDI::Player.mcd212->read8(address)
+			 : address < 8*1024*1024 ? MiniCDI::Player.memory[address & 0xFFFFFF] : 0;
+	#endif
 }
 
 unsigned int  m68k_read_memory_16(unsigned int address)
@@ -62,11 +94,36 @@ unsigned int  m68k_read_memory_16(unsigned int address)
 
 	// Supervisor mode mask
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
-	
-	return MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00 ? MiniCDI::Player.mcd212->read16(address)
-		 : MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.cdic->read16(address)
-		 : MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.ciap->read16(address)
-		 : (uint16_t)((m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1));
+
+	// Redirect bus
+	#ifdef MINICDI_USE_SWITCH_FOR_BUS
+		switch (MiniCDI::Player.board)
+		{
+			case CDi::MonoI:
+				if ((address & 0x00FFFF00) == 0x004FFF00) return MiniCDI::Player.mcd212->read16(address);
+				if (address >= 0x00300000 && address < 0x00303FFF) return MiniCDI::Player.cdic->read16(address);
+				break;
+
+			case CDi::MonoII:
+				if ((address & 0x00FFFF00) == 0x004FFF00) return MiniCDI::Player.mcd212->read16(address);
+				break;
+
+			case CDi::MonoIII:
+			case CDi::MonoIV:
+				if ((address & 0x00FFFF00) == 0x004FFF00) return MiniCDI::Player.mcd212->read16(address);
+				if (address >= 0x00300000 && address < 0x00303FFF) return MiniCDI::Player.ciap->read16(address);
+				break;
+
+			default:
+				break;
+		}
+		return (m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1);
+	#else
+		return MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00 ? MiniCDI::Player.mcd212->read16(address)
+			 : MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.cdic->read16(address)
+			 : MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.ciap->read16(address)
+			 : (uint16_t)((m68k_read_memory_8(address) << 8) | m68k_read_memory_8(address+1));
+	#endif
 }
 
 unsigned int  m68k_read_memory_32(unsigned int address)
@@ -79,8 +136,8 @@ unsigned int  m68k_read_memory_32(unsigned int address)
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
 	// Redirect bus
-	return MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.cdic->read32(address)
-		 : (m68k_read_memory_16(address) << 16) | m68k_read_memory_16(address+2);
+	return MiniCDI::Player.board == CDi::MonoI && address >= 0x00300000 && address < 0x00303FFF ? MiniCDI::Player.cdic->read32(address)
+		 : (uint32_t)((m68k_read_memory_16(address) << 16) | m68k_read_memory_16(address+2));
 }
 
 void m68k_write_memory_8(unsigned int address, unsigned int value)
@@ -101,11 +158,40 @@ void m68k_write_memory_8(unsigned int address, unsigned int value)
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
 	// Redirect bus
-	if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)			MiniCDI::Player.scc68070->write8(address, value);
-	else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.slave->write8(address, value);
-	else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.ikat->write8(address, value, MiniCDI::Player.ciap);
-	else if (MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.dsp->write8(address, value);
-	else if (address < 8*1024*1024) MiniCDI::Player.memory[address] = value;
+	#ifdef MINICDI_USE_SWITCH_FOR_BUS
+		switch (MiniCDI::Player.board)
+		{
+			case CDi::MonoI:
+				if ((address & 0xC0000000) == 0x80000000) MiniCDI::Player.scc68070->write8(address, value);
+				else if ((address & 0x00FFFF00) == 0x00310000) MiniCDI::Player.slave->write8(address, value);
+				else if (address < 8*1024*1024) MiniCDI::Player.memory[address] = value;
+				break;
+
+			case CDi::MonoII:
+				if ((address & 0xC0000000) == 0x80000000) MiniCDI::Player.scc68070->write8(address, value);
+				else if ((address & 0x00FFFF00) == 0x00310000) MiniCDI::Player.slave->write8(address, value);
+				else if (address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.dsp->write8(address, value);
+				else if (address < 8*1024*1024) MiniCDI::Player.memory[address] = value;
+				break;
+
+			case CDi::MonoIII:
+			case CDi::MonoIV:
+				if ((address & 0xC0000000) == 0x80000000) MiniCDI::Player.scc68070->write8(address, value);
+				else if ((address & 0x00FFFF00) == 0x00310000) MiniCDI::Player.ikat->write8(address, value, MiniCDI::Player.ciap);
+				else if (address < 8*1024*1024) MiniCDI::Player.memory[address] = value;
+				break;
+
+			default:
+				if (address < 8*1024*1024) MiniCDI::Player.memory[address] = value;
+				break;
+		}
+	#else
+		if (MiniCDI::Player.scc68070 && (address & 0xC0000000) == 0x80000000)			MiniCDI::Player.scc68070->write8(address, value);
+		else if (MiniCDI::Player.slave && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.slave->write8(address, value);
+		else if (MiniCDI::Player.ikat && (address & 0x00FFFF00) == 0x00310000)			MiniCDI::Player.ikat->write8(address, value, MiniCDI::Player.ciap);
+		else if (MiniCDI::Player.dsp && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.dsp->write8(address, value);
+		else if (address < 8*1024*1024) MiniCDI::Player.memory[address] = value;
+	#endif
 }
 
 void m68k_write_memory_16(unsigned int address, unsigned int value)
@@ -118,9 +204,9 @@ void m68k_write_memory_16(unsigned int address, unsigned int value)
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
 	// Redirect bus
-	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00)				MiniCDI::Player.mcd212->write16(address, value);
-	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.cdic->write16(address, value);
-	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF)	MiniCDI::Player.ciap->write16(address, value);
+	if (MiniCDI::Player.mcd212 && (address & 0x00FFFF00) == 0x004FFF00) MiniCDI::Player.mcd212->write16(address, value);
+	else if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.cdic->write16(address, value);
+	else if (MiniCDI::Player.ciap && address >= 0x00300000 && address < 0x00303FFF) MiniCDI::Player.ciap->write16(address, value);
 	else {
 		m68k_write_memory_8(address, value >> 8 & 0xFF);
 		m68k_write_memory_8(address+1, value & 0xFF);
@@ -137,7 +223,8 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
 	if (!(FLAG_S && (address >> 30) == 0x2)) { address &= 0xFFFFFF; }
 
 	// Redirect bus
-	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)		MiniCDI::Player.cdic->write32(address, value);
+	if (MiniCDI::Player.cdic && address >= 0x00300000 && address < 0x00303FFF)
+		MiniCDI::Player.cdic->write32(address, value);
 	else {
 		m68k_write_memory_16(address, value >> 16 & 0xFFFF);
 		m68k_write_memory_16(address+2, value & 0xFFFF);
@@ -279,7 +366,6 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 			.mcd212 = this->vpu
 		};
 
-		#ifndef MINICDI_RAW_68K_MODE
 		switch (this->board) {
 			default:
 			case CDi::MonoI:
@@ -316,7 +402,6 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 				MiniCDI::Player.ciap = this->ciap;
 				break;
 		}
-		#endif
 
 		// Init Musashi last (expects memory to already be setup in player struct)
 		m68k_init();

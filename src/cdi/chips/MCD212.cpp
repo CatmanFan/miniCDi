@@ -101,9 +101,8 @@ uint32_t MCD212::VDSC::decodeDYUV(uint8_t* src, uint32_t *dst)
 		const int V_adj = V[i] - 128;
 
 		/// Green Book V.4.4.2.2
-		int B = std::clamp((Y[i] * 1000 + U_adj * 1733) / 1000, 0, 255);
-		int R = std::clamp((Y[i] * 1000 + V_adj * 1371) / 1000, 0, 255);
-		// ( Y - 0.299 * R' - 0.114 * B') / 0.587
+		int B = std::clamp(((Y[i] << 10) + U_adj * 1774) >> 10, 0, 255);
+		int R = std::clamp(((Y[i] << 10) + V_adj * 1404) >> 10, 0, 255);
 		int G = std::clamp(((Y[i]*1000) - 299 * R - 114 * B) / 587, 0, 255);
 
 		dst[i] = (R << 24) | (G << 16) | (B << 8) | 0xFF;
@@ -158,8 +157,8 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 
 	if (reg.Icm[Path] == Off)
 	{
-		memset(&FG[Path].decoded[(y * 768)], 0, FG[Path].width * sizeof(uint32_t));
-		return 0;
+		if (!this->skip_draw) memset(&FG[Path].decoded[(y * 768)], 0, FG[Path].width * sizeof(uint32_t));
+		return vsr;
 	}
 
 	for (int x = 0; x < FG[Path].width;)
@@ -174,7 +173,7 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 			case Bitmap:
 				if (reg.Icm[0] == Off && reg.Icm[1] == RGB555)
 				{
-					x += decodeRGB555<Path>(src, dst);
+					x += this->skip_draw ? 1 : decodeRGB555<Path>(src, dst);
 					vsr++;
 				}
 				else
@@ -187,7 +186,7 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 							continue;
 
 						case DYUV:
-							x += decodeDYUV<Path>(src, dst);
+							x += this->skip_draw ? 2 : decodeDYUV<Path>(src, dst);
 							vsr += 2;
 							continue;
 
@@ -195,7 +194,7 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 						case CLUT7:
 						case CLUT77:
 						case CLUT8:
-							x += decodeCLUT<Path>(src, dst);
+							x += this->skip_draw ? (reg.Icm[Path] == CLUT4 ? 2 : 1) : decodeCLUT<Path>(src, dst);
 							vsr++;
 							continue;
 					}
@@ -211,7 +210,7 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 						int length = (*src & 0x80 ? memory[vsr+1] : 1) * (reg.Icm[Path] == CLUT4 ? 2 : 1);
 						int endX = length == 0 ? FG[Path].width : std::min({x+length, FG[Path].width});
 						while (x < endX) {
-							x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * 768) + x]);
+							x += this->skip_draw ? (reg.Icm[Path] == CLUT4 ? 2 : 1) : decodeCLUT<Path>(src, &FG[Path].decoded[(y * 768) + x]);
 						}
 						vsr += (*src & 0x80 ? 2 : 1);
 						continue;
@@ -243,7 +242,7 @@ void MCD212::VDSC::mix_to_frame(int y)
 	#define ICF_APPLY(C, ICF) if (C < 16) C = 16; \
 							  C -= 16; \
 							  C *= ICF; \
-							  C /= 64; \
+							  C >>= 6; \
 							  C += 16;
 
 	// Reset matte ICF and count
@@ -324,10 +323,28 @@ void MCD212::VDSC::mix_to_frame(int y)
 		if (MiniCDI::Config::AnalogColors)
 		{
 			/// Subtract to get the analog output (per Green Book 4.4.1.2).
-			framebuffer[fb_xy] = (std::clamp((int)((((int)framebuffer[fb_xy] >> 24 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 24)
-								| (std::clamp((int)((((int)framebuffer[fb_xy] >> 16 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 16)
-								| (std::clamp((int)((((int)framebuffer[fb_xy] >> 8 & 0x000000FF) - 16) / 219.0f * 219.0f), 0, 255) << 8)
-								| (framebuffer[fb_xy] & 0x000000FF);
+			int rM = framebuffer[fb_xy] >> 24 & 0xFF;
+			int gM = framebuffer[fb_xy] >> 16 & 0xFF;
+			int bM = framebuffer[fb_xy] >> 8 & 0xFF;
+
+			// Actual formula is (C - 16) / 219 but it has been optimized.
+			rM -= 16;
+			gM -= 16;
+			bM -= 16;
+
+			rM <<= 4;
+			gM <<= 4;
+			bM <<= 4;
+
+			rM /= 3504;
+			gM /= 3504;
+			bM /= 3504;
+
+			rM >>= 4;
+			gM >>= 4;
+			bM >>= 4;
+
+			framebuffer[fb_xy] = (rM << 24) | (gM << 16) | (bM << 8) | 0xFF;
 		}
 
 		if (FG[0].width < 400) {
@@ -679,12 +696,13 @@ void MCD212::reset()
 	vdsc.reset();
 }
 
-bool MCD212::tick(bool skip_draw)
+bool MCD212::tick()
 {
+	vdsc.skip_draw = this->skip_draw;
 	linesV++;
 
 	// Minimise CPU usage for drawing
-	/*if (skip_draw)
+	/*if (this->skip_draw)
 	{
 		if (linesV <= MCD212_INACTIVE_VLINES) return false;
 		DA = 1;
@@ -705,7 +723,7 @@ bool MCD212::tick(bool skip_draw)
 	{
 		if (linesV <= MCD212_INACTIVE_VLINES)
 		{
-			if (linesV == 1 && DE && !skip_draw)
+			if (linesV == 1 && DE)
 			{
 				if (IC[0]) ICA_execute<0>();
 				if (IC[1]) ICA_execute<1>();
@@ -718,19 +736,15 @@ bool MCD212::tick(bool skip_draw)
 			if (interlace && SM) line = 1;
 			DA = 1;
 
-			if (!skip_draw)
-				vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
+			vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
 		}
 
 		if (DE)
 		{
-			if (!skip_draw)
-			{
-				// render line onto bitmap
-				VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
-				VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
-				vdsc.mix_to_frame(line);
-			}
+			// render line onto bitmap
+			VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
+			VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+			if (!this->skip_draw) vdsc.mix_to_frame(line);
 
 			if (DC[0] && IC[0]) DCA_execute<0>();
 			if (DC[1] && IC[1]) DCA_execute<1>();

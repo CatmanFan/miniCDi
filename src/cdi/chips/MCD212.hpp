@@ -17,7 +17,6 @@ class MCD212
 
 	class VDSC
 	{
-
 		/*****
 		  DISCLAIMER:
 		  Partially sourced from official documentation of MCD212 by Motorola and
@@ -188,6 +187,7 @@ class MCD212
 		uint32_t framebuffer[768 * 280]; // max bounds
 
 	public:
+		bool skip_draw = false;
 		uint8_t cursor[16*16];
 		Plane FG[2];
 
@@ -211,12 +211,13 @@ class MCD212
 		{
 			if (reg.Icm[0] == CLUT4 || reg.Icm[1] == CLUT4) hDouble = true;
 
+			FG[1].width = FG[0].width = hRes * (hDouble || vDouble ? 2 : 1);
+			FG[1].height = FG[0].height = vRes * (vDouble ? 2 : 1);
+
+			if (this->skip_draw) return;
 			memset(FG[0].decoded, 0, sizeof(FG[0].decoded));
 			memset(FG[1].decoded, 0, sizeof(FG[1].decoded));
 			memset(framebuffer, 0xFF000000, sizeof(framebuffer));
-
-			FG[1].width = FG[0].width = hRes * (hDouble || vDouble ? 2 : 1);
-			FG[1].height = FG[0].height = vRes * (vDouble ? 2 : 1);
 		}
 
 		/**
@@ -284,7 +285,8 @@ public:
 	/**
 	 * @brief  Draws a video line.
 	 */
-	bool tick(bool skip_draw = false);
+	bool tick();
+	bool skip_draw = false;
 
 	uint8_t read8(uint32_t addr);
 	uint16_t read16(uint32_t addr);

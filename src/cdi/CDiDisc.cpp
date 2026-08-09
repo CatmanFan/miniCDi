@@ -2,39 +2,37 @@
 
 uint32_t CDiDisc::get_lba_from_time(uint32_t time)
 {
-	Sector.Min = time >> 24 & 0xFF;
-	Sector.Sec = time >> 16 & 0xFF;
-	Sector.Frame = time >> 8 & 0xFF;
+	Sector[CDiDisc::H_MIN] = time >> 24 & 0xFF;
+	Sector[CDiDisc::H_SEC] = time >> 16 & 0xFF;
+	Sector[CDiDisc::H_FRAME] = time >> 8 & 0xFF;
 
 	// Values are stored in BCD.
 	// Check validity of nibbles for each value
-	assert(((Sector.Min & 0xF0) >> 4) < 10);
-	assert((Sector.Min & 0x0F) < 10);
-	assert(((Sector.Sec & 0xF0) >> 4) < 10);
-	assert((Sector.Sec & 0x0F) < 10);
-	assert(((Sector.Frame & 0xF0) >> 4) < 10);
-	assert((Sector.Frame & 0x0F) < 10);
+	assert(((Sector[CDiDisc::H_MIN] & 0xF0) >> 4) < 10);
+	assert((Sector[CDiDisc::H_MIN] & 0x0F) < 10);
+	assert(((Sector[CDiDisc::H_SEC] & 0xF0) >> 4) < 10);
+	assert((Sector[CDiDisc::H_SEC] & 0x0F) < 10);
+	assert(((Sector[CDiDisc::H_FRAME] & 0xF0) >> 4) < 10);
+	assert((Sector[CDiDisc::H_FRAME] & 0x0F) < 10);
 
-	const uint8_t min_raw = ((Sector.Min & 0xF0) >> 4) * 10 + (Sector.Min & 0x0F);
-	const uint8_t sec_raw = ((Sector.Sec & 0xF0) >> 4) * 10 + (Sector.Sec & 0x0F);
-	const uint8_t fra_raw = ((Sector.Frame & 0xF0) >> 4) * 10 + (Sector.Frame & 0x0F);
+	const uint8_t min_raw = ((Sector[CDiDisc::H_MIN] & 0xF0) >> 4) * 10 + (Sector[CDiDisc::H_MIN] & 0x0F);
+	const uint8_t sec_raw = ((Sector[CDiDisc::H_SEC] & 0xF0) >> 4) * 10 + (Sector[CDiDisc::H_SEC] & 0x0F);
+	const uint8_t fra_raw = ((Sector[CDiDisc::H_FRAME] & 0xF0) >> 4) * 10 + (Sector[CDiDisc::H_FRAME] & 0x0F);
 
 	uint32_t lba = ((min_raw * 60) + sec_raw) * 75 + fra_raw;
 	if (lba >= 150)
 		lba -= 150;
 
-	disc.clear();
-	disc.seekg(lba*2352, std::ios::beg);
-	//MiniCDI::Log("[Disc] time: %08X  raw_min: %02d, raw_sec: %02d, raw_frame: %02d, lba: %X", time, min_raw, sec_raw, fra_raw, lba*2352);
-
+	fseek(disc, lba*SECTOR_SIZE, SEEK_SET);
 	return lba;
 }
 
 bool CDiDisc::is_byteswapped(int lba)
 {
 	char sync[2];
-	disc.seekg(lba*2352, std::ios::beg);
-	disc.read(&sync[0], 2);
+	fseek(disc, lba*SECTOR_SIZE, SEEK_SET);
+	sync[0] = fgetc(disc);
+	sync[1] = fgetc(disc);
 
 	return sync[0] == 0xFF && sync[1] == 0x00;
 }
@@ -43,60 +41,34 @@ bool CDiDisc::is_byteswapped(int lba)
 bool CDiDisc::is_valid_sector(int lba)
 {
 	char raw[12];
-	disc.seekg(lba*2352+12, std::ios::beg);
-	disc.read(&raw[0], 12);
+	fseek(disc, lba*SECTOR_SIZE+12, SEEK_SET);
+	for (int i = 0; i < 12; i++)
+		raw[i] = fgetc(disc);
 
 	const uint8_t mins = (lba+150) / (60 * 75);
 	const uint8_t secs = ((lba+150) / 75) % 60;
 	const uint8_t frac = (lba+150) % 75;
-	const uint8_t mins_bcd = ((mins / 10) << 4) | (mins % 10);
-	const uint8_t secs_bcd = ((secs / 10) << 4) | (secs % 10);
-	const uint8_t frac_bcd = ((frac / 10) << 4) | (frac % 10);
-
-	if (mins_bcd != raw[0] || secs_bcd != raw[1] || frac_bcd != raw[2])
-		return false;
+	const uint8_t mins_bcd = mins / 10 * 16 + mins % 10;
+	const uint8_t secs_bcd = secs / 10 * 16 + secs % 10;
+	const uint8_t frac_bcd = frac / 10 * 16 + frac % 10;
 
 	if (raw[3] != 1 && raw[3] != 2)
 		return false;
 
-	if (raw[4] != raw[8])	return false;
-	if (raw[5] != raw[9])	return false;
-	if (raw[6] != raw[10])	return false;
-	if (raw[7] != raw[11])	return false;
-
-	return true;
+	return mins_bcd == raw[0] && secs_bcd == raw[1] && frac_bcd == raw[2] && raw[4] == raw[8] && raw[5] == raw[9] && raw[6] == raw[10] && raw[7] == raw[11];
 }
 
 void CDiDisc::read_sector(int lba)
 {
 	// seek and skip sync field
-	disc.seekg(lba*2352+12, std::ios::beg);
-
-	disc.get(Sector.Min);
-	disc.get(Sector.Sec);
-	disc.get(Sector.Frame);
-	disc.get(Sector.Mode);
-	disc.get(Sector.FileNum[0]);
-	disc.get(Sector.ChNum[0]);
-	disc.get(Sector.Submode[0]);
-	disc.get(Sector.CodingInfo[0]);
-	disc.get(Sector.FileNum[1]);
-	disc.get(Sector.ChNum[1]);
-	disc.get(Sector.Submode[1]);
-	disc.get(Sector.CodingInfo[1]);
-	disc.read(&Sector.Data[0], sizeof(Sector.Data) / sizeof(char));
+	fseek(disc, lba*SECTOR_SIZE+12, SEEK_SET);
+	for (int i = 0; i < SECTOR_SIZE-12; i++)
+		Sector[i] = fgetc(disc);
 
 	if (is_byteswapped(lba))
 	{
-		std::swap(Sector.Min, Sector.Sec);
-		std::swap(Sector.Frame, Sector.Mode);
-		std::swap(Sector.FileNum[0], Sector.ChNum[0]);
-		std::swap(Sector.Submode[0], Sector.CodingInfo[0]);
-		std::swap(Sector.FileNum[1], Sector.ChNum[1]);
-		std::swap(Sector.Submode[1], Sector.CodingInfo[1]);
-
-		for (size_t i = 0; i < sizeof(Sector.Data) / sizeof(char); i+=2)
-			std::swap(Sector.Data[i], Sector.Data[i+1]);
+		for (size_t i = 0; i < SECTOR_SIZE; i+=2)
+			std::swap(Sector[i], Sector[i+1]);
 	}
 
 	if (!is_valid_sector(lba))
@@ -253,21 +225,8 @@ void CDiDisc::read_sector(int lba)
 			0x72, 0xdd, 0xe5, 0x99
 		};
 
-		Sector.Min ^= scramble_data[0];
-		Sector.Sec ^= scramble_data[1];
-		Sector.Frame ^= scramble_data[2];
-		Sector.Mode ^= scramble_data[3];
-		Sector.FileNum[0] ^= scramble_data[4];
-		Sector.ChNum[0] ^= scramble_data[5];
-		Sector.Submode[0] ^= scramble_data[6];
-		Sector.CodingInfo[0] ^= scramble_data[7];
-		Sector.FileNum[1] ^= scramble_data[8];
-		Sector.ChNum[1] ^= scramble_data[9];
-		Sector.Submode[1] ^= scramble_data[10];
-		Sector.CodingInfo[1] ^= scramble_data[11];
-
-		for (size_t i = 0; i < sizeof(Sector.Data) / sizeof(char); i++)
-			Sector.Data[i] ^= scramble_data[i+12];
+		for (size_t i = 0; i < SECTOR_SIZE; i++)
+			Sector[i] ^= scramble_data[i];
 	}
 }
 
@@ -277,15 +236,14 @@ bool CDiDisc::open(const std::string &path)
 
 	if (access(path.c_str(), F_OK) == 0)
 	{
-		disc.open(path, std::ios::in | std::ios::binary);
-		if (disc.is_open())
+		disc = fopen(path.c_str(), "r");
+		if (disc != NULL)
 		{
 			// MiniCDI::Log("[Disc] Inserted disc: %s", path.c_str());
 
-			disc.seekg(0x9340, std::ios::beg); // 00'02'16 LBA, address of title
+			fseek(disc, 0x9340, SEEK_SET); // 00'02'16 LBA, address of title
 			for (int i = 0; i < 32; i++) {
-				char c;
-				disc.get(c);
+				char c = fgetc(disc);
 				if (c)
 					Label += c;
 				else
@@ -311,8 +269,10 @@ bool CDiDisc::open(const std::string &path)
 
 void CDiDisc::eject()
 {
-	if (disc.is_open()) {
-		disc.close();
+	if (disc != NULL)
+	{
+		fclose(disc);
+		disc = NULL;
 		Label.clear();
 		MiniCDI::Log("[Disc] Ejected");
 	}

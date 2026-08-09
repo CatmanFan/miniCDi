@@ -3,41 +3,46 @@
 
 class CDiDisc
 {
-	std::ifstream disc;
+	FILE* disc;
 
-	// CD-i sector, not CD-DA
-	struct {
-		/// The sector is structured as follows (Green Book 5/1994 II.4.1.1):
-		/// Sync field (12 bytes), is 00FFFFFFFFFFFFFFFFFFFF00 and is unscrambled, can be ignored
-		/// Header field (4 bytes)
-		/// Subheader field (8 bytes)
-		/// Data field (2328 bytes)
-
+	// Addresses of relevant bytes, relative to the header's minute byte.
+	enum {
 		// Header, contains address and mode
-		char Min;
-		char Sec;
-		char Frame;
-		char Mode;
+		H_MIN = 0,
+		H_SEC,
+		H_FRAME,
+		H_MODE,
 
 		// Subheader, is repeated twice
-		char FileNum[2];
-		char ChNum[2];
-		char Submode[2];
-		char CodingInfo[2];
+		SH_FILE1,
+		SH_CHAN1,
+		SH_SUBMODE1,
+		SH_CODING1,
+		SH_FILE2,
+		SH_CHAN2,
+		SH_SUBMODE2,
+		SH_CODING2,
 
-		/// Subheader codes (Green Book 5/1994 II.4.5.3):
-		/// 0x01 = EOR
-		/// 0x02 = Video
-		/// 0x04 = Audio
-		/// 0x08 = Data
-		/// 0x10 = Trigger
-		/// 0x20 = Form
-		/// 0x40 = Real-Time Sector
-		/// 0x80 = EOF
+		SECTOR_SIZE = 2352
+	};
 
-		char Data[2328];
-	} Sector;
+	// CD-i sector, not CD-DA
+	/// The sector is structured as follows (Green Book 5/1994 II.4.1.1):
+	/// Sync field (12 bytes), is 00FFFFFFFFFFFFFFFFFFFF00 and is unscrambled, can be ignored
+	/// Header field (4 bytes)
+	/// Subheader field (8 bytes)
+	/// Data field (2328 bytes)
 
+	/// Subheader codes (Green Book 5/1994 II.4.5.3):
+	/// 0x01 = EOR
+	/// 0x02 = Video
+	/// 0x04 = Audio
+	/// 0x08 = Data
+	/// 0x10 = Trigger
+	/// 0x20 = Form
+	/// 0x40 = Real-Time Sector
+	/// 0x80 = EOF
+	char Sector[SECTOR_SIZE];
 	std::string Label;
 
 	/**
@@ -58,7 +63,7 @@ public:
 	friend class DRVDSP;
 	friend class CIAP;
 
-	inline bool is_open() { return disc.is_open(); }
+	inline bool is_open() { return disc != NULL; }
 	bool open(const std::string &path);
 	void eject();
 };

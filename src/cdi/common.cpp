@@ -277,6 +277,7 @@ MonoI::~MonoI()
 	m68k_set_fc_callback(NULL);
 
 	// Free peripherals and player structure
+	this->disc.eject();
 	if (this->ftd != NULL) {
 		delete this->ftd;
 		this->ftd = NULL;

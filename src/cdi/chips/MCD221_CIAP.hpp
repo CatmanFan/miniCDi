@@ -80,46 +80,46 @@ class CIAP
 
 	bool disc_check_filter()
 	{
-		if (disc->Sector.Mode == 2 && CdStatus.selection)
+		if (disc->Sector[CDiDisc::H_MODE] == 2 && CdStatus.selection)
 		{
 			// Use order from MAME
-			if (disc->Sector.FileNum[1] != (FILE & 0xFF)) {
+			if (disc->Sector[CDiDisc::SH_FILE2] != (FILE & 0xFF)) {
 				MiniCDI::Log("[CIAP] %02X:%02X:%02X skip: FILE %02X != %02X",
-							 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame, FILE & 0xFF, disc->Sector.FileNum[1]);
+							 disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME], FILE & 0xFF, disc->Sector[CDiDisc::SH_FILE2]);
 				return false;
 			}
 
-			if ((disc->Sector.Submode[1] & 0b10000000) // EOF
-			 || (disc->Sector.Submode[1] & 0b00000001) // EOR
-			 || (disc->Sector.Submode[1] & 0b00010000) // Trigger
+			if ((disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000) // EOF
+			 || (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00000001) // EOR
+			 || (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00010000) // Trigger
 			 ) {
-				if (disc->Sector.Submode[1] & 0b10000000) {
+				if (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000) {
 					MiniCDI::Log("[CIAP] %02X:%02X:%02X: reached EOF",
-								 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+								 disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
 					CdStatus.reading = false;
 				} else {
 					MiniCDI::Log("[CIAP] %02X:%02X:%02X: autoread",
-								 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+								 disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
 				}
 				return true;
 			}
 
-			if (!(disc->Sector.Submode[1] & 0b00001110)) {
+			if (!(disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00001110)) {
 				// Either message or empty sector (Green Book II.4.9.1)
 				MiniCDI::Log("[CDIC] %02X:%02X:%02X: skip: invalid sector");
 				return false;
 			}
 
-			if (!(TCM1 & (1<<disc->Sector.ChNum[1])) && !(ACM2 & (1<<disc->Sector.ChNum[1]))) {
+			if (!(TCM1 & (1<<disc->Sector[CDiDisc::SH_CHAN2])) && !(ACM2 & (1<<disc->Sector[CDiDisc::SH_CHAN2]))) {
 				MiniCDI::Log("[CIAP] %02X:%02X:%02X skip: channel %X does not match TCM1 ($%04X) or ACM2 ($%04X)",
-							 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame, disc->Sector.ChNum[1], TCM1, ACM2);
+							 disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME], disc->Sector[CDiDisc::SH_CHAN2], TCM1, ACM2);
 				return false;
 			}
 		}
 
-		if (disc->Sector.Submode[1] & 0b10000000) {
+		if (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000) {
 			/*MiniCDI::Log("[CIAP] %02X:%02X:%02X: reached EOF",
-						 disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);*/
+						 disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);*/
 			CdStatus.reading = false;
 		}
 
@@ -139,29 +139,19 @@ class CIAP
 		// Skip if MODE2 not satisfied
 		if (disc_check_filter())
 		{
-			MiniCDI::Log("[CIAP] %02X:%02X:%02X: copy to memory", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+			MiniCDI::Log("[CIAP] %02X:%02X:%02X: copy to memory", disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
 
 			// Select target DATA buffer
 			uint32_t targetAddr = 0x300000 + ((BMAN & 0b000100) ? 0x1BC2 : 0x1200);
 
-			// Copy sector header as normal
-			memory[targetAddr++] = disc->Sector.Min;
-			memory[targetAddr++] = disc->Sector.Sec;
-			memory[targetAddr++] = disc->Sector.Frame;
-			memory[targetAddr++] = disc->Sector.Mode;
-			memory[targetAddr++] = disc->Sector.FileNum[0];
-			memory[targetAddr++] = disc->Sector.ChNum[0];
-			memory[targetAddr++] = disc->Sector.Submode[0];
-			memory[targetAddr++] = disc->Sector.CodingInfo[0];
+			// Fetch mainchannel data from frame, followed by subchannel data.
+			memcpy(&memory[targetAddr], &disc->Sector[0], 8);
+			targetAddr += 8;
 
 			// TACS contains audio channel.
 			// Should switch to ADPCM buffer at this point?
 
-			memory[targetAddr++] = disc->Sector.FileNum[1];
-			memory[targetAddr++] = disc->Sector.ChNum[1];
-			memory[targetAddr++] = disc->Sector.Submode[1];
-			memory[targetAddr++] = disc->Sector.CodingInfo[1];
-			memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
+			memcpy(&memory[targetAddr], &disc->Sector[8], 2332);
 
 			// Mark mainchannel DATA as full
 			ISR |= 0x01;
@@ -173,13 +163,13 @@ class CIAP
 			memory[targetAddr++] = 0x41; // Control
 			memory[targetAddr++] = 0x01; // Track
 			memory[targetAddr++] = 0x01; // Index
-			memory[targetAddr++] = disc->Sector.Min;
-			memory[targetAddr++] = disc->Sector.Sec;
-			memory[targetAddr++] = disc->Sector.Frame;
+			memory[targetAddr++] = disc->Sector[CDiDisc::H_MIN];
+			memory[targetAddr++] = disc->Sector[CDiDisc::H_SEC];
+			memory[targetAddr++] = disc->Sector[CDiDisc::H_FRAME];
 			memory[targetAddr++] = 0x00;
-			memory[targetAddr++] = disc->Sector.Min;
-			memory[targetAddr++] = disc->Sector.Sec;
-			memory[targetAddr++] = disc->Sector.Frame;
+			memory[targetAddr++] = disc->Sector[CDiDisc::H_MIN];
+			memory[targetAddr++] = disc->Sector[CDiDisc::H_SEC];
+			memory[targetAddr++] = disc->Sector[CDiDisc::H_FRAME];
 
 			// ...and 12 bytes for remaining subchannels
 			targetAddr = 0x300000 + ((BMAN & 0b100000) ? 0x24F0 : 0x1B2E);
@@ -187,13 +177,13 @@ class CIAP
 				memory[targetAddr++] = 0x41; // Control
 				memory[targetAddr++] = 0x01; // Track
 				memory[targetAddr++] = 0x01; // Index
-				memory[targetAddr++] = disc->Sector.Min;
-				memory[targetAddr++] = disc->Sector.Sec;
-				memory[targetAddr++] = disc->Sector.Frame;
+				memory[targetAddr++] = disc->Sector[CDiDisc::H_MIN];
+				memory[targetAddr++] = disc->Sector[CDiDisc::H_SEC];
+				memory[targetAddr++] = disc->Sector[CDiDisc::H_FRAME];
 				memory[targetAddr++] = 0x00;
-				memory[targetAddr++] = disc->Sector.Min;
-				memory[targetAddr++] = disc->Sector.Sec;
-				memory[targetAddr++] = disc->Sector.Frame;
+				memory[targetAddr++] = disc->Sector[CDiDisc::H_MIN];
+				memory[targetAddr++] = disc->Sector[CDiDisc::H_SEC];
+				memory[targetAddr++] = disc->Sector[CDiDisc::H_FRAME];
 				memory[targetAddr++] = 0xFF; // CRC
 				memory[targetAddr++] = 0xFF; // CRC
 			}*/

@@ -2,19 +2,19 @@
 
 bool CDIC::disc_check_filter()
 {
-	if (disc->Sector.Mode == 2 && CdicController.is_mode2)
+	if (disc->Sector[CDiDisc::H_MODE] == 2 && CdicController.is_mode2)
 	{
 		// Use order from MAME
-		if ((disc->Sector.FileNum[1] << 8) != FILE) {
-			//MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector.FileNum[1]);
+		if ((disc->Sector[CDiDisc::SH_FILE2] << 8) != FILE) {
+			//MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector[CDiDisc::SH_FILE2]);
 			return false;
 		}
 
-		if ((disc->Sector.Submode[1] & 0b10000000) // EOF
-		 || (disc->Sector.Submode[1] & 0b00000001) // EOR
-		 || (disc->Sector.Submode[1] & 0b00010000) // Trigger
+		if ((disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000) // EOF
+		 || (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00000001) // EOR
+		 || (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00010000) // Trigger
 		 ) {
-			if (disc->Sector.Submode[1] & 0b10000000) {
+			if (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000) {
 				MiniCDI::Log("[CDIC] MODE2: reached EOF");
 				CdicController.reading = false;
 			}
@@ -22,14 +22,14 @@ bool CDIC::disc_check_filter()
 			return true;
 		}
 
-		if (!(disc->Sector.Submode[1] & 0b00001110)) {
+		if (!(disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00001110)) {
 			// Either message or empty sector (Green Book II.4.9.1)
 			//MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
 			return false;
 		}
 
-		if (!(CHAN & (1<<disc->Sector.ChNum[1]))) {
-			//MiniCDI::Log("[CDIC] MODE2 skip: CHAN %08X is not AND (1 << %d)", CHAN, disc->Sector.ChNum[1]);
+		if (!(CHAN & (1<<disc->Sector[CDiDisc::SH_CHAN2]))) {
+			//MiniCDI::Log("[CDIC] MODE2 skip: CHAN %08X is not AND (1 << %d)", CHAN, disc->Sector[CDiDisc::SH_CHAN2]);
 			return false;
 		}
 	}
@@ -56,21 +56,14 @@ void CDIC::disc_process_sector()
 		uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
 
 		// Fetch mainchannel data from frame, followed by subchannel data.
-		// Copy first 8 bytes of sector header as normal
-		memory[targetAddr++] = disc->Sector.Min;
-		memory[targetAddr++] = disc->Sector.Sec;
-		memory[targetAddr++] = disc->Sector.Frame;
-		memory[targetAddr++] = disc->Sector.Mode;
-		memory[targetAddr++] = disc->Sector.FileNum[0];
-		memory[targetAddr++] = disc->Sector.ChNum[0];
-		memory[targetAddr++] = disc->Sector.Submode[0];
-		memory[targetAddr++] = disc->Sector.CodingInfo[0];
+		memcpy(&memory[targetAddr], &disc->Sector[0], 8);
+		targetAddr += 8;
 
 		// At this point the CDIC should switch to the ADPCM buffer if the fetched sector is of audio type.
 		// Submode filter (Form=1, Data=0, Audio=1, Video=0) is defined in Figure IV.3 of the Green Book
-		bool is_adpcm = !(CdicController.is_mode2 && disc->Sector.Mode == 2) ? false
-					  : (disc->Sector.Submode[1] & 0b00101110) == 0b00100100;
-		if (SoundmapUnit.status == 0) is_adpcm = is_adpcm && (ACHAN & (1 << disc->Sector.ChNum[1]));
+		bool is_adpcm = !(CdicController.is_mode2 && disc->Sector[CDiDisc::H_MODE] == 2) ? false
+					  : (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00101110) == 0b00100100;
+		if (SoundmapUnit.status == 0) is_adpcm = is_adpcm && (ACHAN & (1 << disc->Sector[CDiDisc::SH_CHAN2]));
 		if (SoundmapUnit.status == 1) is_adpcm = false;
 
 		if (is_adpcm)
@@ -87,28 +80,24 @@ void CDIC::disc_process_sector()
 		}
 
 		// These bytes should be separated if the sector is passed as audio
-		memory[targetAddr++] = disc->Sector.FileNum[1];
-		memory[targetAddr++] = disc->Sector.ChNum[1];
-		memory[targetAddr++] = disc->Sector.Submode[1];
-		memory[targetAddr++] = disc->Sector.CodingInfo[1];
-		memcpy(&memory[targetAddr], &disc->Sector.Data[0], 2328*sizeof(char));
-		targetAddr += 2328;
-		//MiniCDI::Log("[CDIC] read %s sector %02X:%02X:%02X", is_adpcm ? "audio" : "data", disc->Sector.Min, disc->Sector.Sec, disc->Sector.Frame);
+		memcpy(&memory[targetAddr], &disc->Sector[8], 2332);
+		//MiniCDI::Log("[CDIC] read %s sector %02X:%02X:%02X", is_adpcm ? "audio" : "data", disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
 
 		// Decode and play the fetched ADPCM sector.
 		if (is_adpcm) adpcm_decode_and_play(DBUF & 0x01, false);
 
+		/*targetAddr += 2332;
 		// switch (mode) default:
-		/*memory[targetAddr++] = 0x41; // Control
+		memory[targetAddr++] = 0x41; // Control
 		memory[targetAddr++] = 0x01; // Track
 		memory[targetAddr++] = 0x01; // Index
-		memory[targetAddr++] = disc->Sector.Min;
-		memory[targetAddr++] = disc->Sector.Sec;
-		memory[targetAddr++] = disc->Sector.Frame;
+		memory[targetAddr++] = disc->Sector[CDiDisc::H_MIN];
+		memory[targetAddr++] = disc->Sector[CDiDisc::H_SEC];
+		memory[targetAddr++] = disc->Sector[CDiDisc::H_FRAME];
 		memory[targetAddr++] = 0x00;
-		memory[targetAddr++] = disc->Sector.Min;
-		memory[targetAddr++] = disc->Sector.Sec;
-		memory[targetAddr++] = disc->Sector.Frame;
+		memory[targetAddr++] = disc->Sector[CDiDisc::H_MIN];
+		memory[targetAddr++] = disc->Sector[CDiDisc::H_SEC];
+		memory[targetAddr++] = disc->Sector[CDiDisc::H_FRAME];
 		memory[targetAddr++] = 0xFF; // CRC
 		memory[targetAddr++] = 0xFF; // CRC*/
 

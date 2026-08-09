@@ -185,6 +185,7 @@ int main(int argc, char** argv)
 	if (ini["MiniCDI"]["HideCursor"].compare("1") == 0) { SDL_ShowCursor(SDL_DISABLE); }
 	SDL screen;
 
+	int frames_run = 0;
 	bool has_quit = false;
 	while (!has_quit)
 	{
@@ -252,12 +253,13 @@ int main(int argc, char** argv)
             }
         }
 
-		if (MiniCDI::Config::FrameSkip != 0) {
-			cdi.run(MiniCDI::Config::FrameSkip+1);
-			// fps.update(MiniCDI::Config::FrameSkip+1);
+		if (frames_run == 0) {
+			cdi.run(false);
+			frames_run += MiniCDI::Config::FrameSkip;
 		} else {
-			cdi.run(1);
-			// fps.update(1);
+			cdi.run(true);
+			frames_run--;
+			continue;
 		}
 
 		screen.update_video(cdi.get_display(), cdi.get_display_width());

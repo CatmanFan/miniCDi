@@ -242,6 +242,7 @@ static void RUN_CDI(const std::string &discName)
 
 	EmulatorWindow TOPSCREEN(768,280);
 
+	int frames_run = 0;
 	while (aptMainLoop())
 	{
 		hidScanInput();
@@ -259,12 +260,13 @@ static void RUN_CDI(const std::string &discName)
 		cdi.pd.set_button(PointingDevice::Button2, kHeld & KEY_B);
 
 		static FPS fps;
-		if (MiniCDI::Config::FrameSkip != 0) {
-			cdi.run(MiniCDI::Config::FrameSkip+1);
-			fps.update(MiniCDI::Config::FrameSkip+1);
+		if (frames_run == 0) {
+			cdi.run(false);
+			frames_run += MiniCDI::Config::FrameSkip;
 		} else {
-			cdi.run(1);
-			fps.update(1);
+			cdi.run(true);
+			frames_run--;
+			continue;
 		}
 
 		TOPSCREEN.Update(cdi.get_display(), cdi.get_display_width());

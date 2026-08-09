@@ -277,7 +277,6 @@ int main(int argc, char** argv)
 	ScanDiscs();
 
 	static int frames_run = 0;
-
 	while (!has_quit)
 	{
 		SDL_Event e;
@@ -372,11 +371,11 @@ int main(int argc, char** argv)
 		else
 		{
 			if (frames_run == 0) {
-				philips_player->run(1, /* no_draw */ false);
+				philips_player->run(false);
 				SDL_UpdateTexture(framebuffer, NULL, philips_player->get_display(), philips_player->get_display_width()*sizeof(uint32_t));
-				frames_run += 2;
+				frames_run += MiniCDI::Config::FrameSkip;
 			} else {
-				philips_player->run(1, /* no_draw */ true);
+				philips_player->run(true);
 				frames_run--;
 				continue;
 			}

@@ -55,7 +55,7 @@ public:
 	bool init(const std::string &bios, enum BoardType board) override;
 	~MonoI();
 
-	inline void run(int frames = 1, bool no_draw = false) override
+	inline void run(bool no_draw = false) override
 	{
 		#ifndef MINICDI_RAW_68K_MODE
 		pd.send_packet();
@@ -64,64 +64,63 @@ public:
 		// Benchmark
 		const auto t1 = std::chrono::steady_clock::now();
 
-		for (int frames_left = frames; frames_left > 0; frames_left--)
+		#ifdef MINICDI_DEBUG_OS9
+		MiniCDI::OS9::scan_modules(memory);
+		#endif
+
+		#ifdef MINICDI_RAW_68K_MODE
+		for (int total = 0; total < (MiniCDI::Config::PAL ? 312 : 262) * 960;)
+		#else
+		while (1)
+		#endif
 		{
-			MiniCDI::OS9::scan_modules(memory);
+			// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
+			const int cycles = std::min({192, event_rates[0], event_rates[1], event_rates[2]});
+			// const int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
+			// const int cycles = std::gcd(std::gcd(std::gcd(event_cycles[0], event_cycles[1]), event_cycles[2]), 96);
+			cpu.run(cycles);
 
 			#ifdef MINICDI_RAW_68K_MODE
-			for (int total = 0; total < (MiniCDI::Config::PAL ? 312 : 262) * 960;)
+			total += cycles;
 			#else
-			while (1)
-			#endif
+			for (int i = 0; i < EVTNUM; i++)
 			{
-				// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
-				const int cycles = std::min({240, event_rates[0], event_rates[1], event_rates[2]});
-				// const int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
-				// const int cycles = std::gcd(std::gcd(std::gcd(event_cycles[0], event_cycles[1]), event_cycles[2]), 96);
-				cpu.run(cycles);
-
-				#ifdef MINICDI_RAW_68K_MODE
-				total += cycles;
-				#else
-				for (int i = 0; i < EVTNUM; i++)
+				event_cycles[i] -= cycles;
+				while (event_cycles[i] <= 0)
 				{
-					event_cycles[i] -= cycles;
-					while (event_cycles[i] <= 0)
+					event_cycles[i] += event_rates[i];
+					switch (i)
 					{
-						event_cycles[i] += event_rates[i];
-						switch (i)
-						{
-							case SECTOR:
-								if (!disc.is_open()) continue;
-								if (cdic != NULL) cdic->tick();
-								else if (dsp != NULL) dsp->tick();
-								else if (ciap != NULL) ciap->tick();
-								break;
+						case SECTOR:
+							if (!disc.is_open()) continue;
+							if (cdic != NULL) cdic->tick();
+							else if (dsp != NULL) dsp->tick();
+							else if (ciap != NULL) ciap->tick();
+							break;
 
-							case VPU:
-								if (vpu != NULL) { if (vpu->tick(no_draw || frames_left != frames)) goto frame_end; }
-								break;
+						case VPU:
+							if (vpu != NULL) { if (vpu->tick(no_draw)) goto frame_end; }
+							break;
 
-							case UART_TX:
-								cpu.uart_tx_tick();
-								break;
-						}
+						case UART_TX:
+							cpu.uart_tx_tick();
+							break;
 					}
 				}
-				#endif
 			}
-
-			frame_end:
-			// Update microcontroller
-			if (ikat != NULL) ikat->update();
+			#endif
 		}
+
+		frame_end:
+		// Update microcontroller
+		if (ikat != NULL) ikat->update();
 
 		// Benchmark end
 		// integral duration: requires duration_cast
 		const auto t2 = std::chrono::steady_clock::now();
 		const std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
 		#ifdef MINICDI_BENCHMARKING
-		MiniCDI::Log("[CDI] Executed %d %s in %.2f ms", frames, frames == 1 ? "frame" : "frames", fp_ms.count());
+		MiniCDI::Log("[CDI] %s frame in %.2f ms", no_draw ? "Executed" : "Executed and drawn", fp_ms.count());
 		#endif
 
 		#ifdef MINICDI_NO_THROTTLING

@@ -249,6 +249,7 @@ static void RUN_CDI(const std::string &discName)
 	bool pointer = false;
 	#endif
 
+	static int frames_run = 0;
 	while (SYS_MainLoop()) {
 		#ifdef HW_RVL
 			WPAD_ScanPads();
@@ -301,18 +302,20 @@ static void RUN_CDI(const std::string &discName)
 		#endif
 
 		// static FPS fps;
-		if (MiniCDI::Config::FrameSkip != 0) {
-			cdi.run(MiniCDI::Config::FrameSkip+1);
-			// fps.update(MiniCDI::Config::FrameSkip+1);
+		if (frames_run == 0) {
+			cdi.run(false);
+			frames_run += MiniCDI::Config::FrameSkip;
 		} else {
-			cdi.run(1);
-			// fps.update(1);
+			cdi.run(true);
+			frames_run--;
+			continue;
 		}
 
 		#ifdef MINICDI_DEBUG
 		VIDEO_WaitVSync();
 		#else
 		screen.update(cdi.get_display(), cdi.get_display_width());
+
 		if (MiniCDI::Config::ShowFTD && cdi.get_ftd())
 			screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width(), cdi.get_ftd_height());
 

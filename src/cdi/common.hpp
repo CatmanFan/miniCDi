@@ -9,7 +9,6 @@
 #endif
 #include <string>
 #include <cstring>
-#include <fstream>
 #include <dirent.h>
 #ifdef __APPLE__
 #include <unistd.h>

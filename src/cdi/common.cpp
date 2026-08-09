@@ -1,5 +1,6 @@
 #include "cdi/m68k/m68kcpu.h"
 #include "cdi/common.hpp"
+#include <fstream>
 
 // #define MINICDI_USE_SWITCH_FOR_BUS
 
@@ -420,4 +421,61 @@ bool MonoI::init(const std::string &bios, enum BoardType board)
 	}
 
 	return false;
+}
+
+bool CDi::nvram_save()
+{
+	if (MiniCDI::Config::NvramFile.empty() || memory == NULL || this->nvram == 0) return false;
+
+	uint32_t nvram_size = board == CDi::MonoIV ? 32*1024 : 8*1024;
+	MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module_from_name("nvr");
+	if (module != NULL && module->size < nvram_size) {
+		nvram_size = (module->size > 12*1024 ? 16 : 8) * 1024;
+		MiniCDI::Log("[NVRAM] detected %dKB", nvram_size);
+	} else {
+		MiniCDI::Log("[NVRAM] \"nvr\" system module not found, defaulting to max %dKB", nvram_size/1024);
+	}
+
+	FILE *file = fopen(MiniCDI::Config::NvramFile.c_str(), "wb");
+	if (!file) {
+		MiniCDI::Log("[NVRAM] failed to write to %s", MiniCDI::Config::NvramFile.c_str());
+		return false;
+	}
+	fwrite(&memory[this->nvram], sizeof(memory[0]), nvram_size, file);
+	fclose(file);
+
+	MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config::NvramFile.c_str());
+	return true;
+}
+
+void CDi::nvram_load()
+{
+	/*if (this->memory != NULL)
+	{
+		// Write a default value to where the M48T08 (8KB NVRAM) registers should be stored.
+		memory[this->nvram + 0x1FFF] = 0x01; // (BCD) yy: 2001
+		memory[this->nvram + 0x1FFE] = 0x01; // (BCD) mm: 1
+		memory[this->nvram + 0x1FFD] = 0x01; // (BCD) dd: 1
+		memory[this->nvram + 0x1FFC] = 0x01; // (BCD) dd: Monday + normal clock operation
+		memory[this->nvram + 0x1FFB] = 0x12; // (BCD) HH: 12
+		memory[this->nvram + 0x1FFA] = 0x00; // (BCD) MM: 00
+		memory[this->nvram + 0x1FF9] = 0x00; // (BCD) SS: 00
+		memory[this->nvram + 0x1FF8] = 0; // control
+
+		// Ditto for DS1216 (32KB NVRAM)
+		memory[this->nvram + 0x0000] = 0x00; // (BCD) centiseconds
+		memory[this->nvram + 0x0001] = 0x00; // (BCD) SS: 00
+		memory[this->nvram + 0x0002] = 0x00; // (BCD) MM: 00
+		memory[this->nvram + 0x0005] = 0x01; // (BCD) dd: 1
+		memory[this->nvram + 0x0006] = 0x01; // (BCD) mm: 1
+		memory[this->nvram + 0x0007] = 0x01; // (BCD) yy: 2001
+	}*/
+	if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
+		MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
+		std::ifstream nvrStream(MiniCDI::Config::NvramFile, std::ios::binary);
+		std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
+		nvrStream.close();
+
+		memcpy(&memory[this->nvram], &nvr[0], nvr.size());
+	}
 }

@@ -127,14 +127,11 @@ void PointingDevice::set_button(enum PointingDevice::Buttons b, bool value)
 void PointingDevice::set_coord(int x, int y, int w, int h)
 {
 	// Convert to native CD-i highres
-	w <<= 4;
-	h <<= 4;
-	x *= 122880;
-	y *= 89600;
-	x /= w;
-	y /= h;
-	x >>= 4;
-	y >>= 4;
+	// Actual formula is (x / w) * 768 and (y / h) * 560 but has been optimized.
+	float new_x = static_cast<float>(x) / static_cast<float>(w) * 768.0f;
+	float new_y = static_cast<float>(y) / static_cast<float>(h) * 560.0f;
+	x = static_cast<int>(new_x);
+	y = static_cast<int>(new_y);
 
 	if (x < 0 || y < 0 || x > MAX_POINTER_X || y > MAX_POINTER_Y) return;
 

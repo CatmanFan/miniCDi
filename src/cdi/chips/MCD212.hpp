@@ -101,7 +101,7 @@ class MCD212
 			/* D0 */ // see below (MCR struct)
 			/* D8 */ uint8_t BackdropColor;
 			/* D9 */ uint32_t MosaicPixel[2];
-			/* DB */ float ICF[2];
+			/* DB */ uint8_t ICF[2];
 
 			enum MosaicFactor MF[2];
 			enum FileType FT[2];
@@ -112,7 +112,7 @@ class MCD212
 		struct {
 			size_t current = 0;
 			size_t x[8];
-			float icf[8];
+			uint8_t icf[8];
 			size_t mf[8];
 			uint8_t opcode[8];
 		} MCR;

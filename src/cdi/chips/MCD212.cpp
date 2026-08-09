@@ -228,15 +228,18 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 
 void MCD212::VDSC::mix_to_frame(int y)
 {
-	#define PLANEA reg.PlaneOrder ? 0 : 1
-	#define PLANEB reg.PlaneOrder ? 1 : 0
+	const int p1 = reg.PlaneOrder ? 0 : 1;
+	const int p2 = reg.PlaneOrder ? 1 : 0;
 
 	/// per Green Book:
 	/// "C = ICF * (C'-16) + 16
 	/// where ICF = Image Contribution Factor (between 0 and 1)
 	/// 	C = One of the color components, R G or B.
 	/// 	C' = The corresponding component after decoding."
-	#define ICF_APPLY(C, ICF) (int)((ICF) * ((float)(C)-16.0f) + 16.0f)
+	#define ICF_APPLY(C, ICF) C -= 16; \
+							  C *= ICF; \
+							  C /= 64; \
+							  C += 16;
 
 	/// MCD212 datasheet states that the color has to be first combined with the black level of 16 (MUX: BL_A or BL_B).
 	#define CLAMP_TO_16(C) ((C) < 16 ? 16 : (C))
@@ -248,23 +251,37 @@ void MCD212::VDSC::mix_to_frame(int y)
 	int fb_xy = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width % 360 == 0 ? 24 : 0);
 	for (int x = 0; x < FG[0].width; x++)
 	{
+		const int pos = (y*768)+x;
 		matte_set_icf(FG[0].width < 400 ? x*2 : x);
-		uint8_t rA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 24 & 0xFF), reg.ICF[PLANEA]),
-				gA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 16 & 0xFF), reg.ICF[PLANEA]),
-				bA = ICF_APPLY(CLAMP_TO_16(FG[PLANEA].decoded[(y*768)+x] >> 8 & 0xFF), reg.ICF[PLANEA]),
-				aA = FG[PLANEA].decoded[(y*768)+x] & 0xFF,
-				rB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[(y*768)+x] >> 24 & 0xFF), reg.ICF[PLANEB]),
-				gB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[(y*768)+x] >> 16 & 0xFF), reg.ICF[PLANEB]),
-				bB = ICF_APPLY(CLAMP_TO_16(FG[PLANEB].decoded[(y*768)+x] >> 8 & 0xFF), reg.ICF[PLANEB]),
-				aB = FG[PLANEB].decoded[(y*768)+x] & 0xFF;
+
+		uint_fast8_t rA = CLAMP_TO_16(FG[p1].decoded[pos] >> 24 & 0xFF);
+		uint_fast8_t gA = CLAMP_TO_16(FG[p1].decoded[pos] >> 16 & 0xFF);
+		uint_fast8_t bA = CLAMP_TO_16(FG[p1].decoded[pos] >> 8 & 0xFF);
+		uint_fast8_t aA = FG[p1].decoded[pos] & 0xFF;
+		uint_fast8_t rB = CLAMP_TO_16(FG[p2].decoded[pos] >> 24 & 0xFF);
+		uint_fast8_t gB = CLAMP_TO_16(FG[p2].decoded[pos] >> 16 & 0xFF);
+		uint_fast8_t bB = CLAMP_TO_16(FG[p2].decoded[pos] >> 8 & 0xFF);
+		uint_fast8_t aB = FG[p2].decoded[pos] & 0xFF;
+
+		ICF_APPLY(rA, reg.ICF[p1]);
+		ICF_APPLY(gA, reg.ICF[p1]);
+		ICF_APPLY(bA, reg.ICF[p1]);
+		ICF_APPLY(rB, reg.ICF[p2]);
+		ICF_APPLY(gB, reg.ICF[p2]);
+		ICF_APPLY(bB, reg.ICF[p2]);
 
 		if (reg.Icm[0] == Off && reg.Icm[1] == Off)
 			framebuffer[fb_xy] = 0x101010ff;
 		else if (reg.Mixing && aA && aB)
-			framebuffer[fb_xy] = (std::clamp(rA + rB - 16, 0, 255) << 24)
-								| (std::clamp(gA + gB - 16, 0, 255) << 16)
-								| (std::clamp(bA + bB - 16, 0, 255) << 8)
-								| 0xFF;
+		{
+			int rM = rA + rB - 16;
+			int gM = gA + gB - 16;
+			int bM = bA + bB - 16;
+			if (rM > 255) rM = 255; else if (rM < 0) rM = 0;
+			if (gM > 255) gM = 255; else if (gM < 0) gM = 0;
+			if (bM > 255) bM = 255; else if (bM < 0) bM = 0;
+			framebuffer[fb_xy] = (rM << 24) | (gM << 16) | (bM << 8) | 0xFF;
+		}
 		else if (aB)
 			framebuffer[fb_xy] = (rB << 24) | (gB << 16) | (bB << 8) | 0xFF;
 		else if (aA)
@@ -321,9 +338,6 @@ void MCD212::VDSC::mix_to_frame(int y)
 
 	#undef ICF_APPLY
 	#undef CLAMP_TO_16
-
-	#undef PLANEA
-	#undef PLANEB
 }
 
 template <size_t Path>
@@ -477,7 +491,7 @@ void MCD212::VDSC::set_register(uint32_t inst)
 				uint8_t mcr = (inst >> 24 & 0xFF) - 0xD0;
 				MCR.opcode[mcr] = inst >> 20 & 0x0F;
 				MCR.mf[mcr] = reg.MatteCount ? (mcr < 4 ? 0 : 1) : inst >> 16 & 0x01;
-				MCR.icf[mcr] = (float)(inst >> 10 & 0x3F) / 63.0f;
+				MCR.icf[mcr] = inst >> 10 & 0x3F;
 				MCR.x[mcr] = inst & 0x3FF;
 				//MiniCDI::Log("[VDSC] P%d rctl %d,op=%X,rf=%d,wf=%d,x=%d", Path, mcr, MCR.opcode[mcr], MCR.mf[mcr], MCR.icf[mcr], MCR.x[mcr]);
 			}
@@ -495,11 +509,11 @@ void MCD212::VDSC::set_register(uint32_t inst)
 			break;
 
 		case 0xDB:
-			reg.ICF[0] = (float)(inst & 0x3F) / 63.0f;
+			reg.ICF[0] = inst & 0x3F;
 			//MiniCDI::Log("[VDSC] P0 wfac_%s %d", inst & 0x2Fu);
 			break;
 		case 0xDC:
-			reg.ICF[1] = (float)(inst & 0x3F) / 63.0f;
+			reg.ICF[1] = inst & 0x3F;
 			//MiniCDI::Log("[VDSC] P1 wfac_%s %d", inst & 0x2Fu);
 			break;
 	}

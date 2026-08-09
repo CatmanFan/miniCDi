@@ -23,10 +23,9 @@ uint8_t MCD212::VDSC::getCLUTindex(uint8_t* src, bool second)
 			return *src;
 
 		case CLUT4:
-			return second ? (Path ? std::clamp(*src & (reg.FT[Path] == Bitmap ? 0x0F : 0x07), 0, 127) + 128
-								  : *src & (reg.FT[Path] == Bitmap ? 0x0F : 0x07))
-						  : (Path ? std::clamp(*src >> 4 & (reg.FT[Path] == Bitmap ? 0x0F : 0x07), 0, 127) + 128
-								  : *src >> 4 & (reg.FT[Path] == Bitmap ? 0x0F : 0x07));
+			const uint8_t data = second ? (*src >> 4) : *src;
+			return Path ? std::clamp(data & (reg.FT[Path] == Bitmap ? 0x0F : 0x07), 0, 127) + 128
+						: data & (reg.FT[Path] == Bitmap ? 0x0F : 0x07);
 	}
 }
 
@@ -98,10 +97,14 @@ uint32_t MCD212::VDSC::decodeDYUV(uint8_t* src, uint32_t *dst)
 	// Convert to RGB values
 	for (size_t i = 0; i < 2; i++)
 	{
+		const int U_adj = U[i] - 128;
+		const int V_adj = V[i] - 128;
+
 		/// Green Book V.4.4.2.2
-		int B = std::clamp((int)((float)Y[i] + (float)(U[i] - 128) * 1.733f), 0, 255);
-		int R = std::clamp((int)((float)Y[i] + (float)(V[i] - 128) * 1.371f), 0, 255);
-		int G = std::clamp((int)(((float)Y[i] - 0.299f * (float)R - 0.114f * (float)B) / 0.587f), 0, 255);
+		int B = std::clamp((Y[i] * 1000 + U_adj * 1733) / 1000, 0, 255);
+		int R = std::clamp((Y[i] * 1000 + V_adj * 1371) / 1000, 0, 255);
+		// ( Y - 0.299 * R' - 0.114 * B') / 0.587
+		int G = std::clamp(((Y[i]*1000) - 299 * R - 114 * B) / 587, 0, 255);
 
 		dst[i] = (R << 24) | (G << 16) | (B << 8) | 0xFF;
 	}
@@ -236,13 +239,12 @@ void MCD212::VDSC::mix_to_frame(int y)
 	/// where ICF = Image Contribution Factor (between 0 and 1)
 	/// 	C = One of the color components, R G or B.
 	/// 	C' = The corresponding component after decoding."
-	#define ICF_APPLY(C, ICF) C -= 16; \
+	/// MCD212 datasheet states that the color has to be first combined with the black level of 16 (MUX: BL_A or BL_B).
+	#define ICF_APPLY(C, ICF) if (C < 16) C = 16; \
+							  C -= 16; \
 							  C *= ICF; \
 							  C /= 64; \
 							  C += 16;
-
-	/// MCD212 datasheet states that the color has to be first combined with the black level of 16 (MUX: BL_A or BL_B).
-	#define CLAMP_TO_16(C) ((C) < 16 ? 16 : (C))
 
 	// Reset matte ICF and count
 	MCR.current = 0;
@@ -254,13 +256,13 @@ void MCD212::VDSC::mix_to_frame(int y)
 		const int pos = (y*768)+x;
 		matte_set_icf(FG[0].width < 400 ? x*2 : x);
 
-		uint_fast16_t rA = CLAMP_TO_16(FG[p1].decoded[pos] >> 24 & 0xFF);
-		uint_fast16_t gA = CLAMP_TO_16(FG[p1].decoded[pos] >> 16 & 0xFF);
-		uint_fast16_t bA = CLAMP_TO_16(FG[p1].decoded[pos] >> 8 & 0xFF);
+		uint_fast16_t rA = FG[p1].decoded[pos] >> 24 & 0xFF;
+		uint_fast16_t gA = FG[p1].decoded[pos] >> 16 & 0xFF;
+		uint_fast16_t bA = FG[p1].decoded[pos] >> 8 & 0xFF;
 		uint_fast8_t aA = FG[p1].decoded[pos] & 0xFF;
-		uint_fast16_t rB = CLAMP_TO_16(FG[p2].decoded[pos] >> 24 & 0xFF);
-		uint_fast16_t gB = CLAMP_TO_16(FG[p2].decoded[pos] >> 16 & 0xFF);
-		uint_fast16_t bB = CLAMP_TO_16(FG[p2].decoded[pos] >> 8 & 0xFF);
+		uint_fast16_t rB = FG[p2].decoded[pos] >> 24 & 0xFF;
+		uint_fast16_t gB = FG[p2].decoded[pos] >> 16 & 0xFF;
+		uint_fast16_t bB = FG[p2].decoded[pos] >> 8 & 0xFF;
 		uint_fast8_t aB = FG[p2].decoded[pos] & 0xFF;
 
 		ICF_APPLY(rA, reg.ICF[p1]);
@@ -335,9 +337,6 @@ void MCD212::VDSC::mix_to_frame(int y)
 			fb_xy++;
 		}
 	}
-
-	#undef ICF_APPLY
-	#undef CLAMP_TO_16
 }
 
 template <size_t Path>

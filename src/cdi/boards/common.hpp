@@ -1,7 +1,6 @@
 #ifndef MINICDI_PLAYERS
 #define MINICDI_PLAYERS
 
-
 class CDi
 {
 public:

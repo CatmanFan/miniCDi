@@ -1,5 +1,6 @@
 #ifndef MINICDI_DISCFORMAT
 #define MINICDI_DISCFORMAT
+#include <fstream>
 
 class CDiDisc
 {

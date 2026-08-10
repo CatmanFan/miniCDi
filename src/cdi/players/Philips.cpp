@@ -1,6 +1,19 @@
 #include "cdi/common.hpp"
+#ifndef MINICDI_CHRONO_ENABLED
+	#define MINICDI_CHRONO_ENABLED (defined(MINICDI_BENCHMARKING) || defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
+	#if defined(HW_DOL) || defined(HW_RVL)
+		#define MINICDI_CHRONO_TIME 6
+	#elif defined(__WIIU__)
+		#define MINICDI_CHRONO_TIME 12
+	#else
+		#define MINICDI_CHRONO_TIME (1000.0f/60.0f)
+	#endif
+#endif
+
+#if MINICDI_CHRONO_ENABLED == 1
 #include <chrono>
 #include <thread>
+#endif
 #include <numeric>
 
 void PhilipsCDI::run(bool no_draw)
@@ -9,8 +22,10 @@ void PhilipsCDI::run(bool no_draw)
 	pd.send_packet();
 	#endif
 
+	#if MINICDI_CHRONO_ENABLED == 1
 	// Benchmark
 	const auto t1 = std::chrono::steady_clock::now();
+	#endif
 
 	#ifdef MINICDI_DEBUG_OS9
 	MiniCDI::OS9::scan_modules(memory);
@@ -56,11 +71,13 @@ void PhilipsCDI::run(bool no_draw)
 	// Update microcontroller
 	if (ikat != NULL) ikat->update();
 
+	#if MINICDI_CHRONO_ENABLED == 1
 	// Benchmark end
-	// integral duration: requires duration_cast
 	const auto t2 = std::chrono::steady_clock::now();
 	const std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
-	#ifdef MINICDI_BENCHMARKING
+	#endif
+
+	#if MINICDI_CHRONO_ENABLED == 1 && defined(MINICDI_BENCHMARKING)
 	MiniCDI::Log("[CDI] %s frame in %.2f ms", no_draw ? "Executed" : "Executed and drawn", fp_ms.count());
 	#endif
 
@@ -69,9 +86,9 @@ void PhilipsCDI::run(bool no_draw)
 	#endif
 
 	// Throttling
-	#if defined(_WIN32) || defined(__APPLE__)
-	if (fp_ms.count() < (1000.0f/60.0f) && !MiniCDI::Config::NoFrameLimit) {
-		const int wait_ms = (int)((1000.0f/60.0f) - fp_ms.count());
+	#if MINICDI_CHRONO_ENABLED == 1 && (defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
+	if (fp_ms.count() < MINICDI_CHRONO_TIME && !MiniCDI::Config::NoFrameLimit) {
+		const int wait_ms = (int)(MINICDI_CHRONO_TIME - fp_ms.count());
 		std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 	}
 	#endif

@@ -73,6 +73,13 @@ public:
 	inline virtual void run(bool no_draw = false) { ; }
 	inline virtual void reset() { ; }
 
+	inline virtual uint8_t read8(int address) { return 0; }
+	inline virtual uint16_t read16(int address) { return 0; }
+	inline virtual uint32_t read32(int address) { return 0; }
+	inline virtual void write8(int address, uint8_t value) { ; }
+	inline virtual void write16(int address, uint16_t value) { ; }
+	inline virtual void write32(int address, uint32_t value) { ; }
+
 	inline virtual uint32_t* get_display() { return nullptr; }
 	inline virtual size_t get_display_width() { return 0; }
 

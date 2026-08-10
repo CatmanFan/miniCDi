@@ -51,6 +51,19 @@ private:
 		event_rates[UART_TX]
 	};
 
+	inline bool check_for_unmapped(int address)
+	{
+		if ((address >= 0x080000 && address < 0x200000) // in-between DRAM banks
+		 || (address >= 0x328000 && address < 0x400000) // between NVRAM and ROM
+		 || (address >= 0x500000 && address < 0xD00000) // between MCD212 and VMPEG
+		 || (address >= 0xD00000 && address < 0xF00000)) // VMPEG is not connected
+		{
+			m68k_pulse_bus_error();
+			return false;
+		}
+		return true;
+	}
+
 public:
 	bool init(const std::string &bios, enum BoardType board) override;
 	~MonoI();
@@ -71,9 +84,8 @@ public:
 		while (1)
 		{
 			// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
-			const int cycles = std::min({480, event_rates[0], event_rates[1], event_rates[2]});
-			// const int cycles = *(std::min_element(event_cycles, event_cycles + (sizeof(event_cycles) / sizeof(event_cycles[0]))));
-			// const int cycles = std::gcd(std::gcd(std::gcd(event_cycles[0], event_cycles[1]), event_cycles[2]), 96);
+			// On embedded consoles this also affects the speed of the emulator.
+			const int cycles = std::min({240, event_rates[0], event_rates[1], event_rates[2]});
 			cpu.run(cycles);
 
 			for (int i = 0; i < EVTNUM; i++)
@@ -149,6 +161,83 @@ public:
 		if (ciap != NULL) ciap->reset();
 
 		for (int i = 0; i < EVTNUM; i++) { event_cycles[i] = event_rates[i]; }
+	}
+
+	inline uint8_t read8(int address) override
+	{
+		if (!check_for_unmapped(address)) return 0;
+		return (address & 0xC0000000) == 0x80000000 ? cpu.read8(address)
+			 : (address & 0x00FFFF00) == 0x00310000 ? (ikat ? ikat->read8(address) : slave->read8(address))
+			 : dsp && address >= 0x00300000 && address < 0x00303FFF ? dsp->read8(address)
+			 : vpu && (address & 0x00FFFF00) == 0x004FFF00 ? vpu->read8(address)
+			 : address < memsize ? memory[address]
+			 : 0;
+	}
+
+	inline uint16_t read16(int address) override
+	{
+		if (!check_for_unmapped(address)) return 0;
+		return vpu && (address & 0x00FFFF00) == 0x004FFF00 ? vpu->read16(address)
+			 : address >= 0x00300000 && address < 0x00303FFF ? (cdic ? cdic->read16(address) : ciap ? ciap->read16(address) : 0)
+			 : (uint16_t)(read8(address) << 8 | read8(address+1));
+	}
+
+	inline uint32_t read32(int address) override
+	{
+		if (!check_for_unmapped(address)) return 0;
+		return cdic && address >= 0x00300000 && address < 0x00303FFF ? cdic->read32(address)
+			 : (uint32_t)(read16(address) << 16 | read16(address+2));
+	}
+
+	inline void write8(int address, uint8_t value) override
+	{
+		if (!check_for_unmapped(address))
+			return;
+		#ifdef MINICDI_DEADNVRAM
+		// Dead Timekeeper/NVRAM will not allow writing
+		if ((address & 0x00FFFF00) == 0x00320000)
+			return;
+		#endif
+		else if ((address & 0xC0000000) == 0x80000000)
+			cpu.write8(address, value);
+		else if (slave && (address & 0x00FFFF00) == 0x00310000)
+			slave->write8(address, value);
+		else if (ikat && (address & 0x00FFFF00) == 0x00310000)
+			ikat->write8(address, value, ciap);
+		else if (dsp && address >= 0x00300000 && address < 0x00303FFF)
+			dsp->write8(address, value);
+		else if (address < memsize)
+			memory[address] = value;
+	}
+
+	inline void write16(int address, uint16_t value) override
+	{
+		if (!check_for_unmapped(address))
+			return;
+		if (vpu && (address & 0x00FFFF00) == 0x004FFF00)
+			vpu->write16(address, value);
+		else if (cdic && address >= 0x00300000 && address < 0x00303FFF)
+			cdic->write16(address, value);
+		else if (ciap && address >= 0x00300000 && address < 0x00303FFF)
+			ciap->write16(address, value);
+		else
+		{
+			write8(address, value >> 8 & 0xFF);
+			write8(address+1, value & 0xFF);
+		}
+	}
+
+	inline void write32(int address, uint32_t value) override
+	{
+		if (!check_for_unmapped(address))
+			return;
+		if (cdic && address >= 0x00300000 && address < 0x00303FFF)
+			return cdic->write32(address, value);
+		else
+		{
+			write16(address, value >> 16 & 0xFFFF);
+			write16(address+2, value & 0xFFFF);
+		}
 	}
 
 	inline void play_disc() {

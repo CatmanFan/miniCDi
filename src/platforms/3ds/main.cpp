@@ -126,9 +126,12 @@ public:
 };
 
 #include <filesystem>
+static bool exiting = false;
 static std::string RUN_MENU()
 {
 	if (!std::filesystem::is_directory("sdmc:/3ds/miniCDi/discs/")) {
+		if (exiting) exit(0);
+		else exiting = false;
 		return "";
 	}
 	// Look for ROMs in directory
@@ -138,6 +141,8 @@ static std::string RUN_MENU()
 			discs.push_back(disc.path().filename());
 	}
 	if (discs.size() == 0) {
+		if (exiting) exit(0);
+		else exiting = false;
 		return "";
 	}
 
@@ -147,7 +152,10 @@ static std::string RUN_MENU()
 	while (aptMainLoop()) {
 		hidScanInput();
 		u32 kDown = hidKeysDown();
-		if (kDown & KEY_ZR) exit(0);
+		if (kDown & KEY_ZR) {
+			exiting = true;
+			exit(0);
+		}
 
 		if (kDown & KEY_DOWN) {
 			render = true;
@@ -244,7 +252,8 @@ static void RUN_CDI(const std::string &discName, const std::string &biosName)
 							  : CDi::MonoI;
 	PhilipsCDI cdi;
 	cdi.init(biosPath.string(), board);
-	cdi.swap_disc("sdmc:/3ds/miniCDi/discs/" + discName);
+	if (access(("sdmc:/3ds/miniCDi/discs/" + discName).c_str(), F_OK) == 0)
+		cdi.swap_disc("sdmc:/3ds/miniCDi/discs/" + discName);
 
 	EmulatorWindow TOPSCREEN(768,280);
 	TOPSCREEN.x = MiniCDI::Config::PAL ? 35 : 8;
@@ -258,7 +267,7 @@ static void RUN_CDI(const std::string &discName, const std::string &biosName)
 		hidScanInput();
 		u32 kDown = hidKeysDown();
 		u32 kHeld = hidKeysHeld();
-		if (kDown & KEY_ZR) return; // break in order to return to hbmenu
+		if (kDown & KEY_ZR) { exiting = true; return; } // break in order to return to hbmenu
 		if (kDown & KEY_START) cdi.play_disc();
 		if (kDown & KEY_SELECT) cdi.reset();
 
@@ -312,7 +321,7 @@ int main(int argc, char* argv[])
 						 : access("sdmc:/3ds/miniCDi/rom/cdi200.rom", F_OK) == 0 ? "cdi200"
 						 : access("sdmc:/3ds/miniCDi/rom/cdi220c.rom", F_OK) == 0 ? "cdi220c"
 						 : "cdi490a";
-		if (aptMainLoop()) RUN_CDI(disc, bios);
+		if (!exiting) RUN_CDI(disc, bios);
 	}
 
 	// Deinit libs

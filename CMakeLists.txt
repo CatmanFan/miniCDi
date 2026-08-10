@@ -14,7 +14,7 @@ option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file opt
 
 # Emulation options
 option(MINICDI_DISABLE_THROTTLING "Disable throttling on Windows and macOS." OFF)
-option(MINICDI_DISABLE_DISC_IFSTREAM "Use C library FILE* instead of std::ifstream for disc sectors." ON)
+option(MINICDI_DISABLE_DISC_IFSTREAM "Use C library FILE* instead of std::ifstream for disc sectors." ON) # This seems to be broken on Windows.
 option(MINICDI_ENABLE_BENCHMARK "Log duration of frame execution." OFF)
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper, just for funsies (breaks player shell if no NVRAM settings data exists)." OFF)
@@ -32,7 +32,7 @@ elseif (APPLE)
 	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -Wall)
 else()
 	dkp_target_generate_symbol_list(${PROJECT_NAME})
-	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -Wall)
+	target_compile_options(${PROJECT_NAME} PRIVATE -Ofast -fomit-frame-pointer -fno-math-errno -Wall)
 endif()
 
 if (MINICDI_DISABLE_VERBOSE AND NOT WIN32 AND NOT APPLE)
@@ -64,7 +64,7 @@ if (MINICDI_DISABLE_THROTTLING)
 	MESSAGE(STATUS "MINICDI_DISABLE_THROTTLING")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NO_THROTTLING)
 endif()
-if (MINICDI_DISABLE_DISC_IFSTREAM)
+if (MINICDI_DISABLE_DISC_IFSTREAM AND NOT WIN32 AND NOT APPLE)
 	MESSAGE(STATUS "MINICDI_DISABLE_DISC_IFSTREAM")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NO_DISC_IFSTREAM)
 endif()

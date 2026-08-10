@@ -332,17 +332,17 @@ void MCD212::VDSC::mix_to_frame(int y)
 			gM -= 16;
 			bM -= 16;
 
-			rM <<= 4;
-			gM <<= 4;
-			bM <<= 4;
+			rM *= 255;
+			gM *= 255;
+			bM *= 255;
 
-			rM /= 3504;
-			gM /= 3504;
-			bM /= 3504;
+			rM /= 219;
+			gM /= 219;
+			bM /= 219;
 
-			rM >>= 4;
-			gM >>= 4;
-			bM >>= 4;
+			if (rM > 255) rM = 255; else if (rM < 0) rM = 0;
+			if (gM > 255) gM = 255; else if (gM < 0) gM = 0;
+			if (bM > 255) bM = 255; else if (bM < 0) bM = 0;
 
 			framebuffer[fb_xy] = (rM << 24) | (gM << 16) | (bM << 8) | 0xFF;
 		}

@@ -1,5 +1,5 @@
 #include "cdi/common.hpp"
-
+// Hello
 template <size_t max_units, int gain>
 void AdpcmDecoder::decode_adpcm(bool stereo, bool low_freq)
 {

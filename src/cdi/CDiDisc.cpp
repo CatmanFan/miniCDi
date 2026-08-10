@@ -2,30 +2,26 @@
 
 uint32_t CDiDisc::get_lba_from_time(uint32_t time)
 {
-	Sector.Min = time >> 24 & 0xFF;
-	Sector.Sec = time >> 16 & 0xFF;
-	Sector.Frame = time >> 8 & 0xFF;
+	const uint8_t min = time >> 24 & 0xFF;
+	const uint8_t sec = time >> 16 & 0xFF;
+	const uint8_t fra = time >> 8 & 0xFF;
 
 	// Values are stored in BCD.
 	// Check validity of nibbles for each value
-	assert(((Sector.Min & 0xF0) >> 4) < 10);
-	assert((Sector.Min & 0x0F) < 10);
-	assert(((Sector.Sec & 0xF0) >> 4) < 10);
-	assert((Sector.Sec & 0x0F) < 10);
-	assert(((Sector.Frame & 0xF0) >> 4) < 10);
-	assert((Sector.Frame & 0x0F) < 10);
+	assert(((min & 0xF0) >> 4) < 10);
+	assert((min & 0x0F) < 10);
+	assert(((sec & 0xF0) >> 4) < 10);
+	assert((sec & 0x0F) < 10);
+	assert(((fra & 0xF0) >> 4) < 10);
+	assert((fra & 0x0F) < 10);
 
-	const uint8_t min_raw = ((Sector.Min & 0xF0) >> 4) * 10 + (Sector.Min & 0x0F);
-	const uint8_t sec_raw = ((Sector.Sec & 0xF0) >> 4) * 10 + (Sector.Sec & 0x0F);
-	const uint8_t fra_raw = ((Sector.Frame & 0xF0) >> 4) * 10 + (Sector.Frame & 0x0F);
+	const uint8_t min_raw = ((min & 0xF0) >> 4) * 10 + (min & 0x0F);
+	const uint8_t sec_raw = ((sec & 0xF0) >> 4) * 10 + (sec & 0x0F);
+	const uint8_t fra_raw = ((fra & 0xF0) >> 4) * 10 + (fra & 0x0F);
 
 	uint32_t lba = ((min_raw * 60) + sec_raw) * 75 + fra_raw;
 	if (lba >= 150)
 		lba -= 150;
-
-	disc.clear();
-	disc.seekg(lba*2352, std::ios::beg);
-	//MiniCDI::Log("[Disc] time: %08X  raw_min: %02d, raw_sec: %02d, raw_frame: %02d, lba: %X", time, min_raw, sec_raw, fra_raw, lba*2352);
 
 	return lba;
 }
@@ -33,7 +29,7 @@ uint32_t CDiDisc::get_lba_from_time(uint32_t time)
 bool CDiDisc::is_byteswapped(int lba)
 {
 	char sync[2];
-	disc.seekg(lba*2352, std::ios::beg);
+	disc.seekg(lba*SECTOR_SIZE, std::ios::beg);
 	disc.read(&sync[0], 2);
 
 	return sync[0] == 0xFF && sync[1] == 0x00;
@@ -43,7 +39,7 @@ bool CDiDisc::is_byteswapped(int lba)
 bool CDiDisc::is_valid_sector(int lba)
 {
 	char raw[12];
-	disc.seekg(lba*2352+12, std::ios::beg);
+	disc.seekg(lba*SECTOR_SIZE+12, std::ios::beg);
 	disc.read(&raw[0], 12);
 
 	const uint8_t mins = (lba+150) / (60 * 75);
@@ -70,33 +66,14 @@ bool CDiDisc::is_valid_sector(int lba)
 void CDiDisc::read_sector(int lba)
 {
 	// seek and skip sync field
-	disc.seekg(lba*2352+12, std::ios::beg);
-
-	disc.get(Sector.Min);
-	disc.get(Sector.Sec);
-	disc.get(Sector.Frame);
-	disc.get(Sector.Mode);
-	disc.get(Sector.FileNum[0]);
-	disc.get(Sector.ChNum[0]);
-	disc.get(Sector.Submode[0]);
-	disc.get(Sector.CodingInfo[0]);
-	disc.get(Sector.FileNum[1]);
-	disc.get(Sector.ChNum[1]);
-	disc.get(Sector.Submode[1]);
-	disc.get(Sector.CodingInfo[1]);
-	disc.read(&Sector.Data[0], sizeof(Sector.Data) / sizeof(char));
+	disc.clear();
+	disc.seekg(lba*SECTOR_SIZE+12, std::ios::beg);
+	disc.read(&Sector[0], SECTOR_SIZE_NO_SYNC);
 
 	if (is_byteswapped(lba))
 	{
-		std::swap(Sector.Min, Sector.Sec);
-		std::swap(Sector.Frame, Sector.Mode);
-		std::swap(Sector.FileNum[0], Sector.ChNum[0]);
-		std::swap(Sector.Submode[0], Sector.CodingInfo[0]);
-		std::swap(Sector.FileNum[1], Sector.ChNum[1]);
-		std::swap(Sector.Submode[1], Sector.CodingInfo[1]);
-
-		for (size_t i = 0; i < sizeof(Sector.Data) / sizeof(char); i+=2)
-			std::swap(Sector.Data[i], Sector.Data[i+1]);
+		for (size_t i = 0; i < SECTOR_SIZE_NO_SYNC; i+=2)
+			std::swap(Sector[i], Sector[i+1]);
 	}
 
 	if (!is_valid_sector(lba))
@@ -253,21 +230,8 @@ void CDiDisc::read_sector(int lba)
 			0x72, 0xdd, 0xe5, 0x99
 		};
 
-		Sector.Min ^= scramble_data[0];
-		Sector.Sec ^= scramble_data[1];
-		Sector.Frame ^= scramble_data[2];
-		Sector.Mode ^= scramble_data[3];
-		Sector.FileNum[0] ^= scramble_data[4];
-		Sector.ChNum[0] ^= scramble_data[5];
-		Sector.Submode[0] ^= scramble_data[6];
-		Sector.CodingInfo[0] ^= scramble_data[7];
-		Sector.FileNum[1] ^= scramble_data[8];
-		Sector.ChNum[1] ^= scramble_data[9];
-		Sector.Submode[1] ^= scramble_data[10];
-		Sector.CodingInfo[1] ^= scramble_data[11];
-
-		for (size_t i = 0; i < sizeof(Sector.Data) / sizeof(char); i++)
-			Sector.Data[i] ^= scramble_data[i+12];
+		for (size_t i = 0; i < SECTOR_SIZE_NO_SYNC; i++)
+			Sector[i] ^= scramble_data[i+12];
 	}
 }
 

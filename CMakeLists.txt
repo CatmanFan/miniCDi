@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13...4.3)
+cmake_minimum_required(VERSION 3.27...4.3)
 project(miniCDi VERSION 0.11 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -116,9 +116,11 @@ if (WIN32 OR APPLE)
 	# Libraries
 	# ************
 	find_package(SDL2 REQUIRED)
+	# find_package(wxWidgets REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
+	# target_link_libraries(${PROJECT_NAME} PRIVATE wxWidgets::wxWidgets ${SDL2_LIBRARIES})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=1) # SDL2
 
 	if (WIN32)
 		target_sources(${PROJECT_NAME} PRIVATE res/win/windows.rc)
@@ -127,10 +129,14 @@ if (WIN32 OR APPLE)
 	# Source files/directories
 	# ************
 	target_include_directories(${PROJECT_NAME} PRIVATE
+		# src/frontends/wx
 		src/platforms/win
 	)
 
 	target_sources(${PROJECT_NAME} PRIVATE
+		# src/frontends/wx/main.cpp
+		# src/frontends/wx/miniCDiFrame.cpp
+		# src/frontends/wx/miniCDiWindow.cpp
 		src/platforms/win/main.cpp
 	)
 # -------------------------------------------
@@ -187,7 +193,7 @@ if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -laesnd -lfat)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=1) # SDL2
 
 	# Source files/directories
 	# ************
@@ -217,7 +223,7 @@ if (NINTENDO_WIIU)
     find_package(Freetype REQUIRED)
 	include_directories(${DEVKITPRO}/portlibs/wiiu/include ${FREETYPE_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2TTF_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES} -lSDL2_ttf -lfreetype -lpng -lz -lm -lharfbuzz -lbrotlidec -lbrotlicommon -lbz2 -lwut)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO_SDL2)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=1) # SDL2
 
 	# Source files/directories
 	# ************

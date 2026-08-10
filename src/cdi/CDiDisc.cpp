@@ -27,9 +27,12 @@ uint32_t CDiDisc::get_lba_from_time(uint32_t time)
 bool CDiDisc::is_byteswapped(int lba)
 {
 	char sync[2];
-	fseek(disc, lba * SECTOR_SIZE, SEEK_SET);
+
+	/*fseek(disc, lba * SECTOR_SIZE, SEEK_SET);
 	sync[0] = fgetc(disc);
-	sync[1] = fgetc(disc);
+	sync[1] = fgetc(disc);*/
+	disc.seekg(lba*SECTOR_SIZE, std::ios::beg);
+	disc.read(&sync[0], 2);
 
 	return sync[0] == 0xFF && sync[1] == 0x00;
 }
@@ -38,9 +41,12 @@ bool CDiDisc::is_byteswapped(int lba)
 bool CDiDisc::is_valid_sector(int lba)
 {
 	char raw[12];
-	fseek(disc, (lba * SECTOR_SIZE) + 12, SEEK_SET);
+
+	/*fseek(disc, (lba * SECTOR_SIZE) + 12, SEEK_SET);
 	for (int i = 0; i < 12; i++)
-		raw[i] = fgetc(disc);
+		raw[i] = fgetc(disc);*/
+	disc.seekg(lba*SECTOR_SIZE+12, std::ios::beg);
+	disc.read(&raw[0], 12);
 
 	const uint8_t mins = (lba+150) / (60 * 75);
 	const uint8_t secs = ((lba+150) / 75) % 60;
@@ -58,13 +64,16 @@ bool CDiDisc::is_valid_sector(int lba)
 void CDiDisc::read_sector(int lba)
 {
 	// seek and skip sync field
-	fseek(disc, (lba * SECTOR_SIZE) + 12, SEEK_SET);
+	/*fseek(disc, lba*SECTOR_SIZE+12, SEEK_SET);
 	for (int i = 0; i < SECTOR_SIZE_NO_SYNC; i++)
-		Sector[i] = fgetc(disc);
+		Sector[i] = fgetc(disc);*/
+	disc.clear();
+	disc.seekg(lba*SECTOR_SIZE+12, std::ios::beg);
+	disc.read(&Sector[0], SECTOR_SIZE_NO_SYNC);
 
 	if (is_byteswapped(lba))
 	{
-		for (size_t i = 0; i < SECTOR_SIZE; i+=2)
+		for (size_t i = 0; i < SECTOR_SIZE_NO_SYNC; i+=2)
 			std::swap(Sector[i], Sector[i+1]);
 	}
 
@@ -222,7 +231,7 @@ void CDiDisc::read_sector(int lba)
 			0x72, 0xdd, 0xe5, 0x99
 		};
 
-		for (size_t i = 0; i < SECTOR_SIZE; i++)
+		for (size_t i = 0; i < SECTOR_SIZE_NO_SYNC; i++)
 			Sector[i] ^= scramble_data[i];
 	}
 }

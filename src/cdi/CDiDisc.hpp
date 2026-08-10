@@ -1,9 +1,11 @@
 #ifndef MINICDI_DISCFORMAT
 #define MINICDI_DISCFORMAT
+#include <fstream>
 
 class CDiDisc
 {
-	FILE* disc;
+	// FILE* disc;
+	std::ifstream disc;
 
 	// Addresses of relevant bytes, relative to the header's minute byte.
 	enum {
@@ -43,7 +45,7 @@ class CDiDisc
 	/// 0x20 = Form
 	/// 0x40 = Real-Time Sector
 	/// 0x80 = EOF
-	char Sector[SECTOR_SIZE];
+	char Sector[SECTOR_SIZE_NO_SYNC];
 	std::string Label;
 
 	/**
@@ -64,10 +66,11 @@ public:
 	friend class DRVDSP;
 	friend class CIAP;
 
-	CDiDisc() { disc = NULL; }
+	// CDiDisc() { disc = NULL; }
 	~CDiDisc() { eject(); }
 
-	inline bool is_open() { return disc != NULL; }
+	// inline bool is_open() { return disc != NULL; }
+	inline bool is_open() { return disc.is_open(); }
 	bool open(const std::string &path);
 	void eject();
 };

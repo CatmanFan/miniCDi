@@ -131,7 +131,7 @@ void CDIC::disc_process_sector()
 
 		// These bytes should be separated if the sector is passed as audio
 		memcpy(&memory[targetAddr], &disc->Sector[8], 2332);
-		MiniCDI::Log("[CDIC] read %s sector %02X:%02X:%02X", is_adpcm ? "audio" : "data", disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
+		//MiniCDI::Log("[CDIC] read %s sector %02X:%02X:%02X", is_adpcm ? "audio" : "data", disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
 
 		// Decode and play the fetched ADPCM sector.
 		if (is_adpcm) adpcm_decode_and_play(DBUF & 0x01, false);
@@ -391,7 +391,9 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 					case 0x24: // Known as "Reset Mode 2" in MAME
 						switch (CMD) {
 							case 0x23: MiniCDI::Log("[CDIC] End disc rotation (0x%02X)", CMD); break;
-							case 0x24: MiniCDI::Log("[CDIC] Stop reading? (0x%02X)", CMD); touched_disc = false; break;
+							case 0x24: MiniCDI::Log("[CDIC] Stop reading? (0x%02X)", CMD);
+									   touched_disc = false; // This command seems to be issued only at boot so would be safe to reset this bool?
+									   break;
 						}
 
 						// Set disc status to inactive
@@ -429,8 +431,8 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 						// Set disc status to active. This will cause it to start reading each sector at 75Hz.
 						CdicController.reading = true;
 						CdicController.seek = CMD == 0x2C;
-						CdicController.is_mode2 = CMD == 0x2A ? true : false;
 						CdicController.curr_lba = disc->get_lba_from_time(TIME);
+						CdicController.is_mode2 = CMD == 0x2A ? true : false;
 						disc->read_sector(CdicController.curr_lba);
 						break;
 

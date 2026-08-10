@@ -192,12 +192,13 @@ static void ScanDiscs()
 static void CreateFileDialog()
 {
 	ImGui::SetNextWindowSize(ImVec2(400, -FLT_MIN));
-	ImGui::Begin("miniCDi", NULL, ImGuiWindowFlags_NoResize);
+	ImGui::SetNextWindowSizeConstraints(ImVec2(400, -FLT_MIN), ImVec2(650, 500));
+	ImGui::Begin("miniCDi", NULL, ImGuiWindowFlags_NoSavedSettings);
 
 	// Always center this window when appearing
 	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	if (ImGui::BeginPopupModal("Error", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
+	if (ImGui::BeginPopupModal("Error", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings))
 	{
 		ImGui::Text("cdi220b.rom not found in '/miniCDi/rom/'");
 		ImGui::Separator();
@@ -258,7 +259,7 @@ static void CreateFileDialog()
 
 static void CreateMainDialog()
 {
-	ImGui::Begin("miniCDi", &emulation_window_open, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus);
+	ImGui::Begin("miniCDi", &emulation_window_open, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoSavedSettings);
 
 	if (ImGui::Button("Shutdown")) ShutdownCDI();
 	ImGui::SameLine();

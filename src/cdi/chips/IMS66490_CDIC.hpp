@@ -86,7 +86,7 @@ public:
 	uint32_t read32(uint32_t addr);
 	void write32(uint32_t addr, uint32_t value);
 
-	inline bool is_reading() { return CdicController.reading; } // do friend class MonoI?
+	inline bool is_reading() { return CdicController.reading; } // do friend class PhilipsCDI?
 };
 
 #endif

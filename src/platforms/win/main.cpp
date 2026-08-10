@@ -82,7 +82,7 @@ public:
 	}
 };
 
-static void SwapDisc(MonoI *cdi, enum CDi::BoardType board, const char *path)
+static void SwapDisc(PhilipsCDI *cdi, enum CDi::BoardType board, const char *path)
 {
 	if (access(path, F_OK) != 0) return;
 
@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
 							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
 							  : CDi::MonoI;
-	MonoI cdi;
+	PhilipsCDI cdi;
 	cdi.init(biosPath.string(), board);
 	if (argc >= 3) SwapDisc(&cdi, board, argv[3]);
 

@@ -1,4 +1,5 @@
 #include "cdi/common.hpp"
+#include <unistd.h>
 
 uint32_t CDiDisc::get_lba_from_time(uint32_t time)
 {

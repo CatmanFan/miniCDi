@@ -40,7 +40,7 @@
 #include "cdi/chips/MCD221_CIAP.hpp"
 
 // Boards
-#include "cdi/boards/common.hpp"
-#include "cdi/boards/MonoI.hpp"
+#include "cdi/players/common.hpp"
+#include "cdi/players/Philips.hpp"
 
 #endif

@@ -242,7 +242,7 @@ static void RUN_CDI(const std::string &discName, const std::string &biosName)
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
 							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
 							  : CDi::MonoI;
-	MonoI cdi;
+	PhilipsCDI cdi;
 	cdi.init(biosPath.string(), board);
 	cdi.swap_disc("sdmc:/3ds/miniCDi/discs/" + discName);
 

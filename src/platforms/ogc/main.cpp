@@ -232,7 +232,7 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? ini["MiniCDI"]["RomPath"] + "/" + biosName + ".nvram" : "";
 
 	// Declare the CD-i machine
-	MonoI cdi;
+	PhilipsCDI cdi;
 	if (!cdi.init(ini["MiniCDI"]["RomPath"] + "/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI)) {
 		printf("Failed to init virtual machine");
 		sleep(5);

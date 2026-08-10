@@ -93,6 +93,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 	src/cdi/chips/IMS66490_CDIC.cpp
 	src/cdi/chips/MCD212.cpp
 	src/cdi/chips/SCC68070.cpp
+	src/cdi/players/Philips.cpp
 
 	# Musashi core for M68K
 	src/cdi/m68k/m68k.h

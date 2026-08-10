@@ -50,7 +50,7 @@ const std::string log_path = (wiiu_sd_prefix + "wiiu/apps/miniCDi/log.txt");
 #include "../common/mINI.hpp"
 #endif
 
-static MonoI* philips_player = NULL;
+static PhilipsCDI* philips_player = NULL;
 static MemoryEditor mem_editor;
 static bool emulation_window_open = true;
 
@@ -171,7 +171,7 @@ static bool CreateCDI(const char* rom, const char* disc)
 	// ------------------------
 	// Actually create the player
 	// ------------------------
-	philips_player = new MonoI();
+	philips_player = new PhilipsCDI();
 	philips_player->init(biosPath.string(), board);
 	if (access(discPath.string().c_str(), F_OK) == 0) philips_player->swap_disc(discPath.string());
 

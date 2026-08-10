@@ -1,11 +1,17 @@
 #ifndef MINICDI_DISCFORMAT
 #define MINICDI_DISCFORMAT
+
+#ifndef MINICDI_NO_DISC_IFSTREAM
 #include <fstream>
+#endif
 
 class CDiDisc
 {
-	// FILE* disc;
+#ifdef MINICDI_NO_DISC_IFSTREAM
+	FILE* disc;
+#else
 	std::ifstream disc;
+#endif
 
 	// Addresses of relevant bytes, relative to the header's minute byte.
 	enum {
@@ -66,11 +72,16 @@ public:
 	friend class DRVDSP;
 	friend class CIAP;
 
-	// CDiDisc() { disc = NULL; }
+#ifdef MINICDI_NO_DISC_IFSTREAM
+	CDiDisc() { disc = NULL; }
+#endif
 	~CDiDisc() { eject(); }
 
-	// inline bool is_open() { return disc != NULL; }
+#ifdef MINICDI_NO_DISC_IFSTREAM
+	inline bool is_open() { return disc != NULL; }
+#else
 	inline bool is_open() { return disc.is_open(); }
+#endif
 	bool open(const std::string &path);
 	void eject();
 };

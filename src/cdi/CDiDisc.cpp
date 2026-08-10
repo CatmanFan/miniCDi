@@ -28,11 +28,14 @@ bool CDiDisc::is_byteswapped(int lba)
 {
 	char sync[2];
 
-	/*fseek(disc, lba * SECTOR_SIZE, SEEK_SET);
+#ifdef MINICDI_NO_DISC_IFSTREAM
+	fseek(disc, lba * SECTOR_SIZE, SEEK_SET);
 	sync[0] = fgetc(disc);
-	sync[1] = fgetc(disc);*/
+	sync[1] = fgetc(disc);
+#else
 	disc.seekg(lba*SECTOR_SIZE, std::ios::beg);
 	disc.read(&sync[0], 2);
+#endif
 
 	return sync[0] == 0xFF && sync[1] == 0x00;
 }
@@ -42,11 +45,14 @@ bool CDiDisc::is_valid_sector(int lba)
 {
 	char raw[12];
 
-	/*fseek(disc, (lba * SECTOR_SIZE) + 12, SEEK_SET);
+#ifdef MINICDI_NO_DISC_IFSTREAM
+	fseek(disc, (lba * SECTOR_SIZE) + 12, SEEK_SET);
 	for (int i = 0; i < 12; i++)
-		raw[i] = fgetc(disc);*/
+		raw[i] = fgetc(disc);
+#else
 	disc.seekg(lba*SECTOR_SIZE+12, std::ios::beg);
 	disc.read(&raw[0], 12);
+#endif
 
 	const uint8_t mins = (lba+150) / (60 * 75);
 	const uint8_t secs = ((lba+150) / 75) % 60;
@@ -64,12 +70,15 @@ bool CDiDisc::is_valid_sector(int lba)
 void CDiDisc::read_sector(int lba)
 {
 	// seek and skip sync field
-	/*fseek(disc, lba*SECTOR_SIZE+12, SEEK_SET);
+#ifdef MINICDI_NO_DISC_IFSTREAM
+	fseek(disc, lba*SECTOR_SIZE+12, SEEK_SET);
 	for (int i = 0; i < SECTOR_SIZE_NO_SYNC; i++)
-		Sector[i] = fgetc(disc);*/
+		Sector[i] = fgetc(disc);
+#else
 	disc.clear();
 	disc.seekg(lba*SECTOR_SIZE+12, std::ios::beg);
 	disc.read(&Sector[0], SECTOR_SIZE_NO_SYNC);
+#endif
 
 	if (is_byteswapped(lba))
 	{
@@ -242,14 +251,25 @@ bool CDiDisc::open(const std::string &path)
 
 	if (access(path.c_str(), F_OK) == 0)
 	{
+#ifdef MINICDI_NO_DISC_IFSTREAM
 		disc = fopen(path.c_str(), "r");
 		if (disc != NULL)
+#else
+		disc.open(path, std::ios::in | std::ios::binary);
+		if (disc.is_open())
+#endif
 		{
-			// MiniCDI::Log("[Disc] Inserted disc: %s", path.c_str());
-
-			fseek(disc, 0x9340, SEEK_SET); // 00'02'16 LBA, address of title
+			// seek to 00'02'16 LBA, address of title
+#ifdef MINICDI_NO_DISC_IFSTREAM
+			fseek(disc, 0x9340, SEEK_SET); 
 			for (int i = 0; i < 32; i++) {
 				char c = fgetc(disc);
+#else
+			disc.seekg(0x9340, std::ios::beg);
+			for (int i = 0; i < 32; i++) {
+				char c;
+				disc.get(c);
+#endif
 				if (c)
 					Label += c;
 				else
@@ -257,29 +277,35 @@ bool CDiDisc::open(const std::string &path)
 			}
 
 			if (Label.empty())
-				MiniCDI::Log("[Disc] Unknown label (not found at LBA $9300)");
+				MiniCDI::Log("[CDI] Inserted disc: unknown label (not found at LBA $9300)");
 			else
-				MiniCDI::Log("[Disc] Label: %s", Label.c_str());
+				MiniCDI::Log("[CDI] Inserted disc: %s", Label.c_str());
 
 			return true;
 		}
 
-		MiniCDI::Log("[Disc] Failed to open %s", path.c_str());
+		MiniCDI::Log("[CDI] Failed to open disc file %s", path.c_str());
 	}
 	else
 	{
-		MiniCDI::Log("[Disc] File not found at %s", path.c_str());
+		MiniCDI::Log("[CDI] Disc file not found at %s", path.c_str());
 	}
 	return false;
 }
 
 void CDiDisc::eject()
 {
+#ifdef MINICDI_NO_DISC_IFSTREAM
 	if (disc != NULL)
 	{
 		fclose(disc);
 		disc = NULL;
+#else
+	if (disc.is_open())
+	{
+		disc.close();
+#endif
 		Label.clear();
-		MiniCDI::Log("[Disc] Ejected");
+		MiniCDI::Log("[CDI] Ejected disc");
 	}
 }

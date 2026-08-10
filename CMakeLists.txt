@@ -14,6 +14,7 @@ option(MINICDI_ENABLE_FORCE_LOGFILE "Always use the verbose log to text file opt
 
 # Emulation options
 option(MINICDI_DISABLE_THROTTLING "Disable throttling on Windows and macOS." OFF)
+option(MINICDI_DISABLE_DISC_IFSTREAM "Use C library FILE* instead of std::ifstream for disc sectors." ON)
 option(MINICDI_ENABLE_BENCHMARK "Log duration of frame execution." OFF)
 option(MINICDI_ENABLE_NATIVERES "Render VDSR in native resolution instead of full-screen or adjusted mode (Wii/Wii U only)." OFF)
 option(MINICDI_ENABLE_DEADNVRAM "Simulate a dead Timekeeper, just for funsies (breaks player shell if no NVRAM settings data exists)." OFF)
@@ -62,6 +63,10 @@ endif()
 if (MINICDI_DISABLE_THROTTLING)
 	MESSAGE(STATUS "MINICDI_DISABLE_THROTTLING")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NO_THROTTLING)
+endif()
+if (MINICDI_DISABLE_DISC_IFSTREAM)
+	MESSAGE(STATUS "MINICDI_DISABLE_DISC_IFSTREAM")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NO_DISC_IFSTREAM)
 endif()
 if (MINICDI_ENABLE_BENCHMARK)
 	MESSAGE(STATUS "MINICDI_ENABLE_BENCHMARK")

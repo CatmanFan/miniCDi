@@ -15,34 +15,61 @@ void PointingDevice::send_packet()
 				IO.slave->PointerInterface.connected = true;
 
 				// Send identification byte to SLAVE
-				IO.slave->Ch[0].Out = { (uint8_t)(0x80 | (absolute ? 'T' : 'J')) };
-				IO.slave->assert_irq();
+				switch (type)
+				{
+					case PointingDevice::Relative:
+						IO.slave->Ch[0].Out = { static_cast<uint8_t>(0x80 | 'M') };
+						IO.slave->assert_irq();
+						return;
+
+					case PointingDevice::Maneuvering:
+						IO.slave->Ch[0].Out = { static_cast<uint8_t>(0x80 | 'J') };
+						IO.slave->assert_irq();
+						return;
+
+					case PointingDevice::Absolute:
+						IO.slave->Ch[0].Out = { static_cast<uint8_t>(0x80 | 'T') };
+						IO.slave->assert_irq();
+						return;
+
+					default:
+						assert(0 && "Invalid pointing device type.");
+						break;
+				}
 			}
 
 			else if (poll_movement || poll_stationary || poll_state_changed)
 			{
 				// Convert to SLAVE response
-				if (absolute)
+				switch (type)
 				{
-					IO.slave->Ch[0].Out =
+					case PointingDevice::Absolute:
+						IO.slave->Ch[0].Out =
+						{
+							static_cast<uint8_t>((xA >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
+							static_cast<uint8_t>(xA & 0x7f),
+							static_cast<uint8_t>(yA >> 7 & 0x07),
+							static_cast<uint8_t>(yA & 0x7f)
+						};
+						IO.slave->assert_irq();
+						return;
+
+					default:
+					case PointingDevice::Relative:
+					case PointingDevice::Maneuvering:
 					{
-						(uint8_t)((xA >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x08),
-						(uint8_t)(xA & 0x7f),
-						(uint8_t)(yA >> 7 & 0x07),
-						(uint8_t)(yA & 0x7f)
-					};
+						IO.slave->Ch[0].Out =
+						{
+							static_cast<uint8_t>((xA >> 7 & 0x07) | (buttons[Button2] << 5) | (buttons[Button1] << 4) | 0x88),
+							static_cast<uint8_t>(xA & 0x7f),
+							static_cast<uint8_t>(yA >> 7 & 0x07),
+							static_cast<uint8_t>(yA & 0x7f)
+						};
+						//MiniCDI::Log("[PD] Sending to SLAVE: %02X %02X %02X %02X", IO.slave->Ch[0].Out[0], IO.slave->Ch[0].Out[1], IO.slave->Ch[0].Out[2], IO.slave->Ch[0].Out[3]);
+						IO.slave->assert_irq();
+						return;
+					}
 				}
-				else
-				{
-					// Use spoon data bytes from https://github.com/MiSTer-devel/CDi_MiSTer/blob/main/doc/input_device.md
-					IO.slave->Ch[0].Out =
-					{
-						0xC0,
-						(uint8_t)(xR > 0 ? 0x82 : xR < 0 ? 0xBE : 0x80),
-						(uint8_t)(yR > 0 ? 0x82 : yR < 0 ? 0xBE : 0x80)
-					};
-				}
-				IO.slave->assert_irq();
 			}
 		}
 	}
@@ -51,37 +78,36 @@ void PointingDevice::send_packet()
 		if (IO.ikat->PointerInterface.connected && (poll_movement || poll_stationary || poll_state_changed)) {
 			uint16_t x = 0, y = 0;
 
-			if (absolute)
+			switch (type)
 			{
-				x = std::clamp(static_cast<int>((xA / 768.0f) * 0x3FF), 0, 0x3FF);
-				y = std::clamp(static_cast<int>((yA / 560.0f) * 0x3FF), 0, 0x3FF);
-			}
-			else
-			{
-				x = xR > 0 ? std::clamp(xR, 0x01, 0x7F) : xR < 0 ? std::clamp(0x100 + xR, 0x80, 0xFF) : 0;
-				y = yR > 0 ? std::clamp(yR, 0x01, 0x7F) : yR < 0 ? std::clamp(0x100 + yR, 0x80, 0xFF) : 0;
-			}
+				case PointingDevice::Absolute:
+					x = std::clamp(static_cast<int>((xA / static_cast<float>(MAX_POINTER_X)) * 0x3FF), 0, 0x3FF);
+					y = std::clamp(static_cast<int>((yA / static_cast<float>(MAX_POINTER_Y)) * 0x3FF), 0, 0x3FF);
 
-			// Convert to IKAT response
-			// Data format partially taken from CeDImu
-			if (absolute)
-			{
-				// Absolute coordinates
-				IO.ikat->poll_packet(1,
-					0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0xF),
-					(poll_movement << 5) | (y >> 6 & 0xF),
-					x & 0x3F,
-					0x80 | (y & 0x3F)
-				);
-			}
-			else
-			{
-				// Relative coordinates
-				IO.ikat->poll_packet(1,
-					0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 6) | (y & 0b11000000 >> 4),
-					x & 0x3F,
-					y & 0x3F
-				);
+					// Convert to IKAT response (absolute coordinates)
+					// Data format partially taken from CeDImu.
+					IO.ikat->poll_packet(1,
+						0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x >> 6 & 0xF),
+						(poll_movement << 5) | (y >> 6 & 0xF),
+						x & 0x3F,
+						0x80 | (y & 0x3F)
+					);
+					return;
+
+				default:
+				case PointingDevice::Relative:
+				case PointingDevice::Maneuvering:
+					x = xR > 0 ? std::clamp(xR, 0x01, 0x7F) : xR < 0 ? std::clamp(0x100 + xR, 0x80, 0xFF) : 0;
+					y = yR > 0 ? std::clamp(yR, 0x01, 0x7F) : yR < 0 ? std::clamp(0x100 + yR, 0x80, 0xFF) : 0;
+
+					// Convert to IKAT response (relative coordinates)
+					// Data format partially taken from CeDImu.
+					IO.ikat->poll_packet(1,
+						0x40 | (buttons[Button2] << 5) | (buttons[Button1] << 4) | (x & 0b11000000 >> 6) | (y & 0b11000000 >> 4),
+						x & 0x3F,
+						y & 0x3F
+					);
+					return;
 			}
 		}
 	}
@@ -112,8 +138,8 @@ void PointingDevice::set_button(enum PointingDevice::Buttons b, bool value)
 	{
 		// Susceptible to input lag ??
 		poll_movement = false;
-		if (xR != 0) { xR = 0; if (!absolute) { poll_stationary = true; } }
-		if (yR != 0) { yR = 0; if (!absolute) { poll_stationary = true; } }
+		if (xR != 0) { xR = 0; if (type != PointingDevice::Absolute) { poll_stationary = true; } }
+		if (yR != 0) { yR = 0; if (type != PointingDevice::Absolute) { poll_stationary = true; } }
 	}
 
 	if ((b == Button1 || b == Button2) && this->buttons[(int)b] != value)
@@ -128,15 +154,15 @@ void PointingDevice::set_coord(int x, int y, int w, int h)
 {
 	// Convert to native CD-i highres
 	// Actual formula is (x / w) * 768 and (y / h) * 560 but has been optimized.
-	float new_x = static_cast<float>(x) / static_cast<float>(w) * 768.0f;
-	float new_y = static_cast<float>(y) / static_cast<float>(h) * 560.0f;
+	float new_x = static_cast<float>(x) / static_cast<float>(w) * static_cast<float>(MAX_POINTER_X);
+	float new_y = static_cast<float>(y) / static_cast<float>(h) * static_cast<float>(MAX_POINTER_Y);
 	x = static_cast<int>(new_x);
 	y = static_cast<int>(new_y);
 
 	if (x < 0 || y < 0 || x > MAX_POINTER_X || y > MAX_POINTER_Y) return;
 
 	poll_movement = this->xA != x || this->yA != y;
-	if (!absolute && (this->xR != 0 || this->yR != 0) && !poll_movement) poll_stationary = true;
+	if (type != PointingDevice::Absolute && (this->xR != 0 || this->yR != 0) && !poll_movement) poll_stationary = true;
 
 	this->xR = poll_movement ? x - xA : 0;
 	this->yR = poll_movement ? y - yA : 0;

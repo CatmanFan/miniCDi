@@ -55,7 +55,6 @@ class IKAT
 		bool enabled;
 		bool posChanged;
 		int x, y;
-		bool absolute;
 	} PointerInterface;
 	bool Disc = false;
 	FTD* ftd;
@@ -281,8 +280,7 @@ public:
 							case 0xF3:
 								MiniCDI::Log("[IKAT] report pointing device type (0x%02X)", value);
 								PointerInterface.connected = true;
-								poll_packet(c, 0xA5, 0xF3, (uint8_t)(0x80 | 'T'), 0);
-								PointerInterface.absolute = (Ch[c].Out[2] & 0x7F) == 'T' || (Ch[c].Out[2] & 0x7F) == 'S';
+								poll_packet(c, 0xA5, 0xF3, static_cast<uint8_t>(0x80 | 'J'), 0); // maneuvering
 								break;
 
 							/** Boot Mode **/

@@ -1,6 +1,7 @@
 #include "cdi/common.hpp"
 #ifndef MINICDI_CHRONO_ENABLED
-	#define MINICDI_CHRONO_ENABLED (defined(MINICDI_BENCHMARKING) || defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
+	// #define MINICDI_CHRONO_ENABLED (defined(MINICDI_BENCHMARKING) || defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
+	#define MINICDI_CHRONO_ENABLED (defined(MINICDI_BENCHMARKING) || defined(_WIN32) || defined(__APPLE__))
 	#if defined(HW_DOL) || defined(HW_RVL)
 		#define MINICDI_CHRONO_TIME 6
 	#elif defined(__WIIU__)
@@ -16,10 +17,35 @@
 #endif
 #include <numeric>
 
+// Scheduler values
+#define SECTOR 0
+#define VPU 1
+#define UART_TX 2
+#define PD 3
+#define EVENTS 4
+#define EVENTS_USED 3
+
+static int event_rates[EVENTS] =
+{
+	/* SECTOR */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
+	/* VPU */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
+	/* UART_TX */ 4915200,
+	/* PD */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30
+};
+
+static int event_cycles[EVENTS] =
+{
+	event_rates[SECTOR],
+	event_rates[VPU],
+	event_rates[UART_TX],
+	event_rates[PD]
+};
+
 void PhilipsCDI::run(bool no_draw)
 {
-	#ifndef MINICDI_RAW_68K_MODE
-	pd.send_packet();
+	#if (PD >= EVENTS_USED)
+		#pragma message "note: Pointing Device not included in scheduler (Philips.cpp)"
+		pd.send_packet();
 	#endif
 
 	#if MINICDI_CHRONO_ENABLED == 1
@@ -35,10 +61,24 @@ void PhilipsCDI::run(bool no_draw)
 	{
 		// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
 		// On embedded consoles this also affects the speed of the emulator.
-		const int cycles = std::min({240, event_rates[0], event_rates[1], event_rates[2]});
+		const int cycles = std::min({240,
+		#if (EVENTS_USED >= 4)
+			event_rates[0],
+			event_rates[1],
+			event_rates[2],
+			event_rates[3]
+		#elif (EVENTS_USED == 3)
+			event_rates[0],
+			event_rates[1],
+			event_rates[2]
+		#else
+			event_rates[0],
+			event_rates[1]
+		#endif
+		});
 		cpu.run(cycles);
 
-		for (int i = 0; i < EVTNUM; i++)
+		for (int i = 0; i < EVENTS_USED; i++)
 		{
 			event_cycles[i] -= cycles;
 			while (event_cycles[i] <= 0)
@@ -59,9 +99,17 @@ void PhilipsCDI::run(bool no_draw)
 						if (vpu->tick()) goto frame_end;
 						break;
 
+					#if (UART_TX < EVENTS_USED)
 					case UART_TX:
 						cpu.uart_tx_tick();
 						break;
+					#endif
+
+					#if (PD < EVENTS_USED)
+					case PD:
+						pd.send_packet();
+						break;
+					#endif
 				}
 			}
 		}
@@ -88,7 +136,7 @@ void PhilipsCDI::run(bool no_draw)
 	// Throttling
 	#if MINICDI_CHRONO_ENABLED == 1 && (defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
 	if (fp_ms.count() < MINICDI_CHRONO_TIME && !MiniCDI::Config::NoFrameLimit) {
-		const int wait_ms = (int)(MINICDI_CHRONO_TIME - fp_ms.count());
+		const int wait_ms = static_cast<int>(MINICDI_CHRONO_TIME - fp_ms.count());
 		std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
 	}
 	#endif
@@ -113,7 +161,7 @@ void PhilipsCDI::reset()
 	if (dsp != NULL) dsp->reset();
 	if (ciap != NULL) ciap->reset();
 
-	for (int i = 0; i < EVTNUM; i++) { event_cycles[i] = event_rates[i]; }
+	for (int i = 0; i < EVENTS; i++) { event_cycles[i] = event_rates[i]; }
 }
 
 uint8_t PhilipsCDI::read8(int address)
@@ -132,14 +180,14 @@ uint16_t PhilipsCDI::read16(int address)
 	return !check_for_unmapped(address) ? 0
 		 : vpu != NULL && (address & 0x00FFFF00) == 0x004FFF00 ? vpu->read16(address)
 		 : address >= 0x00300000 && address < 0x00303FFF ? (cdic != NULL ? cdic->read16(address) : ciap != NULL ? ciap->read16(address) : 0)
-		 : (uint16_t)(read8(address) << 8 | read8(address+1));
+		 : static_cast<uint16_t>(read8(address) << 8 | read8(address+1));
 }
 
 uint32_t PhilipsCDI::read32(int address)
 {
 	return !check_for_unmapped(address) ? 0
 		 : cdic != NULL && address >= 0x00300000 && address < 0x00303FFF ? cdic->read32(address)
-		 : (uint32_t)(read16(address) << 16 | read16(address+2));
+		 : static_cast<uint32_t>(read16(address) << 16 | read16(address+2));
 }
 
 void PhilipsCDI::write8(int address, uint8_t value)

@@ -21,31 +21,7 @@ private:
 	CDIC* cdic = NULL;
 	DRVDSP* dsp = NULL;
 	CIAP* ciap = NULL;
-
-	FTD* ftd;
-
-	// Scheduler values
-	enum EventType
-	{
-		SECTOR = 0,
-		VPU,
-		UART_TX,
-		EVTNUM
-	};
-
-	int event_rates[EVTNUM] =
-	{
-		/* SECTOR */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
-		/* VPU */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
-		/* UART_TX */ 4915200
-	};
-
-	int event_cycles[EVTNUM] =
-	{
-		event_rates[SECTOR],
-		event_rates[VPU],
-		event_rates[UART_TX]
-	};
+	FTD* ftd = NULL;
 
 	inline bool check_for_unmapped(int address)
 	{

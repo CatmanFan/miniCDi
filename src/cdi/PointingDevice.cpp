@@ -19,17 +19,17 @@ void PointingDevice::send_packet()
 				{
 					case PointingDevice::Relative:
 						IO.slave->Ch[0].Out = { static_cast<uint8_t>(0x80 | 'M') };
-						IO.slave->assert_irq();
+						IO.slave->assert_irq(0);
 						return;
 
 					case PointingDevice::Maneuvering:
 						IO.slave->Ch[0].Out = { static_cast<uint8_t>(0x80 | 'J') };
-						IO.slave->assert_irq();
+						IO.slave->assert_irq(0);
 						return;
 
 					case PointingDevice::Absolute:
 						IO.slave->Ch[0].Out = { static_cast<uint8_t>(0x80 | 'T') };
-						IO.slave->assert_irq();
+						IO.slave->assert_irq(0);
 						return;
 
 					default:
@@ -51,7 +51,7 @@ void PointingDevice::send_packet()
 							static_cast<uint8_t>(yA >> 7 & 0x07),
 							static_cast<uint8_t>(yA & 0x7f)
 						};
-						IO.slave->assert_irq();
+						IO.slave->assert_irq(0);
 						return;
 
 					default:
@@ -66,7 +66,7 @@ void PointingDevice::send_packet()
 							static_cast<uint8_t>(yA & 0x7f)
 						};
 						//MiniCDI::Log("[PD] Sending to SLAVE: %02X %02X %02X %02X", IO.slave->Ch[0].Out[0], IO.slave->Ch[0].Out[1], IO.slave->Ch[0].Out[2], IO.slave->Ch[0].Out[3]);
-						IO.slave->assert_irq();
+						IO.slave->assert_irq(0);
 						return;
 					}
 				}

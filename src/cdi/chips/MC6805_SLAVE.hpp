@@ -14,7 +14,7 @@ class SLAVE
 		std::deque<uint8_t> In;
 		std::deque<uint8_t> Out;
 		size_t InSize;
-		size_t ReadSize;
+		bool Available;
 	} Ch[4];
 
 	struct
@@ -30,13 +30,10 @@ class SLAVE
 	uint32_t DR[4]; // addresses to data registers
 
 	// For PointingDevice !!
-	inline void assert_irq() {
-		if (!asserted_irq) {
-			_68070->interrupt(SCC68070::IPL_IN2N, true);
-			asserted_irq = true;
-		}
+	inline void assert_irq(size_t c) {
+		Ch[c].Available = true;
+		_68070->interrupt(SCC68070::IPL_IN2N, true);
 	}
-	bool asserted_irq = false;
 	uint8_t revision = 0;
 
 public:
@@ -70,7 +67,7 @@ public:
 		MiniCDI::Log("[SLAVE] report Play Button status (0xA1 ?)");
 		if (revision == 0x20) { Ch[1].Out = { 0x87, 0x20, 0xFF }; }
 		else { Ch[1].Out = { 0xA1, 0x87, 0x20, 0xFF }; }
-		assert_irq();
+		assert_irq(1);
 	}
 
 	inline void send_eject_button()
@@ -78,22 +75,23 @@ public:
 		MiniCDI::Log("[SLAVE] report Eject Button status (0xA1 ?)");
 		if (revision == 0x20) { Ch[1].Out = { 0x87, 0x08, 0xFF }; }
 		else { Ch[1].Out = { 0xA1, 0x87, 0x00, 0xFF }; }
-		assert_irq();
+		assert_irq(1);
 	}
 
 	inline void send_disc_status(bool value)
 	{
-		Disc = value;
-		if (Disc)
+		if (value)
 		{
-			if (revision == 0x60)
-				Ch[3].Out = { 0xB0, 0x00, 0x06, 0x10 }; // CDI 350 (per cdifan)
-			else
-				Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 };
+			if (revision == 0x60) { Ch[3].Out = { 0xB0, 0x00, 0x06, 0x10 }; } // CDI 350 (per cdifan)
+			else { Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 }; }
 		}
-		else Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+		else
+		{
+			Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+		}
+		assert_irq(3);
 
-		assert_irq();
+		Disc = value;
 	}
 
 	inline uint8_t read8(uint32_t addr)
@@ -102,22 +100,20 @@ public:
 		{
 			size_t c = (addr - DR[0]) / 2;
 
+			Ch[c].Available = false;
+			if (!Ch[0].Available && !Ch[1].Available && !Ch[2].Available && !Ch[3].Available)
+				_68070->interrupt(SCC68070::IPL_IN2N, false);
+
 			if (Ch[c].Out.size() > 0)
 			{
 				//MiniCDI::Log("[SLAVE] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].Out[0]);
 
 				memory[DR[c]] = Ch[c].Out[0];
 				Ch[c].Out.pop_front();
-				Ch[c].ReadSize++;
 			}
 			else
 				memory[DR[c]] = 0xFF;
 
-			// deassert IRQ
-			if (asserted_irq) {
-				_68070->interrupt(SCC68070::IPL_IN2N, false);
-				asserted_irq = false;
-			}
 		}
 
 		return memory[addr];
@@ -146,7 +142,6 @@ public:
 								// MiniCDI::Log("[SLAVE] set pointer pos (x=%d,y=%d)", PointerInterface.x, PointerInterface.y);
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
-								Ch[c].ReadSize = 0;
 								return;
 							}
 
@@ -187,7 +182,6 @@ public:
 								}
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
-								Ch[c].ReadSize = 0;
 							}
 							break;
 
@@ -241,12 +235,11 @@ public:
 									case 0xB1:
 										MiniCDI::Log("[SLAVE] get disc base (0x%02X%02X%02X%02X)", Ch[c].In[0], Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
 										Ch[c].Out = { 0xB1, 0x00, 0x00, 0x00 }; // use response data from MAME
-										assert_irq();
+										assert_irq(c);
 										break;
 								}
 								Ch[c].In.clear();
 								Ch[c].InSize = 0;
-								Ch[c].ReadSize = 0;
 							}
 							break;
 
@@ -269,28 +262,28 @@ public:
 							MiniCDI::Log("[SLAVE] get SLAVE revision (0x%02X)", value);
 							Ch[2].Out = { 0xF0, 0x32 }; // use response data from cdiemu (SLAVE 3.2?)
 							revision = Ch[2].Out[1];
-							assert_irq();
+							assert_irq(2);
 							break;
 
 						/** Pointer Type **/
 						case 0xF3:
 							MiniCDI::Log("[SLAVE] get pointer type (0x%02X)", value);
 							Ch[2].Out = { 0xF3, 0x01 }; /** cdifan: 1 => CL="c"; 2 => CL="d"; 3 => CL="b"; 4 => CL="a"; 5 => CL="c" + /kb1 **/
-							assert_irq();
+							assert_irq(2);
 							break;
 
 						/** Boot Mode **/
 						case 0xF4:
 							MiniCDI::Log("[SLAVE] get test plug status (0x%02X)", value);
-							Ch[2].Out = { 0xF4, (uint8_t)(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
-							assert_irq();
+							Ch[2].Out = { 0xF4, static_cast<uint8_t>(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
+							assert_irq(2);
 							break;
 
 						/** Video Mode **/
 						case 0xF6:
 							MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
-							Ch[2].Out = { 0xF6, (uint8_t)(MiniCDI::Config::PAL ? 0x02 : 0x01) };
-							// assert_irq(); // interrupt not required on MAME ?
+							Ch[2].Out = { 0xF6, static_cast<uint8_t>(MiniCDI::Config::PAL ? 0x02 : 0x01) };
+							// assert_irq(2); // interrupt not required on MAME ?
 							break;
 
 						/** Enable Polling **/
@@ -309,7 +302,6 @@ public:
 
 			if (Ch[c].InSize == 0) {
 				Ch[c].In.clear();
-				Ch[c].ReadSize = 0;
 			}
 		}
 	}

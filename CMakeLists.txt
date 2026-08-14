@@ -123,10 +123,10 @@ if (WIN32 OR APPLE)
 	# Libraries
 	# ************
 	find_package(SDL2 REQUIRED)
-	# find_package(wxWidgets REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
-	# target_link_libraries(${PROJECT_NAME} PRIVATE wxWidgets::wxWidgets ${SDL2_LIBRARIES})
-	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
+	# target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
+	find_package(wxWidgets COMPONENTS core)
+	target_link_libraries(${PROJECT_NAME} PRIVATE wxWidgets::wxWidgets ${SDL2_LIBRARIES})
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=1) # SDL2
 
 	if (WIN32)
@@ -136,15 +136,15 @@ if (WIN32 OR APPLE)
 	# Source files/directories
 	# ************
 	target_include_directories(${PROJECT_NAME} PRIVATE
-		# src/frontends/wx
-		src/platforms/win
+		src/frontends/wx
+		# src/platforms/win
 	)
 
 	target_sources(${PROJECT_NAME} PRIVATE
 		# src/frontends/wx/main.cpp
-		# src/frontends/wx/miniCDiFrame.cpp
-		# src/frontends/wx/miniCDiWindow.cpp
-		src/platforms/win/main.cpp
+		src/frontends/wx/mainFrame.cpp
+		src/frontends/wx/uiLauncher.cpp
+		# src/platforms/win/main.cpp
 	)
 # -------------------------------------------
 endif()

@@ -496,8 +496,8 @@ void SCC68070::run(int cycles)
 	// Execute CPU
 	m68k_execute(cycles);
 
-	// Step timer for however many multiples of 96.
-	#define T0_CYCLE_RATE 192
+	// Step timer for however many multiples of the Timer0 cycle rate.
+	#define T0_CYCLE_RATE 96
 	T_cycles[0] += cycles;
 	while (T_cycles[0] >= T0_CYCLE_RATE)
 	{

@@ -34,7 +34,7 @@ END_EVENT_TABLE()
 
 void BasicDrawPane::paintEvent(wxPaintEvent & evt)
 {
-    wxBufferedPaintDC dc(this);
+	wxAutoBufferedPaintDC dc(this);
 	if (image.IsOk())
 	{
 		int width, height;
@@ -99,7 +99,7 @@ mainFrame::~mainFrame()
 void mainFrame::e_reset(wxCommandEvent& WXUNUSED(event))
 {
 	if (cdi != NULL) {
-        // if (wxMessageBox(_("All unsaved data will be lost.\nAre you sure you want to continue?"), _("Reset machine"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
+		// if (wxMessageBox(_("All unsaved data will be lost.\nAre you sure you want to continue?"), _("Reset machine"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
 			cdi->reset();
 	}
 }
@@ -119,12 +119,12 @@ void mainFrame::e_openSystemROM(wxCommandEvent& WXUNUSED(event))
 { 
 	if (cdi != NULL)
 	{
-        wxMessageBox(_("A CD-i machine has already been created."), _("Error"), wxOK | wxICON_ERROR);
+		wxMessageBox(_("A CD-i machine has already been created."), _("Error"), wxOK | wxICON_ERROR);
 		return;
 	}
 
-    wxFileDialog openFileDialog(this, _("Open system ROM"), "", "", "ROM (*.rom)|*.rom", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
-    if (openFileDialog.ShowModal() == wxID_OK)
+	wxFileDialog openFileDialog(this, _("Open system ROM"), "", "", "ROM (*.rom)|*.rom", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+	if (openFileDialog.ShowModal() == wxID_OK)
 	{
 		cdi = new PhilipsCDI;
 		const std::filesystem::path rom = std::string(openFileDialog.GetPath().mb_str());

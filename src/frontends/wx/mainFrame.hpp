@@ -6,7 +6,7 @@ namespace miniCDi
 	class BasicDrawPane : public wxPanel
 	{
 	public:
-		BasicDrawPane(wxFrame* parent) : wxPanel(parent) { SetDoubleBuffered(true); }
+		BasicDrawPane(wxFrame* parent) : wxPanel(parent) { SetBackgroundStyle(wxBG_STYLE_PAINT); }
 		wxImage image;
 		
 		void paintEvent(wxPaintEvent & evt);

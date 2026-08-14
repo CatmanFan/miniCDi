@@ -5,8 +5,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set (APP_AUTHOR "Mr. Lechkar aka CatmanFan")
 
 # Debug options
-option(MINICDI_DISABLE_VERBOSE "Completely disable verbose logging of any kind (ignored for Windows/Mac build)." ON)
-option(MINICDI_ENABLE_VERBOSE_DISPLAY "Use verbose debug as output instead of VDSR." OFF)
+option(MINICDI_DISABLE_VERBOSE "Completely disable verbose logging of any kind." ON)
+option(MINICDI_ENABLE_VERBOSE_DISPLAY "Force-enable verbose output display." OFF)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)." OFF)
 option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose." OFF)
 option(MINICDI_ENABLE_VERBOSE_MODULE "Prefix verbose with OS-9 modules and addresses." OFF)
@@ -35,7 +35,7 @@ else()
 	target_compile_options(${PROJECT_NAME} PRIVATE -Ofast -fomit-frame-pointer -fno-math-errno -Wall)
 endif()
 
-if (MINICDI_DISABLE_VERBOSE AND NOT WIN32 AND NOT APPLE)
+if (MINICDI_DISABLE_VERBOSE)
 	MESSAGE(STATUS "MINICDI_DISABLE_VERBOSE")
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_NOLOG)
 endif()
@@ -131,7 +131,12 @@ if (WIN32 OR APPLE)
 
 	if (WIN32)
 		target_sources(${PROJECT_NAME} PRIVATE res/win/windows.rc)
-	endif ()
+	endif()
+	if (MINICDI_ENABLE_VERBOSE_DISPLAY AND NOT MINICDI_DISABLE_VERBOSE)
+		set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE FALSE)
+	else()
+		set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
+	endif()
 
 	# Source files/directories
 	# ************

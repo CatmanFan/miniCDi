@@ -104,6 +104,7 @@ public:
 	void write8(uint32_t addr, uint8_t value);
 
 	void run(int cycles);
+	void timer0_tick();
 	void uart_tx_tick();
 };
 

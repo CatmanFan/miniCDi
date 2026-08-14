@@ -452,6 +452,18 @@ void SCC68070::write8(uint32_t addr, uint8_t value)
 	}
 }
 
+void SCC68070::timer0_tick()
+{
+	if (T[0] == 0xFFFF) {
+		//MiniCDI::Log("[SCC68070:Timer0] Overflow");
+		TSR |= 0x80; // OV in T0
+		T[0] = RR;
+		interrupt(SCC68070::IPL_TIMER, true);
+	} else {
+		T[0]++;
+	}
+}
+
 void SCC68070::uart_tx_tick()
 {
 	if ((UCR & 0b1100) != 0b0100) return;
@@ -473,27 +485,23 @@ void SCC68070::uart_tx_tick()
 void SCC68070::run(int cycles)
 {
 	#ifdef MINICDI_DEBUG_CPU
+	// Print disassembly to log
 	if (MiniCDI::Config::LogFile != 0) {
 		char text[192];
 		m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
 		MiniCDI::Log("[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);
 	}
 	#endif
+
+	// Execute CPU
 	m68k_execute(cycles);
 
 	// Step timer for however many multiples of 96.
+	#define T0_CYCLE_RATE 192
 	T_cycles[0] += cycles;
-	while (T_cycles[0] >= 96)
+	while (T_cycles[0] >= T0_CYCLE_RATE)
 	{
-		if (T[0] == 0xFFFF) {
-			//MiniCDI::Log("[SCC68070:Timer] T0 overflow");
-			TSR |= 0x80; // OV in T0
-			T[0] = RR;
-			interrupt(SCC68070::IPL_TIMER, true);
-		} else {
-			T[0]++;
-		}
-
-		T_cycles[0] -= 96;
+		T_cycles[0] -= T0_CYCLE_RATE;
+		this->timer0_tick();
 	}
 }

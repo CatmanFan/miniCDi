@@ -7,7 +7,8 @@
 	#elif defined(__WIIU__)
 		#define MINICDI_CHRONO_TIME 12
 	#else
-		#define MINICDI_CHRONO_TIME (1000.0f/60.0f)
+		/// Field Timing according to Green Book Appendix V.
+		#define MINICDI_CHRONO_TIME 16.7f
 	#endif
 #endif
 
@@ -22,10 +23,11 @@
 #define VPU 1
 #define UART_TX 2
 #define PD 3
-#define EVENTS 4
-#define EVENTS_USED 3
 
-static int event_rates[EVENTS] =
+#define EVENTS_USED 3
+#define EVENTS_TOTAL 4
+
+static int event_rates[EVENTS_TOTAL] =
 {
 	/* SECTOR */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
 	/* VPU */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
@@ -33,7 +35,7 @@ static int event_rates[EVENTS] =
 	/* PD */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30
 };
 
-static int event_cycles[EVENTS] =
+static int event_cycles[EVENTS_TOTAL] =
 {
 	event_rates[SECTOR],
 	event_rates[VPU],
@@ -61,7 +63,7 @@ void PhilipsCDI::run(bool no_draw)
 	{
 		// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
 		// On embedded consoles this also affects the speed of the emulator.
-		const int cycles = std::min({240,
+		const int cycles = std::min({192,
 		#if (EVENTS_USED >= 4)
 			event_rates[0],
 			event_rates[1],
@@ -161,7 +163,7 @@ void PhilipsCDI::reset()
 	if (dsp != NULL) dsp->reset();
 	if (ciap != NULL) ciap->reset();
 
-	for (int i = 0; i < EVENTS; i++) { event_cycles[i] = event_rates[i]; }
+	for (int i = 0; i < EVENTS_TOTAL; i++) { event_cycles[i] = event_rates[i]; }
 }
 
 uint8_t PhilipsCDI::read8(int address)

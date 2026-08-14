@@ -91,6 +91,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE src src/cdi/m68k)
 target_sources(${PROJECT_NAME} PRIVATE
 	# Hardware
 	src/cdi/chips/IMS66490_CDIC.cpp
+	src/cdi/chips/MC6805_SLAVE.cpp
 	src/cdi/chips/MCD212.cpp
 	src/cdi/chips/SCC68070.cpp
 	src/cdi/players/Philips.cpp

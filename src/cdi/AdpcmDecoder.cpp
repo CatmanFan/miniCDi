@@ -92,8 +92,8 @@ bool AdpcmDecoder::decode_sector(uint8_t *buffer, bool soundmap)
 			{
 				for (int i = 0; i < 4; i++)
 				{
-					ranges[i] = (uint8_t)(data[i] & 0x0F);
-					filters[i] = (uint8_t)(data[i] >> 4);
+					ranges[i] = static_cast<uint8_t>(data[i] & 0x0F);
+					filters[i] = static_cast<uint8_t>(data[i] >> 4);
 				}
 
 				uint8_t index = 16;
@@ -112,8 +112,8 @@ bool AdpcmDecoder::decode_sector(uint8_t *buffer, bool soundmap)
 			{
 				for (int i = 0; i < 8; i++)
 				{
-					ranges[i] = (uint8_t)(data[i+4] & 0x0F);
-					filters[i] = (uint8_t)(data[i+4] >> 4);
+					ranges[i] = static_cast<uint8_t>(data[i+4] & 0x0F);
+					filters[i] = static_cast<uint8_t>(data[i+4] >> 4);
 				}
 
 				uint8_t index = 16;

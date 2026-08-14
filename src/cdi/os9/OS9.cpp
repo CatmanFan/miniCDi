@@ -72,9 +72,9 @@ namespace MiniCDI
 					// ID = 4A FC
 					// SysRev = xx xx
 					// Size = xx xx xx xx
-					m.size = (uint32_t)((memory[i+4] << 24) | (memory[i+5] << 16) | (memory[i+6] << 8) | memory[i+7]);
+					m.size = static_cast<uint32_t>((memory[i+4] << 24) | (memory[i+5] << 16) | (memory[i+6] << 8) | memory[i+7]);
 
-					uint32_t name_addr = (uint32_t)((memory[i+0xC] << 24) | (memory[i+0xC+1] << 16) | (memory[i+0xC+2] << 8) | memory[i+0xC+3]);
+					uint32_t name_addr = static_cast<uint32_t>((memory[i+0xC] << 24) | (memory[i+0xC+1] << 16) | (memory[i+0xC+2] << 8) | memory[i+0xC+3]);
 					for (uint32_t j = i+name_addr; j < i+name_addr+40; j++) {
 						char c = memory[j];
 						if (c == 0)

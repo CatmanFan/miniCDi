@@ -4,6 +4,8 @@
 #include <SDL2/SDL.h>
 #endif
 
+#define SAMPLE_COUNT 448
+
 CDIC::CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), SoundmapUnit({0}), disc(disc), CdicController({0})
 {
 	// INIT AUDIO DRIVER
@@ -20,7 +22,7 @@ CDIC::CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), m
 		input.freq = 37800;
 		input.format = AUDIO_S16SYS;
 		input.channels = 2;
-		input.samples = 448;
+		input.samples = SAMPLE_COUNT;
 
 		SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);
 		SDL_audio_valid = SDL_audio_id > 0;
@@ -225,7 +227,8 @@ bool CDIC::adpcm_decode_and_play(int buffer, bool soundmap)
 		return false;
 
 	#if MINICDI_AUDIO==1 /* SDL2 */
-	if (SDL_audio_valid) SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output_size * sizeof(int16_t));
+	if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < 50000)
+		SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output_size * sizeof(int16_t));
 	#endif
 
 	return true;

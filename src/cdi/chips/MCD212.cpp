@@ -10,7 +10,7 @@ uint8_t MCD212::VDSC::getCLUTindex(uint8_t* src, bool second)
 	switch (reg.Icm[Path])
 	{
 		default:
-			assert(0 && "[VDSC] Image Coding Method is invalid.");
+			assert(0 && "[VDSC] Attempted to retrieve CLUT index but Image Coding Method was not of CLUT type.");
 			return 0;
 
 		case CLUT7:
@@ -42,7 +42,7 @@ bool MCD212::VDSC::isTransparent(uint8_t* src, bool second)
 	switch (reg.TransparencyCtrl[Path])
 	{
 		default:
-			assert(0 && "[VDSC] Transparency Control is invalid.");
+			assert(0 && "[VDSC] Transparency Control data is invalid.");
 			return false;
 		case 0b0000:
 			return true;

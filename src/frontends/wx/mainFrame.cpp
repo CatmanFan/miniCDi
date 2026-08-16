@@ -256,7 +256,7 @@ void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 
 		cdi->pd.set_button(PointingDevice::Button1, state.LeftIsDown());
 		cdi->pd.set_button(PointingDevice::Button2, state.RightIsDown());
-		cdi->pd.set_coord(x, y, width, height);
+		cdi->pd.set_coord(x, y, width, height); // This has to be set AFTER `set_button` so that it can be polled
 	}
 
 	if (cdi != NULL)

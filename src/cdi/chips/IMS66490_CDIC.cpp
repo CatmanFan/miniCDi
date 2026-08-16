@@ -409,12 +409,12 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 
 					case 0x27:
 						MiniCDI::Log("[CDIC] Fetch Table of Contents (0x%02X)", CMD);
-						assert(0 && "[CDIC] Command not implemented.");
+						assert(0 && "[CDIC] Command 0x27 is currently unimplemented.");
 						break;
 
 					case 0x28:
 						MiniCDI::Log("[CDIC] Start CDDA playback (0x%02X)", CMD);
-						assert(0 && "[CDIC] Command not implemented.");
+						assert(0 && "[CDIC] Command 0x28 is currently unimplemented.");
 						break;
 
 					case 0x2B:

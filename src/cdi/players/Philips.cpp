@@ -7,8 +7,7 @@
 	#elif defined(__WIIU__)
 		#define MINICDI_CHRONO_TIME 12
 	#else
-		/// Field Timing according to Green Book Appendix V.
-		#define MINICDI_CHRONO_TIME 16.7f
+		#define MINICDI_CHRONO_TIME 16.666667f
 	#endif
 #endif
 

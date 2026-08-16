@@ -182,17 +182,17 @@ public:
 
 						case 0x00:
 							MiniCDI::Log("[DSP] run program (0x%02X : %06X)", value, RTX);
-							assert(0 && "[DRVDSP] Command is not implemented.");
+							assert(0 && "[DRVDSP] Command 0x00 is currently unimplemented.");
 							return;
 
 						case 0x08:
 							MiniCDI::Log("[DSP] submit buffer 4 (0x%02X : %06X)", value, RTX);
-							assert(0 && "[DRVDSP] Command is not implemented.");
+							assert(0 && "[DRVDSP] Command 0x08 is currently unimplemented.");
 							return;
 
 						case 0x09:
 							MiniCDI::Log("[DSP] submit buffer 5 (0x%02X : %06X)", value, RTX);
-							assert(0 && "[DRVDSP] Command is not implemented.");
+							assert(0 && "[DRVDSP] Command 0x09 is currently unimplemented.");
 							return;
 
 						case 0x0E:
@@ -202,7 +202,7 @@ public:
 
 						case 0x12:
 							MiniCDI::Log("[DSP] read audio status (0x%02X : %06X)", value, RTX);
-							assert(0 && "[DRVDSP] Command is not implemented.");
+							assert(0 && "[DRVDSP] Command 0x12 is currently unimplemented.");
 							return;
 
 						case 0x13:
@@ -248,12 +248,12 @@ public:
 
 						case 0x1A:
 							MiniCDI::Log("[DSP] read memory (0x%02X : %06X)", value, RTX);
-							assert(0 && "[DRVDSP] Command is not implemented.");
+							assert(0 && "[DRVDSP] Command 0x1A is currently unimplemented.");
 							return;
 
 						case 0x1B:
 							MiniCDI::Log("[DSP] write memory (0x%02X : %06X)", value, RTX);
-							assert(0 && "[DRVDSP] Command is not implemented.");
+							assert(0 && "[DRVDSP] Command 0x1B is currently unimplemented.");
 							return;
 
 						case 0x1C:

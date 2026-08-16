@@ -25,11 +25,18 @@ private:
 	static constexpr int MAX_POINTER_X = 767;
 	static constexpr int MAX_POINTER_Y = 559;
 
+	int xR = 0, yR = 0, xA = MAX_POINTER_X/2, yA = MAX_POINTER_Y/2;
+	struct
+	{
+		int x;
+		int y;
+		int w;
+		int h;
+	} source_coords;
 	bool buttons[6];
 	bool poll_movement = false;
 	bool poll_stationary = false; // only used for maneuvering devices
 	bool poll_state_changed = false;
-	int xR = 0, yR = 0, xA = MAX_POINTER_X/2, yA = MAX_POINTER_Y/2;
 	enum PDType type = PointingDevice::Maneuvering;
 
 public:
@@ -41,7 +48,7 @@ public:
 
 	void send_packet();
 	void set_button(enum Buttons b, bool value);
-	void set_coord(int x, int y, int w, int h);
+	void set_coord(int src_x, int src_y, int src_w, int src_h);
 };
 
 #endif

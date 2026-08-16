@@ -61,18 +61,20 @@ namespace miniCDi
 
 		struct
 		{
-			#define LANG_COUNT 2
+			#define LANG_COUNT 3
 
 			int current;
 			int count = LANG_COUNT;
 			long wxCodes[LANG_COUNT]
 			{
 				wxLANGUAGE_ENGLISH,
+				wxLANGUAGE_FRENCH,
 				wxLANGUAGE_JAPANESE
 			};
 			int itemID[LANG_COUNT]
 			{
 				wxID_LANG_ENGLISH,
+				wxID_LANG_FRENCH,
 				wxID_LANG_JAPANESE
 			};
 			wxMenuItem *items[LANG_COUNT];

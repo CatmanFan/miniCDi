@@ -124,7 +124,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	// Create panel
 	mainPanel = new BasicDrawPane(this);
 	mainPanel->SetBackgroundColour(wxColour(128, 128, 128));
-	statusBar = this->CreateStatusBar(1, wxSTB_SIZEGRIP, wxID_ANY);
+	// statusBar = this->CreateStatusBar(1, wxSTB_SIZEGRIP, wxID_ANY);
 
 	wxIcon icon(app_icon_xpm);
 	SetIcon(icon);
@@ -137,7 +137,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	menuToggleNoFrameLimit->Check(MiniCDI::Config::NoFrameLimit);
 	menuToggleNTSC->Check(!MiniCDI::Config::PAL);
 
-	this->SetClientSize(384*2, 280*2);
+	this->SetClientSize(384, 280);
 	this->Centre(wxBOTH);
 }
 
@@ -180,7 +180,7 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 		case wxID_CONFIG_NTSC:
 			if (cdi != NULL)
 			{
-				if (wxMessageBox(_("This will reset the CD-i player. Any unsaved data will be lost.\nContinue anyway?"), _("Confirmation"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
+				if (wxMessageBox(_("This will reset the CD-i player. Any unsaved data will be lost.\nContinue anyway?"), _("Are you sure?"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
 				{
 					MiniCDI::Config::PAL = !MiniCDI::Config::PAL;
 					cdi->reset();
@@ -214,8 +214,8 @@ void mainFrame::e_exit(wxCommandEvent& WXUNUSED(event))
 
 void mainFrame::e_about(wxCommandEvent& WXUNUSED(event))
 {
-	wxMessageBox(wxT("wx-sdl tutorial\nCopyright (C) 2005 John Ratliff"),
-				 wxT("about wx-sdl tutorial"), wxOK | wxICON_INFORMATION);
+	wxMessageBox(_("miniCDi is a portable CD-i player emulator."),
+				 _("About"), wxOK | wxICON_INFORMATION);
 }
 
 void mainFrame::e_openSystemROM(wxCommandEvent& WXUNUSED(event))
@@ -247,6 +247,7 @@ void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 {
 	if (cdi != NULL)
 	{
+		// Update pointing device status based on mouse control (wxMouseEvent is not used because it does not update when the mouse is not moving).
 		const wxMouseState state = wxGetMouseState();
 		wxPoint panel_coords = mainPanel->GetScreenPosition();
 		wxPoint mouse_coords = state.GetPosition();
@@ -257,10 +258,8 @@ void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 		cdi->pd.set_button(PointingDevice::Button1, state.LeftIsDown());
 		cdi->pd.set_button(PointingDevice::Button2, state.RightIsDown());
 		cdi->pd.set_coord(x, y, width, height); // This has to be set AFTER `set_button` so that it can be polled
-	}
 
-	if (cdi != NULL)
-	{
+		// Actually run a frame
 		cdi->run(false);
 
 		// Update screen

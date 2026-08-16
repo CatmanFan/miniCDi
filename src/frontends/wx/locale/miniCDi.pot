@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: miniCDi 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-16 01:04+0100\n"
+"POT-Creation-Date: 2026-08-16 14:26+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,72 +17,80 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../mainFrame.cpp:192
+#: ../mainFrame.cpp:183
 msgid ""
 "This will reset the CD-i player. Any unsaved data will be lost.\n"
 "Continue anyway?"
 msgstr ""
 
-#: ../mainFrame.cpp:192
+#: ../mainFrame.cpp:183
 msgid "Confirmation"
 msgstr ""
 
-#: ../mainFrame.cpp:232
+#: ../mainFrame.cpp:217
+msgid "miniCDi is a portable CD-i player emulator."
+msgstr ""
+
+#: ../mainFrame.cpp:218
+msgid "About"
+msgstr ""
+
+#: ../mainFrame.cpp:223
 msgid "Open system ROM"
 msgstr ""
 
-#: ../mainFrame.cpp:249
+#: ../mainFrame.cpp:240
 msgid "Open disc"
 msgstr ""
 
-#: ../mainFrame.hpp:118
+#: ../mainFrame.hpp:138
 msgid "&File"
 msgstr ""
 
-#: ../mainFrame.hpp:119
+#: ../mainFrame.hpp:139
 msgid "&Emulation"
 msgstr ""
 
-#: ../mainFrame.hpp:120
+#: ../mainFrame.hpp:140
 msgid "&Help"
 msgstr ""
 
-#: ../mainFrame.hpp:124
+#: ../mainFrame.hpp:144
 msgid "Create &CD-i machine..."
 msgstr ""
 
-#: ../mainFrame.hpp:125
+#: ../mainFrame.hpp:145
 msgid "Open &disc..."
 msgstr ""
 
-#: ../mainFrame.hpp:126
+#: ../mainFrame.hpp:146
 msgid "&Reset"
 msgstr ""
 
-#: ../mainFrame.hpp:127
+#: ../mainFrame.hpp:147
 msgid "Language"
 msgstr ""
 
-#: ../mainFrame.hpp:128
+#: ../mainFrame.hpp:148
 msgid "E&xit"
 msgstr ""
 
-#: ../mainFrame.hpp:130
+#: ../mainFrame.hpp:150
 msgid "&Connect test plug"
 msgstr ""
 
-#: ../mainFrame.hpp:131
+#: ../mainFrame.hpp:151
 msgid "&Analog colours"
 msgstr ""
 
-#: ../mainFrame.hpp:132
+#: ../mainFrame.hpp:152
 msgid "Disable frame &limit"
 msgstr ""
 
-#: ../mainFrame.hpp:133
+#: ../mainFrame.hpp:153
 msgid "Set machine as &NTSC"
 msgstr ""
 
-#: ../mainFrame.hpp:135
+#: ../mainFrame.hpp:155
 msgid "&About"
 msgstr ""

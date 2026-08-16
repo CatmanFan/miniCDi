@@ -31,11 +31,11 @@ BEGIN_EVENT_TABLE(BasicDrawPane, wxPanel)
 
 	// catch paint events
 	EVT_PAINT(BasicDrawPane::paintEvent)
-	EVT_MOTION(BasicDrawPane::mouseControl)
-	EVT_LEFT_DOWN(BasicDrawPane::mouseControl)
-	EVT_LEFT_UP(BasicDrawPane::mouseControl)
-	EVT_RIGHT_DOWN(BasicDrawPane::mouseControl)
-	EVT_RIGHT_UP(BasicDrawPane::mouseControl)
+	// EVT_MOTION(BasicDrawPane::mouseControl)
+	// EVT_LEFT_DOWN(BasicDrawPane::mouseControl)
+	// EVT_LEFT_UP(BasicDrawPane::mouseControl)
+	// EVT_RIGHT_DOWN(BasicDrawPane::mouseControl)
+	// EVT_RIGHT_UP(BasicDrawPane::mouseControl)
 
 END_EVENT_TABLE()
 
@@ -46,27 +46,12 @@ void BasicDrawPane::paintEvent(wxPaintEvent& WXUNUSED(event))
 	{
 		int width, height;
 		wxWindow::GetClientSize(&width, &height);
-		wxBitmap bmp(image.Scale(width, height, wxIMAGE_QUALITY_BOX_AVERAGE));
+		wxBitmap bmp(image.Scale(width, height, wxIMAGE_QUALITY_BILINEAR));
 		dc.DrawBitmap(bmp, 0, 0);
 	}
 }
 
-void BasicDrawPane::mouseControl(wxMouseEvent& WXUNUSED(event))
-{
-	if (cdi != NULL)
-	{
-		const wxMouseState state = wxGetMouseState();
-		cdi->pd.set_button(PointingDevice::Button1, state.LeftIsDown());
-		cdi->pd.set_button(PointingDevice::Button2, state.RightIsDown());
-
-		wxPoint panel_coords = this->GetScreenPosition();
-		wxPoint mouse_coords = state.GetPosition();
-		int x = mouse_coords.x - panel_coords.x, y = mouse_coords.y - panel_coords.y;
-		int width, height;
-		wxWindow::GetClientSize(&width, &height);
-		cdi->pd.set_coord(x, y, width, height);
-	}
-}
+static wxStatusBar* statusBar;
 
 /*******************************************************************************
 // SDLPanel Class
@@ -79,6 +64,8 @@ BEGIN_EVENT_TABLE(mainFrame, wxFrame)
 	EVT_MENU(wxID_RESET_MACHINE, mainFrame::e_reset)
 	EVT_MENU(wxID_EXIT, mainFrame::e_exit)
 	EVT_MENU(wxID_ABOUT, mainFrame::e_about)
+	EVT_MENU_RANGE(wxID_LANG_ENGLISH, wxID_LANG_JAPANESE, mainFrame::e_changeLanguage)
+	EVT_MENU_RANGE(wxID_CONFIG_TESTPLUG, wxID_CONFIG_NTSC, mainFrame::e_toggleEmulationSetting)
 END_EVENT_TABLE()
 
 mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : wxFrame(parent, id, title, pos, size, style)
@@ -86,35 +73,72 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	this->SetSizeHints(wxDefaultSize, wxDefaultSize);
 	// this->DragAcceptFiles(true);
 
-	// Create menus
-	wxMenu *menuFile = new wxMenu;
-	menuOpenDisc = new wxMenuItem(menuFile, wxID_OPEN_DISC, wxString(_("Open &disc...")) + wxT('\t') + wxT("Ctrl+O"), wxEmptyString, wxITEM_NORMAL);
-	menuOpenDisc->Enable(false);
+	// Create menus (the labels will be filled in by ResetLanguageStrings)
+	menuLanguage = new wxMenu;
+		for (int i = 0; i < language.count; i++)
+		{
+			language.items[i] = new wxMenuItem(menuLanguage, language.itemID[i], wxLocale::GetLanguageInfo(language.wxCodes[i])->DescriptionNative, wxEmptyString, wxITEM_CHECK);
+			menuLanguage->Append(language.items[i]);
+		}
 
-	menuFile->Append(wxID_OPEN_ROM, wxString(_("Create &CD-i machine...")) + wxT('\t') + wxT("Ctrl+C"));
-	menuFile->Append(menuOpenDisc);
-	menuFile->AppendSeparator();
-	menuFile->Append(wxID_RESET_MACHINE, wxString(_("&Reset")) + wxT('\t') + wxT("F1"));
-	menuFile->AppendSeparator();
-	menuFile->Append(wxID_EXIT, wxString(_("E&xit")) + wxT('\t') + wxT("Alt+F4"));
+	wxMenu *menuFile = new wxMenu;
+		menuCreateMachine = new wxMenuItem(menuFile, wxID_OPEN_ROM, " ");
+		menuOpenDisc = new wxMenuItem(menuFile, wxID_OPEN_DISC, " ");
+		menuReset = new wxMenuItem(menuFile, wxID_RESET_MACHINE, " ");
+		menuExit = new wxMenuItem(menuFile, wxID_EXIT, " ");
+		menuLanguageItem = new wxMenuItem(menuFile, wxID_ANY, " ", wxEmptyString, wxITEM_NORMAL, menuLanguage);
+
+		menuFile->Append(menuCreateMachine);
+		menuFile->Append(menuOpenDisc);
+		menuFile->AppendSeparator();
+		menuFile->Append(menuReset);
+		menuFile->AppendSeparator();
+		menuFile->Append(menuLanguageItem);
+		menuFile->AppendSeparator();
+		menuFile->Append(menuExit);
+
+	wxMenu *menuEmulation = new wxMenu;
+		menuToggleTestPlug = new wxMenuItem(menuFile, wxID_CONFIG_TESTPLUG, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleAnalogColors = new wxMenuItem(menuFile, wxID_CONFIG_ANALOGCOLORS, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleNoFrameLimit = new wxMenuItem(menuFile, wxID_CONFIG_NOFRAMELIMIT, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleNTSC = new wxMenuItem(menuFile, wxID_CONFIG_NTSC, " ", wxEmptyString, wxITEM_CHECK);
+
+		menuEmulation->Append(menuToggleTestPlug);
+		menuEmulation->Append(menuToggleNTSC);
+		menuEmulation->AppendSeparator();
+		menuEmulation->Append(menuToggleAnalogColors);
+		menuEmulation->AppendSeparator();
+		menuEmulation->Append(menuToggleNoFrameLimit);
 
 	wxMenu *menuHelp = new wxMenu;
-	menuHelp->Append(wxID_ABOUT, wxString(_("&About")));
+		menuAbout = new wxMenuItem(menuFile, wxID_ABOUT, " ");
+		menuHelp->Append(menuAbout);
 
-	wxMenuBar *menuBar = new wxMenuBar;
-	menuBar->Append(menuFile, _("File"));
-	menuBar->Append(menuHelp, _("Help"));
+	// Create menu bar
+	menuBar = new wxMenuBar;
+	menuBar->Append(menuFile, " ");
+	menuBar->Append(menuEmulation, " ");
+	menuBar->Append(menuHelp, " ");
 	this->SetMenuBar(menuBar);
 
 	// Create panel
 	mainPanel = new BasicDrawPane(this);
 	mainPanel->SetBackgroundColour(wxColour(128, 128, 128));
-
-	this->SetClientSize(384, 280);
-	this->Centre(wxBOTH);
+	statusBar = this->CreateStatusBar(1, wxSTB_SIZEGRIP, wxID_ANY);
 
 	wxIcon icon(app_icon_xpm);
 	SetIcon(icon);
+
+	this->ReloadLanguage(wxLANGUAGE_DEFAULT);
+	menuOpenDisc->Enable(false);
+
+	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
+	menuToggleAnalogColors->Check(MiniCDI::Config::AnalogColors);
+	menuToggleNoFrameLimit->Check(MiniCDI::Config::NoFrameLimit);
+	menuToggleNTSC->Check(!MiniCDI::Config::PAL);
+
+	this->SetClientSize(384*2, 280*2);
+	this->Centre(wxBOTH);
 }
 
 mainFrame::~mainFrame()
@@ -127,9 +151,60 @@ mainFrame::~mainFrame()
 void mainFrame::e_reset(wxCommandEvent& WXUNUSED(event))
 {
 	if (cdi != NULL) {
-		// if (wxMessageBox(_("All unsaved data will be lost.\nAre you sure you want to continue?"), _("Reset machine"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
-			cdi->reset();
+		cdi->reset();
 	}
+}
+
+void mainFrame::e_changeLanguage(wxCommandEvent &event)
+{
+	for (int i = 0; i < language.count; i++)
+	{
+		if (event.GetId() == language.itemID[i])
+		{
+			this->ReloadLanguage(language.wxCodes[i]);
+			this->Refresh();
+			return;
+		}
+	}
+}
+
+void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
+{
+	int id = event.GetId();
+	switch (id)
+	{
+		case wxID_CONFIG_TESTPLUG:
+			MiniCDI::Config::TestPlug = !MiniCDI::Config::TestPlug;
+			break;
+
+		case wxID_CONFIG_NTSC:
+			if (cdi != NULL)
+			{
+				if (wxMessageBox(_("This will reset the CD-i player. Any unsaved data will be lost.\nContinue anyway?"), _("Confirmation"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
+				{
+					MiniCDI::Config::PAL = !MiniCDI::Config::PAL;
+					cdi->reset();
+				}
+			}
+			else
+			{
+				MiniCDI::Config::PAL = !MiniCDI::Config::PAL;
+			}
+			break;
+
+		case wxID_CONFIG_ANALOGCOLORS:
+			MiniCDI::Config::AnalogColors = !MiniCDI::Config::AnalogColors;
+			break;
+
+		case wxID_CONFIG_NOFRAMELIMIT:
+			MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
+			break;
+	}
+
+	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
+	menuToggleAnalogColors->Check(MiniCDI::Config::AnalogColors);
+	menuToggleNoFrameLimit->Check(MiniCDI::Config::NoFrameLimit);
+	menuToggleNTSC->Check(!MiniCDI::Config::PAL);
 }
 
 void mainFrame::e_exit(wxCommandEvent& WXUNUSED(event))
@@ -170,6 +245,20 @@ void mainFrame::e_openDisc(wxCommandEvent& WXUNUSED(event))
 
 void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 {
+	if (cdi != NULL)
+	{
+		const wxMouseState state = wxGetMouseState();
+		wxPoint panel_coords = mainPanel->GetScreenPosition();
+		wxPoint mouse_coords = state.GetPosition();
+		int x = mouse_coords.x - panel_coords.x, y = mouse_coords.y - panel_coords.y;
+		int width, height;
+		wxWindow::GetClientSize(&width, &height);
+
+		cdi->pd.set_button(PointingDevice::Button1, state.LeftIsDown());
+		cdi->pd.set_button(PointingDevice::Button2, state.RightIsDown());
+		cdi->pd.set_coord(x, y, width, height);
+	}
+
 	if (cdi != NULL)
 	{
 		cdi->run(false);

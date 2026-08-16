@@ -1,0 +1,78 @@
+#
+msgid ""
+msgstr ""
+"Language: ja\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../mainFrame.cpp:192
+msgid ""
+"This will reset the CD-i player. Any unsaved data will be lost.\n"
+"Continue anyway?"
+msgstr ""
+"CD-i本体は再起動して、保存していないデータは失われます｡\n"
+"よろしいですか？"
+
+#: ../mainFrame.cpp:192
+msgid "Confirmation"
+msgstr "確認"
+
+#: ../mainFrame.cpp:232
+msgid "Open system ROM"
+msgstr "システムROMを選択してください"
+
+#: ../mainFrame.cpp:249
+msgid "Open disc"
+msgstr "ディスクファイルを選択してください"
+
+#: ../mainFrame.hpp:118
+msgid "&File"
+msgstr "ファイル(&F)"
+
+#: ../mainFrame.hpp:119
+msgid "&Emulation"
+msgstr "設定(&S)"
+
+#: ../mainFrame.hpp:120
+msgid "&Help"
+msgstr "ヘルプ(&H)"
+
+#: ../mainFrame.hpp:124
+msgid "Create &CD-i machine..."
+msgstr "CDI本体を作る(&C)"
+
+#: ../mainFrame.hpp:125
+msgid "Open &disc..."
+msgstr "ディスクを選択(&O)..."
+
+#: ../mainFrame.hpp:126
+msgid "&Reset"
+msgstr "リセット(&R)"
+
+#: ../mainFrame.hpp:127
+msgid "Language"
+msgstr "言語(&L)"
+
+#: ../mainFrame.hpp:128
+msgid "E&xit"
+msgstr "終了(&X)"
+
+#: ../mainFrame.hpp:130
+msgid "&Connect test plug"
+msgstr "テストプラグを接続(&T)"
+
+#: ../mainFrame.hpp:131
+msgid "&Analog colours"
+msgstr "アナログRGB配色(&A)"
+
+#: ../mainFrame.hpp:132
+msgid "Disable frame &limit"
+msgstr ""
+
+#: ../mainFrame.hpp:133
+msgid "Set machine as &NTSC"
+msgstr "NTSC方式(&N)"
+
+#: ../mainFrame.hpp:135
+msgid "&About"
+msgstr "このエミュレーターについて(&A)"

@@ -1,0 +1,88 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the miniCDi package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: miniCDi 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-16 01:04+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../mainFrame.cpp:192
+msgid ""
+"This will reset the CD-i player. Any unsaved data will be lost.\n"
+"Continue anyway?"
+msgstr ""
+
+#: ../mainFrame.cpp:192
+msgid "Confirmation"
+msgstr ""
+
+#: ../mainFrame.cpp:232
+msgid "Open system ROM"
+msgstr ""
+
+#: ../mainFrame.cpp:249
+msgid "Open disc"
+msgstr ""
+
+#: ../mainFrame.hpp:118
+msgid "&File"
+msgstr ""
+
+#: ../mainFrame.hpp:119
+msgid "&Emulation"
+msgstr ""
+
+#: ../mainFrame.hpp:120
+msgid "&Help"
+msgstr ""
+
+#: ../mainFrame.hpp:124
+msgid "Create &CD-i machine..."
+msgstr ""
+
+#: ../mainFrame.hpp:125
+msgid "Open &disc..."
+msgstr ""
+
+#: ../mainFrame.hpp:126
+msgid "&Reset"
+msgstr ""
+
+#: ../mainFrame.hpp:127
+msgid "Language"
+msgstr ""
+
+#: ../mainFrame.hpp:128
+msgid "E&xit"
+msgstr ""
+
+#: ../mainFrame.hpp:130
+msgid "&Connect test plug"
+msgstr ""
+
+#: ../mainFrame.hpp:131
+msgid "&Analog colours"
+msgstr ""
+
+#: ../mainFrame.hpp:132
+msgid "Disable frame &limit"
+msgstr ""
+
+#: ../mainFrame.hpp:133
+msgid "Set machine as &NTSC"
+msgstr ""
+
+#: ../mainFrame.hpp:135
+msgid "&About"
+msgstr ""

@@ -29,7 +29,7 @@ bool uiLauncher::OnInit()
 	// create the mainFrame
 	frame = new mainFrame(NULL);
 	frame->Show();
-	
+
 	// Our mainFrame is the Top Window
 	SetTopWindow(frame);
 

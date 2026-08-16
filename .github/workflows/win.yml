@@ -1,4 +1,4 @@
-name: Build (Windows x86/x64)
+name: Build (Windows x64)
 
 on:
   push:
@@ -20,11 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { sys: mingw32, env: i686, name: x86, runs-on: 'windows-latest' }
+          # - { sys: mingw32, env: i686, name: x86, runs-on: 'windows-latest' }
           - { sys: mingw64, env: x86_64, name: x64, runs-on: 'windows-latest' }
-          # - { sys: ucrt64, env: ucrt-x86_64, runs-on: 'windows-latest' }
-          # - { sys: clang64, env: clang-x86_64, runs-on: 'windows-latest' }
-          # - { sys: clangarm64, env: clang-aarch64, name: ARM64, runs-on: 'windows-11-arm' }
 
     name: Build (Windows ${{ matrix.name }})
     defaults:
@@ -46,7 +43,7 @@ jobs:
           git
           make
           mingw-w64-${{matrix.env}}-SDL2
-          mingw-w64-x86_64-wxwidgets3.2
+          mingw-w64-${{matrix.env}}-wxwidgets3.2
         pacboy: >-
           toolchain:p
           cmake:p

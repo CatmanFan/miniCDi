@@ -36,12 +36,12 @@ class CDIC
 	AdpcmDecoder ADPCM;
 	struct {
 		size_t status;
-		bool played[2];
 		size_t buffer_index;
 		int sector_interval;
+		int sector_format; // This is supposed to fill the role of `m_audio_format_sectors` in the MAME driver.
 	} SoundmapUnit; // Implementation based on Green Book
 
-	bool adpcm_decode_and_play(int buffer, bool soundmap);
+	bool adpcm_decode_and_play(uint8_t *buffer, bool soundmap);
 	void update_soundmap_unit();
 
 	// ****************************

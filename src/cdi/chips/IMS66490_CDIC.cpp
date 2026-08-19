@@ -171,15 +171,16 @@ void CDIC::update_soundmap_unit()
 		{
 			MiniCDI::Log("[CDIC:DSP] Encountered $FF coding, reset");
 
-			// For whatever reason, ACHAN is not written at this point, which affects subsequent audio tracks that
-			// should be read and played back from the disc but because the audio channel filter is null, they are
-			// passed as data sectors.
-			// Slamy's analyzer: https://github.com/Slamy/CDIC_BlackBoxAnalyzer/blob/main/src/test_audiomap_to_xa_play.c
+			// Reset audio controller struct
 			AudioController.buffer_index = 0;
 			AudioController.cpu = false;
 
 			AUDCTL &= ~0x0800; // reset Playback Start bit
 			AUDCTL |= 0x0001; // set Playback End bit
+
+			// Trigger ABUF interrupt bit regardless (cdiemu behaviour)
+			ABUF |= 0x8000;
+			if (AUDCTL & 0x2000) _68070->interrupt(SCC68070::IPL_IN4N, true);
 		}
 
 		else if ((AUDCTL & 0x0800) && ADPCM.decode_sector(&memory[AudioController.buffer_index == 2 ? 0x303200 : 0x302800]))
@@ -196,15 +197,14 @@ void CDIC::update_soundmap_unit()
 			if (!(coding & 0b010000)) { AudioController.sector_interval *= 2; } // XA 4bps
 			if (!(coding & 0b000001)) { AudioController.sector_interval *= 2; } // XA Mono
 
-			// finished playback of single ADPCM buffer. This automatically triggers an IRQ.
-			// If for any reason this interrupt fails to pass, it will break Hotel Mario with its "dirty disc" error.
-			ABUF |= 0x8000;
-
 			if (AudioController.cpu)
 				AudioController.buffer_index = AudioController.buffer_index == 1 ? 2 : 1;
 			else
 				AudioController.buffer_index = 0;
 
+			// finished playback of single ADPCM buffer. This automatically triggers an IRQ.
+			// If for any reason this interrupt fails to pass, it will break Hotel Mario with its "dirty disc" error.
+			ABUF |= 0x8000;
 			if (AUDCTL & 0x2000)
 			{
 				MiniCDI::Log("[CDIC:DSP] Audio sector playback finished (IRQ). Sector interval: %d", AudioController.sector_interval);
@@ -275,7 +275,6 @@ uint16_t CDIC::read16(uint32_t addr)
 			const uint16_t value = AUDCTL;
 			if (AUDCTL & 0x0001) {
 				AUDCTL &= ~0x0001;
-				// _68070->interrupt(SCC68070::IPL_IN4N, false);
 			}
 			return value;
 		}

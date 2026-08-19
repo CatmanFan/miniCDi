@@ -6,11 +6,12 @@ namespace miniCDi
 	class BasicDrawPane : public wxPanel
 	{
 	public:
-		BasicDrawPane(wxFrame* parent) : wxPanel(parent) { SetBackgroundStyle(wxBG_STYLE_PAINT); }
+		BasicDrawPane(wxFrame* parent, wxWindowID id=wxID_ANY, const wxPoint &pos=wxDefaultPosition, const wxSize &size=wxDefaultSize, long style=wxWANTS_CHARS) : wxPanel(parent) { SetBackgroundStyle(wxBG_STYLE_PAINT); }
 		wxImage image;
 
-		void paintEvent(wxPaintEvent &event);
-		// void mouseControl(wxMouseEvent &event);
+		void e_paintEvent(wxPaintEvent &event);
+		void e_keyControl(wxKeyEvent &event);
+		// void e_mouseControl(wxMouseEvent &event);
 
 		DECLARE_EVENT_TABLE()
 	};
@@ -37,6 +38,7 @@ namespace miniCDi
 			wxID_CONFIG_ANALOGCOLORS,
 			wxID_CONFIG_NOFRAMELIMIT,
 			wxID_CONFIG_NTSC,
+			wxID_CONFIG_RESETPD,
 
 			wxID_LANG_ENGLISH,
 			wxID_LANG_FRENCH,
@@ -46,6 +48,7 @@ namespace miniCDi
 		BasicDrawPane* mainPanel;
 
 		wxMenuBar *menuBar;
+		wxStatusBar* statusBar;
 		// File
 		wxMenuItem *menuCreateMachine;
 		wxMenuItem *menuOpenDisc;
@@ -56,6 +59,7 @@ namespace miniCDi
 		wxMenuItem *menuToggleAnalogColors;
 		wxMenuItem *menuToggleNoFrameLimit;
 		wxMenuItem *menuToggleNTSC;
+		wxMenuItem *menuResetPD;
 		// Help
 		wxMenuItem *menuAbout;
 
@@ -151,6 +155,7 @@ namespace miniCDi
 			menuToggleAnalogColors->SetItemLabel(wxString(_("&Analog colours")));
 			menuToggleNoFrameLimit->SetItemLabel(wxString(_("Disable frame &limit")));
 			menuToggleNTSC->SetItemLabel(wxString(_("Set machine as &NTSC")));
+			menuResetPD->SetItemLabel(wxString(_("Reset &pointing device")));
 			// Help
 			menuAbout->SetItemLabel(wxString(_("&About")));
 

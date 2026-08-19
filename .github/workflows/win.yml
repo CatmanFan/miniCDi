@@ -61,7 +61,12 @@ jobs:
     - name: Prepare structure
       run: |
         mkdir -p pkg/win
+        mkdir -p pkg/win/lang
+        mkdir -p pkg/win/lang/fr
+        mkdir -p pkg/win/lang/ja
         cp ./build/miniCDi.exe ./pkg/win/miniCDi.exe
+        cp ./src/frontends/wx/locale/fr.mo ./pkg/win/lang/fr/miniCDi.mo
+        cp ./src/frontends/wx/locale/ja.mo ./pkg/win/lang/ja/miniCDi.mo
     
     - name: Upload artifact
       uses: actions/upload-artifact@v7

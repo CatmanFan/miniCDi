@@ -81,6 +81,10 @@ msgstr ""
 msgid "Set machine as &NTSC"
 msgstr "Mode vidéo &NTSC"
 
-#: ../mainFrame.hpp:155
+#: ../mainFrame.hpp:154
+msgid "Reset &pointing device"
+msgstr "Réinitialiser la &manette"
+
+#: ../mainFrame.hpp:156
 msgid "&About"
 msgstr "À &propos"

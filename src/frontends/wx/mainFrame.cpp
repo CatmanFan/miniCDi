@@ -14,32 +14,24 @@ using namespace miniCDi;
 static PhilipsCDI *cdi = NULL;
 #define CDI_SCREEN_WIDTH 768
 #define CDI_SCREEN_HEIGHT 280
+#define CONTROL_MOUSE_ONLY
 
 /*******************************************************************************
 // BasicDrawPane
 *******************************************************************************/
 
 BEGIN_EVENT_TABLE(BasicDrawPane, wxPanel)
-
-	// some useful events
-	/*
-	 EVT_LEAVE_WINDOW(BasicDrawPane::mouseLeftWindow)
-	 EVT_KEY_DOWN(BasicDrawPane::keyPressed)
-	 EVT_KEY_UP(BasicDrawPane::keyReleased)
-	 EVT_MOUSEWHEEL(BasicDrawPane::mouseWheelMoved)
-	 */
-
-	// catch paint events
-	EVT_PAINT(BasicDrawPane::paintEvent)
-	// EVT_MOTION(BasicDrawPane::mouseControl)
-	// EVT_LEFT_DOWN(BasicDrawPane::mouseControl)
-	// EVT_LEFT_UP(BasicDrawPane::mouseControl)
-	// EVT_RIGHT_DOWN(BasicDrawPane::mouseControl)
-	// EVT_RIGHT_UP(BasicDrawPane::mouseControl)
-
+	EVT_PAINT(BasicDrawPane::e_paintEvent)
+	EVT_KEY_DOWN(BasicDrawPane::e_keyControl)
+	EVT_KEY_UP(BasicDrawPane::e_keyControl)
+	// EVT_MOTION(BasicDrawPane::e_mouseControl)
+	// EVT_LEFT_DOWN(BasicDrawPane::e_mouseControl)
+	// EVT_LEFT_UP(BasicDrawPane::e_mouseControl)
+	// EVT_RIGHT_DOWN(BasicDrawPane::e_mouseControl)
+	// EVT_RIGHT_UP(BasicDrawPane::e_mouseControl)
 END_EVENT_TABLE()
 
-void BasicDrawPane::paintEvent(wxPaintEvent& WXUNUSED(event))
+void BasicDrawPane::e_paintEvent(wxPaintEvent& WXUNUSED(event))
 {
 	wxAutoBufferedPaintDC dc(this);
 	if (image.IsOk())
@@ -51,7 +43,52 @@ void BasicDrawPane::paintEvent(wxPaintEvent& WXUNUSED(event))
 	}
 }
 
-static wxStatusBar* statusBar;
+void BasicDrawPane::e_keyControl(wxKeyEvent& event)
+{
+	#ifndef CONTROL_MOUSE_ONLY
+
+		if (cdi != NULL)
+		{
+			switch (event.GetKeyCode())
+			{
+				case WXK_LEFT:
+				case WXK_NUMPAD4:
+				case WXK_HOME:
+					cdi->pd.set_button(PointingDevice::Left, event.GetEventType() != wxEVT_KEY_UP);
+					break;
+
+				case WXK_RIGHT:
+				case WXK_NUMPAD6:
+				case WXK_END:
+					cdi->pd.set_button(PointingDevice::Right, event.GetEventType() != wxEVT_KEY_UP);
+					break;
+
+				case WXK_UP:
+				case WXK_NUMPAD8:
+				case WXK_PAGEUP:
+					cdi->pd.set_button(PointingDevice::Up, event.GetEventType() != wxEVT_KEY_UP);
+					break;
+
+				case WXK_DOWN:
+				case WXK_NUMPAD2:
+				case WXK_PAGEDOWN:
+					cdi->pd.set_button(PointingDevice::Down, event.GetEventType() != wxEVT_KEY_UP);
+					break;
+
+				case WXK_RETURN:
+					cdi->pd.set_button(PointingDevice::Button1, event.GetEventType() != wxEVT_KEY_UP);
+					break;
+
+				case WXK_SPACE:
+					cdi->pd.set_button(PointingDevice::Button2, event.GetEventType() != wxEVT_KEY_UP);
+					break;
+			}
+		}
+
+	#endif
+
+	event.Skip();
+}
 
 /*******************************************************************************
 // SDLPanel Class
@@ -65,7 +102,7 @@ BEGIN_EVENT_TABLE(mainFrame, wxFrame)
 	EVT_MENU(wxID_EXIT, mainFrame::e_exit)
 	EVT_MENU(wxID_ABOUT, mainFrame::e_about)
 	EVT_MENU_RANGE(wxID_LANG_ENGLISH, wxID_LANG_JAPANESE, mainFrame::e_changeLanguage)
-	EVT_MENU_RANGE(wxID_CONFIG_TESTPLUG, wxID_CONFIG_NTSC, mainFrame::e_toggleEmulationSetting)
+	EVT_MENU_RANGE(wxID_CONFIG_TESTPLUG, wxID_CONFIG_RESETPD, mainFrame::e_toggleEmulationSetting)
 END_EVENT_TABLE()
 
 mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style) : wxFrame(parent, id, title, pos, size, style)
@@ -98,11 +135,14 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 		menuFile->Append(menuExit);
 
 	wxMenu *menuEmulation = new wxMenu;
-		menuToggleTestPlug = new wxMenuItem(menuFile, wxID_CONFIG_TESTPLUG, " ", wxEmptyString, wxITEM_CHECK);
-		menuToggleAnalogColors = new wxMenuItem(menuFile, wxID_CONFIG_ANALOGCOLORS, " ", wxEmptyString, wxITEM_CHECK);
-		menuToggleNoFrameLimit = new wxMenuItem(menuFile, wxID_CONFIG_NOFRAMELIMIT, " ", wxEmptyString, wxITEM_CHECK);
-		menuToggleNTSC = new wxMenuItem(menuFile, wxID_CONFIG_NTSC, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleTestPlug = new wxMenuItem(menuEmulation, wxID_CONFIG_TESTPLUG, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleAnalogColors = new wxMenuItem(menuEmulation, wxID_CONFIG_ANALOGCOLORS, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleNoFrameLimit = new wxMenuItem(menuEmulation, wxID_CONFIG_NOFRAMELIMIT, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleNTSC = new wxMenuItem(menuEmulation, wxID_CONFIG_NTSC, " ", wxEmptyString, wxITEM_CHECK);
+		menuResetPD = new wxMenuItem(menuEmulation, wxID_CONFIG_RESETPD, " ");
 
+		menuEmulation->Append(menuResetPD);
+		menuEmulation->AppendSeparator();
 		menuEmulation->Append(menuToggleTestPlug);
 		menuEmulation->Append(menuToggleNTSC);
 		menuEmulation->AppendSeparator();
@@ -111,7 +151,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 		menuEmulation->Append(menuToggleNoFrameLimit);
 
 	wxMenu *menuHelp = new wxMenu;
-		menuAbout = new wxMenuItem(menuFile, wxID_ABOUT, " ");
+		menuAbout = new wxMenuItem(menuHelp, wxID_ABOUT, " ");
 		menuHelp->Append(menuAbout);
 
 	// Create menu bar
@@ -131,6 +171,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 
 	this->ReloadLanguage(wxLANGUAGE_DEFAULT);
 	menuOpenDisc->Enable(false);
+	menuResetPD->Enable(false);
 
 	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
 	menuToggleAnalogColors->Check(MiniCDI::Config::AnalogColors);
@@ -199,6 +240,10 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 		case wxID_CONFIG_NOFRAMELIMIT:
 			MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
 			break;
+
+		case wxID_CONFIG_RESETPD:
+			if (cdi != NULL) cdi->reset_pd();
+			return;
 	}
 
 	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
@@ -232,6 +277,11 @@ void mainFrame::e_openSystemROM(wxCommandEvent& WXUNUSED(event))
 		cdi->init(rom.string(), board);
 		mainPanel->image = wxImage(CDI_SCREEN_WIDTH, CDI_SCREEN_HEIGHT);
 		if (menuOpenDisc) menuOpenDisc->Enable(true);
+		if (menuResetPD) menuResetPD->Enable(true);
+
+		MiniCDI::Config::PointerAdvance = 3;
+		cdi->pd.set_button(PointingDevice::Button1, false);
+		cdi->pd.set_button(PointingDevice::Button2, false);
 	}
 }
 
@@ -247,17 +297,21 @@ void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 {
 	if (cdi != NULL)
 	{
-		// Update pointing device status based on mouse control (wxMouseEvent is not used because it does not update when the mouse is not moving).
-		const wxMouseState state = wxGetMouseState();
-		wxPoint panel_coords = mainPanel->GetScreenPosition();
-		wxPoint mouse_coords = state.GetPosition();
-		int x = mouse_coords.x - panel_coords.x, y = mouse_coords.y - panel_coords.y;
-		int width, height;
-		wxWindow::GetClientSize(&width, &height);
+		#ifdef CONTROL_MOUSE_ONLY
 
-		cdi->pd.set_button(PointingDevice::Button1, state.LeftIsDown());
-		cdi->pd.set_button(PointingDevice::Button2, state.RightIsDown());
-		cdi->pd.set_coord(x, y, width, height); // This has to be set AFTER `set_button` so that it can be polled
+			// Update pointing device status based on mouse control (wxMouseEvent is not used because it does not update when the mouse is not moving).
+			const wxMouseState state = wxGetMouseState();
+			wxPoint panel_coords = mainPanel->GetScreenPosition();
+			wxPoint mouse_coords = state.GetPosition();
+			int x = mouse_coords.x - panel_coords.x, y = mouse_coords.y - panel_coords.y;
+			int width, height;
+			wxWindow::GetClientSize(&width, &height);
+
+			cdi->pd.set_button(PointingDevice::Button1, state.LeftIsDown());
+			cdi->pd.set_button(PointingDevice::Button2, state.RightIsDown());
+			cdi->pd.set_coord(x, y, width, height); // This has to be set AFTER `set_button` so that it can be polled
+
+		#endif
 
 		// Actually run a frame
 		cdi->run(false);

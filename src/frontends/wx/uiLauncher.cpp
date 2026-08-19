@@ -11,6 +11,7 @@ uiLauncher::uiLauncher()
 
 uiLauncher::~uiLauncher()
 {
+	SDL_Quit();
 }
 
 int uiLauncher::OnRun()

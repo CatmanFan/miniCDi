@@ -42,6 +42,7 @@ public:
 
 	void run(bool no_draw = false) override;
 	void reset() override;
+	void reset_pd();
 
 	uint8_t read8(int address) override;
 	uint16_t read16(int address) override;

@@ -165,6 +165,13 @@ void PhilipsCDI::reset()
 	for (int i = 0; i < EVENTS_TOTAL; i++) { event_cycles[i] = event_rates[i]; }
 }
 
+void PhilipsCDI::reset_pd()
+{
+	pd = PointingDevice();
+	if (slave != NULL) this->pd.IO.slave = slave;
+	if (ikat != NULL) this->pd.IO.ikat = ikat;
+}
+
 uint8_t PhilipsCDI::read8(int address)
 {
 	return !check_for_unmapped(address) ? 0

@@ -43,7 +43,7 @@ void AdpcmDecoder::decode_adpcm(bool stereo, bool low_freq)
 	output_size = std::min(output_size * 2, 16128);
 }
 
-bool AdpcmDecoder::decode_sector(uint8_t *buffer, bool soundmap)
+bool AdpcmDecoder::decode_sector(uint8_t *buffer)
 {
 	/// Green Book IV.3.3:
 	/// Audio sectors comprise 18 "sound groups" of size 128 bytes.
@@ -56,9 +56,8 @@ bool AdpcmDecoder::decode_sector(uint8_t *buffer, bool soundmap)
 	/// Frog Feast SFX:        C - 4bps, 18.9 kHz, mono
 	/// Hotel Mario and Zelda use right channel for SFX and left channel for XA BGM.
 
-	/// Green Book IV.3.2.3: check submode for audio bits
-	if (!soundmap && (buffer[10] & 0b00101110) != 0b00100100)
-		return false;
+	/*/// Green Book IV.3.2.3: check submode for audio bits
+	if ((buffer[10] & 0b00101110) != 0b00100100) return false;*/
 
 	// Skip if any set to reserved
 	uint8_t coding = buffer[11];

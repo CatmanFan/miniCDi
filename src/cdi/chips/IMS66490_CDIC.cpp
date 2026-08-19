@@ -6,7 +6,7 @@
 
 #define SAMPLE_COUNT 448
 
-CDIC::CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), SoundmapUnit({0}), disc(disc), CdicController({0})
+CDIC::CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), AudioController({0}), disc(disc), CdicController({0})
 {
 	// INIT AUDIO DRIVER
 	#if MINICDI_AUDIO==1 /* SDL2 */
@@ -101,16 +101,9 @@ void CDIC::disc_process_sector()
 
 	if (disc_check_filter()) // This skips if MODE2 is not satisfied
 	{
-		touched_disc = true;
-
-		if ((DBUF & 0x0004) && (AUDCTL & 0x0800))
-		{
-			// Decode and play the fetched ADPCM sector.
-			adpcm_decode_and_play((uint8_t *)&memory[((DBUF & 0x01)*0xA00) + 0x2800], false);
-			DBUF &= ~0x0004; // Reset audio (per MAME)
-		}
-
+		DBUF &= ~0x0004; // Reset audio (per MAME)
 		DBUF ^= 0x0001; // Update buffer index (per MAME). This has to be done BEFORE targetAddr is defined otherwise disc will not init.
+		//MiniCDI::Log("[CDIC] Reading sector %02X:%02X:%02X to $%08X", disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
 
 		uint32_t targetAddr = 0x300000 + ((DBUF & 0x01)*0xA00);
 
@@ -129,6 +122,10 @@ void CDIC::disc_process_sector()
 		{
 			DBUF |= 0x0004; // Set audio bit in DBUF to declare reception into ADPCM buffer
 			targetAddr += 0x2800; // Jump to ADPCM buffer
+
+			// Automatically decoded and played when AUDCTL is set to enable playback.
+			AudioController.buffer_index = (DBUF & 0x01) ? 2 : 1;
+			AudioController.cpu = false;
 		}
 
 		memcpy(&memory[targetAddr], &disc->Sector[8], 2332);
@@ -151,8 +148,6 @@ void CDIC::disc_process_sector()
 		DBUF |= 0x4000; // send DATA to CPU
 		XBUF |= 0x8000; // sector filled for processing (causes IRQ)
 		_68070->interrupt(SCC68070::IPL_IN4N, true);
-
-		//MiniCDI::Log("[CDIC] read %s sector %02X:%02X:%02X", is_adpcm ? "audio" : "data", disc->Sector[CDiDisc::H_MIN], disc->Sector[CDiDisc::H_SEC], disc->Sector[CDiDisc::H_FRAME]);
 	}
 
 	// Update LBA
@@ -167,66 +162,56 @@ void CDIC::disc_process_sector()
 
 void CDIC::update_soundmap_unit()
 {
-	if (SoundmapUnit.sector_interval > 0)
+	if (AudioController.sector_interval > 0) AudioController.sector_interval--;
+	if (AudioController.sector_interval == 0 && AudioController.buffer_index > 0)
 	{
-		SoundmapUnit.sector_interval--;
-		if (SoundmapUnit.sector_interval > 0) return;
+		uint8_t coding = memory[(AudioController.buffer_index == 2 ? 0x303200 : 0x302800) + 11];
+
+		if (AudioController.cpu && coding == 0xFF) // coding byte
+		{
+			MiniCDI::Log("[CDIC:DSP] Encountered $FF coding, reset");
+
+			// For whatever reason, ACHAN is not written at this point, which affects subsequent audio tracks that
+			// should be read and played back from the disc but because the audio channel filter is null, they are
+			// passed as data sectors.
+			// Slamy's analyzer: https://github.com/Slamy/CDIC_BlackBoxAnalyzer/blob/main/src/test_audiomap_to_xa_play.c
+			AudioController.buffer_index = 0;
+			AudioController.cpu = false;
+
+			AUDCTL &= ~0x0800; // reset Playback Start bit
+			AUDCTL |= 0x0001; // set Playback End bit
+		}
+
+		else if ((AUDCTL & 0x0800) && ADPCM.decode_sector(&memory[AudioController.buffer_index == 2 ? 0x303200 : 0x302800]))
+		{
+			#if MINICDI_AUDIO==1 /* SDL2 */
+			if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < 50000)
+				SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output_size * sizeof(int16_t));
+			#endif
+
+			// Select sector interval for ADPCM (per Slamy documentation).
+			// CDDA has sample data on every sector so can be ignored.
+			AudioController.sector_interval = 2;
+			if (coding & 0b000100) { AudioController.sector_interval *= 2; } // XA 18.9 kHz
+			if (!(coding & 0b010000)) { AudioController.sector_interval *= 2; } // XA 4bps
+			if (!(coding & 0b000001)) { AudioController.sector_interval *= 2; } // XA Mono
+
+			// finished playback of single ADPCM buffer. This automatically triggers an IRQ.
+			// If for any reason this interrupt fails to pass, it will break Hotel Mario with its "dirty disc" error.
+			ABUF |= 0x8000;
+
+			if (AudioController.cpu)
+				AudioController.buffer_index = AudioController.buffer_index == 1 ? 2 : 1;
+			else
+				AudioController.buffer_index = 0;
+
+			if (AUDCTL & 0x2000)
+			{
+				MiniCDI::Log("[CDIC:DSP] Audio sector playback finished (IRQ). Sector interval: %d", AudioController.sector_interval);
+				_68070->interrupt(SCC68070::IPL_IN4N, true);
+			}
+		}
 	}
-
-	if (SoundmapUnit.status != 1) return;
-
-	uint8_t coding = memory[(SoundmapUnit.buffer_index ? 0x303200 : 0x302800) + 11];
-	const bool pending_interrupt = SoundmapUnit.sector_format != 0;
-
-	if (coding == 0xFF) // coding byte
-	{
-		MiniCDI::Log("[CDIC:Soundmap] Encountered $FF coding, yield to XA");
-
-		// For whatever reason, ACHAN is not written at this point, which affects subsequent audio tracks that
-		// should be read and played back from the disc but because the audio channel filter is null, they are
-		// passed as data sectors.
-		// Slamy's analyzer: https://github.com/Slamy/CDIC_BlackBoxAnalyzer/blob/main/src/test_audiomap_to_xa_play.c
-		SoundmapUnit.status = 2;
-		SoundmapUnit.sector_format = 0;
-
-		AUDCTL &= ~0x0800; // reset Playback Start bit
-		AUDCTL |= 0x0001; // set Playback End bit
-	}
-
-	else if (adpcm_decode_and_play(&memory[SoundmapUnit.buffer_index ? 0x303200 : 0x302800], true))
-	{
-		// Select sector interval for ADPCM (per Slamy documentation).
-		// CDDA has sample data on every sector so can be ignored.
-		SoundmapUnit.sector_format = 2;
-		if (coding & 0b000100) { SoundmapUnit.sector_format *= 2; } // XA 18.9 kHz
-		if (!(coding & 0b010000)) { SoundmapUnit.sector_format *= 2; } // XA 4bps
-		if (!(coding & 0b000001)) { SoundmapUnit.sector_format *= 2; } // XA Mono
-		SoundmapUnit.sector_interval = SoundmapUnit.sector_format;
-
-		ABUF |= 0x8000; // finished playback of single ADPCM buffer. This automatically triggers an IRQ.
-		SoundmapUnit.buffer_index = !SoundmapUnit.buffer_index;
-	}
-
-	// If for any reason this interrupt fails to pass, it will break Hotel Mario with its "dirty disc" error.
-	if (pending_interrupt && (AUDCTL & 0x2000))
-	{
-		_68070->interrupt(SCC68070::IPL_IN4N, true);
-	}
-}
-
-bool CDIC::adpcm_decode_and_play(uint8_t *buffer, bool soundmap)
-{
-	if (!(AUDCTL & 0x0800)) return false;
-
-	if (!ADPCM.decode_sector(buffer, soundmap))
-		return false;
-
-	#if MINICDI_AUDIO==1 /* SDL2 */
-	if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < 50000)
-		SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output_size * sizeof(int16_t));
-	#endif
-
-	return true;
 }
 
 void CDIC::tick()
@@ -347,8 +332,16 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 		case 0x303FF8: case 0x303FF9:
 			//MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
 			DMACTL = value;
-			if (value & 0x8000) {
+
+			if (value & 0x8000)
+			{
 				_68070->dma_call(0, 0x300000 + (value & 0x3FFF));
+
+				if (((value & 0x3F00) == 0x2800 || (value & 0x3F00) == 0x3200) && !AudioController.cpu)
+				{
+					MiniCDI::Log("[CDIC:DSP] Enabling CPU soundmap mode");
+					AudioController.cpu = true;
+				}
 			}
 			break;
 
@@ -358,15 +351,14 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 
 			if (value & 0x0800)
 			{
-				MiniCDI::Log("[CDIC:Soundmap] Received CPU signal to begin playback at buffer 0");
-				SoundmapUnit.status = 1;
-				SoundmapUnit.buffer_index = 0;
+				MiniCDI::Log("[CDIC:DSP] Starting playback at ADPCM buffer 1");
+				AudioController.buffer_index = 1;
 			}
 			else
 			{
-				MiniCDI::Log("[CDIC:Soundmap] Received CPU signal to stop playback");
-				SoundmapUnit.status = 0;
-				SoundmapUnit.buffer_index = 0;
+				MiniCDI::Log("[CDIC:DSP] Stopping playback");
+				AudioController.buffer_index = 0;
+				AudioController.cpu = false;
 			}
 			break;
 
@@ -387,9 +379,7 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 					case 0x24: // Known as "Reset Mode 2" in MAME
 						switch (CMD) {
 							case 0x23: MiniCDI::Log("[CDIC] End disc rotation (0x%02X)", CMD); break;
-							case 0x24: MiniCDI::Log("[CDIC] Stop reading? (0x%02X)", CMD);
-									   touched_disc = false; // This command seems to be issued only at boot so would be safe to reset this bool?
-									   break;
+							case 0x24: MiniCDI::Log("[CDIC] End disc reading? (0x%02X)", CMD); break;
 						}
 
 						// Set disc status to inactive
@@ -443,11 +433,10 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 
 			if (!(value & 0x4000))
 			{
-				MiniCDI::Log("[CDIC] Stop reading by DBUF");
+				MiniCDI::Log("[CDIC] Disc read aborted by DBUF");
 
 				// Reset only the disc read status
 				CdicController = {0};
-				AUDCTL = 0; // per CDi_MiSTer
 			}
 			break;
 	}

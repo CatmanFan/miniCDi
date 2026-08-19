@@ -35,13 +35,11 @@ class CDIC
 	// ****************************
 	AdpcmDecoder ADPCM;
 	struct {
-		size_t status;
-		size_t buffer_index;
+		size_t buffer_index; // 0 = disabled, 1 = 0x2800, 2 = 0x3200
 		int sector_interval;
-		int sector_format; // This is supposed to fill the role of `m_audio_format_sectors` in the MAME driver.
-	} SoundmapUnit; // Implementation based on Green Book
+		bool cpu;
+	} AudioController;
 
-	bool adpcm_decode_and_play(uint8_t *buffer, bool soundmap);
 	void update_soundmap_unit();
 
 	// ****************************
@@ -61,16 +59,13 @@ class CDIC
 	void disc_process_sector();
 
 public:
-	bool touched_disc = false; // This is so that the emulated machine can reset
-
 	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc);
 	~CDIC();
 
 	inline void reset()
 	{
 		CdicController = {0};
-		SoundmapUnit = {0};
-		touched_disc = false;
+		AudioController = {0};
 
 		AUDCTL = 0;
 		ABUF = 0;

@@ -249,10 +249,7 @@ void PhilipsCDI::play_disc()
 
 void PhilipsCDI::swap_disc(const std::string &path)
 {
-	if (cdic != NULL) {
-		if (cdic->touched_disc) reset();
-		else cdic->reset();
-	}
+	if (cdic != NULL) cdic->reset();
 
 	disc.eject();
 	if (!disc.open(path)) return;

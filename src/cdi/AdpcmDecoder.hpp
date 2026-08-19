@@ -44,7 +44,7 @@ public:
 	 *
 	 * @return Whether the sector is valid or not.
 	 */
-	bool decode_sector(uint8_t *buffer, bool soundmap);
+	bool decode_sector(uint8_t *buffer);
 };
 
 #endif

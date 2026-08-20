@@ -91,7 +91,7 @@ In some cases the CD-i machine may not start properly. If this happens try going
 | *Reset emulator*     | SELECT              |
 
 ### Configuration
-The emulation settings can be configured in `config.ini` relative to the emulator's executable (e.g. .exe, .dol, .3dsx, etc).
+The emulation settings can be configured in `config.ini` relative to the emulator's executable (e.g. .exe, .dol, .3dsx, etc). These are compiled courtesy of the [mINI](https://github.com/metayeti/mINI) library.
 
 An example of the default settings:
 ```

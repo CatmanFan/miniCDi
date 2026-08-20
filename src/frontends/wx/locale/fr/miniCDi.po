@@ -33,58 +33,70 @@ msgstr "Choisissez un fichier ROM pour le lecteur."
 msgid "Open disc"
 msgstr "Choisissez un fichier de disque CD-i."
 
-#: ../mainFrame.hpp:138
+#: ../mainFrame.hpp:148
 msgid "&File"
 msgstr "&Fichier"
 
-#: ../mainFrame.hpp:139
+#: ../mainFrame.hpp:149
+msgid "&View"
+msgstr "Afficha&ge"
+
+#: ../mainFrame.hpp:150
 msgid "&Emulation"
 msgstr "&Configuration"
 
-#: ../mainFrame.hpp:140
+#: ../mainFrame.hpp:151
 msgid "&Help"
 msgstr "&Aide"
 
-#: ../mainFrame.hpp:144
+#: ../mainFrame.hpp:155
 msgid "Create &CD-i machine..."
 msgstr "&Créer un lecteur CD-i ..."
 
-#: ../mainFrame.hpp:145
+#: ../mainFrame.hpp:156
 msgid "Open &disc..."
 msgstr "&Ouvrir un fichier disque ..."
 
-#: ../mainFrame.hpp:146
+#: ../mainFrame.hpp:157
 msgid "&Reset"
 msgstr "&Redémarrer le lecteur"
 
-#: ../mainFrame.hpp:147
+#: ../mainFrame.hpp:158
 msgid "Language"
 msgstr "&Langue"
 
-#: ../mainFrame.hpp:148
+#: ../mainFrame.hpp:159
 msgid "E&xit"
 msgstr "&Quitter"
 
-#: ../mainFrame.hpp:150
+#: ../mainFrame.hpp:161
+msgid "Resize to &1x (384x280)"
+msgstr "Ajuster la résolution à &1x (384x280)"
+
+#: ../mainFrame.hpp:162
+msgid "Resize to &2x (768x560)"
+msgstr "Ajuster la résolution à &2x (768x560)"
+
+#: ../mainFrame.hpp:164
 msgid "&Connect test plug"
 msgstr "&Connecter"
 
-#: ../mainFrame.hpp:151
+#: ../mainFrame.hpp:165
 msgid "&Analog colours"
 msgstr "&Analogue"
 
-#: ../mainFrame.hpp:152
+#: ../mainFrame.hpp:166
 msgid "Disable frame &limit"
 msgstr ""
 
-#: ../mainFrame.hpp:153
+#: ../mainFrame.hpp:167
 msgid "Set machine as &NTSC"
 msgstr "Mode vidéo &NTSC"
 
-#: ../mainFrame.hpp:154
+#: ../mainFrame.hpp:168
 msgid "Reset &pointing device"
 msgstr "Réinitialiser la &manette"
 
-#: ../mainFrame.hpp:156
+#: ../mainFrame.hpp:170
 msgid "&About"
 msgstr "À &propos"

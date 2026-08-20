@@ -100,10 +100,6 @@ typedef uint32 uint64;
 #define S64(val) val
 #endif
 
-// #include "softfloat/milieu.h"
-// #include "softfloat/softfloat.h"
-
-
 /* Allow for architectures that don't have 8-bit sizes */
 #if UCHAR_MAX == 0xff
 	#define MAKE_INT_8(A) (sint8)(A)

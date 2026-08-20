@@ -122,6 +122,7 @@ void PhilipsCDI::run(bool no_draw)
 
 	#if MINICDI_CHRONO_ENABLED == 1
 	// Benchmark end
+	// USES FLOAT/FPU!!!
 	const auto t2 = std::chrono::steady_clock::now();
 	const std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
 	#endif

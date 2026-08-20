@@ -62,8 +62,9 @@ void PointingDevice::send_packet()
 			{
 				case PointingDevice::Absolute:
 				{
-					uint16_t x = std::clamp(static_cast<int>((xA / static_cast<float>(MAX_POINTER_X)) * 0x3FF), 0, 0x3FF);
-					uint16_t y = std::clamp(static_cast<int>((yA / static_cast<float>(MAX_POINTER_Y)) * 0x3FF), 0, 0x3FF);
+					// Actual formula is (xA / MAX_POINTER_X) * 0x3FF and (yA / MAX_POINTER_Y) * 0x3FF but has been optimized.
+					uint16_t x = std::clamp((xA * 0x3FF) / MAX_POINTER_X, 0, 0x3FF);
+					uint16_t y = std::clamp((yA * 0x3FF) / MAX_POINTER_Y, 0, 0x3FF);
 
 					// Convert to IKAT response (absolute coordinates)
 					// Data format partially taken from CeDImu.
@@ -142,10 +143,17 @@ void PointingDevice::set_coord(int src_x, int src_y, int src_w, int src_h)
 
 		// Convert to native CD-i highres
 		// Actual formula is (x / w) * 768 and (y / h) * 560 but has been optimized.
-		float xF = static_cast<float>(source_coords.x) / static_cast<float>(source_coords.w) * static_cast<float>(MAX_POINTER_X);
-		float yF = static_cast<float>(source_coords.y) / static_cast<float>(source_coords.h) * static_cast<float>(MAX_POINTER_Y);
-		int x = std::clamp(static_cast<int>(xF), 0, MAX_POINTER_X);
-		int y = std::clamp(static_cast<int>(yF), 0, MAX_POINTER_Y);
+		int x = source_coords.x;
+		int y = source_coords.y;
+
+		x *= 768;
+		y *= 560;
+
+		x /= source_coords.w;
+		y /= source_coords.h;
+
+		if (x > MAX_POINTER_X) x = MAX_POINTER_X; else if (x < 0) x = 0;
+		if (y > MAX_POINTER_Y) y = MAX_POINTER_Y; else if (y < 0) y = 0;
 
 		this->xR = x - xA;
 		this->yR = y - yA;

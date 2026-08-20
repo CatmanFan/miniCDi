@@ -179,7 +179,7 @@ void CDIC::update_soundmap_unit()
 			AudioController.buffer_index = 0;
 			AudioController.cpu = false;
 
-			AUDCTL &= ~0x0800; // reset Playback Start bit
+			AUDCTL &= ~0x0800; // reset Playback Start bit (cdiemu does not unset this bit?)
 			AUDCTL |= 0x0001; // set Playback End bit
 
 			// Trigger ABUF interrupt bit regardless (cdiemu behaviour)
@@ -201,10 +201,8 @@ void CDIC::update_soundmap_unit()
 			if (!(coding & 0b010000)) { AudioController.sector_interval *= 2; } // XA 4bps
 			if (!(coding & 0b000001)) { AudioController.sector_interval *= 2; } // XA Mono
 
-			if (AudioController.cpu)
-				AudioController.buffer_index = AudioController.buffer_index == 1 ? 2 : 1;
-			else
-				AudioController.buffer_index = 0;
+			// Update audio controller struct
+			AudioController.buffer_index = 0;
 
 			// finished playback of single ADPCM buffer. This automatically triggers an IRQ.
 			// If for any reason this interrupt fails to pass, it will break Hotel Mario with its "dirty disc" error.
@@ -340,10 +338,14 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 			{
 				_68070->dma_call(0, 0x300000 + (value & 0x3FFF));
 
-				if (((value & 0x3F00) == 0x2800 || (value & 0x3F00) == 0x3200) && !AudioController.cpu)
+				if ((value & 0x3F00) == 0x2800 || (value & 0x3F00) == 0x3200)
 				{
-					MiniCDI::Log("[CDIC:DSP] Enabling CPU soundmap mode");
-					AudioController.cpu = true;
+					if (!AudioController.cpu)
+					{
+						MiniCDI::Log("[CDIC:DSP] Enabling CPU soundmap mode");
+						AudioController.cpu = true;
+					}
+					AudioController.buffer_index = (value & 0x3F00) == 0x3200 ? 2 : 1;
 				}
 			}
 			break;

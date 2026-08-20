@@ -38,7 +38,7 @@ void BasicDrawPane::e_paintEvent(wxPaintEvent& WXUNUSED(event))
 	{
 		int width, height;
 		wxWindow::GetClientSize(&width, &height);
-		wxBitmap bmp(image.Scale(width, height, wxIMAGE_QUALITY_BILINEAR));
+		wxBitmap bmp(image.Scale(width, height, wxIMAGE_QUALITY_NEAREST));
 		dc.DrawBitmap(bmp, 0, 0);
 	}
 }
@@ -102,6 +102,7 @@ BEGIN_EVENT_TABLE(mainFrame, wxFrame)
 	EVT_MENU(wxID_EXIT, mainFrame::e_exit)
 	EVT_MENU(wxID_ABOUT, mainFrame::e_about)
 	EVT_MENU_RANGE(wxID_LANG_ENGLISH, wxID_LANG_JAPANESE, mainFrame::e_changeLanguage)
+	EVT_MENU_RANGE(wxID_VIEW_RESIZE1X, wxID_VIEW_RESIZE2X, mainFrame::e_resizeView)
 	EVT_MENU_RANGE(wxID_CONFIG_TESTPLUG, wxID_CONFIG_RESETPD, mainFrame::e_toggleEmulationSetting)
 END_EVENT_TABLE()
 
@@ -134,6 +135,13 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 		menuFile->AppendSeparator();
 		menuFile->Append(menuExit);
 
+	wxMenu *menuView = new wxMenu;
+		menuResize1x = new wxMenuItem(menuView, wxID_VIEW_RESIZE1X, " ");
+		menuResize2x = new wxMenuItem(menuView, wxID_VIEW_RESIZE2X, " ");
+
+		menuView->Append(menuResize1x);
+		menuView->Append(menuResize2x);
+
 	wxMenu *menuEmulation = new wxMenu;
 		menuToggleTestPlug = new wxMenuItem(menuEmulation, wxID_CONFIG_TESTPLUG, " ", wxEmptyString, wxITEM_CHECK);
 		menuToggleAnalogColors = new wxMenuItem(menuEmulation, wxID_CONFIG_ANALOGCOLORS, " ", wxEmptyString, wxITEM_CHECK);
@@ -157,6 +165,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	// Create menu bar
 	menuBar = new wxMenuBar;
 	menuBar->Append(menuFile, " ");
+	menuBar->Append(menuView, " ");
 	menuBar->Append(menuEmulation, " ");
 	menuBar->Append(menuHelp, " ");
 	this->SetMenuBar(menuBar);
@@ -205,6 +214,25 @@ void mainFrame::e_changeLanguage(wxCommandEvent &event)
 			this->ReloadLanguage(language.wxCodes[i]);
 			this->Refresh();
 			return;
+		}
+	}
+}
+
+void mainFrame::e_resizeView(wxCommandEvent &event)
+{
+	if (!this->IsMaximized())
+	{
+		int id = event.GetId();
+		switch (id)
+		{
+			default:
+			case wxID_VIEW_RESIZE1X:
+				this->SetClientSize(384, 280);
+				break;
+
+			case wxID_VIEW_RESIZE2X:
+				this->SetClientSize(768, 560);
+				break;
 		}
 	}
 }
@@ -295,7 +323,7 @@ void mainFrame::e_openDisc(wxCommandEvent& WXUNUSED(event))
 
 void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 {
-	if (cdi != NULL)
+	if (cdi != NULL && this->IsActive())
 	{
 		#ifdef CONTROL_MOUSE_ONLY
 

@@ -22,6 +22,7 @@ namespace miniCDi
 		void e_openSystemROM(wxCommandEvent &event);
 		void e_openDisc(wxCommandEvent &event);
 		void e_changeLanguage(wxCommandEvent &event);
+		void e_resizeView(wxCommandEvent &event);
 		void e_toggleEmulationSetting(wxCommandEvent &event);
 		void e_about(wxCommandEvent &event);
 		void e_reset(wxCommandEvent &event);
@@ -34,6 +35,8 @@ namespace miniCDi
 			wxID_OPEN_ROM,
 			wxID_OPEN_DISC,
 			wxID_RESET_MACHINE,
+			wxID_VIEW_RESIZE1X,
+			wxID_VIEW_RESIZE2X,
 			wxID_CONFIG_TESTPLUG,
 			wxID_CONFIG_ANALOGCOLORS,
 			wxID_CONFIG_NOFRAMELIMIT,
@@ -54,6 +57,9 @@ namespace miniCDi
 		wxMenuItem *menuOpenDisc;
 		wxMenuItem *menuReset;
 		wxMenuItem *menuExit;
+		// View
+		wxMenuItem *menuResize1x;
+		wxMenuItem *menuResize2x;
 		// Emulation
 		wxMenuItem *menuToggleTestPlug;
 		wxMenuItem *menuToggleAnalogColors;
@@ -140,8 +146,9 @@ namespace miniCDi
 			if (menuBar != NULL)
 			{
 				menuBar->SetMenuLabel(0, _("&File"));
-				menuBar->SetMenuLabel(1, _("&Emulation"));
-				menuBar->SetMenuLabel(2, _("&Help"));
+				menuBar->SetMenuLabel(1, _("&View"));
+				menuBar->SetMenuLabel(2, _("&Emulation"));
+				menuBar->SetMenuLabel(3, _("&Help"));
 			}
 
 			// File
@@ -150,6 +157,9 @@ namespace miniCDi
 			menuReset->SetItemLabel(wxString(_("&Reset")) + wxT('\t') + wxT("F1"));
 			menuLanguageItem->SetItemLabel(wxString(_("Language")));
 			menuExit->SetItemLabel(wxString(_("E&xit")) + wxT('\t') + wxT("Alt+F4"));
+			// View
+			menuResize1x->SetItemLabel(wxString(_("Resize to &1x (384x280)")));
+			menuResize2x->SetItemLabel(wxString(_("Resize to &2x (768x560)")));
 			// Emulation
 			menuToggleTestPlug->SetItemLabel(wxString(_("&Connect test plug")));
 			menuToggleAnalogColors->SetItemLabel(wxString(_("&Analog colours")));

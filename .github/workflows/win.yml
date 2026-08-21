@@ -65,8 +65,8 @@ jobs:
         mkdir -p pkg/win/lang/fr
         mkdir -p pkg/win/lang/ja
         cp ./build/miniCDi.exe ./pkg/win/miniCDi.exe
-        cp ./src/frontends/wx/locale/fr.mo ./pkg/win/lang/fr/miniCDi.mo
-        cp ./src/frontends/wx/locale/ja.mo ./pkg/win/lang/ja/miniCDi.mo
+        cp ./src/frontends/wx/locale/fr/miniCDi.mo ./pkg/win/lang/fr/miniCDi.mo
+        cp ./src/frontends/wx/locale/ja/miniCDi.mo ./pkg/win/lang/ja/miniCDi.mo
     
     - name: Upload artifact
       uses: actions/upload-artifact@v7

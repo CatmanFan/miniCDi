@@ -94,7 +94,7 @@ msgid "Set machine as &NTSC"
 msgstr "NTSC方式(&N)"
 
 #: ../mainFrame.hpp:168
-msgid "Reset &pointing device"
+msgid "&Reset pointing device"
 msgstr "ゲームコントローラをリセット(&C)"
 
 #: ../mainFrame.hpp:170

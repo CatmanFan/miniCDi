@@ -45,7 +45,7 @@ class SCC68070
 		uint8_t CPR = 0;
 	} DMA[2];
 
-	void uart_log_tx();
+	void uart_tx_log_line();
 	void dma_call(size_t index, uint32_t start_address);
 
 	/** I²C **/

@@ -7,6 +7,7 @@ namespace MiniCDI
 	namespace Config
 	{
 		bool TestPlug = false;
+		bool PCB_LLTest = false;
 		bool PAL = true;
 		bool ShowFPS = false;
 		bool ShowFTD = false;

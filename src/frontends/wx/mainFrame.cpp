@@ -144,6 +144,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 
 	wxMenu *menuEmulation = new wxMenu;
 		menuToggleTestPlug = new wxMenuItem(menuEmulation, wxID_CONFIG_TESTPLUG, " ", wxEmptyString, wxITEM_CHECK);
+		menuToggleLLTest = new wxMenuItem(menuEmulation, wxID_CONFIG_LLTEST, " ", wxEmptyString, wxITEM_CHECK);
 		menuToggleAnalogColors = new wxMenuItem(menuEmulation, wxID_CONFIG_ANALOGCOLORS, " ", wxEmptyString, wxITEM_CHECK);
 		menuToggleNoFrameLimit = new wxMenuItem(menuEmulation, wxID_CONFIG_NOFRAMELIMIT, " ", wxEmptyString, wxITEM_CHECK);
 		menuToggleNTSC = new wxMenuItem(menuEmulation, wxID_CONFIG_NTSC, " ", wxEmptyString, wxITEM_CHECK);
@@ -152,8 +153,9 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 		menuEmulation->Append(menuResetPD);
 		menuEmulation->AppendSeparator();
 		menuEmulation->Append(menuToggleTestPlug);
-		menuEmulation->Append(menuToggleNTSC);
+		menuEmulation->Append(menuToggleLLTest);
 		menuEmulation->AppendSeparator();
+		menuEmulation->Append(menuToggleNTSC);
 		menuEmulation->Append(menuToggleAnalogColors);
 		menuEmulation->AppendSeparator();
 		menuEmulation->Append(menuToggleNoFrameLimit);
@@ -183,6 +185,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	menuResetPD->Enable(false);
 
 	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
+	menuToggleLLTest->Check(MiniCDI::Config::PCB_LLTest);
 	menuToggleAnalogColors->Check(MiniCDI::Config::AnalogColors);
 	menuToggleNoFrameLimit->Check(MiniCDI::Config::NoFrameLimit);
 	menuToggleNTSC->Check(!MiniCDI::Config::PAL);
@@ -248,6 +251,11 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 			statusBar->SetStatusText(wxString::Format("Test plug %s", MiniCDI::Config::TestPlug ? "connected" : "disconnected"));
 			break;
 
+		case wxID_CONFIG_LLTEST:
+			MiniCDI::Config::PCB_LLTest = !MiniCDI::Config::PCB_LLTest;
+			statusBar->SetStatusText(wxString::Format("%s PCB low-level test on boot", MiniCDI::Config::PCB_LLTest ? "Enabled" : "Disabled"));
+			break;
+
 		case wxID_CONFIG_NTSC:
 			if (cdi != NULL)
 			{
@@ -279,6 +287,7 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 	}
 
 	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
+	menuToggleLLTest->Check(MiniCDI::Config::PCB_LLTest);
 	menuToggleAnalogColors->Check(MiniCDI::Config::AnalogColors);
 	menuToggleNoFrameLimit->Check(MiniCDI::Config::NoFrameLimit);
 	menuToggleNTSC->Check(!MiniCDI::Config::PAL);

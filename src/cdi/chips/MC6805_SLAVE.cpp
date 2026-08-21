@@ -197,21 +197,22 @@ void SLAVE::write8(uint32_t addr, uint8_t value)
 									Ch[c].Out = { 0xB1, 0x00, 0x00, 0x00 }; // use response data from MAME
 									assert_irq(c);
 									break;
+								case 0x80:
+									MiniCDI::Log("[SLAVE] DUMMY: Set unknown memory (0x%02X)", value);
+									break;
+								case 0x81:
+									MiniCDI::Log("[SLAVE] DUMMY: Unset unknown memory (0x%02X)", value);
+									break;
 							}
 							Ch[c].In.clear();
 							Ch[c].InSize = 0;
 						}
 						break;
 
-					/** Disc Status **/
 					case 0xB0:
-						if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
-							Ch[c].InSize = 4;
-						}
-						break;
-
-					/** Disc Base **/
 					case 0xB1:
+					case 0x80:
+					case 0x81:
 						if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
 							Ch[c].InSize = 4;
 						}
@@ -246,15 +247,16 @@ void SLAVE::write8(uint32_t addr, uint8_t value)
 						// assert_irq(2); // interrupt not required on MAME ?
 						break;
 
-					/** Enable Polling **/
 					case 0xF7:
-						MiniCDI::Log("[SLAVE] enable polling data (0x%02X)", value);
+						MiniCDI::Log("[SLAVE] DUMMY: Arm developer mode? (0x%02X)", value);
 						break;
 
-					/** Enable X-Bus **/
+					case 0xFE:
+						MiniCDI::Log("[SLAVE] DUMMY: Disarm developer mode? (0x%02X)", value);
+						break;
+
 					case 0xFA:
-						MiniCDI::Log("[SLAVE] enable X-Bus (0x%02X)", value);
-						// TO-DO
+						MiniCDI::Log("[SLAVE] DUMMY: Enable X-Bus (0x%02X)", value);
 						break;
 				}
 				break;

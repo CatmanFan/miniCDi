@@ -6,6 +6,7 @@ namespace MiniCDI
 	namespace Config
 	{
 		extern bool TestPlug; // enables service menu
+		extern bool PCB_LLTest;
 		extern bool PAL;
 		extern bool ShowFPS;
 		extern bool ShowFTD;

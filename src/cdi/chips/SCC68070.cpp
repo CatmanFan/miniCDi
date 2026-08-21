@@ -1,6 +1,8 @@
 #include "cdi/common.hpp"
 
-void SCC68070::uart_log_tx()
+static bool UART_RX_reset = false;
+
+void SCC68070::uart_tx_log_line()
 {
 	if (UART_T.chars.size() > 0)
 	{
@@ -220,7 +222,8 @@ void SCC68070::reset_internal()
 	UCS = 0x08; // unused bit
 	UCR = 0x80; // unused bit
 	UART_T.HR = UART_T.clock = 0;
-	uart_log_tx();
+	UART_RX_reset = true;
+	uart_tx_log_line();
 	URH = 0;
 
 	PICR[0] = PICR[1] = 0;
@@ -276,7 +279,9 @@ uint8_t SCC68070::read8(uint32_t addr)
 		case 0x80002015: return UCS | 0x08;
 		case 0x80002017: return UCR | 0x80;
 		case 0x80002019: return UART_T.HR;
-		case 0x8000201B: if (URH) USR |= 0x01; else USR &= ~(0x01); return URH;
+		case 0x8000201B: if (MiniCDI::Config::PCB_LLTest && UART_RX_reset) { URH = 0x06; UART_RX_reset = false; }
+						 MiniCDI::Log("[SCC68070:UART_RX] read %02X", URH);
+						 if (URH) USR |= 0x01; else USR &= ~(0x01); return URH;
 
 		/** I²C **/
 		case 0x80002001: return IDR;
@@ -368,25 +373,27 @@ void SCC68070::write8(uint32_t addr, uint8_t value)
 				case 0x20: // reset receiver
 					MiniCDI::Log("[SCC68070:UART] UCR %02X (reset URH)", value);
 					URH = 0;
-					UCR &= ~0x03; // reset RxD control
+					UCR &= 0xF0; // reset TxD control + RxD control
 					break;
 				case 0x30: // reset transmitter
 					MiniCDI::Log("[SCC68070:UART] UCR %02X (reset UTH)", value);
 					UART_T.HR = 0;
 					UART_T.chars.clear();
-					USR |= 0x08; // set TXE
-					UCR &= ~0x0C; // reset TxD control
+					USR |= 0x0C; // set TXE+TXRDY
+					UCR &= 0xF0; // reset TxD control + RxD control
 					break;
 				case 0x40: // reset error status
 					MiniCDI::Log("[SCC68070:UART] UCR %02X (reset error)", value);
-					USR &= 0x0F;
+					USR &= 0x0F; // reset error bits in USR 7:4
+					UCR &= 0xF0; // reset TxD control + RxD control
 					break;
 			}
 			break;
 		case 0x80002019: UART_T.HR = value;
 			USR &= ~0x08; // unset TXE
+			USR &= ~0x04; // unset TXRDY
 			if (value == '\n' || value == '\0')
-				uart_log_tx();
+				uart_tx_log_line();
 			else
 				UART_T.chars.push_back(value);
 			break;
@@ -467,18 +474,20 @@ void SCC68070::timer0_tick()
 void SCC68070::uart_tx_tick()
 {
 	if ((UCR & 0b1100) != 0b0100) return;
-	USR |= 0x04; // set TXRDY
-	interrupt(SCC68070::IPL_UART_TX, true);
 
 	if (UART_T.chars.size() > 0)
 	{
+		// if ((UMR & 0x10) && transmit_ctsn) return; // PSEUDOCODE!!!
+
 		//MiniCDI::Log("[SCC68070:UART] transferring %02X", UART_T.chars[0]);
 		UART_T.HR = UART_T.chars[0];
+		USR |= 0x04; // set TXRDY
+		interrupt(SCC68070::IPL_UART_TX, true);
 	}
 
 	if (UART_T.chars.size() == 0)
 	{
-		USR |= 0x08; // set TXE
+		USR |= 0x0C; // set TXE+TXRDY
 	}
 }
 

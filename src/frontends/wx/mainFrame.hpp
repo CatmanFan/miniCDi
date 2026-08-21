@@ -38,6 +38,7 @@ namespace miniCDi
 			wxID_VIEW_RESIZE1X,
 			wxID_VIEW_RESIZE2X,
 			wxID_CONFIG_TESTPLUG,
+			wxID_CONFIG_LLTEST,
 			wxID_CONFIG_ANALOGCOLORS,
 			wxID_CONFIG_NOFRAMELIMIT,
 			wxID_CONFIG_NTSC,
@@ -62,6 +63,7 @@ namespace miniCDi
 		wxMenuItem *menuResize2x;
 		// Emulation
 		wxMenuItem *menuToggleTestPlug;
+		wxMenuItem *menuToggleLLTest;
 		wxMenuItem *menuToggleAnalogColors;
 		wxMenuItem *menuToggleNoFrameLimit;
 		wxMenuItem *menuToggleNTSC;
@@ -162,10 +164,11 @@ namespace miniCDi
 			menuResize2x->SetItemLabel(wxString(_("Resize to &2x (768x560)")));
 			// Emulation
 			menuToggleTestPlug->SetItemLabel(wxString(_("&Connect test plug")));
+			menuToggleLLTest->SetItemLabel(wxString(_("Enable &PCB low-level test")));
 			menuToggleAnalogColors->SetItemLabel(wxString(_("&Analog colours")));
 			menuToggleNoFrameLimit->SetItemLabel(wxString(_("Disable frame &limit")));
 			menuToggleNTSC->SetItemLabel(wxString(_("Set machine as &NTSC")));
-			menuResetPD->SetItemLabel(wxString(_("Reset &pointing device")));
+			menuResetPD->SetItemLabel(wxString(_("&Reset pointing device")));
 			// Help
 			menuAbout->SetItemLabel(wxString(_("&About")));
 

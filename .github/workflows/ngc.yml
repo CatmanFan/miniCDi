@@ -17,7 +17,7 @@ jobs:
   build-ngc:
     name: Build (Nintendo GameCube)
     runs-on: ubuntu-latest
-    container: devkitpro/devkitppc:latest
+    container: ghcr.io/extremscorner/libogc2:latest
     
     steps:
     - name: Checkout code
@@ -42,10 +42,10 @@ jobs:
       run: mkdir -p build
     
     - name: Configure with CMake
-      run: /opt/devkitpro/portlibs/gamecube/bin/powerpc-eabi-cmake -S. -B build
+      run: /opt/devkitpro/libogc2/gamecube/bin/powerpc-eabi-cmake -S. -B build
     
     - name: Build
-      run: /opt/devkitpro/portlibs/gamecube/bin/powerpc-eabi-cmake --build build
+      run: /opt/devkitpro/libogc2/gamecube/bin/powerpc-eabi-cmake --build build
     
     - name: Prepare structure
       run: |

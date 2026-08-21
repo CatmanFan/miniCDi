@@ -1,10 +1,10 @@
 #include "cdi/common.hpp"
 #ifndef MINICDI_CHRONO_ENABLED
 #define MINICDI_CHRONO_ENABLED (!defined(MINICDI_DISABLE_THROTTLING) && (defined(MINICDI_BENCHMARKING) \
+																	  /* || defined(HW_RVL) */ \
+																	  /* || defined(__WIIU__) */ \
 																	  || defined(_WIN32) \
-																	  || defined(__APPLE__) \
-																	  || defined(HW_RVL) \
-																	  || defined(__WIIU__)))
+																	  || defined(__APPLE__)))
 #endif
 
 #define USE_WHILE_TRUE_LOOP
@@ -159,13 +159,10 @@ void PhilipsCDI::run(bool no_draw)
 	MiniCDI::Log("[CDI] %s frame in %d ns", no_draw ? "Executed" : "Executed and drawn", t_duration.count());
 	#endif
 
-	#ifdef MINICDI_NO_THROTTLING
-	return;
-	#endif
-
 	// Throttling
+	if (MiniCDI::Config::NoFrameLimit) return;
 	#if MINICDI_CHRONO_ENABLED == 1 && (defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
-	if (t_duration.count() < 16'666'667 && !MiniCDI::Config::NoFrameLimit) {
+	if (t_duration.count() < 16'666'667) {
 		const int wait_ms = 16'666'667 - t_duration.count();
 		std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ms));
 	}

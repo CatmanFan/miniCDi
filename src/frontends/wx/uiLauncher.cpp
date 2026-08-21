@@ -1,6 +1,10 @@
 #include <SDL2/SDL.h>
 #include "uiLauncher.hpp"
 
+#ifdef _WIN32
+#pragma message "WIN32 macro is enabled"
+#endif
+
 using namespace miniCDi;
 
 wxIMPLEMENT_APP(uiLauncher);

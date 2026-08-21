@@ -69,9 +69,6 @@ public:
 		{
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
 
-			#ifdef MINICDI_NATIVERES
-			SDL_Rect dest = {1920/2-384,1080/2-280, 384*2,280*2};
-			#else
 			SDL_Rect dest =
 			{
 				MiniCDI::Config::PAL ? 219 : 96,
@@ -79,7 +76,6 @@ public:
 				MiniCDI::Config::PAL ? 1481 : 1728,
 				MiniCDI::Config::PAL ? 1080 : 1260
 			};
-			#endif
 			SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 		}
 	}

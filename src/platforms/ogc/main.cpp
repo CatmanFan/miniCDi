@@ -69,12 +69,7 @@ public:
 
 			// Draw screen
 			SDL_UpdateTexture(this->texture, NULL, display_output, width*sizeof(uint32_t));
-			#ifdef MINICDI_NATIVERES
-			SDL_Rect dest = {320-((width/2)/2), 100, width/2, 280};
-			SDL_RenderCopy(this->renderer, this->texture, NULL, &dest);
-			#else
 			SDL_RenderCopy(this->renderer, this->texture, NULL, NULL);
-			#endif
 		}
 	}
 

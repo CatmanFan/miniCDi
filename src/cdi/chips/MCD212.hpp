@@ -6,10 +6,6 @@
   Sourced from official documentation of MCD212 by Motorola.
  *****/
 
-#define MCD212_VSYNC_LINES		(FD ? 262 : 312)
-#define MCD212_HSYNC_CYCLES		(CF ? 120 : 112)
-#define MCD212_INACTIVE_VLINES	(FD ? 262 - 240 : ST ? 312 - 240 : 312 - 280)
-
 class MCD212
 {
 	SCC68070* _68070;

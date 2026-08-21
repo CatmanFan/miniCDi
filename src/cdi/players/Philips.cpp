@@ -1,15 +1,13 @@
 #include "cdi/common.hpp"
 #ifndef MINICDI_CHRONO_ENABLED
-	// #define MINICDI_CHRONO_ENABLED (defined(MINICDI_BENCHMARKING) || defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
-	#define MINICDI_CHRONO_ENABLED (defined(MINICDI_BENCHMARKING) || defined(_WIN32) || defined(__APPLE__))
-	#if defined(HW_DOL) || defined(HW_RVL)
-		#define MINICDI_CHRONO_TIME 6
-	#elif defined(__WIIU__)
-		#define MINICDI_CHRONO_TIME 12
-	#else
-		#define MINICDI_CHRONO_TIME 16.666667f
-	#endif
+#define MINICDI_CHRONO_ENABLED (!defined(MINICDI_DISABLE_THROTTLING) && (defined(MINICDI_BENCHMARKING) \
+																	  || defined(_WIN32) \
+																	  || defined(__APPLE__) \
+																	  || defined(HW_RVL) \
+																	  || defined(__WIIU__)))
 #endif
+
+#define USE_WHILE_TRUE_LOOP
 
 #if MINICDI_CHRONO_ENABLED == 1
 #include <chrono>
@@ -24,7 +22,7 @@
 #define TIMER 3
 #define PD 4
 
-#define EVENTS_USED 4
+#define EVENTS_USED 3
 #define EVENTS_TOTAL 5
 
 static int event_rates[EVENTS_TOTAL] =
@@ -61,11 +59,18 @@ void PhilipsCDI::run(bool no_draw)
 	MiniCDI::OS9::scan_modules(memory);
 	#endif
 
+	#ifdef USE_WHILE_TRUE_LOOP
 	while (1)
+	#else
+	for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
+	#endif
 	{
 		// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
 		// On embedded consoles this also affects the speed of the emulator.
 		const int cycles = std::min({
+		#if (TIMER >= EVENTS_USED)
+			240,
+		#endif
 		#if (EVENTS_USED >= 5)
 			event_rates[0],
 			event_rates[1],
@@ -88,9 +93,13 @@ void PhilipsCDI::run(bool no_draw)
 		});
 
 		#if (TIMER >= EVENTS_USED)
+			#pragma message "note: Timer0 not included in scheduler (Philips.cpp)"
 			cpu.run(cycles, true);
 		#else
 			cpu.run(cycles, false);
+		#endif
+		#ifndef USE_WHILE_TRUE_LOOP
+			total_cycles += cycles;
 		#endif
 
 		for (int i = 0; i < EVENTS_USED; i++)
@@ -142,13 +151,12 @@ void PhilipsCDI::run(bool no_draw)
 
 	#if MINICDI_CHRONO_ENABLED == 1
 	// Benchmark end
-	// USES FLOAT/FPU!!!
 	const auto t2 = std::chrono::steady_clock::now();
-	const std::chrono::duration<double, std::milli> fp_ms = t2 - t1;
+	const std::chrono::duration<uint_fast32_t, std::nano> t_duration = t2 - t1;
 	#endif
 
 	#if MINICDI_CHRONO_ENABLED == 1 && defined(MINICDI_BENCHMARKING)
-	MiniCDI::Log("[CDI] %s frame in %.2f ms", no_draw ? "Executed" : "Executed and drawn", fp_ms.count());
+	MiniCDI::Log("[CDI] %s frame in %d ns", no_draw ? "Executed" : "Executed and drawn", t_duration.count());
 	#endif
 
 	#ifdef MINICDI_NO_THROTTLING
@@ -157,9 +165,9 @@ void PhilipsCDI::run(bool no_draw)
 
 	// Throttling
 	#if MINICDI_CHRONO_ENABLED == 1 && (defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
-	if (fp_ms.count() < MINICDI_CHRONO_TIME && !MiniCDI::Config::NoFrameLimit) {
-		const int wait_ms = static_cast<int>(MINICDI_CHRONO_TIME - fp_ms.count());
-		std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+	if (t_duration.count() < 16'666'667 && !MiniCDI::Config::NoFrameLimit) {
+		const int wait_ms = 16'666'667 - t_duration.count();
+		std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ms));
 	}
 	#endif
 }

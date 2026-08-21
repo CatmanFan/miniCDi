@@ -5,6 +5,7 @@
 #endif
 
 #define SAMPLE_COUNT 448
+#define MAX_SAMPLE_QUEUE 32000
 
 CDIC::CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), AudioController({0}), disc(disc), CdicController({0})
 {
@@ -190,7 +191,7 @@ void CDIC::update_soundmap_unit()
 		else if ((AUDCTL & 0x0800) && ADPCM.decode_sector(&memory[AudioController.buffer_index == 2 ? 0x303200 : 0x302800]))
 		{
 			#if MINICDI_AUDIO==1 /* SDL2 */
-			if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < 50000)
+			if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < MAX_SAMPLE_QUEUE)
 				SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output_size * sizeof(int16_t));
 			#endif
 

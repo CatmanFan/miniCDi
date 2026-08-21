@@ -477,8 +477,6 @@ void SCC68070::uart_tx_tick()
 
 	if (UART_T.chars.size() > 0)
 	{
-		// if ((UMR & 0x10) && transmit_ctsn) return; // PSEUDOCODE!!!
-
 		//MiniCDI::Log("[SCC68070:UART] transferring %02X", UART_T.chars[0]);
 		UART_T.HR = UART_T.chars[0];
 		USR |= 0x04; // set TXRDY

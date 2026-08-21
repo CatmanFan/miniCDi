@@ -36,7 +36,7 @@ jobs:
           fi
         done
         
-        dkp-pacman -S --needed --noconfirm wii-sdl2 wii-sdl2_image
+        dkp-pacman -S --needed --noconfirm wii-sdl2
     
     - name: Create build directory
       run: mkdir -p build

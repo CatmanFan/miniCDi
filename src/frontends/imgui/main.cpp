@@ -43,11 +43,11 @@ const std::string roms_directory = (wiiu_sd_prefix + "wiiu/apps/miniCDi/rom/");
 #ifdef __WIIU__
 const std::string config_path = (wiiu_sd_prefix + "wiiu/apps/miniCDi/config.ini");
 const std::string log_path = (wiiu_sd_prefix + "wiiu/apps/miniCDi/log.txt");
-#define USE_CONFIG
+// #define USE_CONFIG
 #endif
 
 #ifdef USE_CONFIG
-#include "../common/mINI.hpp"
+#include "../../platforms/common/mINI.hpp"
 #endif
 
 static PhilipsCDI* philips_player = NULL;

@@ -21,16 +21,18 @@
 #define SECTOR 0
 #define VPU 1
 #define UART_TX 2
-#define PD 3
+#define TIMER 3
+#define PD 4
 
-#define EVENTS_USED 3
-#define EVENTS_TOTAL 4
+#define EVENTS_USED 4
+#define EVENTS_TOTAL 5
 
 static int event_rates[EVENTS_TOTAL] =
 {
 	/* SECTOR */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
 	/* VPU */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
 	/* UART_TX */ 4915200,
+	/* TIMER */ 96*2,
 	/* PD */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30
 };
 
@@ -39,6 +41,7 @@ static int event_cycles[EVENTS_TOTAL] =
 	event_rates[SECTOR],
 	event_rates[VPU],
 	event_rates[UART_TX],
+	event_rates[TIMER],
 	event_rates[PD]
 };
 
@@ -62,8 +65,14 @@ void PhilipsCDI::run(bool no_draw)
 	{
 		// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
 		// On embedded consoles this also affects the speed of the emulator.
-		const int cycles = std::min({192,
-		#if (EVENTS_USED >= 4)
+		const int cycles = std::min({
+		#if (EVENTS_USED >= 5)
+			event_rates[0],
+			event_rates[1],
+			event_rates[2],
+			event_rates[3],
+			event_rates[4]
+		#elif (EVENTS_USED == 4)
 			event_rates[0],
 			event_rates[1],
 			event_rates[2],
@@ -77,7 +86,12 @@ void PhilipsCDI::run(bool no_draw)
 			event_rates[1]
 		#endif
 		});
-		cpu.run(cycles);
+
+		#if (TIMER >= EVENTS_USED)
+			cpu.run(cycles, true);
+		#else
+			cpu.run(cycles, false);
+		#endif
 
 		for (int i = 0; i < EVENTS_USED; i++)
 		{
@@ -99,6 +113,12 @@ void PhilipsCDI::run(bool no_draw)
 						vpu->skip_draw = no_draw;
 						if (vpu->tick()) goto frame_end;
 						break;
+
+					#if (TIMER < EVENTS_USED)
+					case TIMER:
+						cpu.timer0_tick();
+						break;
+					#endif
 
 					#if (UART_TX < EVENTS_USED)
 					case UART_TX:

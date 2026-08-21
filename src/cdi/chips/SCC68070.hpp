@@ -103,7 +103,7 @@ public:
 	uint8_t read8(uint32_t addr);
 	void write8(uint32_t addr, uint8_t value);
 
-	void run(int cycles);
+	void run(int cycles, bool use_timer0);
 	void timer0_tick();
 	void uart_tx_tick();
 };

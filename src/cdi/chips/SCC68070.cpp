@@ -482,7 +482,7 @@ void SCC68070::uart_tx_tick()
 	}
 }
 
-void SCC68070::run(int cycles)
+void SCC68070::run(int cycles, bool use_timer0)
 {
 	#ifdef MINICDI_DEBUG_CPU
 	// Print disassembly to log
@@ -495,6 +495,8 @@ void SCC68070::run(int cycles)
 
 	// Execute CPU
 	m68k_execute(cycles);
+
+	if (!use_timer0) return;
 
 	// Step timer for however many multiples of the Timer0 cycle rate.
 	#define T0_CYCLE_RATE 96

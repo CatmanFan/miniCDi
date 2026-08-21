@@ -173,7 +173,7 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	// Create panel
 	mainPanel = new BasicDrawPane(this);
 	mainPanel->SetBackgroundColour(wxColour(128, 128, 128));
-	// statusBar = this->CreateStatusBar(1, wxSTB_SIZEGRIP, wxID_ANY);
+	statusBar = this->CreateStatusBar(1, wxSTB_SIZEGRIP, wxID_ANY);
 
 	wxIcon icon(app_icon_xpm);
 	SetIcon(icon);
@@ -201,6 +201,7 @@ mainFrame::~mainFrame()
 void mainFrame::e_reset(wxCommandEvent& WXUNUSED(event))
 {
 	if (cdi != NULL) {
+		statusBar->SetStatusText("Reset");
 		cdi->reset();
 	}
 }
@@ -244,6 +245,7 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 	{
 		case wxID_CONFIG_TESTPLUG:
 			MiniCDI::Config::TestPlug = !MiniCDI::Config::TestPlug;
+			statusBar->SetStatusText(wxString::Format("Test plug %s", MiniCDI::Config::TestPlug ? "connected" : "disconnected"));
 			break;
 
 		case wxID_CONFIG_NTSC:
@@ -252,6 +254,7 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 				if (wxMessageBox(_("This will reset the CD-i player. Any unsaved data will be lost.\nContinue anyway?"), _("Are you sure?"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
 				{
 					MiniCDI::Config::PAL = !MiniCDI::Config::PAL;
+					statusBar->SetStatusText("Reset");
 					cdi->reset();
 				}
 			}
@@ -267,6 +270,7 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 
 		case wxID_CONFIG_NOFRAMELIMIT:
 			MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
+			statusBar->SetStatusText(wxString::Format("Frame throttling %s", MiniCDI::Config::NoFrameLimit ? "disabled" : "enabled"));
 			break;
 
 		case wxID_CONFIG_RESETPD:
@@ -308,8 +312,7 @@ void mainFrame::e_openSystemROM(wxCommandEvent& WXUNUSED(event))
 		if (menuResetPD) menuResetPD->Enable(true);
 
 		MiniCDI::Config::PointerAdvance = 3;
-		cdi->pd.set_button(PointingDevice::Button1, false);
-		cdi->pd.set_button(PointingDevice::Button2, false);
+		statusBar->SetStatusText(wxString::Format("Loaded from %s.rom", rom.stem().c_str()));
 	}
 }
 
@@ -318,7 +321,10 @@ void mainFrame::e_openDisc(wxCommandEvent& WXUNUSED(event))
 	wxFileDialog openFileDialog(this, _("Open disc"), "", "", "Binary (*.bin)|*.bin", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 
 	if (openFileDialog.ShowModal() == wxID_OK && cdi != NULL)
+	{
 		cdi->swap_disc(openFileDialog.GetPath());
+		statusBar->SetStatusText(wxString::Format("Inserted disc %s", openFileDialog.GetPath().mb_str()));
+	}
 }
 
 void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))

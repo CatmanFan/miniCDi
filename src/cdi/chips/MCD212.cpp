@@ -560,11 +560,11 @@ void MCD212::dcp_set(uint32_t value)
 template <size_t Path>
 void MCD212::ICA_execute()
 {
-	uint32_t addr = SM && !PA ? (Path ? 0x200404 : 0x404) : (Path ? 0x200400 : 0x400);
+	uint_fast32_t addr = SM && !PA ? (Path ? 0x200404 : 0x404) : (Path ? 0x200400 : 0x400);
 
 	for (int i = 0; i < MCD212_HSYNC_CYCLES * MCD212_INACTIVE_VLINES; i++)
 	{
-		uint32_t inst = (memory[addr] << 24) | (memory[addr+1] << 16) | (memory[addr+2] << 8) | memory[addr+3];
+		uint_fast32_t inst = (memory[addr] << 24) | (memory[addr+1] << 16) | (memory[addr+2] << 8) | memory[addr+3];
 		addr += 4;
 
 		switch (inst >> 24 & 0xFF)
@@ -628,7 +628,7 @@ void MCD212::DCA_execute()
 {
 	for (int i = 0; i < (CF ? 16 : 8); i++)
 	{
-		uint32_t inst = (memory[DCP[Path]] << 24) | (memory[DCP[Path]+1] << 16) | (memory[DCP[Path]+2] << 8) | memory[DCP[Path]+3];
+		uint_fast32_t inst = (memory[DCP[Path]] << 24) | (memory[DCP[Path]+1] << 16) | (memory[DCP[Path]+2] << 8) | memory[DCP[Path]+3];
 		DCP[Path] += 4;
 
 		switch (inst >> 24 & 0xFF)

@@ -166,16 +166,34 @@ class MCD212
 		} DYUVDecoder;
 
 		template <size_t Path> bool isTransparent(uint8_t* src, bool second = false);
-		template <size_t Path> uint32_t decodeDYUV(uint8_t* src, uint32_t *dst);
-		template <size_t Path> uint32_t decodeRGB555(uint8_t* src, uint32_t *dst);
 
 		/**
-		 * @brief  Decodes CLUT to an RGB pixel.
+		 * @brief  Decodes DYUV to an RGBA8 pixel.
 		 *
 		 * @param  src:  pointer to the VSR buffer
 		 * @param  dst:  pointer to the uint32_t pixel
 		 *
-		 * @return The number of RGB pixels incremented
+		 * @return The number of RGBA8 pixels incremented
+		 */
+		template <size_t Path> uint32_t decodeDYUV(uint8_t* src, uint32_t *dst);
+
+		/**
+		 * @brief  Decodes RGB555 to an RGBA8 pixel.
+		 *
+		 * @param  src:  pointer to the VSR buffer
+		 * @param  dst:  pointer to the uint32_t pixel
+		 *
+		 * @return The number of RGBA8 pixels incremented
+		 */
+		template <size_t Path> uint32_t decodeRGB555(uint8_t* src, uint32_t *dst);
+
+		/**
+		 * @brief  Decodes CLUT to an RGBA8 pixel.
+		 *
+		 * @param  src:  pointer to the VSR buffer
+		 * @param  dst:  pointer to the uint32_t pixel
+		 *
+		 * @return The number of RGBA8 pixels incremented
 		 */
 		template <size_t Path> uint32_t decodeCLUT(uint8_t* src, uint32_t *dst);
 		template <size_t Path> uint8_t getCLUTindex(uint8_t* src, bool second = false);

@@ -17,12 +17,14 @@
 #include "libgui/Gui.h"
 #include "drivers/Platform.h"
 #include "menu.h"
-#include "demo.h"
+#include "application.h"
 #include "filelist.h"
 #include "filebrowser.h"
 
 #define THREAD_SLEEP 100
 
+static GuiImageData * banner;
+static GuiImage * bannerImg = nullptr;
 static GuiImageData * pointer[4];
 static GuiImage * bgImg = nullptr;
 static GuiSound * bgMusic = nullptr;
@@ -77,6 +79,7 @@ WindowPrompt(const char *title, const char *msg, const char *btn1Label, const ch
 	promptWindow.setAlignment(ALIGN_H::CENTRE, ALIGN_V::MIDDLE);
 	promptWindow.setPosition(0, -10);
 	GuiSound btnSoundOver(button_over_pcm, button_over_pcm_size, SOUND::PCM);
+	GuiSound btnSoundClick(button_click_pcm, button_click_pcm_size, SOUND::PCM);
 	GuiImageData btnOutline(button_png);
 	GuiImageData btnOutlineOver(button_over_png);
 	GuiTrigger trigA;
@@ -113,6 +116,7 @@ WindowPrompt(const char *title, const char *msg, const char *btn1Label, const ch
 	btn1.setImage(&btn1Img);
 	btn1.setImageOver(&btn1ImgOver);
 	btn1.setSoundOver(&btnSoundOver);
+	btn1.setSoundClick(&btnSoundClick);
 	btn1.setTrigger(&trigA);
 	btn1.setState(STATE::SELECTED);
 	btn1.setEffectGrow();
@@ -127,6 +131,7 @@ WindowPrompt(const char *title, const char *msg, const char *btn1Label, const ch
 	btn2.setImage(&btn2Img);
 	btn2.setImageOver(&btn2ImgOver);
 	btn2.setSoundOver(&btnSoundOver);
+	btn2.setSoundClick(&btnSoundClick);
 	btn2.setTrigger(&trigA);
 	btn2.setEffectGrow();
 
@@ -203,13 +208,13 @@ UpdateGUI (void *arg)
 			for(i=0; i < 4; i++)
 				mainWindow->update(userInput[i]);
 
-			if(ExitRequested)
+			if(ExitRequested || ShutdownRequested)
 			{
 				// fade out
 				for(i = 0; i <= 255; i += 15)
 				{
 					mainWindow->draw();
-					platform->getVideo()->getImageRenderer()->drawRectangle(0,0,platform->getVideo()->getScreenWidth(),platform->getVideo()->getScreenHeight(),(PixelColor){0, 0, 0, (u8)i},1);
+					platform->getVideo()->getImageRenderer()->drawRectangle(0,0,platform->getVideo()->getScreenWidth(),platform->getVideo()->getScreenHeight(),(PixelColor){0, 0, 0, (uint8_t)i},1);
 					platform->getVideo()->render();
 				}
 				platform->shutdown();
@@ -243,6 +248,7 @@ static void OnScreenKeyboard(char * var, u16 maxlen)
 	GuiKeyboard keyboard(var, maxlen);
 
 	GuiSound btnSoundOver(button_over_pcm, button_over_pcm_size, SOUND::PCM);
+	GuiSound btnSoundClick(button_click_pcm, button_click_pcm_size, SOUND::PCM);
 	GuiImageData btnOutline(button_png);
 	GuiImageData btnOutlineOver(button_over_png);
 	GuiTrigger trigA;
@@ -260,6 +266,7 @@ static void OnScreenKeyboard(char * var, u16 maxlen)
 	okBtn.setImage(&okBtnImg);
 	okBtn.setImageOver(&okBtnImgOver);
 	okBtn.setSoundOver(&btnSoundOver);
+	okBtn.setSoundClick(&btnSoundClick);
 	okBtn.setTrigger(&trigA);
 	okBtn.setEffectGrow();
 
@@ -273,6 +280,7 @@ static void OnScreenKeyboard(char * var, u16 maxlen)
 	cancelBtn.setImage(&cancelBtnImg);
 	cancelBtn.setImageOver(&cancelBtnImgOver);
 	cancelBtn.setSoundOver(&btnSoundOver);
+	cancelBtn.setSoundClick(&btnSoundClick);
 	cancelBtn.setTrigger(&trigA);
 	cancelBtn.setEffectGrow();
 
@@ -306,16 +314,30 @@ static void OnScreenKeyboard(char * var, u16 maxlen)
 	ResumeGui();
 }
 
+static int BrowseDeviceCustom()
+{
+	extern int ParseDirectory();
+
+	sprintf(browser.dir, "/%s", Settings.Folder2);
+	sprintf(rootdir, "sd:/");
+	ParseDirectory(); // Parse root directory
+	return browser.numEntries;
+}
+
+static int menu;
+static void MenuLaunchEmulator()
+{
+	WindowPrompt("Starting machine.", "To return to this menu, press HOME.\n\nNo data will be saved.", "OK", nullptr);
+	menu = MENU_START_EMULATOR;
+}
+
 /****************************************************************************
  * MenuBrowseDevice
  ***************************************************************************/
 static int MenuBrowseDevice()
 {
-	char title[100];
-	int i;
-
 	// populate initial directory listing
-	if(BrowseDevice() <= 0)
+	if(BrowseDeviceCustom() <= 0)
 	{
 		int choice = WindowPrompt(
 		"Error",
@@ -326,14 +348,13 @@ static int MenuBrowseDevice()
 		if(choice)
 			return MENU_BROWSE_DEVICE;
 		else
-			return MENU_SETTINGS;
+			return MENU_MAIN;
 	}
 
-	int menu = MENU_NONE;
+	int i;
+	menu = MENU_NONE;
 
-	sprintf(title, "Browse Files");
-
-	GuiText titleTxt(title, 28, (PixelColor){255, 255, 255, 255});
+	GuiText titleTxt("Browse Files", 24, (PixelColor){0, 0, 0, 255});
 	titleTxt.setAlignment(ALIGN_H::LEFT, ALIGN_V::TOP);
 	titleTxt.setPosition(100,50);
 
@@ -398,13 +419,19 @@ static int MenuBrowseDevice()
 				else
 				{
 					mainWindow->setState(STATE::DISABLED);
+
 					// load file
+					sprintf (EmulatorArguments.Disc, browserList[browser.selIndex].filename);
+					MenuLaunchEmulator();
+					break;
+					// WindowPrompt("Error", "Invalid file", "OK", nullptr);
+
 					mainWindow->setState(STATE::DEFAULT);
 				}
 			}
 		}
 		if(backBtn.getState() == STATE::CLICKED)
-			menu = MENU_SETTINGS;
+			menu = MENU_MAIN;
 	}
 	HaltGui();
 	mainWindow->remove(&titleTxt);
@@ -414,175 +441,109 @@ static int MenuBrowseDevice()
 }
 
 /****************************************************************************
- * MenuSettings
+ * MenuMainPage
  ***************************************************************************/
-static int MenuSettings()
+static int MenuMainPage()
 {
 	int menu = MENU_NONE;
 
-	GuiText titleTxt("Settings", 28, (PixelColor){255, 255, 255, 255});
+	// GuiText: top
+	GuiText titleTxt("Main Menu", 22, (PixelColor){0, 0, 0, 255});
 	titleTxt.setAlignment(ALIGN_H::LEFT, ALIGN_V::TOP);
-	titleTxt.setPosition(50,50);
+	titleTxt.setPosition(26, 30);
 
+	// Button assets
 	GuiSound btnSoundOver(button_over_pcm, button_over_pcm_size, SOUND::PCM);
+	GuiSound btnSoundClick(button_click_pcm, button_click_pcm_size, SOUND::PCM);
 	GuiImageData btnOutline(button_png);
 	GuiImageData btnOutlineOver(button_over_png);
 	GuiImageData btnLargeOutline(button_large_png);
 	GuiImageData btnLargeOutlineOver(button_large_over_png);
 
+	// Triggers
 	GuiTrigger trigA;
 	trigA.setPrimaryTrigger();
 	GuiTrigger trigHome;
 	trigHome.setButtonOnlyTrigger(-1, GUI_BTN_HOME);
 
-	GuiText fileBtnTxt("File Browser", 22, (PixelColor){0, 0, 0, 255});
-	fileBtnTxt.setWrap(true, btnLargeOutline.getWidth()-30);
-	GuiImage fileBtnImg(&btnLargeOutline);
-	GuiImage fileBtnImgOver(&btnLargeOutlineOver);
-	GuiButton fileBtn(btnLargeOutline.getWidth(), btnLargeOutline.getHeight());
-	fileBtn.setAlignment(ALIGN_H::LEFT, ALIGN_V::TOP);
-	fileBtn.setPosition(50, 120);
-	fileBtn.setLabel(&fileBtnTxt);
-	fileBtn.setImage(&fileBtnImg);
-	fileBtn.setImageOver(&fileBtnImgOver);
-	fileBtn.setSoundOver(&btnSoundOver);
-	fileBtn.setTrigger(&trigA);
-	fileBtn.setEffectGrow();
+	// Examples of a button
+	#define TopButton(NAME, TEXT, X, Y)		GuiText NAME##Txt(TEXT, 22, (PixelColor){0, 0, 0, 255}); \
+											NAME##Txt.setWrap(true, btnLargeOutline.getWidth()-30); \
+											GuiImage NAME##Img(&btnLargeOutline); \
+											GuiImage NAME##ImgOver(&btnLargeOutlineOver); \
+											GuiButton NAME(btnLargeOutline.getWidth(), btnLargeOutline.getHeight()); \
+											NAME.setAlignment(ALIGN_H::CENTRE, ALIGN_V::MIDDLE); \
+											NAME.setPosition(X, Y); \
+											NAME.setLabel(& NAME##Txt); \
+											NAME.setImage(& NAME##Img); \
+											NAME.setImageOver(& NAME##ImgOver); \
+											NAME.setSoundOver(&btnSoundOver); \
+											NAME.setSoundClick(&btnSoundClick); \
+											NAME.setTrigger(&trigA); \
+											NAME.setEffectGrow();
 
-	GuiText videoBtnTxt("Video", 22, (PixelColor){0, 0, 0, 255});
-	videoBtnTxt.setWrap(true, btnLargeOutline.getWidth()-30);
-	GuiImage videoBtnImg(&btnLargeOutline);
-	GuiImage videoBtnImgOver(&btnLargeOutlineOver);
-	GuiButton videoBtn(btnLargeOutline.getWidth(), btnLargeOutline.getHeight());
-	videoBtn.setAlignment(ALIGN_H::CENTRE, ALIGN_V::TOP);
-	videoBtn.setPosition(0, 120);
-	videoBtn.setLabel(&videoBtnTxt);
-	videoBtn.setImage(&videoBtnImg);
-	videoBtn.setImageOver(&videoBtnImgOver);
-	videoBtn.setSoundOver(&btnSoundOver);
-	videoBtn.setTrigger(&trigA);
-	videoBtn.setEffectGrow();
+	#define BottomButton(NAME, TEXT, X, Y)	GuiText NAME##Txt(TEXT, 22, (PixelColor){0, 0, 0, 255}); \
+											GuiImage NAME##Img(&btnOutline); \
+											GuiImage NAME##ImgOver(&btnOutlineOver); \
+											GuiButton NAME(btnOutline.getWidth(), btnOutline.getHeight()); \
+											NAME.setAlignment(ALIGN_H::CENTRE, ALIGN_V::BOTTOM); \
+											NAME.setPosition(X, Y); \
+											NAME.setLabel(& NAME##Txt); \
+											NAME.setImage(& NAME##Img); \
+											NAME.setImageOver(& NAME##ImgOver); \
+											NAME.setSoundOver(&btnSoundOver); \
+											NAME.setSoundClick(&btnSoundClick); \
+											NAME.setTrigger(&trigA); \
+											NAME.setEffectGrow();
 
-	GuiText savingBtnTxt1("Saving", 22, (PixelColor){0, 0, 0, 255});
-	GuiText savingBtnTxt2("&", 18, (PixelColor){0, 0, 0, 255});
-	GuiText savingBtnTxt3("Loading", 22, (PixelColor){0, 0, 0, 255});
-	savingBtnTxt1.setPosition(0, -20);
-	savingBtnTxt3.setPosition(0, +20);
-	GuiImage savingBtnImg(&btnLargeOutline);
-	GuiImage savingBtnImgOver(&btnLargeOutlineOver);
-	GuiButton savingBtn(btnLargeOutline.getWidth(), btnLargeOutline.getHeight());
-	savingBtn.setAlignment(ALIGN_H::RIGHT, ALIGN_V::TOP);
-	savingBtn.setPosition(-50, 120);
-	savingBtn.setLabel(&savingBtnTxt1, 0);
-	savingBtn.setLabel(&savingBtnTxt2, 1);
-	savingBtn.setLabel(&savingBtnTxt3, 2);
-	savingBtn.setImage(&savingBtnImg);
-	savingBtn.setImageOver(&savingBtnImgOver);
-	savingBtn.setSoundOver(&btnSoundOver);
-	savingBtn.setTrigger(&trigA);
-	savingBtn.setEffectGrow();
-
-	GuiText menuBtnTxt("Menu", 22, (PixelColor){0, 0, 0, 255});
-	menuBtnTxt.setWrap(true, btnLargeOutline.getWidth()-30);
-	GuiImage menuBtnImg(&btnLargeOutline);
-	GuiImage menuBtnImgOver(&btnLargeOutlineOver);
-	GuiButton menuBtn(btnLargeOutline.getWidth(), btnLargeOutline.getHeight());
-	menuBtn.setAlignment(ALIGN_H::CENTRE, ALIGN_V::TOP);
-	menuBtn.setPosition(-125, 250);
-	menuBtn.setLabel(&menuBtnTxt);
-	menuBtn.setImage(&menuBtnImg);
-	menuBtn.setImageOver(&menuBtnImgOver);
-	menuBtn.setSoundOver(&btnSoundOver);
-	menuBtn.setTrigger(&trigA);
-	menuBtn.setEffectGrow();
-
-	GuiText networkBtnTxt("Network", 22, (PixelColor){0, 0, 0, 255});
-	networkBtnTxt.setWrap(true, btnLargeOutline.getWidth()-30);
-	GuiImage networkBtnImg(&btnLargeOutline);
-	GuiImage networkBtnImgOver(&btnLargeOutlineOver);
-	GuiButton networkBtn(btnLargeOutline.getWidth(), btnLargeOutline.getHeight());
-	networkBtn.setAlignment(ALIGN_H::CENTRE, ALIGN_V::TOP);
-	networkBtn.setPosition(125, 250);
-	networkBtn.setLabel(&networkBtnTxt);
-	networkBtn.setImage(&networkBtnImg);
-	networkBtn.setImageOver(&networkBtnImgOver);
-	networkBtn.setSoundOver(&btnSoundOver);
-	networkBtn.setTrigger(&trigA);
-	networkBtn.setEffectGrow();
-
-	GuiText exitBtnTxt("Exit", 22, (PixelColor){0, 0, 0, 255});
-	GuiImage exitBtnImg(&btnOutline);
-	GuiImage exitBtnImgOver(&btnOutlineOver);
-	GuiButton exitBtn(btnOutline.getWidth(), btnOutline.getHeight());
-	exitBtn.setAlignment(ALIGN_H::LEFT, ALIGN_V::BOTTOM);
-	exitBtn.setPosition(100, -35);
-	exitBtn.setLabel(&exitBtnTxt);
-	exitBtn.setImage(&exitBtnImg);
-	exitBtn.setImageOver(&exitBtnImgOver);
-	exitBtn.setSoundOver(&btnSoundOver);
-	exitBtn.setTrigger(&trigA);
+	TopButton(openDiscBtn, "Open Disc", -200, 0);
+	TopButton(noDiscBtn, "Boot Without Disc", 0, 0);
+	TopButton(settingsBtn, "Emulator Settings", 200, 0);
+	BottomButton(exitBtn, "Exit", -100, -35);
+	BottomButton(resetBtn, "Reset Settings", 100, -35);
 	exitBtn.setTrigger(&trigHome);
-	exitBtn.setEffectGrow();
 
-	GuiText resetBtnTxt("Reset Settings", 22, (PixelColor){0, 0, 0, 255});
-	GuiImage resetBtnImg(&btnOutline);
-	GuiImage resetBtnImgOver(&btnOutlineOver);
-	GuiButton resetBtn(btnOutline.getWidth(), btnOutline.getHeight());
-	resetBtn.setAlignment(ALIGN_H::RIGHT, ALIGN_V::BOTTOM);
-	resetBtn.setPosition(-100, -35);
-	resetBtn.setLabel(&resetBtnTxt);
-	resetBtn.setImage(&resetBtnImg);
-	resetBtn.setImageOver(&resetBtnImgOver);
-	resetBtn.setSoundOver(&btnSoundOver);
-	resetBtn.setTrigger(&trigA);
-	resetBtn.setEffectGrow();
-
+	// Create the GuiWindow
 	HaltGui();
 	GuiWindow w(platform->getVideo()->getScreenWidth(), platform->getVideo()->getScreenHeight());
 	w.append(&titleTxt);
-	w.append(&fileBtn);
-	w.append(&videoBtn);
-	w.append(&savingBtn);
-	w.append(&menuBtn);
-
-#ifdef HW_RVL
-	w.append(&networkBtn);
-#endif
-
+	w.append(&openDiscBtn);
+	w.append(&settingsBtn);
 	w.append(&exitBtn);
+	w.append(&noDiscBtn);
 	w.append(&resetBtn);
-
 	mainWindow->append(&w);
-
 	ResumeGui();
 
+	// Main GUI loop, continue until menu value is changed
 	while(menu == MENU_NONE)
 	{
 		usleep(THREAD_SLEEP);
 
-		if(fileBtn.getState() == STATE::CLICKED)
+		if(openDiscBtn.getState() == STATE::CLICKED)
 		{
 			menu = MENU_BROWSE_DEVICE;
 		}
-		else if(videoBtn.getState() == STATE::CLICKED)
+		else if(noDiscBtn.getState() == STATE::CLICKED)
 		{
-			menu = MENU_SETTINGS_FILE;
+			memset(EmulatorArguments.Disc, 0, sizeof(EmulatorArguments.Disc));
+			MenuLaunchEmulator();
 		}
-		else if(savingBtn.getState() == STATE::CLICKED)
+		else if(settingsBtn.getState() == STATE::CLICKED)
 		{
-			menu = MENU_SETTINGS_FILE;
-		}
-		else if(menuBtn.getState() == STATE::CLICKED)
-		{
-			menu = MENU_SETTINGS_FILE;
-		}
-		else if(networkBtn.getState() == STATE::CLICKED)
-		{
-			menu = MENU_SETTINGS_FILE;
+			menu = MENU_SETTINGS;
 		}
 		else if(exitBtn.getState() == STATE::CLICKED)
 		{
-			menu = MENU_EXIT;
+			int choice = WindowPrompt(
+				"Exit",
+				"Are you sure that you want to exit?",
+				"Yes",
+				"No");
+			if(choice == 1)
+			{
+				menu = MENU_EXIT;
+			}
 		}
 		else if(resetBtn.getState() == STATE::CLICKED)
 		{
@@ -618,18 +579,19 @@ static int MenuSettingsFile()
 	OptionList options;
 	sprintf(options.name[i++], "Load Device");
 	sprintf(options.name[i++], "Save Device");
-	sprintf(options.name[i++], "Folder 1");
-	sprintf(options.name[i++], "Folder 2");
+	sprintf(options.name[i++], "System ROM Folder");
+	sprintf(options.name[i++], "Discs Folder");
 	sprintf(options.name[i++], "Folder 3");
 	sprintf(options.name[i++], "Auto Load");
 	sprintf(options.name[i++], "Auto Save");
 	options.length = i;
 
-	GuiText titleTxt("Settings - Saving & Loading", 28, (PixelColor){255, 255, 255, 255});
+	GuiText titleTxt("Settings - Saving & Loading", 24, (PixelColor){0, 0, 0, 255});
 	titleTxt.setAlignment(ALIGN_H::LEFT, ALIGN_V::TOP);
 	titleTxt.setPosition(50,50);
 
 	GuiSound btnSoundOver(button_over_pcm, button_over_pcm_size, SOUND::PCM);
+	GuiSound btnSoundClick(button_click_pcm, button_click_pcm_size, SOUND::PCM);
 	GuiImageData btnOutline(button_png);
 	GuiImageData btnOutlineOver(button_over_png);
 
@@ -647,6 +609,7 @@ static int MenuSettingsFile()
 	backBtn.setImage(&backBtnImg);
 	backBtn.setImageOver(&backBtnImgOver);
 	backBtn.setSoundOver(&btnSoundOver);
+	backBtn.setSoundClick(&btnSoundClick);
 	backBtn.setTrigger(&trigA);
 	backBtn.setTrigger(&trigB);
 	backBtn.setEffectGrow();
@@ -749,7 +712,7 @@ static int MenuSettingsFile()
 
 		if(backBtn.getState() == STATE::CLICKED)
 		{
-			menu = MENU_SETTINGS;
+			menu = MENU_MAIN;
 		}
 	}
 	HaltGui();
@@ -775,9 +738,13 @@ void MainMenu(int menu)
 
 	mainWindow = new GuiWindow(platform->getVideo()->getScreenWidth(), platform->getVideo()->getScreenHeight());
 
-	bgImg = new GuiImage(platform->getVideo()->getScreenWidth(), platform->getVideo()->getScreenHeight(), (PixelColor){50, 50, 50, 255});
-	bgImg->colorStripe(30);
+	bgImg = new GuiImage(platform->getVideo()->getScreenWidth(), platform->getVideo()->getScreenHeight(), (PixelColor){148, 148, 148, 255});
+	bgImg->colorStripe(10);
 	mainWindow->append(bgImg);
+
+	banner = new GuiImageData(banner_png);
+	bannerImg = new GuiImage(banner);
+	mainWindow->append(bannerImg);
 
 	GuiTrigger trigA;
 	trigA.setPrimaryTrigger();
@@ -785,6 +752,7 @@ void MainMenu(int menu)
 	ResumeGui();
 
 	bgMusic = new GuiSound(bg_music_ogg, bg_music_ogg_size, SOUND::OGG);
+	bgMusic->setLoop(true);
 	bgMusic->setVolume(50);
 	bgMusic->play(); // startup music
 
@@ -792,17 +760,19 @@ void MainMenu(int menu)
 	{
 		switch (currentMenu)
 		{
-			case MENU_SETTINGS:
-				currentMenu = MenuSettings();
+			case MENU_MAIN:
+				currentMenu = MenuMainPage();
 				break;
-			case MENU_SETTINGS_FILE:
+			case MENU_SETTINGS:
 				currentMenu = MenuSettingsFile();
 				break;
 			case MENU_BROWSE_DEVICE:
 				currentMenu = MenuBrowseDevice();
 				break;
+			case MENU_START_EMULATOR:
+				goto DEINIT;
 			default: // unrecognized menu
-				currentMenu = MenuSettings();
+				currentMenu = MenuMainPage();
 				break;
 		}
 	}
@@ -811,13 +781,16 @@ void MainMenu(int menu)
 	ExitRequested = 1;
 	while(1) usleep(THREAD_SLEEP);
 
+	DEINIT:
 	HaltGui();
 
 	bgMusic->stop();
 	delete bgMusic;
 	delete bgImg;
+	delete bannerImg;
 	delete mainWindow;
 
+	delete banner;
 	delete pointer[0];
 	delete pointer[1];
 	delete pointer[2];

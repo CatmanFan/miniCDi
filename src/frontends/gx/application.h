@@ -5,8 +5,8 @@
  * demo.h
  ***************************************************************************/
 
-#ifndef _DEMO_H_
-#define _DEMO_H_
+#ifndef _MINICDI_OGC_H_
+#define _MINICDI_OGC_H_
 
 enum {
 	METHOD_AUTO,
@@ -20,6 +20,13 @@ enum {
 	METHOD_SD_SLOTB
 };
 
+enum {
+	UI_LANG_EN = 0,
+	UI_LANG_FR,
+	UI_LANG_JA,
+	UI_LANG_ES
+};
+
 struct SSettings {
     int		AutoLoad;
     int		AutoSave;
@@ -28,10 +35,17 @@ struct SSettings {
 	char	Folder1[256]; // Path to files
 	char	Folder2[256]; // Path to files
 	char	Folder3[256]; // Path to files
+	int		Language;
+};
+struct SEmulatorArguments {
+	char	SystemROM[512];
+	char	Disc[512];
 };
 extern struct SSettings Settings;
+extern struct SEmulatorArguments EmulatorArguments;
 
 void ExitApp();
 extern int ExitRequested;
+extern int ShutdownRequested;
 
 #endif

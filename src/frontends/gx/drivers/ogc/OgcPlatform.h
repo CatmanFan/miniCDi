@@ -57,7 +57,13 @@ class OgcPlatform : public Platform
 				delete videoDriver;
 				videoDriver = nullptr;
 			}
-			exit(0);
+
+			extern int ShutdownRequested;
+			if (ShutdownRequested) {
+				SYS_ResetSystem(SYS_POWEROFF, 0, 0);
+			} else {
+				exit(0);
+			}
 		}
 
 		AudioDriver* getAudio() override { return audioDriver; }

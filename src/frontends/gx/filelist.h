@@ -13,6 +13,8 @@
 
 // Fonts
 #include "font_ttf.h"
+#include "font2_ttf.h"
+#include "jp_ttf.h"
 
 // Languages
 #include "en_lang.h"
@@ -23,6 +25,7 @@
 #include "button_click_pcm.h"
 
 // Images
+#include "banner_png.h"
 #include "button_png.h"
 #include "button_over_png.h"
 #include "button_large_png.h"

@@ -18,6 +18,7 @@
 
 // Languages
 #include "en_lang.h"
+#include "ja_lang.h"
 
 // Sounds
 #include "bg_music_ogg.h"

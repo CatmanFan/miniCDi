@@ -324,12 +324,7 @@ static int BrowseDeviceCustom()
 	return browser.numEntries;
 }
 
-static int menu;
-static void MenuLaunchEmulator()
-{
-	WindowPrompt("Starting machine.", "To return to this menu, press HOME.\n\nNo data will be saved.", "OK", nullptr);
-	menu = MENU_START_EMULATOR;
-}
+static bool showedInitialPrompt = false;
 
 /****************************************************************************
  * MenuBrowseDevice
@@ -352,7 +347,7 @@ static int MenuBrowseDevice()
 	}
 
 	int i;
-	menu = MENU_NONE;
+	int menu = MENU_NONE;
 
 	GuiText titleTxt("Browse Files", 24, (PixelColor){0, 0, 0, 255});
 	titleTxt.setAlignment(ALIGN_H::LEFT, ALIGN_V::TOP);
@@ -420,11 +415,20 @@ static int MenuBrowseDevice()
 				{
 					mainWindow->setState(STATE::DISABLED);
 
-					// load file
-					sprintf (EmulatorArguments.Disc, browserList[browser.selIndex].filename);
-					MenuLaunchEmulator();
-					break;
-					// WindowPrompt("Error", "Invalid file", "OK", nullptr);
+					int choice = showedInitialPrompt ? 0 : WindowPrompt(
+						"Starting machine.",
+						"To return to this menu, press HOME. No data will be saved.",
+						"Back",
+						"Start");
+					if (choice == 0)
+					{
+						showedInitialPrompt = true;
+
+						// load file
+						sprintf (EmulatorArguments.Disc, "%s/%s", browser.dir, browserList[browser.selIndex].filename);
+						menu = MENU_START_EMULATOR;
+						break;
+					}
 
 					mainWindow->setState(STATE::DEFAULT);
 				}
@@ -526,8 +530,18 @@ static int MenuMainPage()
 		}
 		else if(noDiscBtn.getState() == STATE::CLICKED)
 		{
-			memset(EmulatorArguments.Disc, 0, sizeof(EmulatorArguments.Disc));
-			MenuLaunchEmulator();
+			int choice = showedInitialPrompt ? 0 : WindowPrompt(
+				"Starting machine.",
+				"To return to this menu, press HOME. No data will be saved.",
+				"Back",
+				"Start");
+			if (choice == 0)
+			{
+				showedInitialPrompt = true;
+
+				memset(EmulatorArguments.Disc, 0, sizeof(EmulatorArguments.Disc));
+				menu = MENU_START_EMULATOR;
+			}
 		}
 		else if(settingsBtn.getState() == STATE::CLICKED)
 		{

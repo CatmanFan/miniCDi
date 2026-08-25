@@ -1,0 +1,32 @@
+msgid "Main Menu"
+msgstr "メイン・メニュー"
+
+msgid "Open Disc"
+msgstr "ディスクを 入れて起動"
+
+msgid "Boot Without Disc"
+msgstr "ディスクを 入れずに起動"
+
+msgid "Emulator Settings"
+msgstr "設定"
+
+msgid "Start"
+msgstr "はじめる"
+
+msgid "Back"
+msgstr "もどる"
+
+msgid "Exit"
+msgstr "終了"
+
+msgid "Reset Settings"
+msgstr "初期設定"
+
+msgid "Starting machine."
+msgstr "CDI本体を起動します。"
+
+msgid "To return to this menu, press HOME. No data will be saved."
+msgstr "HOMEを押すとメニューに戻ります。 データを保存することができません。"
+
+msgid " "
+msgstr ""

@@ -38,8 +38,8 @@ struct SSettings {
 	int		Language;
 };
 struct SEmulatorArguments {
-	char	SystemROM[512];
-	char	Disc[512];
+	char	SystemROM[1280];
+	char	Disc[1280];
 };
 extern struct SSettings Settings;
 extern struct SEmulatorArguments EmulatorArguments;

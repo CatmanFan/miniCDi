@@ -177,13 +177,14 @@ if (NINTENDO_WII OR NINTENDO_GAMECUBE)
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(FREETYPE REQUIRED freetype2)
 
+	# Not supported on libogc2
 	# find_package(SDL2 REQUIRED)
 	# include_directories(${SDL2_INCLUDE_DIRS})
 
 	target_link_libraries(${PROJECT_NAME} PRIVATE
 		# ${SDL2_LIBRARIES}
 		-lpng -lz -lfat ${WII_LIBRARIES} -lasnd -logc -lvorbisidec -logg ${FREETYPE_LIBRARIES})
-	# target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=1) # SDL2
+	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=2) # AESND (OGC)
 
 	# Source files/directories
 	# ************

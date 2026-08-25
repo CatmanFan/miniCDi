@@ -12,6 +12,7 @@
 class IKAT
 {
 	SCC68070* _68070;
+	CIAP* _ciap;
 	uint8_t* memory;
 
 	struct
@@ -63,7 +64,7 @@ public:
 	friend class FTD;
 	friend class PointingDevice;
 
-	IKAT(SCC68070* _68070, uint8_t* memory) : _68070(_68070), memory(memory), PointerInterface({0})
+	IKAT(SCC68070* _68070, CIAP* _ciap, uint8_t* memory) : _68070(_68070), _ciap(_ciap), memory(memory), PointerInterface({0})
 	{
 		reset();
 	}
@@ -190,7 +191,7 @@ public:
 		return memory[addr];
 	}
 
-	inline void write8(uint32_t addr, uint8_t value, CIAP *ciap)
+	inline void write8(uint32_t addr, uint8_t value)
 	{
 		memory[addr] = value;
 		switch (addr)
@@ -341,9 +342,7 @@ public:
 
 										case 0xE1:
 											MiniCDI::Log("[IKAT] init CIAP sector read (0x%02X)", Ch[c].In[0]);
-											if (ciap) {
-												ciap->disc_set_lba(Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
-											}
+											_ciap->disc_set_lba(Ch[c].In[1], Ch[c].In[2], Ch[c].In[3]);
 											break;
 									}
 									Ch[c].In.clear();

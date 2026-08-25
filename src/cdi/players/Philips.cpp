@@ -238,7 +238,7 @@ void PhilipsCDI::write8(int address, uint8_t value)
 	else if (slave != NULL && (address & 0x00FFFF00) == 0x00310000)
 		slave->write8(address, value);
 	else if (ikat != NULL && (address & 0x00FFFF00) == 0x00310000)
-		ikat->write8(address, value, ciap);
+		ikat->write8(address, value);
 	else if (dsp != NULL && address >= 0x00300000 && address < 0x00303FFF)
 		dsp->write8(address, value);
 	else if (address < memsize)

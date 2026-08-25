@@ -2,11 +2,15 @@
 #define MINICDI_MC6805_SLAVE
 
 #include <deque>
+#include "cdi/chips/IMS66490_CDIC.hpp"
+#include "cdi/chips/DSP56001_DRVDSP.hpp"
 
 /// HLE implementation of SLAVE as found in MiniMMC & Mono-I.
 class SLAVE
 {
 	SCC68070* _68070;
+	CDIC* _cdic;
+	DRVDSP* _drvdsp;
 	uint8_t* memory;
 
 	uint32_t DR[4]; // addresses to data registers
@@ -36,7 +40,7 @@ public:
 	friend class FTD;
 	friend class PointingDevice;
 
-	SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start);
+	SLAVE(SCC68070* _68070, CDIC* _cdic, DRVDSP* _drvdsp, uint8_t* memory, uint32_t start);
 
 	void set_ftd(FTD* ftd);
 	void send_play_button();

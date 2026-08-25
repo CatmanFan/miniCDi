@@ -38,6 +38,7 @@ class CDIC
 		size_t buffer_index; // 0 = disabled, 1 = 0x2800, 2 = 0x3200
 		int sector_interval;
 		bool cpu;
+		bool muted;
 	} AudioController;
 
 	void update_soundmap_unit();
@@ -59,6 +60,8 @@ class CDIC
 	void disc_process_sector();
 
 public:
+	friend class SLAVE;
+
 	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc);
 	~CDIC();
 

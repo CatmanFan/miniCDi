@@ -168,6 +168,7 @@ void CDIC::update_soundmap_unit()
 
 	if (AudioController.sector_interval == 0
 	 && AudioController.buffer_index > 0
+	 && !AudioController.muted
 	 && (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00100100))
 	{
 		uint8_t coding = memory[(AudioController.buffer_index == 2 ? 0x303200 : 0x302800) + 11];

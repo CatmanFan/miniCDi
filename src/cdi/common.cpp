@@ -274,7 +274,7 @@ bool PhilipsCDI::init(const std::string &bios, enum BoardType board)
 			case CDi::MonoI:
 				this->ftd = new FTD(FTD::FTD_220_20);
 				this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
-				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+				this->slave = new SLAVE(&this->cpu, this->cdic, NULL, this->memory, 0x00310000);
 				this->slave->set_ftd(this->ftd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
@@ -283,7 +283,7 @@ bool PhilipsCDI::init(const std::string &bios, enum BoardType board)
 			case CDi::MonoII:
 				this->ftd = new FTD(FTD::FTD_220_40);
 				this->dsp = new DRVDSP(&this->cpu, this->memory, &this->disc);
-				this->slave = new SLAVE(&this->cpu, this->memory, 0x00310000);
+				this->slave = new SLAVE(&this->cpu, NULL, this->dsp, this->memory, 0x00310000);
 				this->slave->set_ftd(this->ftd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
@@ -293,7 +293,7 @@ bool PhilipsCDI::init(const std::string &bios, enum BoardType board)
 			case CDi::MonoIV:
 				this->ftd = new FTD(FTD::FTD_470);
 				this->ciap = new CIAP(&this->cpu, this->memory, &this->disc);
-				this->ikat = new IKAT(&this->cpu, this->memory);
+				this->ikat = new IKAT(&this->cpu, this->ciap, this->memory);
 				this->ikat->set_ftd(this->ftd);
 				this->pd.IO.ikat = this->ikat;
 				this->nvram = 0x00320000;

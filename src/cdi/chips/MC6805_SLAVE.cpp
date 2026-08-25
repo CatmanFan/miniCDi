@@ -1,6 +1,6 @@
 #include "cdi/common.hpp"
 
-SLAVE::SLAVE(SCC68070* _68070, uint8_t* memory, uint32_t start) : _68070(_68070), memory(memory), PointerInterface({0})
+SLAVE::SLAVE(SCC68070* _68070, CDIC* _cdic, DRVDSP* _drvdsp, uint8_t* memory, uint32_t start) : _68070(_68070), _cdic(_cdic), _drvdsp(_drvdsp), memory(memory), PointerInterface({0})
 {
 	DR[0] = start + 0x01; // ADR
 	DR[1] = start + 0x03; // BDR
@@ -163,10 +163,20 @@ void SLAVE::write8(uint32_t addr, uint8_t value)
 			case 2:
 				switch (value)
 				{
+					case 0x82:
+						MiniCDI::Log("[SLAVE] mute CDIC (0x%02X)", value);
+						if (_cdic) _cdic->AudioController.muted = true;
+						break;
+
+					case 0x83:
+						MiniCDI::Log("[SLAVE] unmute CDIC (0x%02X)", value);
+						if (_cdic) _cdic->AudioController.muted = false;
+						break;
+
 					/** Reset CPU **/
 					case 0x8A:
 						MiniCDI::Log("[SLAVE] reset CPU (0x%02X)", value);
-						if (_68070 != NULL) _68070->reset();
+						_68070->reset();
 						break;
 
 					/** Set Front Panel FTD **/
@@ -244,7 +254,6 @@ void SLAVE::write8(uint32_t addr, uint8_t value)
 					case 0xF6:
 						MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
 						Ch[2].Out = { 0xF6, static_cast<uint8_t>(MiniCDI::Config::PAL ? 0x02 : 0x01) };
-						// assert_irq(2); // interrupt not required on MAME ?
 						break;
 
 					case 0xF7:

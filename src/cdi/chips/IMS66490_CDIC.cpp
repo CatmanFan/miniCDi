@@ -1,56 +1,7 @@
 #include "cdi/common.hpp"
 
-#if MINICDI_AUDIO==1 /* SDL2 */
-#include <SDL2/SDL.h>
-#endif
-
-#define SAMPLE_COUNT 448
-#define MAX_SAMPLE_QUEUE 32000
-
 CDIC::CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), AudioController({0}), disc(disc), CdicController({0})
 {
-	// INIT AUDIO DRIVER
-	#if MINICDI_AUDIO==1 /* SDL2 */
-	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0)
-	{
-		MiniCDI::Log("[Audio:SDL2] failed to init audio subsystem");
-		SDL_audio_valid = false;
-	}
-	else
-	{
-		SDL_AudioSpec input, output;
-		SDL_zero(input);
-		input.freq = 37800;
-		input.format = AUDIO_S16SYS;
-		input.channels = 2;
-		input.samples = SAMPLE_COUNT;
-
-		SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &input, &output, 0);
-		SDL_audio_valid = SDL_audio_id > 0;
-		if (SDL_audio_valid)
-		{
-			MiniCDI::Log("[Audio:SDL2] initialized audio device #%d", SDL_audio_id);
-			// MiniCDI::Log("[Audio:SDL2] audiospec frequency: %d", output.freq);
-			// MiniCDI::Log("[Audio:SDL2] audiospec format: %d", output.format);
-			// MiniCDI::Log("[Audio:SDL2] audiospec channels: %d", output.channels);
-			// MiniCDI::Log("[Audio:SDL2] audiospec samples: %d", output.samples);
-			SDL_PauseAudioDevice(SDL_audio_id, 0);
-		}
-	}
-	#endif
-}
-
-CDIC::~CDIC()
-{
-	// CLOSE AUDIO DRIVER
-	#if MINICDI_AUDIO==1 /* SDL2 */
-	if (SDL_audio_valid)
-	{
-		SDL_CloseAudioDevice(SDL_audio_id);
-		SDL_QuitSubSystem(SDL_INIT_AUDIO);
-		SDL_audio_valid = false;
-	}
-	#endif
 }
 
 bool CDIC::disc_check_filter()
@@ -191,10 +142,7 @@ void CDIC::update_soundmap_unit()
 
 		else if ((AUDCTL & 0x0800) && ADPCM.decode_sector(&memory[AudioController.buffer_index == 2 ? 0x303200 : 0x302800]))
 		{
-			#if MINICDI_AUDIO==1 /* SDL2 */
-			if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < MAX_SAMPLE_QUEUE)
-				SDL_QueueAudio(SDL_audio_id, &ADPCM.output[0], ADPCM.output_size * sizeof(int16_t));
-			#endif
+			ADPCM.play();
 
 			// Select sector interval for ADPCM (per Slamy documentation).
 			// CDDA has sample data on every sector so can be ignored.
@@ -361,7 +309,7 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 				MiniCDI::Log("[CDIC:DSP] Starting playback at ADPCM buffer 1");
 				AudioController.buffer_index = 1;
 			}
-			else
+			else if (ACHAN != 0)
 			{
 				MiniCDI::Log("[CDIC:DSP] Stopping playback");
 				AudioController.buffer_index = 0;
@@ -430,7 +378,7 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 						break;
 
 					case 0x2E:
-						MiniCDI::Log("[CDIC] Update MODE2 filter (0x%02X)", CMD);
+						MiniCDI::Log("[CDIC] Update MODE2 parameters (0x%02X)", CMD);
 						break;
 				}
 

@@ -1,10 +1,15 @@
 #include "cdi/common.hpp"
+
 #ifndef MINICDI_CHRONO_ENABLED
 #define MINICDI_CHRONO_ENABLED (!defined(MINICDI_DISABLE_THROTTLING) && (defined(MINICDI_BENCHMARKING) \
 																	  /* || defined(HW_RVL) */ \
 																	  /* || defined(__WIIU__) */ \
 																	  || defined(_WIN32) \
 																	  || defined(__APPLE__)))
+#endif
+
+#if (MINICDI_CHRONO_ENABLED == 0) || !(defined(MINICDI_CHRONO_ENABLED))
+#pragma message "note: Frame throttling unavailable (Philips.cpp)"
 #endif
 
 #define USE_WHILE_TRUE_LOOP
@@ -22,7 +27,7 @@
 #define TIMER 3
 #define PD 4
 
-#define EVENTS_USED 3
+#define EVENTS_USED 4
 #define EVENTS_TOTAL 5
 
 static int event_rates[EVENTS_TOTAL] =

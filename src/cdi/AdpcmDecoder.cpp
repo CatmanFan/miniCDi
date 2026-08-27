@@ -1,5 +1,10 @@
 #include "cdi/common.hpp"
 
+static std::vector<int16_t> left, right;
+static int16_t *output; // 8*28 * 2 (18.9 kHz) * 2 (stereo) * 18 (sound groups)
+#define OUTPUT_MAX_SIZE 16128
+static int output_size = 0;
+
 template <size_t max_units, int gain>
 void AdpcmDecoder::decode_adpcm(bool stereo, bool low_freq)
 {
@@ -33,14 +38,17 @@ void AdpcmDecoder::decode_adpcm(bool stereo, bool low_freq)
 	// In the case of soundmap XA data in mono format, this replicates the MAME behaviour and is not
 	// accurate to actual CD-i sound quality (i.e. BGM on left and SFX on right instead of mixing for both channels).
 	// See Slamy's https://github.com/MiSTer-devel/CDi_MiSTer/blob/main/doc/cdic.md#experience
-	memset(output, 0, sizeof(output));
-	output_size = stereo ? std::min(left.size(), right.size()) : left.size();
-	for (int i = 0; i < output_size; i++)
+	if (output != NULL)
 	{
-		output[i*2] = left[i];
-		output[i*2+1] = stereo ? right[i] : left[i];
+		memset(output, 0, OUTPUT_MAX_SIZE*sizeof(uint16_t));
+		output_size = stereo ? std::min(left.size(), right.size()) : left.size();
+		for (int i = 0; i < output_size; i++)
+		{
+			output[i*2] = left[i];
+			output[i*2+1] = stereo ? right[i] : left[i];
+		}
+		output_size = std::min(output_size * 2, OUTPUT_MAX_SIZE);
 	}
-	output_size = std::min(output_size * 2, 16128);
 }
 
 bool AdpcmDecoder::decode_sector(uint8_t *buffer)
@@ -139,4 +147,108 @@ bool AdpcmDecoder::decode_sector(uint8_t *buffer)
 	// ***************************
 
 	return true;
+}
+
+#define SDL2 1
+#define ASND 2
+
+#define SAMPLE_COUNT 448
+#define MAX_SAMPLE_QUEUE 32000
+
+#if MINICDI_AUDIO == SDL2
+	#include <SDL2/SDL.h>
+	static uint32_t SDL_audio_id = 0;
+	static bool SDL_audio_valid = false;
+#elif MINICDI_AUDIO == ASND
+	#include <gccore.h>
+	#include <asndlib.h>
+	// static int32_t voice;
+#else
+	#pragma message "note: No audio driver specified (AdpcmDecoder.cpp)"
+#endif
+
+void AdpcmDecoder::play()
+{
+	#if MINICDI_AUDIO == SDL2
+	if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < MAX_SAMPLE_QUEUE)
+		SDL_QueueAudio(SDL_audio_id, &output[0], output_size * sizeof(int16_t));
+	#endif
+
+	#if MINICDI_AUDIO == ASND
+	if (ASND_StatusVoice(1) == SND_WAITING || ASND_StatusVoice(1) == SND_UNUSED)
+		ASND_SetVoice(1, VOICE_STEREO_16BIT, 37800, 0, (uint8_t *)output, output_size, 255, 255, nullptr);
+	#endif
+}
+
+AdpcmDecoder::AdpcmDecoder()
+{
+	// INIT AUDIO DRIVER
+	#if MINICDI_AUDIO == SDL2
+	if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0)
+	{
+		MiniCDI::Log("[Audio:SDL2] failed to init audio subsystem");
+		SDL_audio_valid = false;
+		return;
+	}
+	else
+	{
+		SDL_AudioSpec desired, received;
+		SDL_zero(desired);
+		desired.freq = 37800;
+		desired.format = AUDIO_S16SYS;
+		desired.channels = 2;
+		desired.samples = SAMPLE_COUNT;
+
+		SDL_audio_id = SDL_OpenAudioDevice(NULL, 0, &desired, &received, 0);
+		SDL_audio_valid = SDL_audio_id > 0;
+		if (SDL_audio_valid)
+		{
+			MiniCDI::Log("[Audio:SDL2] initialized audio device #%d", SDL_audio_id);
+			// MiniCDI::Log("[Audio:SDL2] audiospec frequency: %d", received.freq);
+			// MiniCDI::Log("[Audio:SDL2] audiospec format: %d", received.format);
+			// MiniCDI::Log("[Audio:SDL2] audiospec channels: %d", received.channels);
+			// MiniCDI::Log("[Audio:SDL2] audiospec samples: %d", received.samples);
+			SDL_PauseAudioDevice(SDL_audio_id, 0);
+		}
+	}
+	#endif
+
+	#if MINICDI_AUDIO == ASND
+	// ...
+	ASND_Pause(0);
+	#endif
+
+	// INIT OUTPUT BUFFER
+	#ifdef _WIN32
+	output = (int16_t *)_aligned_malloc(OUTPUT_MAX_SIZE*sizeof(int16_t), 32);
+	#elif defined(__APPLE__)
+	posix_memalign((void**)&output, 32, OUTPUT_MAX_SIZE*sizeof(int16_t));
+	#else
+	output = (int16_t *)memalign(32, OUTPUT_MAX_SIZE*sizeof(int16_t));
+	#endif
+	MiniCDI::Log("[Audio] Initialized audio buffer");
+}
+
+AdpcmDecoder::~AdpcmDecoder()
+{
+	// CLOSE AUDIO DRIVER
+	#if MINICDI_AUDIO == SDL2
+	if (SDL_audio_valid)
+	{
+		SDL_CloseAudioDevice(SDL_audio_id);
+		SDL_QuitSubSystem(SDL_INIT_AUDIO);
+		SDL_audio_valid = false;
+	}
+	#endif
+
+	#if MINICDI_AUDIO == ASND
+	ASND_Pause(1);
+	#endif
+
+	if (output != NULL)
+	{
+		free(output);
+		output = NULL;
+		MiniCDI::Log("[Audio] Closed audio buffer");
+	}
 }

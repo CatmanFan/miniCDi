@@ -25,11 +25,6 @@ class CDIC
 	uint16_t IVEC; // 0x3FFC
 	uint16_t DBUF; // 0x3FFE
 
-	#if MINICDI_AUDIO==1 /* SDL2 */
-	uint32_t SDL_audio_id = 0;
-	bool SDL_audio_valid = false;
-	#endif
-
 	// ****************************
 	// AUDIO HANDLING
 	// ****************************
@@ -63,7 +58,6 @@ public:
 	friend class SLAVE;
 
 	CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc);
-	~CDIC();
 
 	inline void reset()
 	{

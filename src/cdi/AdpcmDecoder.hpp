@@ -19,9 +19,7 @@ class AdpcmDecoder
 	uint8_t ranges[8];
 	uint8_t filters[8];
 	int8_t sound_data[8][28]; // A: 4 sound units, BC: 8 sound units -- 28 sound data bytes
-
-	template <size_t max_units, int gain>
-	void decode_adpcm(bool stereo, bool low_freq);
+	template <size_t max_units, int gain> void decode_adpcm(bool stereo, bool low_freq);
 
 public:
 	enum SoundQualityLevel
@@ -33,9 +31,8 @@ public:
 		CDI_C  // sampling frequency: 18900 Hz ; bps: 4bps ; bandwidth: 8.5 kHz
 	};
 
-	std::vector<int16_t> left, right;
-	int16_t output[16128]; // 8*28 * 2 (18.9 kHz) * 2 (stereo) * 18 (sound groups)
-	int output_size = 0;
+	AdpcmDecoder();
+	~AdpcmDecoder();
 
 	/**
 	 * @brief  Decodes a CD-i audio sector to a 16-bit sample buffer.
@@ -45,6 +42,11 @@ public:
 	 * @return Whether the sector is valid or not.
 	 */
 	bool decode_sector(uint8_t *buffer);
+
+	/**
+	 * @brief  Plays back the decoded audio buffer if it exists.
+	 */
+	void play();
 };
 
 #endif

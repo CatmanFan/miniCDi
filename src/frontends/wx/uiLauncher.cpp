@@ -2,7 +2,7 @@
 #include "uiLauncher.hpp"
 
 #ifdef _WIN32
-#pragma message "WIN32 macro is enabled"
+#pragma message "note: WIN32 macro is enabled (wxWidgets frontend)"
 #endif
 
 using namespace miniCDi;

@@ -233,11 +233,7 @@ PhilipsCDI::~PhilipsCDI()
 		this->vpu = NULL;
 	}
 	if (this->memory != NULL) {
-		#ifdef _WIN32
-		_aligned_free(this->memory);
-		#else
-		free(this->memory);
-		#endif
+		MINICDI_MEMFREE(this->memory);
 		this->memory = NULL;
 	}
 	MiniCDI::Player = {NULL};

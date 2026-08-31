@@ -219,13 +219,7 @@ AdpcmDecoder::AdpcmDecoder()
 	#endif
 
 	// INIT OUTPUT BUFFER
-	#ifdef _WIN32
-	output = (int16_t *)_aligned_malloc(OUTPUT_MAX_SIZE*sizeof(int16_t), 32);
-	#elif defined(__APPLE__)
-	posix_memalign((void**)&output, 32, OUTPUT_MAX_SIZE*sizeof(int16_t));
-	#else
-	output = (int16_t *)memalign(32, OUTPUT_MAX_SIZE*sizeof(int16_t));
-	#endif
+	MINICDI_MEMALIGN(int16_t, output, OUTPUT_MAX_SIZE);
 	MiniCDI::Log("[Audio] Initialized audio buffer");
 }
 
@@ -247,8 +241,7 @@ AdpcmDecoder::~AdpcmDecoder()
 
 	if (output != NULL)
 	{
-		free(output);
-		output = NULL;
+		MINICDI_MEMFREE(output);
 		MiniCDI::Log("[Audio] Closed audio buffer");
 	}
 }

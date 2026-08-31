@@ -49,13 +49,7 @@ public:
 		// In practice Mono-I only has 5.5 MB total (not including DVC RAM).
 		// cdifan: max possible CD-i memory size is roughly 6.5 MB (CD-i 605 with DVC and expansion card)
 
-		#ifdef _WIN32
-		memory = (uint8_t *)_aligned_malloc(memsize*sizeof(uint8_t), 32);
-		#elif defined(__APPLE__)
-		posix_memalign((void**)&memory, 32, memsize*sizeof(uint8_t));
-		#else
-		memory = (uint8_t *)memalign(32, memsize*sizeof(uint8_t));
-		#endif
+		MINICDI_MEMALIGN(uint8_t, memory, memsize);
 		if (memory) {
 			memset(memory, 0, memsize*sizeof(uint8_t));
 			return true;

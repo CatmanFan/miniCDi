@@ -20,6 +20,18 @@
 #include <cmath>
 #include <algorithm>
 
+// Platform macros
+#ifdef _WIN32
+	#define MINICDI_MEMALIGN(TYPE, PTR, SIZE) PTR = (TYPE *)_aligned_malloc((SIZE)*sizeof(TYPE), 32);
+	#define MINICDI_MEMFREE(PTR) _aligned_free(PTR);
+#elif defined(__APPLE__)
+	#define MINICDI_MEMALIGN(TYPE, PTR, SIZE) posix_memalign((void**)&PTR, 32, (SIZE)*sizeof(TYPE));
+	#define MINICDI_MEMFREE(PTR) free(PTR);
+#else
+	#define MINICDI_MEMALIGN(TYPE, PTR, SIZE) PTR = (TYPE *)memalign(32, (SIZE)*sizeof(TYPE));
+	#define MINICDI_MEMFREE(PTR) free(PTR);
+#endif
+
 // Global defs
 #include "cdi/m68k/m68k.h"
 #include "cdi/os9/OS9.hpp"

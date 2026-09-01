@@ -119,7 +119,6 @@ void CDIC::update_soundmap_unit()
 
 	if (AudioController.sector_interval == 0
 	 && AudioController.buffer_index > 0
-	 && !AudioController.muted
 	 && (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00100100))
 	{
 		uint8_t coding = memory[(AudioController.buffer_index == 2 ? 0x303200 : 0x302800) + 11];
@@ -142,7 +141,7 @@ void CDIC::update_soundmap_unit()
 
 		else if ((AUDCTL & 0x0800) && ADPCM.decode_sector(&memory[AudioController.buffer_index == 2 ? 0x303200 : 0x302800]))
 		{
-			ADPCM.play();
+			/*if (!AudioController.muted)*/ ADPCM.play();
 
 			// Select sector interval for ADPCM (per Slamy documentation).
 			// CDDA has sample data on every sector so can be ignored.
@@ -153,13 +152,18 @@ void CDIC::update_soundmap_unit()
 
 			// Update audio controller struct
 			AudioController.buffer_index = 0;
+			if (AudioController.finish_scheduled)
+			{
+				AudioController.cpu = false;
+				AudioController.finish_scheduled = false;
+			}
 
 			// finished playback of single ADPCM buffer. This automatically triggers an IRQ.
 			// If for any reason this interrupt fails to pass, it will break Hotel Mario with its "dirty disc" error.
 			ABUF |= 0x8000;
 			if (AUDCTL & 0x2000)
 			{
-				MiniCDI::Log("[CDIC:DSP] Audio sector playback finished (IRQ). Sector interval: %d", AudioController.sector_interval);
+				// MiniCDI::Log("[CDIC:DSP] Audio sector playback finished (IRQ). Sector interval: %d", AudioController.sector_interval);
 				_68070->interrupt(SCC68070::IPL_IN4N, true);
 			}
 		}
@@ -303,17 +307,24 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 		case 0x303FFA: case 0x303FFB:
 			MiniCDI::Log("[CDIC] AUDCTL <= %04X", value);
 			AUDCTL = value;
-
 			if (value & 0x0800)
 			{
 				MiniCDI::Log("[CDIC:DSP] Starting playback at ADPCM buffer 1");
 				AudioController.buffer_index = 1;
 			}
-			else if (ACHAN != 0)
+			else
 			{
-				MiniCDI::Log("[CDIC:DSP] Stopping playback");
-				AudioController.buffer_index = 0;
-				AudioController.cpu = false;
+				if (ACHAN != 0)
+				{
+					MiniCDI::Log("[CDIC:DSP] Aborting playback");
+					AudioController.buffer_index = 0;
+					AudioController.cpu = false;
+				}
+				else
+				{
+					MiniCDI::Log("[CDIC:DSP] Finishing playback");
+					AudioController.finish_scheduled = true;
+				}
 			}
 			break;
 
@@ -378,7 +389,16 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 						break;
 
 					case 0x2E:
-						MiniCDI::Log("[CDIC] Update MODE2 parameters (0x%02X)", CMD);
+						if (ACHAN != 0 && (AUDCTL & 0x0800) == 0)
+						{
+							MiniCDI::Log("[CDIC] Update MODE2 parameters & abort ADPCM (0x%02X)", CMD);
+							AudioController.buffer_index = 0;
+							AudioController.cpu = false;
+						}
+						else
+						{
+							MiniCDI::Log("[CDIC] Update MODE2 parameters (0x%02X)", CMD);
+						}
 						break;
 				}
 

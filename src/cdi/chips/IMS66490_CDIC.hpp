@@ -34,6 +34,7 @@ class CDIC
 		int sector_interval;
 		bool cpu;
 		bool muted;
+		bool finish_scheduled;
 	} AudioController;
 
 	void update_soundmap_unit();

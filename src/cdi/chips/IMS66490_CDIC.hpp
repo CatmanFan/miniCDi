@@ -30,10 +30,11 @@ class CDIC
 	// ****************************
 	AdpcmDecoder ADPCM;
 	struct {
-		size_t buffer_index; // 0 = disabled, 1 = 0x2800, 2 = 0x3200
 		int sector_interval;
 		bool cpu;
 		bool muted;
+		bool running;
+		bool second_buffer;
 		bool finish_scheduled;
 	} AudioController;
 

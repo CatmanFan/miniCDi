@@ -119,18 +119,6 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 
 Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated. Certain software may softlock due to constant D-Pad movement polling by SLAVE (e.g. Zelda: Wand of Gamelon or [CDi_BadApple](https://github.com/Slamy/CDi_BadApple)).
 
-### Benchmarking
-Time taken to process and render a single frame on:
-
-* Windows (x64, Nvidia + Intel i5-12400F): ***~1.7ms*** (fullspeed)
-* Wii (vWii overclock): ***~33.77ms*** (~29 fps)
-* Wii (normal): ***~56.44ms*** (~18 fps)
-* Wii U (WUHB): ***~58.51ms*** (~17 fps)
-* New 3DS: ***~78.79ms*** (~13 fps)
-* Old 3DS: ***~237ms*** (~4 fps)
-
-All profiled times with the exception of the Windows version are longer than the minimum needed for throttling (16.667ms or 1/60 secs). All are compiled using the fastest compile optimizations available under GCC and are accurate as of commit [`2e14ffa`](https://github.com/CatmanFan/miniCDi/commit/2e14ffaf5d9d73b1a2df3745225006fff5a1945f).
-
 ## Screenshots
 ### Player shell
 <div align=center>
@@ -152,15 +140,15 @@ All captured under CDI 200 using Mono-I driver.
 </div>
 
 ## To-Do
+### In order
+- [ ] Fix audiomap-to-XA switching
+- [ ] ImGUI 3DS frontend
 
 ### Potential
 - [ ] Find faster 68010 emulator for ARM (3DS) + PowerPC? ([Cyclone](https://github.com/notaz/cyclone68000) exists but may need to be modified to support 68010 derivative.)
 - [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
 - [ ] Emulate timekeeper on Mono-I/Mono-IV? (should handle NVRAM saving)
 - [X] Fix PD on Mono-IV
-- Disc-related:
-   - [ ] CDIC: Address slowdown when reading sectors (only noticeable on embedded platforms?)
-   - [ ] CIAP: Read discs properly
 - [ ] LibRetro API compatibility?
 
 ## Building

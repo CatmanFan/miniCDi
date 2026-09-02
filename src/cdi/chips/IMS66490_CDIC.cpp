@@ -1,10 +1,11 @@
 #include "cdi/common.hpp"
 
-#define CLEAR_AUDIOCONTROLLER	/*AudioController.sector_interval = 0;*/ \
-								AudioController.cpu = false; \
-								AudioController.running = false; \
-								AudioController.second_buffer = false; \
-								AudioController.finish_scheduled = false;
+#define AUDIOCONTROLLER_CLEAR		AudioController.buffer = 0; \
+									/*AudioController.sector_interval = 0;*/ \
+									AudioController.running = false; \
+									AudioController.poll_end = false;
+
+#define AUDIOCONTROLLER_SETBUF(X)	if (AudioController.buffer == 0) { AudioController.buffer = X; }
 
 CDIC::CDIC(SCC68070* _68070, uint8_t* memory, CDiDisc *disc) : _68070(_68070), memory(memory), XBUF(0), AudioController({0}), disc(disc), CdicController({0})
 {
@@ -52,9 +53,11 @@ void CDIC::disc_process_sector()
 	if (!CdicController.reading)
 		return;
 
-	if (CdicController.delayed_sectors > 0) {
+	if (CdicController.delayed_sectors > 0)
+	{
 		CdicController.delayed_sectors--;
-		return;
+		if (CdicController.delayed_sectors > 0)
+			return;
 	}
 
 	if (disc_check_filter()) // This skips if MODE2 is not satisfied
@@ -80,7 +83,9 @@ void CDIC::disc_process_sector()
 		{
 			DBUF |= 0x0004; // Set audio bit in DBUF to declare reception into ADPCM buffer
 			targetAddr += 0x2800; // Jump to ADPCM buffer address
+
 			// ADPCM buffer is automatically decoded and played when AUDCTL is set to enable playback.
+			AUDIOCONTROLLER_SETBUF((DBUF & 0x01) ? 2 : 1);
 		}
 
 		memcpy(&memory[targetAddr], &disc->Sector[8], 2332);
@@ -120,14 +125,13 @@ void CDIC::update_soundmap_unit()
 	if (AudioController.sector_interval > 0)
 		AudioController.sector_interval--;
 
-	if (AudioController.running && AudioController.sector_interval == 0)
+	if (AudioController.running && AudioController.buffer != 0 && AudioController.sector_interval == 0)
 	{
-		const uint8_t coding = memory[(AudioController.second_buffer ? 0x303200 : 0x302800) + 11];
-
-		if (coding == 0xFF) // coding byte
+		const uint8_t coding = memory[(AudioController.buffer == 2 ? 0x303200 : 0x302800) + 11];
+		if (coding == 0xFF)
 		{
 			MiniCDI::Log("[CDIC:DSP] Encountered $FF coding, reset");
-			CLEAR_AUDIOCONTROLLER
+			AUDIOCONTROLLER_CLEAR
 
 			AUDCTL &= ~0x0800; // reset Playback Start bit (cdiemu does not unset this bit?)
 			AUDCTL |= 0x0001; // set Playback End bit
@@ -136,26 +140,17 @@ void CDIC::update_soundmap_unit()
 			ABUF |= 0x8000;
 			if (AUDCTL & 0x2000) _68070->interrupt(SCC68070::IPL_IN4N, true);
 		}
-
-		else if (ADPCM.decode_sector(&memory[AudioController.second_buffer ? 0x303200 : 0x302800]))
+		else
 		{
-			/*if (!AudioController.muted)*/ ADPCM.play();
-			AudioController.second_buffer = !AudioController.second_buffer;
+			// Select sector interval for ADPCM (per Slamy documentation).
+			// CDDA has sample data on every sector so can be ignored.
+			AudioController.sector_interval = 2;
+			if (coding & 0b000100) { AudioController.sector_interval *= 2; } // XA 18.9 kHz
+			if (!(coding & 0b010000)) { AudioController.sector_interval *= 2; } // XA 4bps
+			if (!(coding & 0b000001)) { AudioController.sector_interval *= 2; } // XA Mono
 
-			// Update audio controller struct
-			if (AudioController.finish_scheduled)
-			{
-				CLEAR_AUDIOCONTROLLER
-			}
-			else
-			{
-				// Select sector interval for ADPCM (per Slamy documentation).
-				// CDDA has sample data on every sector so can be ignored.
-				AudioController.sector_interval = 2;
-				if (coding & 0b000100) { AudioController.sector_interval *= 2; } // XA 18.9 kHz
-				if (!(coding & 0b010000)) { AudioController.sector_interval *= 2; } // XA 4bps
-				if (!(coding & 0b000001)) { AudioController.sector_interval *= 2; } // XA Mono
-			}
+			if (ADPCM.decode_sector(&memory[AudioController.buffer == 2 ? 0x303200 : 0x302800]))
+				ADPCM.play();
 
 			// finished playback of single ADPCM buffer. This automatically triggers an IRQ.
 			// If for any reason this interrupt fails to pass, it will break Hotel Mario with its "dirty disc" error.
@@ -165,6 +160,12 @@ void CDIC::update_soundmap_unit()
 				MiniCDI::Log("[CDIC:DSP] Audio sector playback finished (IRQ). Sector interval: %d", AudioController.sector_interval);
 				_68070->interrupt(SCC68070::IPL_IN4N, true);
 			}
+		}
+
+		if (AudioController.poll_end) {
+			AUDIOCONTROLLER_CLEAR
+		} else {
+			AudioController.buffer = 0;
 		}
 	}
 }
@@ -288,6 +289,9 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 			DMACTL = value;
 			if (value & 0x8000) {
 				_68070->dma_call(0, 0x300000 + (value & 0x3FFF));
+				if ((value & 0x3F00) == 0x2800 || (value & 0x3F00) == 0x3200) {
+					AUDIOCONTROLLER_SETBUF((value & 0x3F00) == 0x3200 ? 2 : 1);
+				}
 			}
 			break;
 
@@ -297,23 +301,22 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 			if (value & 0x0800)
 			{
 				AudioController.sector_interval = 0;
-				AudioController.cpu = value & 0x2000;
-				AudioController.second_buffer = false;
+				AudioController.buffer = 1;
 				AudioController.running = true;
 
-				MiniCDI::Log("[CDIC:DSP] Starting playback from %s", AudioController.cpu ? "CPU" : "disc");
+				MiniCDI::Log("[CDIC:DSP] Starting playback from %s", (value & 0x2000) ? "CPU" : "disc");
 			}
 			else
 			{
 				if (ACHAN != 0)
 				{
 					MiniCDI::Log("[CDIC:DSP] Aborting playback");
-					CLEAR_AUDIOCONTROLLER
+					AUDIOCONTROLLER_CLEAR
 				}
 				else
 				{
-					MiniCDI::Log("[CDIC:DSP] Finishing playback");
-					AudioController.finish_scheduled = true;
+					MiniCDI::Log("[CDIC:DSP] Polling end of playback");
+					AudioController.poll_end = true;
 				}
 			}
 			break;
@@ -382,7 +385,7 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 						if (ACHAN != 0 && (AUDCTL & 0x0800) == 0)
 						{
 							MiniCDI::Log("[CDIC] Update MODE2 parameters & abort ADPCM (0x%02X)", CMD);
-							CLEAR_AUDIOCONTROLLER
+							AUDIOCONTROLLER_CLEAR
 						}
 						else
 						{

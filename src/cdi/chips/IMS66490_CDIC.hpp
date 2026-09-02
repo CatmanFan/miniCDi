@@ -30,12 +30,11 @@ class CDIC
 	// ****************************
 	AdpcmDecoder ADPCM;
 	struct {
+		int buffer;
 		int sector_interval;
-		bool cpu;
-		bool muted;
 		bool running;
-		bool second_buffer;
-		bool finish_scheduled;
+		bool poll_end;
+		bool muted;
 	} AudioController;
 
 	void update_soundmap_unit();

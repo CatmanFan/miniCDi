@@ -152,8 +152,8 @@ bool AdpcmDecoder::decode_sector(uint8_t *buffer)
 #define SDL2 1
 #define ASND 2
 
-#define SAMPLE_COUNT 448
-#define MAX_SAMPLE_QUEUE 32000
+#define SAMPLE_COUNT 768
+#define MAX_SAMPLE_QUEUE 0
 
 #if MINICDI_AUDIO == SDL2
 	#include <SDL2/SDL.h>
@@ -170,8 +170,10 @@ bool AdpcmDecoder::decode_sector(uint8_t *buffer)
 void AdpcmDecoder::play()
 {
 	#if MINICDI_AUDIO == SDL2
-	if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < MAX_SAMPLE_QUEUE)
-		SDL_QueueAudio(SDL_audio_id, &output[0], output_size * sizeof(int16_t));
+		#if MAX_SAMPLE_QUEUE > 0
+		if (SDL_audio_valid && SDL_GetQueuedAudioSize(SDL_audio_id) < MAX_SAMPLE_QUEUE)
+		#endif
+			SDL_QueueAudio(SDL_audio_id, &output[0], output_size * sizeof(int16_t));
 	#endif
 
 	#if MINICDI_AUDIO == ASND

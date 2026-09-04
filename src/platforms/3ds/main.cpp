@@ -24,7 +24,7 @@ public:
 
 	void update(int frames = 1)
 	{
-		if (!MiniCDI::Config::ShowFPS) return;
+		if (!MiniCDI::Config.ShowFPS) return;
 
 		incremented += frames;
 		currentTime = osGetTime();
@@ -232,19 +232,19 @@ static void RUN_CDI(const std::string &discName, const std::string &biosName)
 		});
 		file.generate(ini);
 	}
-	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
-	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
-	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
-	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-	MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+	MiniCDI::Config.TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
-	MiniCDI::Config::LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
+	MiniCDI::Config.LogFile = fopen("sdmc:/3ds/miniCDi/log.txt", "wt");
 	#else
-	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen("sdmc:/3ds/miniCDi/log.txt", "wt") : NULL;
+	MiniCDI::Config.LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen("sdmc:/3ds/miniCDi/log.txt", "wt") : NULL;
 	#endif
-	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-	MiniCDI::Config::ShowFTD = false;
-	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? "sdmc:/3ds/miniCDi/rom/" + biosName + ".nvram" : "";
+	MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
+	MiniCDI::Config.ShowFTD = false;
+	MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? "sdmc:/3ds/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	// Actually create the CD-i Player
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
@@ -256,10 +256,10 @@ static void RUN_CDI(const std::string &discName, const std::string &biosName)
 		cdi.swap_disc("sdmc:/3ds/miniCDi/discs/" + discName);
 
 	EmulatorWindow TOPSCREEN(768,280);
-	TOPSCREEN.x = MiniCDI::Config::PAL ? 35 : 8;
-	TOPSCREEN.y = MiniCDI::Config::PAL ? 0 : -20;
-	TOPSCREEN.scaleX = MiniCDI::Config::PAL ? 329.0f / 768.0f : 0.5f;
-	TOPSCREEN.scaleY = MiniCDI::Config::PAL ? 240.0f / 280.0f : 1.0f;
+	TOPSCREEN.x = MiniCDI::Config.PAL ? 35 : 8;
+	TOPSCREEN.y = MiniCDI::Config.PAL ? 0 : -20;
+	TOPSCREEN.scaleX = MiniCDI::Config.PAL ? 329.0f / 768.0f : 0.5f;
+	TOPSCREEN.scaleY = MiniCDI::Config.PAL ? 240.0f / 280.0f : 1.0f;
 
 	int frames_run = 0;
 	while (aptMainLoop())
@@ -281,8 +281,8 @@ static void RUN_CDI(const std::string &discName, const std::string &biosName)
 		static FPS fps;
 		if (frames_run == 0) {
 			cdi.run(false);
-			frames_run += MiniCDI::Config::FrameSkip;
-			fps.update(MiniCDI::Config::FrameSkip+1);
+			frames_run += MiniCDI::Config.FrameSkip;
+			fps.update(MiniCDI::Config.FrameSkip+1);
 		} else {
 			cdi.run(true);
 			frames_run--;

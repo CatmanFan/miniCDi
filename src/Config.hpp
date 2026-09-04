@@ -3,21 +3,22 @@
 
 namespace MiniCDI
 {
-	namespace Config
+	struct _config
 	{
-		extern bool TestPlug; // enables service menu
-		extern bool PCB_LLTest;
-		extern bool PAL;
-		extern bool ShowFPS;
-		extern bool ShowFTD;
-		extern bool AnalogColors;
-		extern size_t FrameSkip;
-		extern bool NoFrameLimit;
-		extern int PointerAdvance;
+		bool TestPlug = false; // enables service menu
+		bool PCB_LLTest = false;
+		bool PAL = true;
+		bool ShowFPS = false;
+		bool ShowFTD = false;
+		bool AnalogColors = false;
+		size_t FrameSkip = 0;
+		bool NoFrameLimit = false;
+		int PointerAdvance = 1;
 
-		extern FILE* LogFile;
-		extern std::string NvramFile;
-	}
+		FILE* LogFile = nullptr;
+		std::string NvramFile = "";
+	};
+	inline struct _config Config;
 }
 
 #endif

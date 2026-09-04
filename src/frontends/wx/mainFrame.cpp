@@ -184,11 +184,11 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	menuOpenDisc->Enable(false);
 	menuResetPD->Enable(false);
 
-	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
-	menuToggleLLTest->Check(MiniCDI::Config::PCB_LLTest);
-	menuToggleAnalogColors->Check(MiniCDI::Config::AnalogColors);
-	menuToggleNoFrameLimit->Check(MiniCDI::Config::NoFrameLimit);
-	menuToggleNTSC->Check(!MiniCDI::Config::PAL);
+	menuToggleTestPlug->Check(MiniCDI::Config.TestPlug);
+	menuToggleLLTest->Check(MiniCDI::Config.PCB_LLTest);
+	menuToggleAnalogColors->Check(MiniCDI::Config.AnalogColors);
+	menuToggleNoFrameLimit->Check(MiniCDI::Config.NoFrameLimit);
+	menuToggleNTSC->Check(!MiniCDI::Config.PAL);
 
 	this->SetClientSize(384, 280);
 	this->Centre(wxBOTH);
@@ -247,13 +247,13 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 	switch (id)
 	{
 		case wxID_CONFIG_TESTPLUG:
-			MiniCDI::Config::TestPlug = !MiniCDI::Config::TestPlug;
-			statusBar->SetStatusText(wxString::Format("Test plug %s", MiniCDI::Config::TestPlug ? "connected" : "disconnected"));
+			MiniCDI::Config.TestPlug = !MiniCDI::Config.TestPlug;
+			statusBar->SetStatusText(wxString::Format("Test plug %s", MiniCDI::Config.TestPlug ? "connected" : "disconnected"));
 			break;
 
 		case wxID_CONFIG_LLTEST:
-			MiniCDI::Config::PCB_LLTest = !MiniCDI::Config::PCB_LLTest;
-			statusBar->SetStatusText(wxString::Format("%s PCB low-level test on boot", MiniCDI::Config::PCB_LLTest ? "Enabled" : "Disabled"));
+			MiniCDI::Config.PCB_LLTest = !MiniCDI::Config.PCB_LLTest;
+			statusBar->SetStatusText(wxString::Format("%s PCB low-level test on boot", MiniCDI::Config.PCB_LLTest ? "Enabled" : "Disabled"));
 			break;
 
 		case wxID_CONFIG_NTSC:
@@ -261,24 +261,24 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 			{
 				if (wxMessageBox(_("This will reset the CD-i player. Any unsaved data will be lost.\nContinue anyway?"), _("Are you sure?"), wxICON_QUESTION | wxYES_NO, this) == wxYES)
 				{
-					MiniCDI::Config::PAL = !MiniCDI::Config::PAL;
+					MiniCDI::Config.PAL = !MiniCDI::Config.PAL;
 					statusBar->SetStatusText("Reset");
 					cdi->reset();
 				}
 			}
 			else
 			{
-				MiniCDI::Config::PAL = !MiniCDI::Config::PAL;
+				MiniCDI::Config.PAL = !MiniCDI::Config.PAL;
 			}
 			break;
 
 		case wxID_CONFIG_ANALOGCOLORS:
-			MiniCDI::Config::AnalogColors = !MiniCDI::Config::AnalogColors;
+			MiniCDI::Config.AnalogColors = !MiniCDI::Config.AnalogColors;
 			break;
 
 		case wxID_CONFIG_NOFRAMELIMIT:
-			MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
-			statusBar->SetStatusText(wxString::Format("Frame throttling %s", MiniCDI::Config::NoFrameLimit ? "disabled" : "enabled"));
+			MiniCDI::Config.NoFrameLimit = !MiniCDI::Config.NoFrameLimit;
+			statusBar->SetStatusText(wxString::Format("Frame throttling %s", MiniCDI::Config.NoFrameLimit ? "disabled" : "enabled"));
 			break;
 
 		case wxID_CONFIG_RESETPD:
@@ -286,11 +286,11 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 			return;
 	}
 
-	menuToggleTestPlug->Check(MiniCDI::Config::TestPlug);
-	menuToggleLLTest->Check(MiniCDI::Config::PCB_LLTest);
-	menuToggleAnalogColors->Check(MiniCDI::Config::AnalogColors);
-	menuToggleNoFrameLimit->Check(MiniCDI::Config::NoFrameLimit);
-	menuToggleNTSC->Check(!MiniCDI::Config::PAL);
+	menuToggleTestPlug->Check(MiniCDI::Config.TestPlug);
+	menuToggleLLTest->Check(MiniCDI::Config.PCB_LLTest);
+	menuToggleAnalogColors->Check(MiniCDI::Config.AnalogColors);
+	menuToggleNoFrameLimit->Check(MiniCDI::Config.NoFrameLimit);
+	menuToggleNTSC->Check(!MiniCDI::Config.PAL);
 }
 
 void mainFrame::e_exit(wxCommandEvent& WXUNUSED(event))
@@ -320,7 +320,7 @@ void mainFrame::e_openSystemROM(wxCommandEvent& WXUNUSED(event))
 		if (menuOpenDisc) menuOpenDisc->Enable(true);
 		if (menuResetPD) menuResetPD->Enable(true);
 
-		MiniCDI::Config::PointerAdvance = 3;
+		MiniCDI::Config.PointerAdvance = 3;
 		statusBar->SetStatusText(wxString::Format("Loaded from %s.rom", rom.stem().c_str()));
 	}
 }

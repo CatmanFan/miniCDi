@@ -71,10 +71,10 @@ public:
 
 			SDL_Rect dest =
 			{
-				MiniCDI::Config::PAL ? 219 : 96,
-				MiniCDI::Config::PAL ? 0 : -90,
-				MiniCDI::Config::PAL ? 1481 : 1728,
-				MiniCDI::Config::PAL ? 1080 : 1260
+				MiniCDI::Config.PAL ? 219 : 96,
+				MiniCDI::Config.PAL ? 0 : -90,
+				MiniCDI::Config.PAL ? 1481 : 1728,
+				MiniCDI::Config.PAL ? 1080 : 1260
 			};
 			SDL_RenderCopy(SDL_renderer, this->texture, NULL, &dest);
 		}
@@ -149,19 +149,19 @@ static void RUN_CDI(const std::string &discName)
 		});
 		file.generate(ini);
 	}
-	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
-	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
-	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
-	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-	MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+	MiniCDI::Config.TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
-	MiniCDI::Config::LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
+	MiniCDI::Config.LogFile = fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt");
 	#else
-	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt") : NULL;
+	MiniCDI::Config.LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt") : NULL;
 	#endif
-	MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-	MiniCDI::Config::ShowFTD = true;
-	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
+	MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
+	MiniCDI::Config.ShowFTD = true;
+	MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	PhilipsCDI cdi;
 	if (!cdi.init(devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".rom", biosName.compare("cdi490a") == 0 ? CDi::MonoIV : CDi::MonoI)) {
@@ -194,9 +194,9 @@ static void RUN_CDI(const std::string &discName)
 		cdi.pd.set_button(PointingDevice::Down, status.hold & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN | VPAD_STICK_R_EMULATION_DOWN));
 		cdi.pd.set_button(PointingDevice::Up, status.hold & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP | VPAD_STICK_R_EMULATION_UP));
 
-		if (MiniCDI::Config::FrameSkip != 0) {
-			cdi.run(MiniCDI::Config::FrameSkip+1);
-			fps.update(MiniCDI::Config::FrameSkip+1);
+		if (MiniCDI::Config.FrameSkip != 0) {
+			cdi.run(MiniCDI::Config.FrameSkip+1);
+			fps.update(MiniCDI::Config.FrameSkip+1);
 		} else {
 			cdi.run(1);
 			fps.update(1);
@@ -206,7 +206,7 @@ static void RUN_CDI(const std::string &discName)
 		SDL_RenderClear(SDL_renderer);
 
 		screen.draw(cdi.get_display(), cdi.get_display_width());
-		if (MiniCDI::Config::ShowFTD && cdi.get_ftd())
+		if (MiniCDI::Config.ShowFTD && cdi.get_ftd())
 			screen.draw_ftd(cdi.get_ftd(), cdi.get_ftd_width(), cdi.get_ftd_height());
 
 		/*if (paused) {
@@ -217,7 +217,7 @@ static void RUN_CDI(const std::string &discName)
 			SDL_RenderPresent(SDL_renderer);
 			continue;
 		}*/
-		if (MiniCDI::Config::ShowFPS) {
+		if (MiniCDI::Config.ShowFPS) {
 			SDL_print(2,2,25,{255,255,255,255},"FPS:",true);
 			SDL_print(72,2,25,{255,255,0,255},std::to_string(fps.get()),true);
 		}

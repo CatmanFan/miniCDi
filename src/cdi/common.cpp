@@ -2,32 +2,14 @@
 #include "cdi/common.hpp"
 #include <fstream>
 
-namespace MiniCDI
+static struct
 {
-	namespace Config
-	{
-		bool TestPlug = false;
-		bool PCB_LLTest = false;
-		bool PAL = true;
-		bool ShowFPS = false;
-		bool ShowFTD = false;
-		bool AnalogColors = false;
-		size_t FrameSkip = 0;
-		bool NoFrameLimit = false;
-		int PointerAdvance = 1;
-
-		FILE* LogFile = nullptr;
-		std::string NvramFile = "";
-	}
-
-	static struct
-	{
-		uint8_t* memory;
-		PhilipsCDI* philips;
-		// GoldstarCDI* goldstar?? SonyCDI* sony??
-		SCC68070* scc68070;
-	} Player;
-}
+	uint8_t* memory;
+	PhilipsCDI* philips;
+	// GoldstarCDI* goldstar??
+	// SonyCDI* sony??
+	SCC68070* scc68070;
+} MY_PLAYER;
 
 unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_memory_8(address); }
 unsigned int  m68k_read_disassembler_16(unsigned int address) { return m68k_read_memory_16(address); }
@@ -35,59 +17,59 @@ unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read
 
 unsigned int  m68k_read_memory_8(unsigned int address)
 {
-	if (MiniCDI::Player.philips) {
+	if (MY_PLAYER.philips) {
 		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
-		return MiniCDI::Player.philips->read8(address);
+		return MY_PLAYER.philips->read8(address);
 	}
 	return 0;
 }
 
 unsigned int  m68k_read_memory_16(unsigned int address)
 {
-	if (MiniCDI::Player.philips) {
+	if (MY_PLAYER.philips) {
 		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
-		return MiniCDI::Player.philips->read16(address);
+		return MY_PLAYER.philips->read16(address);
 	}
 	return 0;
 }
 
 unsigned int  m68k_read_memory_32(unsigned int address)
 {
-	if (MiniCDI::Player.philips) {
+	if (MY_PLAYER.philips) {
 		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
-		return MiniCDI::Player.philips->read32(address);
+		return MY_PLAYER.philips->read32(address);
 	}
 	return 0;
 }
 
 void m68k_write_memory_8(unsigned int address, unsigned int value)
 {
-	if (MiniCDI::Player.philips) {
+	if (MY_PLAYER.philips) {
 		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
-		return MiniCDI::Player.philips->write8(address, value);
+		return MY_PLAYER.philips->write8(address, value);
 	}
 }
 
 void m68k_write_memory_16(unsigned int address, unsigned int value)
 {
-	if (MiniCDI::Player.philips) {
+	if (MY_PLAYER.philips) {
 		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
-		return MiniCDI::Player.philips->write16(address, value);
+		return MY_PLAYER.philips->write16(address, value);
 	}
 }
 
 void m68k_write_memory_32(unsigned int address, unsigned int value)
 {
-	if (MiniCDI::Player.philips) {
+	if (MY_PLAYER.philips) {
 		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
-		return MiniCDI::Player.philips->write32(address, value);
+		return MY_PLAYER.philips->write32(address, value);
 	}
 }
 
 static int MiniCDI_op_trap_handler(int trap)
 {
 	#ifdef MINICDI_DEBUG_OS9
-	if (trap == 0) MiniCDI::OS9::log(MiniCDI::Player.memory);
+	if (trap == 0) MiniCDI::OS9::log(MY_PLAYER.memory);
 	#endif
 
 	return 0; // unhandled, generate exception.
@@ -95,27 +77,27 @@ static int MiniCDI_op_trap_handler(int trap)
 
 static void MiniCDI_reset_handler()
 {
-	if (MiniCDI::Player.scc68070) MiniCDI::Player.scc68070->reset_internal();
+	if (MY_PLAYER.scc68070) MY_PLAYER.scc68070->reset_internal();
 }
 
 static void MiniCDI_set_fc(unsigned int new_fc)
 {
-	if (MiniCDI::Player.scc68070) MiniCDI::Player.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
+	if (MY_PLAYER.scc68070) MY_PLAYER.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
 }
 
 static int MiniCDI_int_ack_handler(int int_level)
 {
 	m68k_set_irq(0); // resets IRQ
 
-	if (MiniCDI::Player.scc68070)
-		return MiniCDI::Player.scc68070->interrupt_ack(int_level);
+	if (MY_PLAYER.scc68070)
+		return MY_PLAYER.scc68070->interrupt_ack(int_level);
 
 	return M68K_INT_ACK_AUTOVECTOR;
 }
 
 bool CDi::nvram_save()
 {
-	if (MiniCDI::Config::NvramFile.empty() || memory == NULL || this->nvram == 0) return false;
+	if (MiniCDI::Config.NvramFile.empty() || memory == NULL || this->nvram == 0) return false;
 
 	uint32_t nvram_size = board == CDi::MonoIV ? 32*1024 : 8*1024;
 	MiniCDI::OS9::Module *module = MiniCDI::OS9::get_module_from_name("nvr");
@@ -126,15 +108,15 @@ bool CDi::nvram_save()
 		MiniCDI::Log("[NVRAM] \"nvr\" system module not found, defaulting to max %dKB", nvram_size/1024);
 	}
 
-	FILE *file = fopen(MiniCDI::Config::NvramFile.c_str(), "wb");
+	FILE *file = fopen(MiniCDI::Config.NvramFile.c_str(), "wb");
 	if (!file) {
-		MiniCDI::Log("[NVRAM] failed to write to %s", MiniCDI::Config::NvramFile.c_str());
+		MiniCDI::Log("[NVRAM] failed to write to %s", MiniCDI::Config.NvramFile.c_str());
 		return false;
 	}
 	fwrite(&memory[this->nvram], sizeof(memory[0]), nvram_size, file);
 	fclose(file);
 
-	MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config::NvramFile.c_str());
+	MiniCDI::Log("[NVRAM] saved to %s", MiniCDI::Config.NvramFile.c_str());
 	return true;
 }
 
@@ -160,9 +142,9 @@ void CDi::nvram_load()
 		memory[this->nvram + 0x0006] = 0x01; // (BCD) mm: 1
 		memory[this->nvram + 0x0007] = 0x01; // (BCD) yy: 2001
 	}*/
-	if (!MiniCDI::Config::NvramFile.empty() && access(MiniCDI::Config::NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
-		MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config::NvramFile.c_str());
-		std::ifstream nvrStream(MiniCDI::Config::NvramFile, std::ios::binary);
+	if (!MiniCDI::Config.NvramFile.empty() && access(MiniCDI::Config.NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
+		MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config.NvramFile.c_str());
+		std::ifstream nvrStream(MiniCDI::Config.NvramFile, std::ios::binary);
 		std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
 		nvrStream.close();
 
@@ -236,14 +218,14 @@ PhilipsCDI::~PhilipsCDI()
 		MINICDI_MEMFREE(this->memory);
 		this->memory = NULL;
 	}
-	MiniCDI::Player = {NULL};
+	MY_PLAYER = {NULL};
 	this->board = CDi::Invalid;
 
 	// Stop logging
 	MiniCDI::Log("[CDI] shutdown");
-	if (MiniCDI::Config::LogFile != NULL) {
-		fclose(MiniCDI::Config::LogFile);
-		MiniCDI::Config::LogFile = NULL;
+	if (MiniCDI::Config.LogFile != NULL) {
+		fclose(MiniCDI::Config.LogFile);
+		MiniCDI::Config.LogFile = NULL;
 	}
 }
 
@@ -296,7 +278,7 @@ bool PhilipsCDI::init(const std::string &bios, enum BoardType board)
 				break;
 		}
 
-		MiniCDI::Player = { .memory = this->memory, .philips = this, .scc68070 = &this->cpu };
+		MY_PLAYER = { .memory = this->memory, .philips = this, .scc68070 = &this->cpu };
 
 		// Init Musashi last (expects memory to already be setup in player struct)
 		m68k_init();

@@ -43,7 +43,7 @@ namespace MiniCDI
 		#ifdef MINICDI_DEBUG
 		bool mustLog = true;
 		#else
-		bool mustLog = MiniCDI::Config::LogFile != NULL;
+		bool mustLog = MiniCDI::Config.LogFile != NULL;
 		#endif
 
 		if (mustLog)
@@ -63,14 +63,14 @@ namespace MiniCDI
 			#endif
 
 			// Print to logfile if available
-			if (MiniCDI::Config::LogFile != NULL) {
+			if (MiniCDI::Config.LogFile != NULL) {
 				#ifdef MINICDI_DEBUG_MODULE
 				if (module != nullptr)
-					fprintf(MiniCDI::Config::LogFile, "[@%08X(%s)]%s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
+					fprintf(MiniCDI::Config.LogFile, "[@%08X(%s)]%s\n", m68k_get_reg(NULL, M68K_REG_PC), module->name.c_str(), szBuff);
 				else
-					fprintf(MiniCDI::Config::LogFile, "[@%08X]%s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
+					fprintf(MiniCDI::Config.LogFile, "[@%08X]%s\n", m68k_get_reg(NULL, M68K_REG_PC), szBuff);
 				#else
-				fprintf(MiniCDI::Config::LogFile, "%s\n", szBuff);
+				fprintf(MiniCDI::Config.LogFile, "%s\n", szBuff);
 				#endif
 			}
 

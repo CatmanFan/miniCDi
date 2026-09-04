@@ -160,19 +160,19 @@ int main(int argc, char** argv)
 		file.generate(ini);
 	}
 
-	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
-	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
-	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
-	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-	MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+	MiniCDI::Config.TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
-	MiniCDI::Config::LogFile = fopen(logPath.c_str(), "wt");
+	MiniCDI::Config.LogFile = fopen(logPath.c_str(), "wt");
 	#else
-	MiniCDI::Config::LogFile = ini["CDI"]["Logging"].compare("1") == 0 ? fopen(logPath.c_str(), "wt") : NULL;
+	MiniCDI::Config.LogFile = ini["CDI"]["Logging"].compare("1") == 0 ? fopen(logPath.c_str(), "wt") : NULL;
 	#endif
-	MiniCDI::Config::ShowFPS = false;
-	MiniCDI::Config::ShowFTD = true;
-	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? nvramPath : "";
+	MiniCDI::Config.ShowFPS = false;
+	MiniCDI::Config.ShowFTD = true;
+	MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? nvramPath : "";
 
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
 							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
@@ -212,8 +212,8 @@ int main(int argc, char** argv)
 
 					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
 					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
-					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config::ShowFTD = !MiniCDI::Config::ShowFTD;
-					if (e.key.keysym.sym == SDLK_t && e.type == SDL_KEYDOWN) MiniCDI::Config::NoFrameLimit = !MiniCDI::Config::NoFrameLimit;
+					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config.ShowFTD = !MiniCDI::Config.ShowFTD;
+					if (e.key.keysym.sym == SDLK_t && e.type == SDL_KEYDOWN) MiniCDI::Config.NoFrameLimit = !MiniCDI::Config.NoFrameLimit;
 					if (e.key.keysym.sym == SDLK_v && e.type == SDL_KEYDOWN) {
 						SDL_SetWindowSize(screen.Video.window, w == 768 ? 384 : 768, h == 560 ? 280 : 560);
 					}
@@ -236,7 +236,7 @@ int main(int argc, char** argv)
 					if (e.window.event == SDL_WINDOWEVENT_CLOSE)
 					{
 						if (e.window.windowID == SDL_GetWindowID(screen.FTD.window))
-							MiniCDI::Config::ShowFTD = false;
+							MiniCDI::Config.ShowFTD = false;
 						else if (e.window.windowID == SDL_GetWindowID(screen.Video.window))
 							has_quit = true;
 					}
@@ -255,7 +255,7 @@ int main(int argc, char** argv)
 
 		if (frames_run == 0) {
 			cdi.run(false);
-			frames_run += MiniCDI::Config::FrameSkip;
+			frames_run += MiniCDI::Config.FrameSkip;
 		} else {
 			cdi.run(true);
 			frames_run--;
@@ -265,15 +265,15 @@ int main(int argc, char** argv)
 		screen.update_video(cdi.get_display(), cdi.get_display_width());
 
 		// FTD handling
-		if (MiniCDI::Config::ShowFTD && cdi.get_ftd())
+		if (MiniCDI::Config.ShowFTD && cdi.get_ftd())
 		{
 			if (screen.FTD.window == nullptr)
 				screen.add_ftd(cdi.get_ftd_width(), cdi.get_ftd_height());
 			else
 				SDL_ShowWindow(screen.FTD.window);
 		}
-		if (!MiniCDI::Config::ShowFTD && screen.FTD.window) SDL_HideWindow(screen.FTD.window);
-		if (MiniCDI::Config::ShowFTD && cdi.get_ftd()) screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
+		if (!MiniCDI::Config.ShowFTD && screen.FTD.window) SDL_HideWindow(screen.FTD.window);
+		if (MiniCDI::Config.ShowFTD && cdi.get_ftd()) screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
 	}
 	
 	return 0;

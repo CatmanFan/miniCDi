@@ -32,11 +32,11 @@
 
 static int event_rates[EVENTS_TOTAL] =
 {
-	/* SECTOR */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 75,
-	/* VPU */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 15625,
+	/* SECTOR */ (MiniCDI::Config.PAL ? 15000000 : 15104900) / 75,
+	/* VPU */ (MiniCDI::Config.PAL ? 15000000 : 15104900) / 15625,
 	/* UART_TX */ 4915200,
-	/* TIMER */ 96*2,
-	/* PD */ (MiniCDI::Config::PAL ? 15000000 : 15104900) / 30
+	/* TIMER */ 96,
+	/* PD */ (MiniCDI::Config.PAL ? 15000000 : 15104900) / 30
 };
 
 static int event_cycles[EVENTS_TOTAL] =
@@ -67,7 +67,7 @@ void PhilipsCDI::run(bool no_draw)
 	#ifdef USE_WHILE_TRUE_LOOP
 	while (1)
 	#else
-	for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config::PAL ? 312 : 262);)
+	for (int total_cycles = 0; total_cycles < event_rates[VPU] * (MiniCDI::Config.PAL ? 312 : 262);)
 	#endif
 	{
 		// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
@@ -165,7 +165,7 @@ void PhilipsCDI::run(bool no_draw)
 	#endif
 
 	// Throttling
-	if (MiniCDI::Config::NoFrameLimit) return;
+	if (MiniCDI::Config.NoFrameLimit) return;
 	#if MINICDI_CHRONO_ENABLED == 1 && (defined(_WIN32) || defined(__APPLE__) || defined(HW_RVL) || defined(__WIIU__))
 	if (t_duration.count() < 16'666'667) {
 		const int wait_ms = 16'666'667 - t_duration.count();

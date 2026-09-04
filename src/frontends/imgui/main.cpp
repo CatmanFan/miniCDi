@@ -79,20 +79,20 @@ static void InitConfig(const std::filesystem::path &biosPath)
 			});
 			file.generate(ini);
 		}
-		MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
-		MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
-		MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
-		MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-		MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+		MiniCDI::Config.TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+		MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
+		MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+		MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+		MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 		#ifdef MINICDI_FORCE_LOGFILE
-		MiniCDI::Config::LogFile = fopen(log_path.c_str(), "wt");
+		MiniCDI::Config.LogFile = fopen(log_path.c_str(), "wt");
 		#else
-		MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen(log_path.c_str(), "wt") : NULL;
+		MiniCDI::Config.LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen(log_path.c_str(), "wt") : NULL;
 		#endif
-		MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-		MiniCDI::Config::ShowFTD = true;
+		MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
+		MiniCDI::Config.ShowFTD = true;
 		#ifdef __WIIU__
-			MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? (wiiu_sd_prefix + "wiiu/apps/miniCDi/rom/" + biosPath.stem().string() + ".nvram") : "";
+			MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? (wiiu_sd_prefix + "wiiu/apps/miniCDi/rom/" + biosPath.stem().string() + ".nvram") : "";
 		#endif
 	#endif
 }
@@ -122,15 +122,15 @@ static void ReloadConfig()
 			});
 			file.generate(ini);
 		}
-		MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
-		// MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
-		MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
-		MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-		MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
-		// MiniCDI::Config::LogFile = fopen(log_path.c_str(), "wt");
-		MiniCDI::Config::ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-		MiniCDI::Config::ShowFTD = true;
-		// MiniCDI::Config::NvramFile = biosPath.stem().string() + ".nvram");
+		MiniCDI::Config.TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+		// MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
+		MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+		MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+		MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+		// MiniCDI::Config.LogFile = fopen(log_path.c_str(), "wt");
+		MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
+		MiniCDI::Config.ShowFTD = true;
+		// MiniCDI::Config.NvramFile = biosPath.stem().string() + ".nvram");
 	#endif
 }
 
@@ -237,7 +237,7 @@ static void CreateFileDialog()
 			}
 			if (label.empty()) label = discs[n].filename().string();
 
-			const bool is_selected = (item_selected_idx == n);
+			const bool is_selected = (item_selected_idx == static_cast<int>(n));
 			if (ImGui::Selectable(label.c_str(), is_selected))
 				item_selected_idx = n;
 		}
@@ -424,7 +424,7 @@ int main(int argc, char** argv)
 				ReloadConfig();
 				philips_player->run(false);
 				SDL_UpdateTexture(framebuffer, NULL, philips_player->get_display(), philips_player->get_display_width()*sizeof(uint32_t));
-				frames_run += MiniCDI::Config::FrameSkip;
+				frames_run += MiniCDI::Config.FrameSkip;
 			} else {
 				philips_player->run(true);
 				frames_run--;

@@ -363,7 +363,7 @@ static int MenuBrowseDevice()
 
 	GuiImageData btnOutline(button_png);
 	GuiImageData btnOutlineOver(button_over_png);
-	GuiText backBtnTxt("Go Back", 24, (PixelColor){0, 0, 0, 255});
+	GuiText backBtnTxt("Return", 24, (PixelColor){0, 0, 0, 255});
 	GuiImage backBtnImg(&btnOutline);
 	GuiImage backBtnImgOver(&btnOutlineOver);
 	GuiButton backBtn(btnOutline.getWidth(), btnOutline.getHeight());
@@ -418,7 +418,7 @@ static int MenuBrowseDevice()
 					int choice = showedInitialPrompt ? 0 : WindowPrompt(
 						"Starting machine.",
 						"To return to this menu, press HOME. No data will be saved.",
-						"Back",
+						"Return",
 						"Start");
 					if (choice == 0)
 					{
@@ -454,7 +454,7 @@ static int MenuMainPage()
 	// GuiText: top
 	GuiText titleTxt("Main Menu", 22, (PixelColor){0, 0, 0, 255});
 	titleTxt.setAlignment(ALIGN_H::LEFT, ALIGN_V::TOP);
-	titleTxt.setPosition(26, 30);
+	titleTxt.setPosition(28, 30);
 
 	// Button assets
 	GuiSound btnSoundOver(button_over_pcm, button_over_pcm_size, SOUND::PCM);
@@ -533,7 +533,7 @@ static int MenuMainPage()
 			int choice = showedInitialPrompt ? 0 : WindowPrompt(
 				"Starting machine.",
 				"To return to this menu, press HOME. No data will be saved.",
-				"Back",
+				"Return",
 				"Start");
 			if (choice == 0)
 			{
@@ -581,6 +581,152 @@ static int MenuMainPage()
 }
 
 /****************************************************************************
+ * MenuSettingsEmulator
+ ***************************************************************************/
+
+#include <string>
+#include "Config.hpp"
+
+static int MenuSettingsEmulator()
+{
+	int menu = MENU_NONE;
+	int ret;
+	int i = 0;
+	bool firstRun = true;
+	bool loadLang = false;
+
+	// 1. Title text
+	GuiText titleTxt("Emulator Settings", 22, (PixelColor){0, 0, 0, 255});
+	titleTxt.setAlignment(ALIGN_H::LEFT, ALIGN_V::TOP);
+	titleTxt.setPosition(28, 30);
+
+	// 2. Assets + trigger actions
+	GuiSound btnSoundOver(button_over_pcm, button_over_pcm_size, SOUND::PCM);
+	GuiSound btnSoundClick(button_click_pcm, button_click_pcm_size, SOUND::PCM);
+	GuiImageData btnOutline(button_png);
+	GuiImageData btnOutlineOver(button_over_png);
+
+	GuiTrigger trigA, trigB;
+	trigA.setPrimaryTrigger();
+	trigB.setSecondaryTrigger();
+
+	// 3. Back button
+	GuiText backBtnTxt("Return", 22, (PixelColor){0, 0, 0, 255});
+	GuiImage backBtnImg(&btnOutline);
+	GuiImage backBtnImgOver(&btnOutlineOver);
+	GuiButton backBtn(btnOutline.getWidth(), btnOutline.getHeight());
+	backBtn.setAlignment(ALIGN_H::LEFT, ALIGN_V::BOTTOM);
+	backBtn.setPosition(100, -35);
+	backBtn.setLabel(&backBtnTxt);
+	backBtn.setImage(&backBtnImg);
+	backBtn.setImageOver(&backBtnImgOver);
+	backBtn.setSoundOver(&btnSoundOver);
+	backBtn.setSoundClick(&btnSoundClick);
+	backBtn.setTrigger(&trigA);
+	backBtn.setTrigger(&trigB);
+	backBtn.setEffectGrow();
+
+	// 4. Create options list
+	OptionList options;
+	sprintf(options.name[i++], "CD-i: Frameskip");
+	sprintf(options.name[i++], "CD-i: Pointer Advance");
+	sprintf(options.name[i++], "CD-i: Video Mode");
+	sprintf(options.name[i++], "CD-i: Analog Colors");
+	sprintf(options.name[i++], "Language");
+	options.length = i;
+
+	// 5. Option browser
+	GuiOptionBrowser optionBrowser(552, 248, &options);
+	optionBrowser.setPosition(0, 108);
+	optionBrowser.setAlignment(ALIGN_H::CENTRE, ALIGN_V::TOP);
+	optionBrowser.setCol2Position(185);
+
+	// 6. Create window
+	HaltGui();
+	GuiWindow w(platform->getVideo()->getScreenWidth(), platform->getVideo()->getScreenHeight());
+	w.append(&backBtn);
+	mainWindow->append(&optionBrowser);
+	mainWindow->append(&w);
+	mainWindow->append(&titleTxt);
+	ResumeGui();
+
+	// 7. Window loop
+	while (menu == MENU_NONE)
+	{
+		usleep(THREAD_SLEEP);
+
+		ret = optionBrowser.getClickedOption();
+
+		switch (ret) {
+			case 0:
+				MiniCDI::Config.FrameSkip = (MiniCDI::Config.FrameSkip + 1) % 10;
+				break;
+
+			case 1:
+				MiniCDI::Config.PointerAdvance = (MiniCDI::Config.PointerAdvance + 1) % 10;
+				break;
+
+			case 2:
+				MiniCDI::Config.PAL = !MiniCDI::Config.PAL;
+				break;
+
+			case 3:
+				MiniCDI::Config.AnalogColors = !MiniCDI::Config.AnalogColors;
+				break;
+
+			case 4:
+				Settings.Language = (Settings.Language + 1) % UI_LANG_COUNT;
+				loadLang = true;
+				break;
+		}
+
+		if (ret >= 0 || firstRun) {
+			firstRun = false;
+
+			sprintf (options.value[0], "%d", MiniCDI::Config.FrameSkip);
+			sprintf (options.value[1], "%d", MiniCDI::Config.PointerAdvance);
+			sprintf (options.value[2], MiniCDI::Config.PAL ? "PAL" : "NTSC");
+			sprintf (options.value[3], MiniCDI::Config.AnalogColors ? "On" : "Off");
+
+			switch (Settings.Language) {
+				default:
+				case UI_LANG_EN: sprintf(options.value[4], "English"); break;
+				case UI_LANG_FR: sprintf(options.value[4], "French"); break;
+				case UI_LANG_ES: sprintf(options.value[4], "Spanish"); break;
+				case UI_LANG_JA: sprintf(options.value[4], "Japanese"); break;
+			}
+
+			optionBrowser.triggerUpdate();
+		}
+
+		if (backBtn.getState() == STATE::CLICKED) {
+			menu = MENU_MAIN;
+			if (loadLang) {
+				switch (Settings.Language) {
+					default:
+					case UI_LANG_EN:
+						fontSystem = new GuiTextRenderer(font2_ttf, font2_ttf_size, platform->getVideo()->getGlyphRenderer());
+						textTranslator->loadLanguage(en_lang, en_lang_size);
+						break;
+
+					case UI_LANG_JA:
+						fontSystem = new GuiTextRenderer(jp_ttf, jp_ttf_size, platform->getVideo()->getGlyphRenderer());
+						textTranslator->loadLanguage(ja_lang, ja_lang_size);
+						break;
+				}
+			}
+		}
+	}
+
+	// 7. Destroy window
+	HaltGui();
+	mainWindow->remove(&optionBrowser);
+	mainWindow->remove(&w);
+	mainWindow->remove(&titleTxt);
+	return menu;
+}
+
+/****************************************************************************
  * MenuSettingsFile
  ***************************************************************************/
 
@@ -613,7 +759,7 @@ static int MenuSettingsFile()
 	trigA.setPrimaryTrigger();
 	trigB.setSecondaryTrigger();
 
-	GuiText backBtnTxt("Go Back", 22, (PixelColor){0, 0, 0, 255});
+	GuiText backBtnTxt("Return", 22, (PixelColor){0, 0, 0, 255});
 	GuiImage backBtnImg(&btnOutline);
 	GuiImage backBtnImgOver(&btnOutlineOver);
 	GuiButton backBtn(btnOutline.getWidth(), btnOutline.getHeight());
@@ -778,7 +924,7 @@ void MainMenu(int menu)
 				currentMenu = MenuMainPage();
 				break;
 			case MENU_SETTINGS:
-				currentMenu = MenuSettingsFile();
+				currentMenu = MenuSettingsEmulator();
 				break;
 			case MENU_BROWSE_DEVICE:
 				currentMenu = MenuBrowseDevice();

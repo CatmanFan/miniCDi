@@ -212,19 +212,19 @@ static void RUN_CDI(const std::string &discName)
 		return;
 	}
 
-	MiniCDI::Config::TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
-	MiniCDI::Config::PAL = ini["CDI"]["PAL"].compare("1") == 0;
-	MiniCDI::Config::AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
-	MiniCDI::Config::FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-	MiniCDI::Config::PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+	MiniCDI::Config.TestPlug = ini["CDI"]["TestPlug"].compare("1") == 0;
+	MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
+	MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
+	MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
+	MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
-	MiniCDI::Config::LogFile = fopen((appPath + "log.txt").c_str(), "wt");
+	MiniCDI::Config.LogFile = fopen((appPath + "log.txt").c_str(), "wt");
 	#else
-	MiniCDI::Config::LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((appPath + "log.txt").c_str(), "wt") : NULL;
+	MiniCDI::Config.LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((appPath + "log.txt").c_str(), "wt") : NULL;
 	#endif
-	MiniCDI::Config::ShowFPS = false;
-	MiniCDI::Config::ShowFTD = true;
-	MiniCDI::Config::NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? ini["MiniCDI"]["RomPath"] + "/" + biosName + ".nvram" : "";
+	MiniCDI::Config.ShowFPS = false;
+	MiniCDI::Config.ShowFTD = true;
+	MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? ini["MiniCDI"]["RomPath"] + "/" + biosName + ".nvram" : "";
 
 	// Declare the CD-i machine
 	PhilipsCDI cdi;
@@ -299,7 +299,7 @@ static void RUN_CDI(const std::string &discName)
 		// static FPS fps;
 		if (frames_run == 0) {
 			cdi.run(false);
-			frames_run += MiniCDI::Config::FrameSkip;
+			frames_run += MiniCDI::Config.FrameSkip;
 		} else {
 			cdi.run(true);
 			frames_run--;
@@ -311,7 +311,7 @@ static void RUN_CDI(const std::string &discName)
 		#else
 		screen.update(cdi.get_display(), cdi.get_display_width());
 
-		if (MiniCDI::Config::ShowFTD && cdi.get_ftd())
+		if (MiniCDI::Config.ShowFTD && cdi.get_ftd())
 			screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width(), cdi.get_ftd_height());
 
 		screen.draw();

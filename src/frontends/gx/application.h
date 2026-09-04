@@ -24,7 +24,8 @@ enum {
 	UI_LANG_EN = 0,
 	UI_LANG_FR,
 	UI_LANG_JA,
-	UI_LANG_ES
+	UI_LANG_ES,
+	UI_LANG_COUNT
 };
 
 struct SSettings {

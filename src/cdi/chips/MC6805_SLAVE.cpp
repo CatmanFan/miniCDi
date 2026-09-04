@@ -246,14 +246,14 @@ void SLAVE::write8(uint32_t addr, uint8_t value)
 					/** Boot Mode **/
 					case 0xF4:
 						MiniCDI::Log("[SLAVE] get test plug status (0x%02X)", value);
-						Ch[2].Out = { 0xF4, static_cast<uint8_t>(MiniCDI::Config::TestPlug ? 0x01 : 0x00) };
+						Ch[2].Out = { 0xF4, static_cast<uint8_t>(MiniCDI::Config.TestPlug ? 0x01 : 0x00) };
 						assert_irq(2);
 						break;
 
 					/** Video Mode **/
 					case 0xF6:
 						MiniCDI::Log("[SLAVE] get video mode (0x%02X)", value);
-						Ch[2].Out = { 0xF6, static_cast<uint8_t>(MiniCDI::Config::PAL ? 0x02 : 0x01) };
+						Ch[2].Out = { 0xF6, static_cast<uint8_t>(MiniCDI::Config.PAL ? 0x02 : 0x01) };
 						break;
 
 					case 0xF7:

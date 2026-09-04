@@ -287,13 +287,13 @@ public:
 							/** Boot Mode **/
 							case 0xF4:
 								MiniCDI::Log("[IKAT] report boot status (0x%02X)", value);
-								poll_packet(c, 0xA5, 0xF4, MiniCDI::Config::TestPlug ? 0x01 : 0x00);
+								poll_packet(c, 0xA5, 0xF4, MiniCDI::Config.TestPlug ? 0x01 : 0x00);
 								break;
 
 							/** Video Mode **/
 							case 0xF6:
 								MiniCDI::Log("[IKAT] report video mode (0x%02X)", value);
-								poll_packet(c, 0xA5, 0xF6, MiniCDI::Config::PAL ? 0x02 : 0x01, 0xFF);
+								poll_packet(c, 0xA5, 0xF6, MiniCDI::Config.PAL ? 0x02 : 0x01, 0xFF);
 								break;
 						}
 						break;

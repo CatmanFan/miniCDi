@@ -279,7 +279,7 @@ uint8_t SCC68070::read8(uint32_t addr)
 		case 0x80002015: return UCS | 0x08;
 		case 0x80002017: return UCR | 0x80;
 		case 0x80002019: return UART_T.HR;
-		case 0x8000201B: if (MiniCDI::Config::PCB_LLTest && UART_RX_reset) { URH = 0x06; UART_RX_reset = false; }
+		case 0x8000201B: if (MiniCDI::Config.PCB_LLTest && UART_RX_reset) { URH = 0x06; UART_RX_reset = false; }
 						 MiniCDI::Log("[SCC68070:UART_RX] read %02X", URH);
 						 if (URH) USR |= 0x01; else USR &= ~(0x01); return URH;
 
@@ -493,7 +493,7 @@ void SCC68070::run(int cycles, bool use_timer0)
 {
 	#ifdef MINICDI_DEBUG_CPU
 	// Print disassembly to log
-	if (MiniCDI::Config::LogFile != 0) {
+	if (MiniCDI::Config.LogFile != 0) {
 		char text[192];
 		m68k_disassemble(text, m68k_get_reg(NULL, M68K_REG_PC), M68K_CPU_TYPE_SCC68070);
 		MiniCDI::Log("[SCC68070:CPU][$%08X] %s\n", m68k_get_reg(NULL, M68K_REG_PC), text);

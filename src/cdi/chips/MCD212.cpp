@@ -324,7 +324,7 @@ void MCD212::VDSC::mix_to_frame(int y)
 			}
 		}
 
-		if (MiniCDI::Config::AnalogColors)
+		if (MiniCDI::Config.AnalogColors)
 		{
 			/// Subtract to get the analog output (per Green Book 4.4.1.2).
 			int rM = framebuffer[fb_xy] >> 24 & 0xFF;
@@ -690,7 +690,7 @@ void MCD212::reset()
 
 	// initialization
 	CF = 1; // crystal frequency
-	FD = MiniCDI::Config::PAL ? 0 : 1; // frame duration
+	FD = MiniCDI::Config.PAL ? 0 : 1; // frame duration
 	SM = 1; // interlace (unnecessary)
 
 	interlace = false;

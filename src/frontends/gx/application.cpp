@@ -50,8 +50,6 @@ static void DrawPhilipsCDIScreen(PhilipsCDI *philips_player)
 
 static void RunCDIEmulator()
 {
-	MiniCDI::Config::FrameSkip = 1;
-
 	const std::filesystem::path biosPath = EmulatorArguments.SystemROM;
 	const std::filesystem::path discPath = EmulatorArguments.Disc;
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
@@ -97,7 +95,7 @@ static void RunCDIEmulator()
 		// Run a frame
 		if (frames_run == 0) {
 			philips_player->run(false);
-			frames_run += MiniCDI::Config::FrameSkip;
+			frames_run += MiniCDI::Config.FrameSkip;
 			DrawPhilipsCDIScreen(philips_player);
 		} else {
 			philips_player->run(true);
@@ -136,7 +134,7 @@ int main(int argc, char *argv[])
 	InitGUIThreads(); // Initialize GUI
 
 	// Load default settings
-	Settings.Language = UI_LANG_JA;
+	Settings.Language = UI_LANG_EN;
 	Settings.LoadMethod = METHOD_AUTO;
 	Settings.SaveMethod = METHOD_AUTO;
 	sprintf (Settings.Folder1,"apps/miniCDi/rom");

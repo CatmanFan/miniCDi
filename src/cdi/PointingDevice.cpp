@@ -108,11 +108,11 @@ void PointingDevice::set_button(enum PointingDevice::Buttons b, bool value)
 	if (this->buttons[Left] || this->buttons[Right] || this->buttons[Down] || this->buttons[Up])
 	{
 		poll_movement = true;
-		xR = buttons[Left] && !buttons[Right] ? 0 - MiniCDI::Config::PointerAdvance
-		   : !buttons[Left] && buttons[Right] ? MiniCDI::Config::PointerAdvance
+		xR = buttons[Left] && !buttons[Right] ? 0 - MiniCDI::Config.PointerAdvance
+		   : !buttons[Left] && buttons[Right] ? MiniCDI::Config.PointerAdvance
 		   : 0;
-		yR = buttons[Up] && !buttons[Down] ? 0 - MiniCDI::Config::PointerAdvance
-		   : !buttons[Up] && buttons[Down] ? MiniCDI::Config::PointerAdvance
+		yR = buttons[Up] && !buttons[Down] ? 0 - MiniCDI::Config.PointerAdvance
+		   : !buttons[Up] && buttons[Down] ? MiniCDI::Config.PointerAdvance
 		   : 0;
 
 		xA = std::clamp(xA + xR, 0, MAX_POINTER_X);

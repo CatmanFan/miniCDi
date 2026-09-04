@@ -10,10 +10,34 @@ msgstr "ディスクを 入れずに起動"
 msgid "Emulator Settings"
 msgstr "設定"
 
+msgid "CD-i: Video Mode"
+msgstr "【CD-i】 方式"
+
+msgid "Language"
+msgstr "言語"
+
+msgid "English"
+msgstr "英語"
+
+msgid "French"
+msgstr "フランス語"
+
+msgid "Spanish"
+msgstr "スペイン語"
+
+msgid "Japanese"
+msgstr "日本語"
+
+msgid "On"
+msgstr "あり"
+
+msgid "Off"
+msgstr "なし"
+
 msgid "Start"
 msgstr "はじめる"
 
-msgid "Back"
+msgid "Return"
 msgstr "もどる"
 
 msgid "Exit"

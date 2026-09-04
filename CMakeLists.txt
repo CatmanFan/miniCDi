@@ -129,23 +129,23 @@ if (NINTENDO_3DS)
 	# Source files/directories
 	# ************
 	target_include_directories(${PROJECT_NAME} PRIVATE
-		# src/platforms/common/imgui
-		src/platforms/3ds
+		src/platforms/common/imgui
+		src/frontends/imgui_3ds
 	)
 
-	# ctr_add_shader_library(vshader src/platforms/common/imgui/vshader.v.pica)
-	# dkp_add_embedded_binary_library(vshader_data vshader)
-	# target_link_libraries(${PROJECT_NAME} PRIVATE vshader_data)
+	ctr_add_shader_library(vshader src/platforms/common/imgui/backends/vshader.v.pica)
+	dkp_add_embedded_binary_library(vshader_data vshader)
+	target_link_libraries(${PROJECT_NAME} PRIVATE vshader_data)
 
 	target_sources(${PROJECT_NAME} PRIVATE
-		# src/platforms/common/imgui/imgui.cpp
-		# src/platforms/common/imgui/imgui_demo.cpp
-		# src/platforms/common/imgui/imgui_draw.cpp
-		# src/platforms/common/imgui/imgui_tables.cpp
-		# src/platforms/common/imgui/imgui_widgets.cpp
-		# src/platforms/common/imgui/backends/imgui_citro3d.cpp
-		# src/platforms/common/imgui/backends/imgui_ctru.cpp
-		src/platforms/3ds/main.cpp
+		src/platforms/common/imgui/imgui.cpp
+		src/platforms/common/imgui/imgui_demo.cpp
+		src/platforms/common/imgui/imgui_draw.cpp
+		src/platforms/common/imgui/imgui_tables.cpp
+		src/platforms/common/imgui/imgui_widgets.cpp
+		src/platforms/common/imgui/backends/imgui_citro3d.cpp
+		src/platforms/common/imgui/backends/imgui_ctru.cpp
+		src/frontends/imgui_3ds/main.cpp
 	)
 
 	# Build package

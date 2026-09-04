@@ -1,13 +1,8 @@
-// ftpd is a server implementation based on the following:
-// - RFC  959 (https://tools.ietf.org/html/rfc959)
-// - RFC 3659 (https://tools.ietf.org/html/rfc3659)
-// - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
+// copied from ftpd
 //
 // The MIT License (MIT)
 //
-// Copyright (C) 2024 Michael Theall
+// Copyright (C) 2020 Michael Theall
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +22,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef CLASSIC
 #include "imgui_citro3d.h"
 
 #include <citro3d.h>
@@ -37,7 +31,6 @@
 #include <imgui.h>
 
 #include <algorithm>
-#include <bit>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -45,16 +38,6 @@
 
 namespace
 {
-/// \brief Clear color
-constexpr auto CLEAR_COLOR = 0x204B7AFF;
-
-/// \brief Slider value
-float s_slider;
-/// \brief Z offset (for stereoscopic effect)
-float s_z;
-/// \brief Z offset uniform location
-int s_zLocation;
-
 /// \brief 3DS font glyph ranges
 std::vector<ImWchar> s_fontRanges;
 
@@ -187,9 +170,6 @@ void imgui::citro3d::init ()
 	// initialize vertex shader program
 	shaderProgramInit (&s_program);
 	shaderProgramSetVsh (&s_program, &s_vsh->DVLE[0]);
-
-	// get projection matrix uniform location
-	s_zLocation = shaderInstanceGetUniformLocation (s_program.vertexShader, "z");
 
 	// get projection matrix uniform location
 	s_projLocation = shaderInstanceGetUniformLocation (s_program.vertexShader, "proj");
@@ -433,9 +413,7 @@ void imgui::citro3d::exit ()
 	DVLB_Free (s_vsh);
 }
 
-void imgui::citro3d::render (C3D_RenderTarget *const topLeft_,
-    C3D_RenderTarget *const topRight_,
-    C3D_RenderTarget *const bottom_)
+void imgui::citro3d::render (C3D_RenderTarget *const top_, C3D_RenderTarget *const bottom_)
 {
 	// get draw data
 	auto const drawData = ImGui::GetDrawData ();
@@ -515,30 +493,12 @@ void imgui::citro3d::render (C3D_RenderTarget *const topLeft_,
 		offsetIdx += cmdList.IdxBuffer.Size;
 	}
 
-	auto const slider = osGet3DSliderState ();
-
-	for (auto const &[target, screen, side] : {
-	         // clang-format off
-	         std::make_tuple (topLeft_, GFX_TOP, GFX_LEFT),
-	         std::make_tuple (slider ? topRight_ : nullptr, GFX_TOP, GFX_RIGHT),
-	         std::make_tuple (bottom_, GFX_BOTTOM, GFX_LEFT)
-	         // clang-format on
-	     })
+	for (auto const &screen : {GFX_TOP, GFX_BOTTOM})
 	{
-		if (!target)
-			continue;
-
-		// clear frame/depth buffers
-		C3D_RenderTargetClear (target, C3D_CLEAR_ALL, CLEAR_COLOR, 0);
-
-		if (target == topLeft_)
-			s_slider = slider;
-		else if (target == topRight_)
-			s_slider = -slider;
+		if (screen == GFX_TOP)
+			C3D_FrameDrawOn (top_);
 		else
-			s_slider = 0.0f;
-
-		C3D_FrameDrawOn (target);
+			C3D_FrameDrawOn (bottom_);
 
 		setupRenderState (screen);
 
@@ -570,24 +530,14 @@ void imgui::citro3d::render (C3D_RenderTarget *const topLeft_,
 					clip.z = (cmd.ClipRect.z - clipOff.x) * clipScale.x;
 					clip.w = (cmd.ClipRect.w - clipOff.y) * clipScale.y;
 
-					if (s_slider && s_z && screen == GFX_TOP)
-					{
-						clip.x -= s_slider * s_z;
-						clip.z += s_slider * s_z;
-					}
-
 					if (clip.x >= width || clip.y >= height || clip.z < 0.0f || clip.w < 0.0f)
 						continue;
-
 					if (clip.x < 0.0f)
 						clip.x = 0.0f;
-
 					if (clip.y < 0.0f)
 						clip.y = 0.0f;
-
 					if (clip.z > width)
 						clip.z = width;
-
 					if (clip.w > height)
 						clip.z = height;
 
@@ -662,7 +612,7 @@ void imgui::citro3d::render (C3D_RenderTarget *const topLeft_,
 					}
 
 					// check if we need to update texture binding
-					auto tex = cmd.TextureId;
+					auto tex = static_cast<C3D_Tex *> (cmd.TextureId);
 					if (tex == s_fontTextures.data ())
 					{
 						assert (cmd.ElemCount % 3 == 0);
@@ -778,13 +728,3 @@ void imgui::citro3d::render (C3D_RenderTarget *const topLeft_,
 		}
 	}
 }
-
-void imgui::citro3d::setZ (ImDrawList const *const drawList_, ImDrawCmd const *const drawCmd_)
-{
-	(void)drawList_;
-
-	s_z = std::bit_cast<float> (drawCmd_->UserCallbackData);
-
-	C3D_FVUnifSet (GPU_VERTEX_SHADER, s_zLocation, s_slider * s_z, 0.0f, 0.0f, 0.0f);
-}
-#endif

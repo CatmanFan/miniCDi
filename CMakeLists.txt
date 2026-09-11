@@ -34,7 +34,7 @@ elseif (APPLE)
 	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -Wall)
 else() #DevKitPro
 	dkp_target_generate_symbol_list(${PROJECT_NAME})
-	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -Wall)
+	target_compile_options(${PROJECT_NAME} PRIVATE -O3 -fomit-frame-pointer -fno-math-errno -flto=auto -DNDEBUG -Wall)
 endif()
 
 if (MINICDI_DISABLE_VERBOSE)

@@ -1780,7 +1780,7 @@ static inline void m68ki_stack_frame_1010(uint sr, uint vector, uint pc)
 #ifdef __APPLE__
 void m68ki_stack_frame_1111(uint pc, uint sr, uint vector);
 #else
-inline void m68ki_stack_frame_1111(uint pc, uint sr, uint vector)
+static inline void m68ki_stack_frame_1111(uint pc, uint sr, uint vector)
 {
 	/* INTERNAL INFORMATION */
 	m68ki_fake_push_16();

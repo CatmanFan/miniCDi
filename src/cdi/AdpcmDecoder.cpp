@@ -40,7 +40,7 @@ void AdpcmDecoder::decode_adpcm(bool stereo, bool low_freq)
 	// See Slamy's https://github.com/MiSTer-devel/CDi_MiSTer/blob/main/doc/cdic.md#experience
 	if (output != NULL)
 	{
-		memset(output, 0, OUTPUT_MAX_SIZE*sizeof(uint16_t));
+		// memset(output, 0, OUTPUT_MAX_SIZE*sizeof(uint16_t));
 		output_size = stereo ? std::min(left.size(), right.size()) : left.size();
 		for (int i = 0; i < output_size; i++)
 		{
@@ -73,9 +73,9 @@ bool AdpcmDecoder::decode_sector(uint8_t *buffer)
 		return false;
 
 	// Clear previous sample data
-	memset(sound_data, 0, sizeof(sound_data));
-	memset(ranges, 0, sizeof(ranges));
-	memset(filters, 0, sizeof(filters));
+	// memset(sound_data, 0, sizeof(sound_data));
+	// memset(ranges, 0, sizeof(ranges));
+	// memset(filters, 0, sizeof(filters));
 	left.clear();
 	right.clear();
 

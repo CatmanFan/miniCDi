@@ -709,6 +709,16 @@ static int MenuSettingsEmulator()
 						textTranslator->loadLanguage(en_lang, en_lang_size);
 						break;
 
+					case UI_LANG_FR:
+						fontSystem = new GuiTextRenderer(font2_ttf, font2_ttf_size, platform->getVideo()->getGlyphRenderer());
+						textTranslator->loadLanguage(fr_lang, fr_lang_size);
+						break;
+
+					case UI_LANG_ES:
+						fontSystem = new GuiTextRenderer(font2_ttf, font2_ttf_size, platform->getVideo()->getGlyphRenderer());
+						textTranslator->loadLanguage(es_lang, es_lang_size);
+						break;
+
 					case UI_LANG_JA:
 						fontSystem = new GuiTextRenderer(jp_ttf, jp_ttf_size, platform->getVideo()->getGlyphRenderer());
 						textTranslator->loadLanguage(ja_lang, ja_lang_size);

@@ -1,0 +1,74 @@
+msgid "Main Menu"
+msgstr "Menu principal"
+
+msgid "Open Disc"
+msgstr "Ouvrir un disque"
+
+msgid "Boot Without Disc"
+msgstr "Démarrer sans disque"
+
+msgid "Emulator Settings"
+msgstr "Options"
+
+msgid "CD-i: Video Mode"
+msgstr "Mode vidéo (CD-i)"
+
+msgid "CD-i: Frameskip"
+msgstr "Saut d'images (CD-i)"
+
+msgid "CD-i: Pointer Advance"
+msgstr "Vitesse du contrôleur (CD-i)"
+
+msgid "CD-i: Analog Colors"
+msgstr "Affichage en mode analogique (CD-i)"
+
+msgid "Language"
+msgstr "Langue"
+
+msgid "English"
+msgstr "Anglais"
+
+msgid "French"
+msgstr "Français"
+
+msgid "Spanish"
+msgstr "Espagnol"
+
+msgid "Japanese"
+msgstr "Japonais"
+
+msgid "On"
+msgstr "Oui"
+
+msgid "Off"
+msgstr "Non"
+
+msgid "Start"
+msgstr "Démarrer"
+
+msgid "Return"
+msgstr "Retour"
+
+msgid "Yes"
+msgstr "Oui"
+
+msgid "No"
+msgstr "Non"
+
+msgid "Exit"
+msgstr "Quitter"
+
+msgid "Are you sure that you want to exit?"
+msgstr "Voulez-vous quitter l'application ?"
+
+msgid "Are you sure that you want to reset your settings?"
+msgstr "Voulez-vous réinitialiser vos paramètres ?"
+
+msgid "Reset Settings"
+msgstr "Réinitialisation"
+
+msgid "Starting machine."
+msgstr "Démarrage du système."
+
+msgid "To return to this menu, press HOME. No data will be saved."
+msgstr "Pour revenir au menu, appuyez sur le bouton HOME. Les données ne seront pas sauvegardées."

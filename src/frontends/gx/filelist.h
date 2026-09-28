@@ -18,6 +18,8 @@
 
 // Languages
 #include "en_lang.h"
+#include "fr_lang.h"
+#include "es_lang.h"
 #include "ja_lang.h"
 
 // Sounds

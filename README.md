@@ -140,9 +140,9 @@ All captured under CDI 200 using Mono-I driver.
 </div>
 
 ## To-Do
-### In order
-- [ ] Fix audiomap-to-XA switching
-- [ ] ImGUI 3DS frontend
+- [ ] Check audiomap-to-XA switching
+- [ ] Rewrite scheduler (possibly also chips?) based on GB emulator experience
+- [X] ImGUI 3DS frontend
 
 ### Potential
 - [ ] Find faster 68010 emulator for ARM (3DS) + PowerPC? ([Cyclone](https://github.com/notaz/cyclone68000) exists but may need to be modified to support 68010 derivative.)

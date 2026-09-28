@@ -13,6 +13,9 @@ msgstr "設定"
 msgid "CD-i: Video Mode"
 msgstr "【CD-i】 方式"
 
+msgid "CD-i: Frameskip"
+msgstr "【CD-i】 フレームスキップ"
+
 msgid "Language"
 msgstr "言語"
 
@@ -40,8 +43,20 @@ msgstr "はじめる"
 msgid "Return"
 msgstr "もどる"
 
+msgid "Yes"
+msgstr "はい"
+
+msgid "No"
+msgstr "いいえ"
+
 msgid "Exit"
 msgstr "終了"
+
+msgid "Are you sure that you want to exit?"
+msgstr "終了しますか？"
+
+msgid "Are you sure that you want to reset your settings?"
+msgstr "再設定しますか？"
 
 msgid "Reset Settings"
 msgstr "初期設定"

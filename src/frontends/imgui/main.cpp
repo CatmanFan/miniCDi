@@ -25,7 +25,6 @@
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_sdlrenderer2.h"
 
-static ImGuiIO io;
 static bool has_quit = false;
 #ifdef __WIIU__
 static std::string wiiu_sd_prefix;

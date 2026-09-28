@@ -30,7 +30,7 @@
 #define EVENTS_USED 4
 #define EVENTS_TOTAL 5
 
-static int event_rates[EVENTS_TOTAL] =
+static uint32_t event_rates[EVENTS_TOTAL] =
 {
 	/* SECTOR */ (MiniCDI::Config.PAL ? 15000000 : 15104900) / 75,
 	/* VPU */ (MiniCDI::Config.PAL ? 15000000 : 15104900) / 15625,
@@ -39,7 +39,7 @@ static int event_rates[EVENTS_TOTAL] =
 	/* PD */ (MiniCDI::Config.PAL ? 15000000 : 15104900) / 30
 };
 
-static int event_cycles[EVENTS_TOTAL] =
+static uint32_t event_cycles[EVENTS_TOTAL] =
 {
 	event_rates[SECTOR],
 	event_rates[VPU],
@@ -109,10 +109,10 @@ void PhilipsCDI::run(bool no_draw)
 
 		for (int i = 0; i < EVENTS_USED; i++)
 		{
-			event_cycles[i] -= cycles;
-			while (event_cycles[i] <= 0)
+			event_cycles[i] += cycles;
+			if (event_cycles[i] >= event_rates[i])
 			{
-				event_cycles[i] += event_rates[i];
+				event_cycles[i] = 0;
 				switch (i)
 				{
 					case SECTOR:
@@ -193,7 +193,7 @@ void PhilipsCDI::reset()
 	if (dsp != NULL) dsp->reset();
 	if (ciap != NULL) ciap->reset();
 
-	for (int i = 0; i < EVENTS_TOTAL; i++) { event_cycles[i] = event_rates[i]; }
+	for (int i = 0; i < EVENTS_TOTAL; i++) { event_cycles[i] = 0; }
 }
 
 void PhilipsCDI::reset_pd()

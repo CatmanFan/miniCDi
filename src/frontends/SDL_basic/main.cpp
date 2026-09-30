@@ -7,7 +7,7 @@
 #include <thread>
 
 #include "cdi/common.hpp"
-#include "../common/mINI.hpp"
+#include "../../platforms/common/mINI.hpp"
 
 class SDL
 {

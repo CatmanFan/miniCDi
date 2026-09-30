@@ -104,7 +104,7 @@ if (WIN32 OR APPLE)
 
 	# Source files/directories
 	# ************
-	target_sources(${PROJECT_NAME} PRIVATE src/platforms/win/main.cpp)
+	target_sources(${PROJECT_NAME} PRIVATE src/frontends/SDL_basic/main.cpp)
 	# target_include_directories(${PROJECT_NAME} PRIVATE
 		# src/frontends/wx
 	# )

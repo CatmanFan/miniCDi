@@ -11,6 +11,56 @@ class MCD212
 	SCC68070* _68070;
 	uint8_t* memory;
 
+	enum Icm
+	{
+		// All coding methods are usable in standard-res except for CLUT4.
+		Off = 0b0000,
+		CLUT8 = 0b0001, // plane A only
+		RGB555 = 0b0001, // plane B only
+		CLUT7 = 0b0011,
+		CLUT77 = 0b0100, // plane A only
+		DYUV = 0b0101,
+		CLUT4 = 0b1011, // double-res only
+		QHY = 0b1111
+	};
+
+	enum Type
+	{
+		NTSCMonitor,	// 525 (360x240)
+		NTSCTV,			// 525 (384x240)
+		PAL				// 625 (384x280)
+	};
+
+	enum Resolution
+	{
+		NormalRes,		// 1:1
+		DoubleRes,		// 2:1 (horizontal doubled)
+		HighRes			// 2:2 (both doubled)
+	};
+
+	enum MosaicFactor
+	{
+		x2 = 0b00,
+		x4 = 0b01,
+		x8 = 0b10,
+		x16 = 0b11
+	};
+
+	enum FileType
+	{
+		Bitmap = 0b00,
+		RunLength = 0b10,
+		Mosaic = 0b11
+	};
+
+	enum ColorMode
+	{
+		Normal8 = 0b00,
+		Double4 = 0b01,
+		High8 = 0b10,
+		Reserved = 0b11
+	};
+
 	class VDSC
 	{
 		/*****
@@ -19,59 +69,9 @@ class MCD212
 		  MAME CD-i driver by Ryan Holtz and Vincent Halver (licensed under BSD-3-Clause).
 		 *****/
 
-		enum Icm
-		{
-			// All coding methods are usable in standard-res except for CLUT4.
-			Off = 0b0000,
-			CLUT8 = 0b0001, // plane A only
-			RGB555 = 0b0001, // plane B only
-			CLUT7 = 0b0011,
-			CLUT77 = 0b0100, // plane A only
-			DYUV = 0b0101,
-			CLUT4 = 0b1011, // double-res only
-			QHY = 0b1111
-		};
 
-		enum Type
+		struct Plane
 		{
-			NTSCMonitor,	// 525 (360x240)
-			NTSCTV,			// 525 (384x240)
-			PAL				// 625 (384x280)
-		};
-
-		enum Resolution
-		{
-			NormalRes,		// 1:1
-			DoubleRes,		// 2:1 (horizontal doubled)
-			HighRes			// 2:2 (both doubled)
-		};
-
-		enum MosaicFactor
-		{
-			x2 = 0b00,
-			x4 = 0b01,
-			x8 = 0b10,
-			x16 = 0b11
-		};
-
-		enum FileType
-		{
-			Bitmap = 0b00,
-			RunLength = 0b10,
-			Mosaic = 0b11
-		};
-
-		enum ColorMode
-		{
-			Normal8 = 0b00,
-			Double4 = 0b01,
-			High8 = 0b10,
-			Reserved = 0b11
-		};
-
-		class Plane
-		{
-		public:
 			int width, height;
 			uint32_t decoded[768 * 280]; // max bounds
 		};
@@ -79,7 +79,7 @@ class MCD212
 		struct
 		{
 			/* 80 */ uint32_t ColorCLUT[256];
-			/* C0 */ enum Icm Icm[2];
+			/* C0 */ uint8_t Icm[2];
 					 uint8_t IcmCS, MatteCount, ExternalVideo; // Dual CLUT bank select (0-1 or 2-3); enable external video
 			/* C1 */ uint8_t TransparencyCtrl[2]; uint8_t Mixing;
 			/* C2 */ uint8_t PlaneOrder;
@@ -98,9 +98,9 @@ class MCD212
 			/* D9 */ uint32_t MosaicPixel[2];
 			/* DB */ uint8_t ICF[2];
 
-			enum MosaicFactor MF[2];
-			enum FileType FT[2];
-			enum ColorMode CM[2];
+			uint8_t MF[2];
+			uint8_t FT[2];
+			uint8_t CM[2];
 		} reg;
 
 		bool Matte[2];
@@ -112,46 +112,57 @@ class MCD212
 			uint8_t opcode[8];
 		} MCR;
 
-		template <size_t Path>
 		void matte_set_flag(size_t x)
 		{
-			if (MCR.current >= 8 || MCR.x[MCR.current] != x) return;
+			if (MCR.current < 8 && MCR.x[MCR.current] == x)
+			{
+				switch (MCR.opcode[MCR.current])
+				{
+					case 0b0000: // end of matte control
+						MCR.current = 8;
+						break;
 
-			switch (MCR.opcode[MCR.current]) {
-				case 0b0000: // end of matte control
-					MCR.current = 8;
-					return;
-				case 0b1000: // reset
-				case 0b1100: // reset & change weight of pA
-				case 0b1110: // reset & change weight of pB
-					Matte[MCR.mf[MCR.current++]] = false;
-					return;
-				case 0b1001: // set
-				case 0b1101: // set & change weight of pA
-				case 0b1111: // set & change weight of pB
-					Matte[MCR.mf[MCR.current++]] = true;
-					return;
+					case 0b1000: // reset
+					case 0b1100: // reset & change weight of pA
+					case 0b1110: // reset & change weight of pB
+						Matte[MCR.mf[MCR.current]] = false;
+						++MCR.current;
+						break;
+
+					case 0b1001: // set
+					case 0b1101: // set & change weight of pA
+					case 0b1111: // set & change weight of pB
+						Matte[MCR.mf[MCR.current]] = true;
+						++MCR.current;
+						break;
+				}
 			}
 		}
 
 		void matte_set_icf(size_t x)
 		{
-			if (MCR.current >= 8 || MCR.x[MCR.current] != x) return;
+			if (MCR.current < 8 && MCR.x[MCR.current] == x)
+			{
+				switch (MCR.opcode[MCR.current])
+				{
+					case 0b0000: // end of matte control
+						MCR.current = 8;
+						break;
 
-			switch (MCR.opcode[MCR.current]) {
-				case 0b0000: // end of matte control
-					MCR.current = 8;
-					return;
-				case 0b0100: // change weight of pA
-				case 0b1100: // reset & change weight of pA
-				case 0b1101: // set & change weight of pA
-					reg.ICF[0] = MCR.icf[MCR.current++];
-					return;
-				case 0b0110: // change weight of pB
-				case 0b1110: // reset & change weight of pB
-				case 0b1111: // set & change weight of pB
-					reg.ICF[1] = MCR.icf[MCR.current++];
-					return;
+					case 0b0100: // change weight of pA
+					case 0b1100: // reset & change weight of pA
+					case 0b1101: // set & change weight of pA
+						reg.ICF[0] = MCR.icf[MCR.current];
+						++MCR.current;
+						break;
+
+					case 0b0110: // change weight of pB
+					case 0b1110: // reset & change weight of pB
+					case 0b1111: // set & change weight of pB
+						reg.ICF[1] = MCR.icf[MCR.current];
+						++MCR.current;
+						break;
+				}
 			}
 		}
 
@@ -231,7 +242,7 @@ class MCD212
 			if (this->skip_draw) return;
 			memset(FG[0].decoded, 0, sizeof(FG[0].decoded));
 			memset(FG[1].decoded, 0, sizeof(FG[1].decoded));
-			memset(framebuffer, 0xFF000000, sizeof(framebuffer));
+			// memset(framebuffer, 0xFF000000, sizeof(framebuffer));
 		}
 
 		/**

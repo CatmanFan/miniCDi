@@ -56,6 +56,7 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated. Certain software may softlock due to constant D-Pad movement polling by SLAVE (e.g. Zelda: Wand of Gamelon or [CDi_BadApple](https://github.com/Slamy/CDi_BadApple)).
 
 ## To-Do
+- [ ] Rewrite emulator backend to use less pointers and garbage (define what this last word means)?
 - [ ] Check audiomap-to-XA switching
 - [ ] Rewrite scheduler (possibly also chips?) based on GB emulator experience
 - [ ] Emulate timekeeper on Mono-I/Mono-IV? (should handle NVRAM saving)

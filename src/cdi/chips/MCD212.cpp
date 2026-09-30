@@ -167,7 +167,7 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 
 	for (int x = 0; x < FG[Path].width;)
 	{
-		matte_set_flag<Path>(FG[0].width < 400 ? x*2 : x);
+		matte_set_flag(FG[0].width < 400 ? x*2 : x);
 		uint8_t* src = &memory[vsr];
 		uint32_t* dst = &FG[Path].decoded[(y * 768) + x];
 
@@ -705,71 +705,50 @@ bool MCD212::tick()
 	vdsc.skip_draw = this->skip_draw;
 	linesV++;
 
-	// Minimise CPU usage for drawing
-	/*if (this->skip_draw)
+	if (linesV <= MCD212_INACTIVE_VLINES)
 	{
-		if (linesV <= MCD212_INACTIVE_VLINES) return false;
+		if (linesV == 1 && DE)
+		{
+			if (IC[0]) ICA_execute<0>();
+			if (IC[1]) ICA_execute<1>();
+		}
+		return false;
+	}
+
+	if (line == 0)
+	{
+		if (interlace && SM) line = 1;
 		DA = 1;
-		line += SM ? 2 : 1;
-		if (linesV >= MCD212_VSYNC_LINES)
-		{
-			DA = 0;
-			PA ^= 1;
-			linesV = 0;
-			line = 0;
-			return true;
-		}
-		return false;
+
+		vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
 	}
 
-	// Normal behaviour
-	else*/
+	if (DE)
 	{
-		if (linesV <= MCD212_INACTIVE_VLINES)
-		{
-			if (linesV == 1 && DE)
-			{
-				if (IC[0]) ICA_execute<0>();
-				if (IC[1]) ICA_execute<1>();
-			}
-			return false;
-		}
+		// render line onto bitmap
+		VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
+		VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+		if (!this->skip_draw) vdsc.mix_to_frame(line);
 
-		if (line == 0)
-		{
-			if (interlace && SM) line = 1;
-			DA = 1;
-
-			vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
-		}
-
-		if (DE)
-		{
-			// render line onto bitmap
-			VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
-			VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
-			if (!this->skip_draw) vdsc.mix_to_frame(line);
-
-			if (DC[0] && IC[0]) DCA_execute<0>();
-			if (DC[1] && IC[1]) DCA_execute<1>();
-		}
-
-		line += SM ? 2 : 1;
-
-		if (linesV >= MCD212_VSYNC_LINES)
-		{
-			DA = 0;
-			PA ^= 1;
-
-			linesV = 0;
-			line = 0;
-			interlace = SM ? !interlace : false;
-
-			return true;
-		}
-
-		return false;
+		if (DC[0] && IC[0]) DCA_execute<0>();
+		if (DC[1] && IC[1]) DCA_execute<1>();
 	}
+
+	line += SM ? 2 : 1;
+
+	if (linesV >= MCD212_VSYNC_LINES)
+	{
+		DA = 0;
+		PA ^= 1;
+
+		linesV = 0;
+		line = 0;
+		interlace = SM ? !interlace : false;
+
+		return true;
+	}
+
+	return false;
 }
 
 uint8_t MCD212::read8(uint32_t addr)

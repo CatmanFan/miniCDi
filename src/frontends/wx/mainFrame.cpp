@@ -6,6 +6,8 @@
 
 #include <SDL2/SDL.h>
 #include <filesystem>
+#include <chrono>
+#include <thread>
 
 #include "app_icon.xpm"
 
@@ -146,7 +148,6 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 		menuToggleTestPlug = new wxMenuItem(menuEmulation, wxID_CONFIG_TESTPLUG, " ", wxEmptyString, wxITEM_CHECK);
 		menuToggleLLTest = new wxMenuItem(menuEmulation, wxID_CONFIG_LLTEST, " ", wxEmptyString, wxITEM_CHECK);
 		menuToggleAnalogColors = new wxMenuItem(menuEmulation, wxID_CONFIG_ANALOGCOLORS, " ", wxEmptyString, wxITEM_CHECK);
-		menuToggleNoFrameLimit = new wxMenuItem(menuEmulation, wxID_CONFIG_NOFRAMELIMIT, " ", wxEmptyString, wxITEM_CHECK);
 		menuToggleNTSC = new wxMenuItem(menuEmulation, wxID_CONFIG_NTSC, " ", wxEmptyString, wxITEM_CHECK);
 		menuResetPD = new wxMenuItem(menuEmulation, wxID_CONFIG_RESETPD, " ");
 
@@ -157,8 +158,6 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 		menuEmulation->AppendSeparator();
 		menuEmulation->Append(menuToggleNTSC);
 		menuEmulation->Append(menuToggleAnalogColors);
-		menuEmulation->AppendSeparator();
-		menuEmulation->Append(menuToggleNoFrameLimit);
 
 	wxMenu *menuHelp = new wxMenu;
 		menuAbout = new wxMenuItem(menuHelp, wxID_ABOUT, " ");
@@ -187,7 +186,6 @@ mainFrame::mainFrame(wxWindow* parent, wxWindowID id, const wxString& title, con
 	menuToggleTestPlug->Check(MiniCDI::Config.TestPlug);
 	menuToggleLLTest->Check(MiniCDI::Config.PCB_LLTest);
 	menuToggleAnalogColors->Check(MiniCDI::Config.AnalogColors);
-	menuToggleNoFrameLimit->Check(MiniCDI::Config.NoFrameLimit);
 	menuToggleNTSC->Check(!MiniCDI::Config.PAL);
 
 	this->SetClientSize(384, 280);
@@ -276,11 +274,6 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 			MiniCDI::Config.AnalogColors = !MiniCDI::Config.AnalogColors;
 			break;
 
-		case wxID_CONFIG_NOFRAMELIMIT:
-			MiniCDI::Config.NoFrameLimit = !MiniCDI::Config.NoFrameLimit;
-			statusBar->SetStatusText(wxString::Format("Frame throttling %s", MiniCDI::Config.NoFrameLimit ? "disabled" : "enabled"));
-			break;
-
 		case wxID_CONFIG_RESETPD:
 			if (cdi != NULL) cdi->reset_pd();
 			return;
@@ -289,7 +282,6 @@ void mainFrame::e_toggleEmulationSetting(wxCommandEvent &event)
 	menuToggleTestPlug->Check(MiniCDI::Config.TestPlug);
 	menuToggleLLTest->Check(MiniCDI::Config.PCB_LLTest);
 	menuToggleAnalogColors->Check(MiniCDI::Config.AnalogColors);
-	menuToggleNoFrameLimit->Check(MiniCDI::Config.NoFrameLimit);
 	menuToggleNTSC->Check(!MiniCDI::Config.PAL);
 }
 
@@ -340,6 +332,9 @@ void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 {
 	if (cdi != NULL && this->IsActive())
 	{
+		// Benchmark
+		const auto t1 = std::chrono::steady_clock::now();
+
 		#ifdef CONTROL_MOUSE_ONLY
 
 			// Update pointing device status based on mouse control (wxMouseEvent is not used because it does not update when the mouse is not moving).
@@ -376,5 +371,12 @@ void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 			}
 		}
 		mainPanel->Refresh();
+
+		const auto t2 = std::chrono::steady_clock::now();
+		const std::chrono::duration<uint_fast32_t, std::nano> t_duration = t2 - t1;
+		if (t_duration.count() < 16'666'667) {
+			const int wait_ms = 16'666'667 - t_duration.count();
+			std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ms));
+		}
 	}
 }

@@ -65,7 +65,6 @@ namespace miniCDi
 		wxMenuItem *menuToggleTestPlug;
 		wxMenuItem *menuToggleLLTest;
 		wxMenuItem *menuToggleAnalogColors;
-		wxMenuItem *menuToggleNoFrameLimit;
 		wxMenuItem *menuToggleNTSC;
 		wxMenuItem *menuResetPD;
 		// Help
@@ -166,7 +165,6 @@ namespace miniCDi
 			menuToggleTestPlug->SetItemLabel(wxString(_("&Connect test plug")));
 			menuToggleLLTest->SetItemLabel(wxString(_("Enable &PCB low-level test")));
 			menuToggleAnalogColors->SetItemLabel(wxString(_("&Analog colours")));
-			menuToggleNoFrameLimit->SetItemLabel(wxString(_("Disable frame &limit")));
 			menuToggleNTSC->SetItemLabel(wxString(_("Set machine as &NTSC")));
 			menuResetPD->SetItemLabel(wxString(_("&Reset pointing device")));
 			// Help

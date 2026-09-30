@@ -7,7 +7,7 @@ include(CMakeDependentOption)
 
 # Debug options
 option(MINICDI_DISABLE_VERBOSE "Completely disable verbose logging of any kind." OFF)
-cmake_dependent_option(MINICDI_ENABLE_VERBOSE_DISPLAY "Force-enable verbose output display." OFF
+cmake_dependent_option(MINICDI_ENABLE_VERBOSE_DISPLAY "Force-enable verbose output display." ON
 					   "NOT MINICDI_DISABLE_VERBOSE" OFF)
 option(MINICDI_ENABLE_VERBOSE_DISPLAY_CPU "Print verbose CPU information (PC, SR, FC, D*, A*)." OFF)
 option(MINICDI_ENABLE_VERBOSE_OS9 "Print OS-9 syscalls to verbose." OFF)
@@ -89,9 +89,9 @@ if (WIN32 OR APPLE)
 	# ************
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
-	# target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
-	find_package(wxWidgets COMPONENTS core)
-	target_link_libraries(${PROJECT_NAME} PRIVATE wxWidgets::wxWidgets ${SDL2_LIBRARIES})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
+	# find_package(wxWidgets COMPONENTS core)
+	# target_link_libraries(${PROJECT_NAME} PRIVATE wxWidgets::wxWidgets ${SDL2_LIBRARIES})
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=1) # SDL2
 
 	# Toggle console property
@@ -104,13 +104,14 @@ if (WIN32 OR APPLE)
 
 	# Source files/directories
 	# ************
-	target_include_directories(${PROJECT_NAME} PRIVATE
-		src/frontends/wx
-	)
-	target_sources(${PROJECT_NAME} PRIVATE
-		src/frontends/wx/mainFrame.cpp
-		src/frontends/wx/uiLauncher.cpp
-	)
+	target_sources(${PROJECT_NAME} PRIVATE src/platforms/win/main.cpp)
+	# target_include_directories(${PROJECT_NAME} PRIVATE
+		# src/frontends/wx
+	# )
+	# target_sources(${PROJECT_NAME} PRIVATE
+		# src/frontends/wx/mainFrame.cpp
+		# src/frontends/wx/uiLauncher.cpp
+	# )
 
 	# Executable icon
 	# ************

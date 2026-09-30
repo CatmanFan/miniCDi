@@ -160,7 +160,6 @@ static void RUN_CDI(const std::string &discName)
 	MiniCDI::Config.LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen((devicePrefix + "wiiu/apps/miniCDi/log.txt").c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-	MiniCDI::Config.ShowFTD = true;
 	MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? devicePrefix + "wiiu/apps/miniCDi/rom/" + biosName + ".nvram" : "";
 
 	PhilipsCDI cdi;
@@ -206,8 +205,7 @@ static void RUN_CDI(const std::string &discName)
 		SDL_RenderClear(SDL_renderer);
 
 		screen.draw(cdi.get_display(), cdi.get_display_width());
-		if (MiniCDI::Config.ShowFTD && cdi.get_ftd())
-			screen.draw_ftd(cdi.get_ftd(), cdi.get_ftd_width(), cdi.get_ftd_height());
+		// if (cdi.get_ftd()) screen.draw_ftd(cdi.get_ftd(), cdi.get_ftd_width(), cdi.get_ftd_height());
 
 		/*if (paused) {
 			SDL_Rect rect{0, 0, 1920, 1080};

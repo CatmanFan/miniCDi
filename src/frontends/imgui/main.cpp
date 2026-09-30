@@ -89,7 +89,6 @@ static void InitConfig(const std::filesystem::path &biosPath)
 		MiniCDI::Config.LogFile = ini["MiniCDI"]["Logging"].compare("1") == 0 ? fopen(log_path.c_str(), "wt") : NULL;
 		#endif
 		MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-		MiniCDI::Config.ShowFTD = true;
 		#ifdef __WIIU__
 			MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? (wiiu_sd_prefix + "wiiu/apps/miniCDi/rom/" + biosPath.stem().string() + ".nvram") : "";
 		#endif
@@ -128,7 +127,6 @@ static void ReloadConfig()
 		MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 		// MiniCDI::Config.LogFile = fopen(log_path.c_str(), "wt");
 		MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
-		MiniCDI::Config.ShowFTD = true;
 		// MiniCDI::Config.NvramFile = biosPath.stem().string() + ".nvram");
 	#endif
 }

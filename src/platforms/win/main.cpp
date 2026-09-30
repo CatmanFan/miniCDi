@@ -3,6 +3,9 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include <filesystem>
+#include <chrono>
+#include <thread>
+
 #include "cdi/common.hpp"
 #include "../common/mINI.hpp"
 
@@ -55,18 +58,18 @@ public:
 
 	void add_ftd(int width, int height)
 	{
-		this->FTD.window = SDL_CreateWindow("FTD", 32, 32, width*3, height*3, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
-		this->FTD.renderer = SDL_CreateRenderer(this->FTD.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
-		this->FTD.texture = SDL_CreateTexture(this->FTD.renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, width, height);
-		SDL_SetTextureScaleMode(this->FTD.texture, SDL_ScaleModeNearest);
 	}
 
-	SDL()
+	SDL(int ftd_width, int ftd_height)
 	{
 		this->Video.window = SDL_CreateWindow("miniCDi v0.1(beta)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 560, SDL_WINDOW_RESIZABLE);
 		this->Video.renderer = SDL_CreateRenderer(this->Video.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->Video.texture = SDL_CreateTexture(this->Video.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
-		this->FTD.window = nullptr;
+
+		this->FTD.window = SDL_CreateWindow("FTD", 32, 32, ftd_width*3, ftd_height*3, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
+		this->FTD.renderer = SDL_CreateRenderer(this->FTD.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
+		this->FTD.texture = SDL_CreateTexture(this->FTD.renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, ftd_width, ftd_height);
+		SDL_SetTextureScaleMode(this->FTD.texture, SDL_ScaleModeNearest);
 		// SDL_SetRenderDrawBlendMode(this->Video.renderer, SDL_BLENDMODE_BLEND);
 	}
 
@@ -85,22 +88,7 @@ public:
 static void SwapDisc(PhilipsCDI *cdi, enum CDi::BoardType board, const char *path)
 {
 	if (access(path, F_OK) != 0) return;
-
-	switch (board)
-	{
-		default: cdi->swap_disc(path); break;
-
-		case CDi::MonoII:
-			printf("[miniCDi] Warning: no full emulation of DRVDSP, discs will not play.\n");
-			cdi->swap_disc(path);
-			break;
-
-		case CDi::MonoIII:
-		case CDi::MonoIV:
-			printf("[miniCDi] Warning: no full emulation of CIAP, discs will not play.\n");
-			cdi->swap_disc(path);
-			break;
-	}
+	cdi->swap_disc(path);
 }
 
 int main(int argc, char** argv)
@@ -171,7 +159,6 @@ int main(int argc, char** argv)
 	MiniCDI::Config.LogFile = ini["CDI"]["Logging"].compare("1") == 0 ? fopen(logPath.c_str(), "wt") : NULL;
 	#endif
 	MiniCDI::Config.ShowFPS = false;
-	MiniCDI::Config.ShowFTD = true;
 	MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? nvramPath : "";
 
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
@@ -179,11 +166,11 @@ int main(int argc, char** argv)
 							  : CDi::MonoI;
 	PhilipsCDI cdi;
 	cdi.init(biosPath.string(), board);
-	if (argc >= 3) SwapDisc(&cdi, board, argv[3]);
+	if (argc >= 3) SwapDisc(&cdi, board, argv[2]);
 
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-	if (ini["MiniCDI"]["HideCursor"].compare("1") == 0) { SDL_ShowCursor(SDL_DISABLE); }
-	SDL screen;
+	SDL_ShowCursor(SDL_DISABLE);
+	SDL screen(cdi.get_ftd_width(), cdi.get_ftd_height());
 
 	int frames_run = 0;
 	bool has_quit = false;
@@ -212,18 +199,13 @@ int main(int argc, char** argv)
 
 					if (e.key.keysym.sym == SDLK_r && e.type == SDL_KEYDOWN) cdi.reset();
 					if (e.key.keysym.sym == SDLK_e && e.type == SDL_KEYDOWN) cdi.play_disc();
-					if (e.key.keysym.sym == SDLK_f && e.type == SDL_KEYDOWN) MiniCDI::Config.ShowFTD = !MiniCDI::Config.ShowFTD;
-					if (e.key.keysym.sym == SDLK_t && e.type == SDL_KEYDOWN) MiniCDI::Config.NoFrameLimit = !MiniCDI::Config.NoFrameLimit;
-					if (e.key.keysym.sym == SDLK_v && e.type == SDL_KEYDOWN) {
-						SDL_SetWindowSize(screen.Video.window, w == 768 ? 384 : 768, h == 560 ? 280 : 560);
-					}
+					if (e.key.keysym.sym == SDLK_v && e.type == SDL_KEYDOWN) SDL_SetWindowSize(screen.Video.window, w == 768 ? 384 : 768, h == 560 ? 280 : 560);
 					break;
 
 				case SDL_MOUSEMOTION:
-					if (mouse_active) {
-						cdi.pd.set_coord(e.motion.x, e.motion.y, w, h);
-					}
+					if (mouse_active) cdi.pd.set_coord(e.motion.x, e.motion.y, w, h);
 					break;
+
 				case SDL_MOUSEBUTTONDOWN:
 				case SDL_MOUSEBUTTONUP:
 					if (mouse_active) {
@@ -233,13 +215,10 @@ int main(int argc, char** argv)
 					break;
 
 				case SDL_WINDOWEVENT:
-					if (e.window.event == SDL_WINDOWEVENT_CLOSE)
-					{
-						if (e.window.windowID == SDL_GetWindowID(screen.FTD.window))
-							MiniCDI::Config.ShowFTD = false;
-						else if (e.window.windowID == SDL_GetWindowID(screen.Video.window))
-							has_quit = true;
-					}
+					if (e.window.windowID == SDL_GetWindowID(screen.Video.window) && e.window.event == SDL_WINDOWEVENT_CLOSE)
+						has_quit = true;
+					if (e.window.windowID == SDL_GetWindowID(screen.FTD.window) && e.window.event == SDL_WINDOWEVENT_CLOSE && screen.FTD.window)
+						SDL_HideWindow(screen.FTD.window);
 					break;
 
 				case SDL_QUIT:
@@ -253,6 +232,9 @@ int main(int argc, char** argv)
             }
         }
 
+		// Benchmark
+		/*const auto t1 = std::chrono::steady_clock::now();*/
+
 		if (frames_run == 0) {
 			cdi.run(false);
 			frames_run += MiniCDI::Config.FrameSkip;
@@ -263,17 +245,14 @@ int main(int argc, char** argv)
 		}
 
 		screen.update_video(cdi.get_display(), cdi.get_display_width());
+		if (cdi.get_ftd()) screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
 
-		// FTD handling
-		if (MiniCDI::Config.ShowFTD && cdi.get_ftd())
-		{
-			if (screen.FTD.window == nullptr)
-				screen.add_ftd(cdi.get_ftd_width(), cdi.get_ftd_height());
-			else
-				SDL_ShowWindow(screen.FTD.window);
-		}
-		if (!MiniCDI::Config.ShowFTD && screen.FTD.window) SDL_HideWindow(screen.FTD.window);
-		if (MiniCDI::Config.ShowFTD && cdi.get_ftd()) screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
+		/*const auto t2 = std::chrono::steady_clock::now();
+		const std::chrono::duration<uint_fast32_t, std::nano> t_duration = t2 - t1;
+		if (t_duration.count() < 16'666'667) {
+			const int wait_ms = 16'666'667 - t_duration.count();
+			std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ms));
+		}*/
 	}
 	
 	return 0;

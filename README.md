@@ -28,86 +28,22 @@ The general code for this emulator is released under [GPLv3](https://www.gnu.org
 ### Windows / macOS
 Run miniCDi using the command line arguments `miniCDi <boot.rom> [disc.bin]`. Alternatively, drag the system ROM file itself into miniCDi to boot the emulated system from the ROM, then drag the disc image into the emulator window.
 
-#### Controls
-
-| CD-i pointing device | Mouse (if focused) | Keyboard   |
-|----------------------|--------------------|------------|
-| Button 1             | Left-click         | Enter      |
-| Button 2             | Right-click        | Space bar  |
-| Directional buttons  | Cursor movement    | Arrow keys |
-| *Reset emulator*     | -                  | R          |
-| *Play button on FP*  | -                  | E          |
-| *Toggle FTD*         | -                  | F          |
-| *Toggle frame limit* | -                  | T          |
-| *Change resolution*  | -                  | V          |
-
 ### Nintendo Wii
 Place the system ROM(s) in `sd:/miniCDi/rom` and any disc images/games in `sd:/miniCDi/discs`.
 
 Once opened, select a disc image from the menu. Press Home (Wii) or Z (GameCube) to exit emulation and return to the emulator menu.
 In some cases the CD-i machine may not start properly. If this happens try going back to the emulator menu and starting over (this may take several tries).
 
-#### Controls
-
-| CD-i pointing device | Wii Remote | Wii Classic Controller |
-|----------------------|------------|------------------------|
-| Button 1             | 1          | A                      |
-| Button 2             | 2          | B                      |
-| Directional buttons  | D-Pad      | D-Pad                  |
-| *Play button on FP*  | -          | Plus                   |
-| *Reset emulator*     | Minus      | Minus                  |
-
-GameCube controller support is currently only available in the GameCube build.
-
 ### Nintendo 3DS
 Place the system ROM(s) in `sdmc:/3ds/miniCDi/rom` and any disc images/games in `sdmc:/3ds/miniCDi/discs`.
 
 Once opened, select a disc image from the menu. Press ZR to quit the emulator.
-
-#### Controls
-
-| CD-i pointing device | Nintendo 3DS        |
-|----------------------|---------------------|
-| Button 1             | A                   |
-| Button 2             | B                   |
-| Directional buttons  | D-Pad or Circle Pad |
-| *Play button on FP*  | START               |
-| *Reset emulator*     | SELECT              |
 
 ### Nintendo Wii U
 Place the system ROM(s) in `/vol/external01/wiiu/apps/miniCDi/rom` and any disc images/games in `/vol/external01/wiiu/apps/miniCDi/discs`.
 
 Once opened, select a disc image from the menu. Press ZR to exit emulation and return to the emulator menu.
 In some cases the CD-i machine may not start properly. If this happens try going back to the emulator menu and starting over (this may take several tries).
-
-#### Controls
-
-| CD-i pointing device | Wii U GamePad       |
-|----------------------|---------------------|
-| Button 1             | A                   |
-| Button 2             | B                   |
-| Directional buttons  | D-Pad or left stick |
-| *Play button on FP*  | START               |
-| *Reset emulator*     | SELECT              |
-
-### Configuration
-The emulation settings can be configured in `config.ini` relative to the emulator's executable (e.g. .exe, .dol, .3dsx, etc). These are compiled courtesy of the [mINI](https://github.com/metayeti/mINI) library.
-
-An example of the default settings:
-```
-[cdi]
-autosavenvram=0
-testplug=0
-pal=1
-analogcolors=0
-
-[minicdi]
-frameskip=0
-pointeradvance=0
-logging=0
-```
-
-Setting the video mode setting to `0` (NTSC) may negatively affect emulation speed. Frameskip may help on slower consoles but may not reach 100% speed.
 
 ## Technical details
 ### Compatibility
@@ -119,37 +55,10 @@ The following boards and chips have been implemented. CD-i Fan has more informat
 
 Only the Mono-I driver is capable of playing CD-i discs, since the DRVDSP and CIAP in later boards are not fully emulated. Certain software may softlock due to constant D-Pad movement polling by SLAVE (e.g. Zelda: Wand of Gamelon or [CDi_BadApple](https://github.com/Slamy/CDi_BadApple)).
 
-## Screenshots
-### Player shell
-<div align=center>
-
-| CDI 200, CDI 220/20 (Mono-I) | CDI 220/40 (Mono-II) | CDI 490/00 (Mono-IV) |
-|------------------------------|----------------------|----------------------|
-| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_220b.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_220c.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_490.png" />
-</div>
-
-### Gameplay
-All captured under CDI 200 using Mono-I driver.
-
-<div align=center>
-
-| Hotel Mario | Frog Feast | Zelda: Wand of Gamelon |
-|-------------|------------|------------------------|
-| <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_hotelmario.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_frogfeast.png" /> | <img src="https://github.com/CatmanFan/miniCDi/blob/master/res/capture_200_zelda.png" /> |
-
-</div>
-
 ## To-Do
 - [ ] Check audiomap-to-XA switching
 - [ ] Rewrite scheduler (possibly also chips?) based on GB emulator experience
-- [X] ImGUI 3DS frontend
-
-### Potential
-- [ ] Find faster 68010 emulator for ARM (3DS) + PowerPC? ([Cyclone](https://github.com/notaz/cyclone68000) exists but may need to be modified to support 68010 derivative.)
-- [ ] Audio playback support for native homebrew libraries (i.e. non-SDL)
 - [ ] Emulate timekeeper on Mono-I/Mono-IV? (should handle NVRAM saving)
-- [X] Fix PD on Mono-IV
-- [ ] LibRetro API compatibility?
 
 ## Building
 To compile, use devkitPro's `powerpc-eabi-cmake` (GC, (v)Wii, Wii U) or `arm-none-eabi-cmake` (3DS), or the regular MINGW64 CMake if compiling for Windows. The corresponding SDL2 package is required, except on 3DS.

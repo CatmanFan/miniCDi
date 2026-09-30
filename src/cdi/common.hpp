@@ -34,7 +34,7 @@
 
 // Global defs
 #include "cdi/m68k/m68k.h"
-#include "cdi/os9/OS9.hpp"
+#include "cdi/OS9.hpp"
 #include "../Config.hpp"
 #include "../Log.hpp"
 #include "cdi/CDiDisc.hpp"
@@ -46,10 +46,10 @@
 #include "cdi/chips/MCD212.hpp"
 #include "cdi/chips/MC6805_SLAVE.hpp"
 #include "cdi/chips/MC6805_IKAT.hpp"
-#include "cdi/PointingDevice.hpp"
 #include "cdi/chips/IMS66490_CDIC.hpp"
 #include "cdi/chips/DSP56001_DRVDSP.hpp"
 #include "cdi/chips/MCD221_CIAP.hpp"
+#include "cdi/PointingDevice.hpp"
 
 // Boards
 #include "cdi/players/common.hpp"

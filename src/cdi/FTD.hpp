@@ -3,13 +3,12 @@
 
 #include <deque>
 
-class FTD
+struct FTD
 {
 	std::vector<uint8_t> display = {0x00};
 	size_t digit_width = 1, digit_height = 1, digit_count = 1;
 	size_t digit_spacingX = 0, digit_spacingY = 0;
 
-public:
 	enum FTDType {
 		FTD_220_20 = 0,
 		FTD_220_40,

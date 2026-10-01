@@ -5,7 +5,7 @@
 #include <fstream>
 #endif
 
-class CDiDisc
+struct CDiDisc
 {
 #ifdef MINICDI_NO_DISC_IFSTREAM
 	FILE* disc;
@@ -66,11 +66,6 @@ class CDiDisc
 	bool is_byteswapped(int lba);
 	bool is_valid_sector(int lba);
 	void read_sector(int lba = 0);
-
-public:
-	friend class CDIC;
-	friend class DRVDSP;
-	friend class CIAP;
 
 #ifdef MINICDI_NO_DISC_IFSTREAM
 	CDiDisc() { disc = NULL; }

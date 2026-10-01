@@ -21,12 +21,14 @@ void PhilipsCDI::run(bool no_draw)
 	{
 		// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
 		// On embedded consoles this also affects the speed of the emulator.
-		const int cycles = std::min({240, sector_cycles, mcd212_cycles});
+		// const int cycles = std::min({240, sector_cycles, mcd212_cycles});
+		const int timer_rate = 96*2;
 
-		cpu.run(cycles, true);
-		total_cycles += cycles;
+		cpu.run(timer_rate);
+		cpu.timer0_tick();
+		total_cycles += timer_rate;
 
-		sector_cycles -= cycles;
+		sector_cycles -= timer_rate;
 		while (sector_cycles <= 0)
 		{
 			sector_cycles += sector_rate;
@@ -41,7 +43,7 @@ void PhilipsCDI::run(bool no_draw)
 			}
 		}
 
-		mcd212_cycles -= cycles;
+		mcd212_cycles -= timer_rate;
 		while (mcd212_cycles <= 0)
 		{
 			mcd212_cycles += mcd212_rate;

@@ -6,7 +6,7 @@
   Partially sourced from ogarvey's https://github.com/ogarvey/OGLibCD-i and algorithm used in Stovent's CeDImu.
  *****/
 
-class AdpcmDecoder
+struct AdpcmDecoder
 {
 	int K0[4] = { 0, 240, 460, 392 };
 	int K1[4] = { 0, 0, -208, -220 };
@@ -21,7 +21,6 @@ class AdpcmDecoder
 	int8_t sound_data[8][28]; // A: 4 sound units, BC: 8 sound units -- 28 sound data bytes
 	template <size_t max_units, int gain> void decode_adpcm(bool stereo, bool low_freq);
 
-public:
 	enum SoundQualityLevel
 	{
 		NULL_SQL = 0,

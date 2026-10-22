@@ -94,11 +94,11 @@ static void RunCDIEmulator()
 
 		// Run a frame
 		if (frames_run == 0) {
-			philips_player->run(false);
+			philips_player->run_frame(false);
 			frames_run += MiniCDI::Config.FrameSkip;
 			DrawPhilipsCDIScreen(philips_player);
 		} else {
-			philips_player->run(true);
+			philips_player->run_frame(true);
 			frames_run--;
 			continue;
 		}

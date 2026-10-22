@@ -11,7 +11,6 @@ namespace MiniCDI
 		bool ShowFPS = false;
 		bool AnalogColors = false;
 		size_t FrameSkip = 0;
-		int PointerAdvance = 1;
 
 		FILE* LogFile = nullptr;
 		std::string NvramFile = "";

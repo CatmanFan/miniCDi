@@ -58,7 +58,7 @@ uint8_t SLAVE::read8(uint32_t addr)
 {
 	if (addr == DR[0] || addr == DR[1] || addr == DR[2] || addr == DR[3])
 	{
-		size_t c = (addr - DR[0]) / 2;
+		size_t c = (addr - DR[0]) >> 1;
 
 		Ch[c].Available = false;
 		if (!Ch[0].Available && !Ch[1].Available && !Ch[2].Available && !Ch[3].Available)
@@ -84,7 +84,7 @@ void SLAVE::write8(uint32_t addr, uint8_t value)
 	memory[addr] = value;
 	if (addr == DR[0] || addr == DR[1] || addr == DR[2] || addr == DR[3])
 	{
-		size_t c = (addr - DR[0]) / 2;
+		size_t c = (addr - DR[0]) >> 1;
 		Ch[c].In.push_back(value);
 		//MiniCDI::Log("[SLAVE] %sDR <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 

@@ -64,7 +64,7 @@ public:
 	/**
 	 * @brief  Runs until VSync signal on video driver (i.e. a frame).
 	 */
-	inline virtual void run(bool no_draw = false) { ; }
+	inline virtual void run_frame(bool no_draw = false) { ; }
 	inline virtual void reset() { ; }
 
 	inline virtual uint8_t read8(int address) { return 0; }

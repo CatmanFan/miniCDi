@@ -16,33 +16,27 @@ bool CDIC::disc_check_filter()
 	if (disc->Sector[CDiDisc::H_MODE] == 2 && CdicController.is_mode2)
 	{
 		// Use order from MAME
-		if ((disc->Sector[CDiDisc::SH_FILE2] << 8) != FILE) {
-			//MiniCDI::Log("[CDIC] MODE2 skip: FILE %04X != %02X", FILE, disc->Sector[CDiDisc::SH_FILE2]);
-			return false;
-		}
 
-		if ((disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000) // EOF
-		 || (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00000001) // EOR
-		 || (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00010000) // Trigger
-		 ) {
-			if (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000) {
+		// Skip if FILE register mask does not match subheader file byte
+		if ((disc->Sector[CDiDisc::SH_FILE2] << 8) != FILE) return false;
+
+		// Autoread if EOF, EOR or Trigger bits set
+		if (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10010001)
+		{
+			if (disc->Sector[CDiDisc::SH_SUBMODE2] & 0b10000000)
+			{
 				MiniCDI::Log("[CDIC] MODE2: reached EOF");
 				CdicController.reading = false;
 			}
-			//MiniCDI::Log("[CDIC] MODE2 autoread");
+
 			return true;
 		}
 
-		if (!(disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00001110)) {
-			// Either message or empty sector (Green Book II.4.9.1)
-			//MiniCDI::Log("[CDIC] MODE2 skip: invalid sector");
-			return false;
-		}
+		// Ignore message or empty sector (Green Book II.4.9.1, MAME)
+		if (!(disc->Sector[CDiDisc::SH_SUBMODE2] & 0b00001110)) return false;
 
-		if (!(CHAN & (1<<disc->Sector[CDiDisc::SH_CHAN2]))) {
-			//MiniCDI::Log("[CDIC] MODE2 skip: CHAN %08X is not AND (1 << %d)", CHAN, disc->Sector[CDiDisc::SH_CHAN2]);
-			return false;
-		}
+		// Skip if CHAN register mask does not match subheader channel byte
+		if (!(CHAN & (1<<disc->Sector[CDiDisc::SH_CHAN2]))) return false;
 	}
 
 	return true;
@@ -145,9 +139,9 @@ void CDIC::update_soundmap_unit()
 			// Select sector interval for ADPCM (per Slamy documentation).
 			// CDDA has sample data on every sector so can be ignored.
 			AudioController.sector_interval = 2;
-			if (coding & 0b000100) { AudioController.sector_interval *= 2; } // XA 18.9 kHz
-			if (!(coding & 0b010000)) { AudioController.sector_interval *= 2; } // XA 4bps
-			if (!(coding & 0b000001)) { AudioController.sector_interval *= 2; } // XA Mono
+			if (coding & 0b000100) { AudioController.sector_interval <<= 1; } // XA 18.9 kHz
+			if (!(coding & 0b010000)) { AudioController.sector_interval <<= 1; } // XA 4bps
+			if (!(coding & 0b000001)) { AudioController.sector_interval <<= 1; } // XA Mono
 
 			if (ADPCM.decode_sector(&memory[AudioController.buffer == 2 ? 0x303200 : 0x302800]))
 				ADPCM.play();

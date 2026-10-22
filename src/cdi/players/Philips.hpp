@@ -40,7 +40,7 @@ public:
 	bool init(const std::string &bios, enum BoardType board) override;
 	~PhilipsCDI();
 
-	void run(bool no_draw = false) override;
+	void run_frame(bool no_draw = false) override;
 	void reset() override;
 	void reset_pd();
 

@@ -89,9 +89,9 @@ if (WIN32 OR APPLE)
 	# ************
 	find_package(SDL2 REQUIRED)
 	include_directories(${SDL2_INCLUDE_DIRS})
-	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
 	# find_package(wxWidgets COMPONENTS core)
 	# target_link_libraries(${PROJECT_NAME} PRIVATE wxWidgets::wxWidgets ${SDL2_LIBRARIES})
+	target_link_libraries(${PROJECT_NAME} PRIVATE ${SDL2_LIBRARIES})
 	target_compile_definitions(${PROJECT_NAME} PRIVATE MINICDI_AUDIO=1) # SDL2
 
 	# Toggle console property

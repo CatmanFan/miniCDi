@@ -44,10 +44,10 @@ void AdpcmDecoder::decode_adpcm(bool stereo, bool low_freq)
 		output_size = stereo ? std::min(left.size(), right.size()) : left.size();
 		for (int i = 0; i < output_size; i++)
 		{
-			output[i*2] = left[i];
-			output[i*2+1] = stereo ? right[i] : left[i];
+			output[i << 1] = left[i];
+			output[(i << 1)+1] = stereo ? right[i] : left[i];
 		}
-		output_size = std::min(output_size * 2, OUTPUT_MAX_SIZE);
+		output_size = std::min(output_size << 1, OUTPUT_MAX_SIZE);
 	}
 }
 

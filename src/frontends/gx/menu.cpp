@@ -663,7 +663,7 @@ static int MenuSettingsEmulator()
 				break;
 
 			case 1:
-				MiniCDI::Config.PointerAdvance = (MiniCDI::Config.PointerAdvance + 1) % 10;
+				// MiniCDI::Config.PointerAdvance = (MiniCDI::Config.PointerAdvance + 1) % 10;
 				break;
 
 			case 2:
@@ -684,7 +684,7 @@ static int MenuSettingsEmulator()
 			firstRun = false;
 
 			sprintf (options.value[0], "%d", MiniCDI::Config.FrameSkip);
-			sprintf (options.value[1], "%d", MiniCDI::Config.PointerAdvance);
+			// sprintf (options.value[1], "%d", MiniCDI::Config.PointerAdvance);
 			sprintf (options.value[2], MiniCDI::Config.PAL ? "PAL" : "NTSC");
 			sprintf (options.value[3], MiniCDI::Config.AnalogColors ? "On" : "Off");
 

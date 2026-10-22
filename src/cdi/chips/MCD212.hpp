@@ -17,10 +17,10 @@ class MCD212
 		Off = 0b0000,
 		CLUT8 = 0b0001, // plane A only
 		RGB555 = 0b0001, // plane B only
-		CLUT7 = 0b0011,
+		CLUT7 = 0b0011, // RL7 for run-length
 		CLUT77 = 0b0100, // plane A only
 		DYUV = 0b0101,
-		CLUT4 = 0b1011, // double-res only
+		CLUT4 = 0b1011, // double-res only (RL4 for run-length)
 		QHY = 0b1111
 	};
 
@@ -69,7 +69,6 @@ class MCD212
 		  MAME CD-i driver by Ryan Holtz and Vincent Halver (licensed under BSD-3-Clause).
 		 *****/
 
-
 		struct Plane
 		{
 			int width, height;
@@ -112,60 +111,6 @@ class MCD212
 			uint8_t opcode[8];
 		} MCR;
 
-		void matte_set_flag(size_t x)
-		{
-			if (MCR.current < 8 && MCR.x[MCR.current] == x)
-			{
-				switch (MCR.opcode[MCR.current])
-				{
-					case 0b0000: // end of matte control
-						MCR.current = 8;
-						break;
-
-					case 0b1000: // reset
-					case 0b1100: // reset & change weight of pA
-					case 0b1110: // reset & change weight of pB
-						Matte[MCR.mf[MCR.current]] = false;
-						++MCR.current;
-						break;
-
-					case 0b1001: // set
-					case 0b1101: // set & change weight of pA
-					case 0b1111: // set & change weight of pB
-						Matte[MCR.mf[MCR.current]] = true;
-						++MCR.current;
-						break;
-				}
-			}
-		}
-
-		void matte_set_icf(size_t x)
-		{
-			if (MCR.current < 8 && MCR.x[MCR.current] == x)
-			{
-				switch (MCR.opcode[MCR.current])
-				{
-					case 0b0000: // end of matte control
-						MCR.current = 8;
-						break;
-
-					case 0b0100: // change weight of pA
-					case 0b1100: // reset & change weight of pA
-					case 0b1101: // set & change weight of pA
-						reg.ICF[0] = MCR.icf[MCR.current];
-						++MCR.current;
-						break;
-
-					case 0b0110: // change weight of pB
-					case 0b1110: // reset & change weight of pB
-					case 0b1111: // set & change weight of pB
-						reg.ICF[1] = MCR.icf[MCR.current];
-						++MCR.current;
-						break;
-				}
-			}
-		}
-
 		struct
 		{
 			uint8_t Y = 0;
@@ -175,8 +120,6 @@ class MCD212
 			/// Table 7–1 in MCD212 datasheet
 			uint8_t LUT_deq[16] = {0,1,4,9,16,27,44,79,128,177,212,229,240,247,252,255};
 		} DYUVDecoder;
-
-		template <size_t Path> bool isTransparent(uint8_t* src, bool second = false);
 
 		/**
 		 * @brief  Decodes DYUV to an RGBA8 pixel.
@@ -209,7 +152,7 @@ class MCD212
 		template <size_t Path> uint32_t decodeCLUT(uint8_t* src, uint32_t *dst);
 		template <size_t Path> uint8_t getCLUTindex(uint8_t* src, bool second = false);
 
-		uint32_t framebuffer[768 * 280]; // max bounds
+		uint32_t framebuffer[215040]; // max bounds (768x280)
 
 	public:
 		bool skip_draw = false;

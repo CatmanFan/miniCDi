@@ -25,38 +25,6 @@ static C3D_RenderTarget *s_bottom = nullptr;
 static PhilipsCDI* cdi = nullptr;
 static int currentPage = 0;
 
-class FPS
-{
-public:
-	int8_t aggregate;
-
-private:
-	int8_t incremented;
-	clock_t lastTime;
-	clock_t currentTime;
-
-public:
-	FPS() : aggregate(0)
-		  , incremented(0)
-		  , lastTime(osGetTime())
-	{ }
-
-	void update(int frames = 1)
-	{
-		incremented += frames;
-		currentTime = osGetTime();
-
-		if(currentTime - lastTime > 1000)
-		{
-			lastTime = currentTime;
-			aggregate = incremented;
-			incremented = 0;
-		}
-	}
-};
-
-static FPS fps;
-
 /****************************************************************************
  * drawErrorScreen
  *
@@ -156,12 +124,12 @@ static void drawOptionsPage()
 	ImGui::SetNextWindowPos( ImVec2(40, 240) );
 	ImGui::SetNextWindowSize( ImVec2(320, 240) );
 	ImGui::Begin("Options", nullptr, /*ImGuiWindowFlags_NoTitleBar |*/ ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar );
-	ImGui::Text("FPS - %.1f (3DS native), %d (CD-i)", ImGui::GetIO().Framerate, fps.aggregate);
+	ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 	ImGui::Separator();
 
 	uint8_t fs_min = 0, fs_max = 10, pa_min = 0, pa_max = 10;
 	ImGui::DragScalar("Frameskip", ImGuiDataType_U8, &MiniCDI::Config.FrameSkip, 0.2f, &fs_min, &fs_max, "%d", 1);
-	ImGui::DragScalar("Pointer advance", ImGuiDataType_U8, &MiniCDI::Config.PointerAdvance, 0.2f, &pa_min, &pa_max, "%d", 1);
+	// ImGui::DragScalar("Pointer advance", ImGuiDataType_U8, &MiniCDI::Config.PointerAdvance, 0.2f, &pa_min, &pa_max, "%d", 1);
 
 	ImGui::Checkbox("Connect test plug", &MiniCDI::Config.TestPlug);
 	ImGui::Checkbox("Analog colors", &MiniCDI::Config.AnalogColors);
@@ -185,11 +153,8 @@ static void drawMainPage()
 	ImGui::SetNextWindowSize( ImVec2(320, 240) );
 	ImGui::Begin("Menu", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
 	// ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::Text("FPS - %.1f (3DS), %d (CD-i)", ImGui::GetIO().Framerate, fps.aggregate);
+	ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 	ImGui::Separator();
-
-	// if( ImGui::Button("Save State", ImVec2(ImGui::GetContentRegionAvailWidth(), 60)) ) currentPage = 1;
-	// if( ImGui::Button("Load State", ImVec2(ImGui::GetContentRegionAvailWidth(), 60)) ) currentPage = 2;
 
 	int buttonWidth = (ImGui::GetContentRegionAvail().x - 6) / 2;
 	static int promptIndex = 0;
@@ -369,7 +334,6 @@ int main(int argc, char *argv[])
 
 	// Actually create the CD-i Player
 	MiniCDI::Config.PAL = true;
-	int frames_run = 0;
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
 							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
 							  : CDi::MonoI;
@@ -390,16 +354,8 @@ int main(int argc, char *argv[])
 		cdi->pd.set_button(PointingDevice::Button1, kHeld & KEY_A);
 		cdi->pd.set_button(PointingDevice::Button2, kHeld & KEY_B);
 
-		if (frames_run == 0) {
-			cdi->run(false);
-			frames_run += MiniCDI::Config.FrameSkip;
-
-			texture.Update(cdi->get_display(), cdi->get_display_width());
-			fps.update(MiniCDI::Config.FrameSkip+1);
-		} else {
-			cdi->run(true);
-			frames_run--;
-		}
+		cdi->run_frame(false);
+		texture.Update(cdi->get_display(), cdi->get_display_width());
 
 		// Start the ImGui frame
 		imgui::ctru::newFrame();

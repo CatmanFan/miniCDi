@@ -33,51 +33,32 @@ uint8_t MCD212::VDSC::getCLUTindex(uint8_t* src, bool second)
 	}
 }
 
-template <size_t Path>
-bool MCD212::VDSC::isTransparent(uint8_t* src, bool second)
-{
-	// Color key boolean (CLUT only)
-	// formula adapted from MAME
-	const bool UseColorKey = !(reg.Icm[0] == Off && reg.Icm[1] == RGB555) && (reg.Icm[Path] == CLUT4 || reg.Icm[Path] == CLUT7 || reg.Icm[Path] == CLUT77);
-	const bool ColorKey = UseColorKey ? ((reg.TransparentCol[Path] & 0x00FCFCFCu) & (~(reg.MaskCol[Path]) & 0x00FCFCFCu))
-									 == ((reg.ColorCLUT[getCLUTindex<Path>(src, second)] & 0x00FCFCFCu) & (~(reg.MaskCol[Path]) & 0x00FCFCFCu))
-									  : true;
+// Color key boolean (CLUT only)
+// formula adapted from MAME
+#define COLOR_KEY(PLANE)					(!(reg.Icm[0] == Off && reg.Icm[1] == RGB555) && (reg.Icm[Path] == CLUT4 || reg.Icm[Path] == CLUT7 || reg.Icm[Path] == CLUT77) \
+											? ((reg.TransparentCol[Path] & 0x00FCFCFCu) & (~(reg.MaskCol[Path]) & 0x00FCFCFCu)) \
+											   == ((reg.ColorCLUT[getCLUTindex<Path>(src, PLANE)] & 0x00FCFCFCu) & (~(reg.MaskCol[Path]) & 0x00FCFCFCu)) \
+											: true)
 
-	switch (reg.TransparencyCtrl[Path])
-	{
-		default:
-			assert(0 && "[VDSC] Transparency Control data is invalid.");
-			return false;
-		case 0b0000:
-			return true;
-		case 0b0001:
-			return ColorKey;
-		case 0b0010:
-			return reg.Icm[0] == Off && reg.Icm[1] == RGB555 && Path && (*src & 0x8000);
-		case 0b0011:
-			return Matte[0];
-		case 0b0100:
-			return Matte[1];
-		case 0b0101:
-			return Matte[0] || ColorKey;
-		case 0b0110:
-			return Matte[1] || ColorKey;
-		case 0b1000:
-			return false;
-		case 0b1001:
-			return !ColorKey;
-		case 0b1010:
-			return !(reg.Icm[0] == Off && reg.Icm[1] == RGB555 && Path && (*src & 0x8000));
-		case 0b1011:
-			return !Matte[0];
-		case 0b1100:
-			return !Matte[1];
-		case 0b1101:
-			return !Matte[0] || !ColorKey;
-		case 0b1110:
-			return !Matte[1] || !ColorKey;
-	}
-}
+#define TRANSPARENT_KEY(Path, Src, PLANE)	transparentKey = false; \
+											switch (reg.TransparencyCtrl[Path]) \
+											{ \
+												case 0b0000: transparentKey = true; break; \
+												case 0b0001: transparentKey = COLOR_KEY(PLANE); break; \
+												case 0b0010: transparentKey = reg.Icm[0] == Off && reg.Icm[1] == RGB555 && Path && (*src & 0x8000); break; \
+												case 0b0011: transparentKey = Matte[0]; break; \
+												case 0b0100: transparentKey = Matte[1]; break; \
+												case 0b0101: transparentKey = Matte[0] || COLOR_KEY(PLANE); break; \
+												case 0b0110: transparentKey = Matte[1] || COLOR_KEY(PLANE); break; \
+												case 0b1000: transparentKey = false; break; \
+												case 0b1001: transparentKey = !COLOR_KEY(PLANE); break; \
+												case 0b1010: transparentKey = !(reg.Icm[0] == Off && reg.Icm[1] == RGB555 && Path && (*src & 0x8000)); break; \
+												case 0b1011: transparentKey = !Matte[0]; break; \
+												case 0b1100: transparentKey = !Matte[1]; break; \
+												case 0b1101: transparentKey = !Matte[0] || !COLOR_KEY(PLANE); break; \
+												case 0b1110: transparentKey = !Matte[1] || !COLOR_KEY(PLANE); break; \
+											} \
+											if (!transparentKey)
 
 template <size_t Path>
 uint32_t MCD212::VDSC::decodeDYUV(uint8_t* src, uint32_t *dst)
@@ -118,7 +99,7 @@ uint32_t MCD212::VDSC::decodeDYUV(uint8_t* src, uint32_t *dst)
 template <size_t Path>
 uint32_t MCD212::VDSC::decodeRGB555(uint8_t* src, uint32_t *dst)
 {
-	if (!isTransparent<Path>(src))
+	bool TRANSPARENT_KEY(Path, src, false)
 	{
 		uint16_t rgb555 = (*src << 8) | *(src+1);
 		uint8_t r = std::clamp(static_cast<int>(static_cast<float>((rgb555 & 0x1F) >> 10) / 32.0f * 255.0f), 0, 255);
@@ -136,14 +117,16 @@ uint32_t MCD212::VDSC::decodeCLUT(uint8_t* src, uint32_t *dst)
 {
 	switch (reg.Icm[Path])
 	{
-		default:
-			if (!isTransparent<Path>(src)) *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
+		default: {
+			bool TRANSPARENT_KEY(Path, src, false) { *dst = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF; }
 			return 1;
+		}
 
-		case CLUT4:
-			if (!isTransparent<Path>(src)) dst[0] = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF;
-			if (!isTransparent<Path>(src, true)) dst[1] = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF;
+		case CLUT4: {
+			bool TRANSPARENT_KEY(Path, src, false) { dst[1] = (reg.ColorCLUT[getCLUTindex<Path>(src)] << 8) | 0xFF; }
+			TRANSPARENT_KEY(Path, src, true) { dst[0] = (reg.ColorCLUT[getCLUTindex<Path>(src, true)] << 8) | 0xFF; }
 			return 2;
+		}
 	}
 }
 
@@ -161,13 +144,37 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 
 	if (reg.Icm[Path] == Off)
 	{
-		if (!this->skip_draw) memset(&FG[Path].decoded[(y * 768)], 0, FG[Path].width * sizeof(uint32_t));
+		memset(&FG[Path].decoded[(y * 768)], 0, FG[Path].width * sizeof(uint32_t));
 		return vsr;
 	}
 
 	for (int x = 0; x < FG[Path].width;)
 	{
-		matte_set_flag(FG[0].width < 400 ? x*2 : x);
+		// Update matte flag
+		if (MCR.current < 8 && MCR.x[MCR.current] == static_cast<size_t>(FG[0].width < 400 ? x*2 : x))
+		{
+			switch (MCR.opcode[MCR.current])
+			{
+				case 0b0000: // end of matte control
+					MCR.current = 8;
+					break;
+
+				case 0b1000: // reset
+				case 0b1100: // reset & change weight of pA
+				case 0b1110: // reset & change weight of pB
+					Matte[MCR.mf[MCR.current]] = false;
+					++MCR.current;
+					break;
+
+				case 0b1001: // set
+				case 0b1101: // set & change weight of pA
+				case 0b1111: // set & change weight of pB
+					Matte[MCR.mf[MCR.current]] = true;
+					++MCR.current;
+					break;
+			}
+		}
+
 		uint8_t* src = &memory[vsr];
 		uint32_t* dst = &FG[Path].decoded[(y * 768) + x];
 
@@ -177,7 +184,7 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 			case Bitmap:
 				if (reg.Icm[0] == Off && reg.Icm[1] == RGB555)
 				{
-					x += this->skip_draw ? 1 : decodeRGB555<Path>(src, dst);
+					x += decodeRGB555<Path>(src, dst);
 					vsr++;
 				}
 				else
@@ -190,7 +197,7 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 							continue;
 
 						case DYUV:
-							x += this->skip_draw ? 2 : decodeDYUV<Path>(src, dst);
+							x += decodeDYUV<Path>(src, dst);
 							vsr += 2;
 							continue;
 
@@ -198,34 +205,27 @@ uint32_t MCD212::VDSC::draw_line_to_plane(uint8_t* memory, uint32_t vsr, int y)
 						case CLUT7:
 						case CLUT77:
 						case CLUT8:
-							x += this->skip_draw ? (reg.Icm[Path] == CLUT4 ? 2 : 1) : decodeCLUT<Path>(src, dst);
+							x += decodeCLUT<Path>(src, dst);
 							vsr++;
 							continue;
 					}
 				}
-				continue;
+				break;
 
-			case RunLength:
-				switch (reg.Icm[Path])
-				{
-					default:
-					case CLUT4: // RL3
-					case CLUT7: // RL7
-						int length = (*src & 0x80 ? memory[vsr+1] : 1) * (reg.Icm[Path] == CLUT4 ? 2 : 1);
-						int endX = length == 0 ? FG[Path].width : std::min({x+length, FG[Path].width});
-						while (x < endX) {
-							x += this->skip_draw ? (reg.Icm[Path] == CLUT4 ? 2 : 1) : decodeCLUT<Path>(src, &FG[Path].decoded[(y * 768) + x]);
-						}
-						vsr += (*src & 0x80 ? 2 : 1);
-						continue;
+			case RunLength: {
+					int length = (*src & 0x80 ? memory[vsr+1] : 1) * (reg.Icm[Path] == CLUT4 ? 2 : 1);
+					int endX = length == 0 ? FG[Path].width : std::min({x+length, FG[Path].width});
+					while (x < endX) { x += decodeCLUT<Path>(src, &FG[Path].decoded[(y * 768) + x]); }
+					vsr += (*src & 0x80 ? 2 : 1);
 				}
+				break;
 
 			case Mosaic:
 				// TO-DO
 				// reg.ICF[Path] /= 2;
 				assert(0 && "[VDSC] Mosaic video decoding is not implemented.");
 				vsr++;
-				continue;
+				break;
 		}
 	}
 
@@ -253,20 +253,43 @@ void MCD212::VDSC::mix_to_frame(int y)
 	MCR.current = 0;
 
 	// Output screen coords.
-	int fb_xy = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width % 360 == 0 ? 24 : 0);
+	int fb_xy = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width == 360 || FG[0].width == 720 ? 24 : 0);
 	for (int x = 0; x < FG[0].width; x++)
 	{
-		const int pos = (y*768)+x;
-		matte_set_icf(FG[0].width < 400 ? x*2 : x);
+		// Update matte ICF
+		if (MCR.current < 8 && MCR.x[MCR.current] == static_cast<size_t>(FG[0].width < 400 ? x*2 : x))
+		{
+			switch (MCR.opcode[MCR.current])
+			{
+				case 0b0000: // end of matte control
+					MCR.current = 8;
+					break;
 
-		uint_fast16_t rA = FG[p1].decoded[pos] >> 24 & 0xFF;
-		uint_fast16_t gA = FG[p1].decoded[pos] >> 16 & 0xFF;
-		uint_fast16_t bA = FG[p1].decoded[pos] >> 8 & 0xFF;
-		uint_fast8_t aA = FG[p1].decoded[pos] & 0xFF;
-		uint_fast16_t rB = FG[p2].decoded[pos] >> 24 & 0xFF;
-		uint_fast16_t gB = FG[p2].decoded[pos] >> 16 & 0xFF;
-		uint_fast16_t bB = FG[p2].decoded[pos] >> 8 & 0xFF;
-		uint_fast8_t aB = FG[p2].decoded[pos] & 0xFF;
+				case 0b0100: // change weight of pA
+				case 0b1100: // reset & change weight of pA
+				case 0b1101: // set & change weight of pA
+					reg.ICF[0] = MCR.icf[MCR.current];
+					++MCR.current;
+					break;
+
+				case 0b0110: // change weight of pB
+				case 0b1110: // reset & change weight of pB
+				case 0b1111: // set & change weight of pB
+					reg.ICF[1] = MCR.icf[MCR.current];
+					++MCR.current;
+					break;
+			}
+		}
+
+		const int pos = (y*768)+x;
+		uint16_t rA = FG[p1].decoded[pos] >> 24 & 0xFF;
+		uint16_t gA = FG[p1].decoded[pos] >> 16 & 0xFF;
+		uint16_t bA = FG[p1].decoded[pos] >> 8 & 0xFF;
+		uint8_t aA = FG[p1].decoded[pos] & 0xFF;
+		uint16_t rB = FG[p2].decoded[pos] >> 24 & 0xFF;
+		uint16_t gB = FG[p2].decoded[pos] >> 16 & 0xFF;
+		uint16_t bB = FG[p2].decoded[pos] >> 8 & 0xFF;
+		uint8_t aB = FG[p2].decoded[pos] & 0xFF;
 
 		ICF_APPLY(rA, reg.ICF[p1]);
 		ICF_APPLY(gA, reg.ICF[p1]);
@@ -332,13 +355,9 @@ void MCD212::VDSC::mix_to_frame(int y)
 			int bM = framebuffer[fb_xy] >> 8 & 0xFF;
 
 			// Actual formula is (C - 16) / 219 but it has been optimized.
-			rM -= 16;
-			gM -= 16;
-			bM -= 16;
-
-			rM *= 255;
-			gM *= 255;
-			bM *= 255;
+			rM -= 16; gM -= 16; bM -= 16;
+			rM <<= 8; gM <<= 8; bM <<= 8;
+			rM -=  1; gM -=  1; bM -=  1;
 
 			rM /= 219;
 			gM /= 219;
@@ -463,7 +482,7 @@ void MCD212::VDSC::set_register(uint32_t inst)
 		case 0xCD: // channel 1
 			if (!Path)
 			{
-				reg.CursorPosition[0] = (inst & 0x00000FFFu) / (FG[0].width < 400 ? 2 : 1); // double-resolution
+				reg.CursorPosition[0] = (inst & 0x00000FFFu) >> (FG[0].width < 400 ? 1 : 0); // double-resolution
 				reg.CursorPosition[1] = inst >> 12 & 0x0FFFu;
 				//MiniCDI::Log("[VDSC] P%d cpos x=%d,y=%d", Path, reg.CursorPosition[0], reg.CursorPosition[1]);
 			}
@@ -560,11 +579,11 @@ void MCD212::dcp_set(uint32_t value)
 template <size_t Path>
 void MCD212::ICA_execute()
 {
-	uint_fast32_t addr = SM && !PA ? (Path ? 0x200404 : 0x404) : (Path ? 0x200400 : 0x400);
+	uint32_t addr = SM && !PA ? (Path ? 0x200404 : 0x404) : (Path ? 0x200400 : 0x400);
 
 	for (int i = 0; i < MCD212_HSYNC_CYCLES * MCD212_INACTIVE_VLINES; i++)
 	{
-		uint_fast32_t inst = (memory[addr] << 24) | (memory[addr+1] << 16) | (memory[addr+2] << 8) | memory[addr+3];
+		uint32_t inst = (memory[addr] << 24) | (memory[addr+1] << 16) | (memory[addr+2] << 8) | memory[addr+3];
 		addr += 4;
 
 		switch (inst >> 24 & 0xFF)
@@ -628,7 +647,7 @@ void MCD212::DCA_execute()
 {
 	for (int i = 0; i < (CF ? 16 : 8); i++)
 	{
-		uint_fast32_t inst = (memory[DCP[Path]] << 24) | (memory[DCP[Path]+1] << 16) | (memory[DCP[Path]+2] << 8) | memory[DCP[Path]+3];
+		uint32_t inst = (memory[DCP[Path]] << 24) | (memory[DCP[Path]+1] << 16) | (memory[DCP[Path]+2] << 8) | memory[DCP[Path]+3];
 		DCP[Path] += 4;
 
 		switch (inst >> 24 & 0xFF)
@@ -702,41 +721,19 @@ void MCD212::reset()
 
 bool MCD212::tick()
 {
-	vdsc.skip_draw = this->skip_draw;
-	linesV++;
-
 	if (linesV <= MCD212_INACTIVE_VLINES)
 	{
-		if (linesV == 1 && DE)
+		if (linesV == 0 && DE)
 		{
 			if (IC[0]) ICA_execute<0>();
 			if (IC[1]) ICA_execute<1>();
 		}
+
+		linesV++;
 		return false;
 	}
 
-	if (line == 0)
-	{
-		if (interlace && SM) line = 1;
-		DA = 1;
-
-		vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
-	}
-
-	if (DE)
-	{
-		// render line onto bitmap
-		VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
-		VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
-		if (!this->skip_draw) vdsc.mix_to_frame(line);
-
-		if (DC[0] && IC[0]) DCA_execute<0>();
-		if (DC[1] && IC[1]) DCA_execute<1>();
-	}
-
-	line += SM ? 2 : 1;
-
-	if (linesV >= MCD212_VSYNC_LINES)
+	else if (linesV >= MCD212_VSYNC_LINES)
 	{
 		DA = 0;
 		PA ^= 1;
@@ -748,20 +745,47 @@ bool MCD212::tick()
 		return true;
 	}
 
-	return false;
+	else
+	{
+		if (line == 0)
+		{
+			if (interlace && SM) line = 1;
+			DA = 1;
+
+			vdsc.set_mode(!CF || ST ? 360 : 384, FD || (!FD && ST) ? 240 : 280, CM[1]);
+		}
+
+		if (DE)
+		{
+			// render line onto bitmap
+			VSR[0] = vdsc.draw_line_to_plane<0>(memory, VSR[0], line);
+			VSR[1] = vdsc.draw_line_to_plane<1>(memory, VSR[1], line);
+			vdsc.mix_to_frame(line);
+
+			if (DC[0] && IC[0]) DCA_execute<0>();
+			if (DC[1] && IC[1]) DCA_execute<1>();
+		}
+
+		line += SM ? 2 : 1;
+		linesV++;
+		return false;
+	}
 }
 
 uint8_t MCD212::read8(uint32_t addr)
 {
 	switch (addr)
 	{
-		default:
-			return memory[addr];
+		default: return memory[addr];
+
+		// CSR1R
 		case 0x4FFFF0:
-		case 0x4FFFF1: // CSR1R
+		case 0x4FFFF1:
 			return (PA << 5) | (DA << 7);
+
+		// CSR2R
 		case 0x4FFFE0:
-		case 0x4FFFE1: // CSR2R
+		case 0x4FFFE1:
 			const uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
 			if (IT[1] || IT[0]) _68070->interrupt(SCC68070::IPL_INT1, false);
 			BE[0] = IT[1] = IT[0] = 0;
@@ -773,11 +797,14 @@ uint16_t MCD212::read16(uint32_t addr)
 {
 	switch (addr)
 	{
-		default:
-			return (memory[addr] << 8) | memory[addr+1];
-		case 0x4FFFF0: // CSR1R
+		default: return (memory[addr] << 8) | memory[addr+1];
+
+		// CSR1R
+		case 0x4FFFF0:
 			return 0xFF00 | (PA << 5) | (DA << 7);
-		case 0x4FFFE0: // CSR2R
+
+		// CSR2R
+		case 0x4FFFE0:
 			const uint8_t value = BE[0] | (IT[1] << 1) | (IT[0] << 2);
 			if (IT[1] || IT[0]) _68070->interrupt(SCC68070::IPL_INT1, false);
 			BE[0] = IT[1] = IT[0] = 0;
@@ -789,7 +816,8 @@ void MCD212::write16(uint32_t addr, uint16_t value)
 {
 	switch (addr)
 	{
-		case 0x4FFFF0: // CSR1W
+		// CSR1W
+		case 0x4FFFF0:
 			BE[1] = value & 0b01u;
 			ST = value >> 1 & 0b01u;
 			DD = value >> 3 & 0b01u;
@@ -798,10 +826,14 @@ void MCD212::write16(uint32_t addr, uint16_t value)
 			DD1 = value >> 9 & 0b01u;
 			DI[0] = value >> 15 & 0b01u;
 			break;
-		case 0x4FFFE0: // CSR2W
+
+		// CSR2W
+		case 0x4FFFE0:
 			DI[1] = value >> 15 & 0b01u;
 			break;
-		case 0x4FFFF2: // DCR1
+
+		// DCR1
+		case 0x4FFFF2:
 			IC[0] = value >> 8 & 0b01u;
 			DC[0] = IC[0] ? value >> 7 & 0b01u : 0;
 			CM[0] = value >> 10 & 0b01u;
@@ -813,7 +845,9 @@ void MCD212::write16(uint32_t addr, uint16_t value)
 			VSR[0] &= 0x0000FFFFu;
 			VSR[0] |= (value & 0x3Fu) << 8;
 			break;
-		case 0x4FFFE2: // DCR2
+
+		// DCR2
+		case 0x4FFFE2:
 			IC[1] = value >> 8 & 0b01u;
 			DC[1] = IC[1] ? value >> 7 & 0b01u : 0;
 			CM[1] = value >> 10 & 0b01u;
@@ -821,33 +855,45 @@ void MCD212::write16(uint32_t addr, uint16_t value)
 			VSR[1] &= 0x0000FFFFu;
 			VSR[1] |= (value & 0x3Fu) << 8;
 			break;
-		case 0x4FFFF4: // VSR1
+
+		// VSR1
+		case 0x4FFFF4:
 			VSR[0] &= 0xFFFF00000u;
 			VSR[0] |= value;
 			break;
-		case 0x4FFFE4: // VSR2
+
+		// VSR2
+		case 0x4FFFE4:
 			VSR[1] &= 0xFFFF00000u;
 			VSR[1] |= value;
 			break;
-		case 0x4FFFF8: // DDR1
+
+		// DDR1
+		case 0x4FFFF8:
 			FT[0] = value >> 8 & 0b11u;
 			MF[0] = value >> 10 & 0b11u;
 
 			DCP[0] &= 0x0000FFFFu;
 			DCP[0] |= (value & 0x3Fu) << 8;
 			break;
-		case 0x4FFFE8: // DDR2
+
+		// DDR2
+		case 0x4FFFE8:
 			FT[1] = value >> 8 & 0b11u;
 			MF[1] = value >> 10 & 0b11u;
 
 			DCP[1] &= 0x0000FFFFu;
 			DCP[1] |= (value & 0x3Fu) << 8;
 			break;
-		case 0x4FFFFA: // DCP1
+
+		// DCP1
+		case 0x4FFFFA:
 			DCP[0] &= 0xFFFF00000u;
 			DCP[0] |= value;
 			break;
-		case 0x4FFFEA: // DCP2
+
+		// DCP2
+		case 0x4FFFEA:
 			DCP[1] &= 0xFFFF00000u;
 			DCP[1] |= value;
 			break;

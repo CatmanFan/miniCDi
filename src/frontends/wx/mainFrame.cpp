@@ -312,7 +312,6 @@ void mainFrame::e_openSystemROM(wxCommandEvent& WXUNUSED(event))
 		if (menuOpenDisc) menuOpenDisc->Enable(true);
 		if (menuResetPD) menuResetPD->Enable(true);
 
-		MiniCDI::Config.PointerAdvance = 3;
 		statusBar->SetStatusText(wxString::Format("Loaded from %s.rom", rom.stem().c_str()));
 	}
 }
@@ -352,7 +351,7 @@ void mainFrame::e_idle(wxIdleEvent& WXUNUSED(event))
 		#endif
 
 		// Actually run a frame
-		cdi->run(false);
+		cdi->run_frame(false);
 
 		// Update screen
 		uint8_t *rgb = mainPanel->image.GetData();

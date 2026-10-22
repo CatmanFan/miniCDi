@@ -73,7 +73,7 @@ static void InitConfig(const std::filesystem::path &biosPath)
 			ini["MiniCDI"].set({
 				{"FPS", "0"},
 				{"FrameSkip", "0"},
-				{"PointerAdvance", "0"},
+				// {"PointerAdvance", "0"},
 				{"Logging", "0"}
 			});
 			file.generate(ini);
@@ -82,7 +82,7 @@ static void InitConfig(const std::filesystem::path &biosPath)
 		MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
 		MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
 		MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-		MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+		// MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 		#ifdef MINICDI_FORCE_LOGFILE
 		MiniCDI::Config.LogFile = fopen(log_path.c_str(), "wt");
 		#else
@@ -115,7 +115,7 @@ static void ReloadConfig()
 			ini["MiniCDI"].set({
 				{"FPS", "0"},
 				{"FrameSkip", "0"},
-				{"PointerAdvance", "0"},
+				// {"PointerAdvance", "0"},
 				{"Logging", "0"}
 			});
 			file.generate(ini);
@@ -124,7 +124,7 @@ static void ReloadConfig()
 		// MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
 		MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
 		MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-		MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+		// MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 		// MiniCDI::Config.LogFile = fopen(log_path.c_str(), "wt");
 		MiniCDI::Config.ShowFPS = ini["MiniCDI"]["FPS"].compare("1") == 0;
 		// MiniCDI::Config.NvramFile = biosPath.stem().string() + ".nvram");
@@ -419,11 +419,11 @@ int main(int argc, char** argv)
 		{
 			if (frames_run == 0) {
 				ReloadConfig();
-				philips_player->run(false);
+				philips_player->run_frame(false);
 				SDL_UpdateTexture(framebuffer, NULL, philips_player->get_display(), philips_player->get_display_width()*sizeof(uint32_t));
 				frames_run += MiniCDI::Config.FrameSkip;
 			} else {
-				philips_player->run(true);
+				philips_player->run_frame(true);
 				frames_run--;
 				continue;
 			}

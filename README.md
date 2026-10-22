@@ -21,6 +21,8 @@ Some of the emulation code is ported or adapted from:
 * the MAME CD-i driver by Vincent Halver and Ryan Holtz (licensed under BSD-3) ([global MAME license](https://github.com/mamedev/mame?tab=License-1-ov-file))
 * reverse engineering of the [CD-i Emulator](https://www.cdiemu.org/) trace log
 
+**THIS PROJECT IS NOT VIBE-CODED**
+
 ## License
 The general code for this emulator is released under [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html) (see above credits for other licenses).
 

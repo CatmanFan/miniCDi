@@ -137,7 +137,7 @@ public:
 			case 0x31000D:
 			case 0x31000F:
 				{
-					size_t c = (addr - 0x310009) / 2;
+					size_t c = (addr - 0x310009) >> 1;
 
 					if (Ch[c].Out.size() > 0)
 					{
@@ -168,7 +168,7 @@ public:
 			case 0x310015:
 			case 0x310017:
 				{
-					size_t c = (addr - 0x310011) / 2;
+					size_t c = (addr - 0x310011) >> 1;
 
 					//MiniCDI::Log("[IKAT] %sSR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].SR);
 					return Ch[c].SR;
@@ -216,7 +216,7 @@ public:
 			case 0x310005:
 			case 0x310007:
 			{
-				size_t c = (addr - 0x310001) / 2;
+				size_t c = (addr - 0x310001) >> 1;
 				Ch[c].In.push_back(value);
 				//MiniCDI::Log("[IKAT] %sDRW <= %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", value);
 

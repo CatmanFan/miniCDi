@@ -62,7 +62,7 @@ public:
 
 	SDL(int ftd_width, int ftd_height)
 	{
-		this->Video.window = SDL_CreateWindow("miniCDi v0.1(beta)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 768, 560, SDL_WINDOW_RESIZABLE);
+		this->Video.window = SDL_CreateWindow("miniCDi v0.1(beta)", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 384, 280, SDL_WINDOW_RESIZABLE);
 		this->Video.renderer = SDL_CreateRenderer(this->Video.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->Video.texture = SDL_CreateTexture(this->Video.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
 		ini["MiniCDI"].set({
 			{"HideCursor", "0"},
 			{"FrameSkip", "0"},
-			{"PointerAdvance", "0"},
+			// {"PointerAdvance", "0"},
 			{"Logging", "0"},
 		});
 		file.generate(ini);
@@ -152,7 +152,7 @@ int main(int argc, char** argv)
 	MiniCDI::Config.PAL = ini["CDI"]["PAL"].compare("1") == 0;
 	MiniCDI::Config.AnalogColors = ini["CDI"]["AnalogColors"].compare("1") == 0;
 	MiniCDI::Config.FrameSkip = std::stoi(ini["MiniCDI"]["FrameSkip"]);
-	MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
+	// MiniCDI::Config.PointerAdvance = std::stoi(ini["MiniCDI"]["PointerAdvance"]) + 1;
 	#ifdef MINICDI_FORCE_LOGFILE
 	MiniCDI::Config.LogFile = fopen(logPath.c_str(), "wt");
 	#else
@@ -203,15 +203,13 @@ int main(int argc, char** argv)
 					break;
 
 				case SDL_MOUSEMOTION:
-					if (mouse_active) cdi.pd.set_coord(e.motion.x, e.motion.y, w, h);
-					break;
-
 				case SDL_MOUSEBUTTONDOWN:
 				case SDL_MOUSEBUTTONUP:
-					if (mouse_active) {
-						cdi.pd.set_button(PointingDevice::Button1, e.button.button == 1 && e.button.state == SDL_PRESSED);
-						cdi.pd.set_button(PointingDevice::Button2, e.button.button == 3 && e.button.state == SDL_PRESSED);
-					}
+					// if (mouse_active) {
+						// cdi.pd.set_button(PointingDevice::Button1, e.button.button == 1 && e.button.state == SDL_PRESSED);
+						// cdi.pd.set_button(PointingDevice::Button2, e.button.button == 3 && e.button.state == SDL_PRESSED);
+						// cdi.pd.set_coord(e.motion.x, e.motion.y, w, h); // This has to be set AFTER `set_button` so that it can be polled
+					// }
 					break;
 
 				case SDL_WINDOWEVENT:
@@ -233,13 +231,13 @@ int main(int argc, char** argv)
         }
 
 		// Benchmark
-		/*const auto t1 = std::chrono::steady_clock::now();*/
+		const auto t1 = std::chrono::steady_clock::now();
 
 		if (frames_run == 0) {
-			cdi.run(false);
+			cdi.run_frame(false);
 			frames_run += MiniCDI::Config.FrameSkip;
 		} else {
-			cdi.run(true);
+			cdi.run_frame(true);
 			frames_run--;
 			continue;
 		}
@@ -247,12 +245,13 @@ int main(int argc, char** argv)
 		screen.update_video(cdi.get_display(), cdi.get_display_width());
 		if (cdi.get_ftd()) screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
 
-		/*const auto t2 = std::chrono::steady_clock::now();
+		// Benchmark
+		const auto t2 = std::chrono::steady_clock::now();
 		const std::chrono::duration<uint_fast32_t, std::nano> t_duration = t2 - t1;
 		if (t_duration.count() < 16'666'667) {
 			const int wait_ms = 16'666'667 - t_duration.count();
 			std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ms));
-		}*/
+		}
 	}
 	
 	return 0;

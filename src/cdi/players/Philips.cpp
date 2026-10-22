@@ -1,10 +1,12 @@
 #include "cdi/common.hpp"
 #include <numeric>
 
+// static int cpu_cycles = 0;
+static int timer_cycles = 192;
 static int sector_cycles = 0;
 static int mcd212_cycles = 0;
 
-void PhilipsCDI::run(bool no_draw)
+void PhilipsCDI::run_frame(bool no_draw)
 {
 	#ifdef MINICDI_DEBUG_OS9
 		MiniCDI::OS9::scan_modules(memory);
@@ -14,36 +16,44 @@ void PhilipsCDI::run(bool no_draw)
 	pd.send_packet();
 	if (ikat != NULL) ikat->update();
 
-	int sector_rate = (MiniCDI::Config.PAL ? 15000000 : 15104900) / 75;
-	int mcd212_rate = (MiniCDI::Config.PAL ? 15000000 : 15104900) / 15625;
-
-	for (int total_cycles = 0; total_cycles < mcd212_rate * (MiniCDI::Config.PAL ? 312 : 262);)
+	int sector_rate, mcd212_rate, timer_rate = 192;
+	if (MiniCDI::Config.PAL)
 	{
-		// A cycle rate of 240 is large enough that it doesn't break CDi_BadApple, but small enough that it also doesn't break the 2nd player shell.
-		// On embedded consoles this also affects the speed of the emulator.
-		// const int cycles = std::min({240, sector_cycles, mcd212_cycles});
-		const int timer_rate = 96*2;
+		sector_rate = 400000;
+		mcd212_rate = 1920;
+	}
+	else
+	{
+		sector_rate = 402797;
+		mcd212_rate = 1933;
+	}
 
-		cpu.run(timer_rate);
-		cpu.timer0_tick();
-		total_cycles += timer_rate;
+	for (int cycles = 0; cycles < (mcd212_rate * (MiniCDI::Config.PAL ? 312 : 262));)
+	{
+		int executed_cycles = std::min({240, sector_cycles, mcd212_cycles, timer_cycles});
+		m68k_execute(executed_cycles);
+		// cpu_cycles += m68k_execute(1);
 
-		sector_cycles -= timer_rate;
+		timer_cycles -= executed_cycles;
+		while (timer_cycles <= 0)
+		{
+			timer_cycles += timer_rate;
+			cpu.timer0_tick();
+		}
+
+		sector_cycles -= executed_cycles;
 		while (sector_cycles <= 0)
 		{
 			sector_cycles += sector_rate;
 			if (disc.is_open())
 			{
-				if (cdic != NULL)
-					cdic->tick();
-				else if (dsp != NULL)
-					dsp->tick();
-				else if (ciap != NULL)
-					ciap->tick();
+				if (cdic) cdic->tick();
+				if (dsp) dsp->tick();
+				if (ciap) ciap->tick();
 			}
 		}
 
-		mcd212_cycles -= timer_rate;
+		mcd212_cycles -= executed_cycles;
 		while (mcd212_cycles <= 0)
 		{
 			mcd212_cycles += mcd212_rate;
@@ -53,6 +63,8 @@ void PhilipsCDI::run(bool no_draw)
 				vpu->tick();
 			}
 		}
+
+		cycles += executed_cycles;
 	}
 }
 
@@ -85,28 +97,96 @@ void PhilipsCDI::reset_pd()
 
 uint8_t PhilipsCDI::read8(int address)
 {
-	return !check_for_unmapped(address) ? 0
-		 : (address & 0xC0000000) == 0x80000000 ? cpu.read8(address)
-		 : (address & 0x00FFFF00) == 0x00310000 ? (ikat != NULL ? ikat->read8(address) : slave ? slave->read8(address) : 0)
-		 : dsp != NULL && address >= 0x00300000 && address < 0x00303FFF ? dsp->read8(address)
-		 : vpu != NULL && (address & 0x00FFFF00) == 0x004FFF00 ? vpu->read8(address)
-		 : address < memsize ? memory[address]
-		 : 0;
+	if (check_for_unmapped(address))
+	{
+		// 68070 (On-chip)
+		if ((address & 0xC0000000) == 0x80000000)
+			return cpu.read8(address);
+
+		// Slave microcontroller bus
+		if ((address & 0x00FFFF00) == 0x00310000)
+		{
+			if (slave != NULL)
+				return slave->read8(address);
+			if (ikat != NULL)
+				return ikat->read8(address);
+		}
+
+		// CD+Audio microcontroller bus
+		if ((address & 0x00FF0000) == 0x00300000 && dsp)
+		{
+			address &= 0x00FF3FFF;
+			return dsp->read8(address);
+		}
+
+		// The Video Processing unit
+		if ((address & 0x00FFFF00) == 0x004FFF00 && vpu)
+		{
+			return vpu->read8(address);
+		}
+
+		// RAM/ROM/everything else?
+		if (address < memsize)
+			return memory[address];
+	}
+
+	return 0;
 }
 
 uint16_t PhilipsCDI::read16(int address)
 {
-	return !check_for_unmapped(address) ? 0
-		 : vpu != NULL && (address & 0x00FFFF00) == 0x004FFF00 ? vpu->read16(address)
-		 : address >= 0x00300000 && address < 0x00303FFF ? (cdic != NULL ? cdic->read16(address) : ciap != NULL ? ciap->read16(address) : 0)
-		 : static_cast<uint16_t>(read8(address) << 8 | read8(address+1));
+	if (check_for_unmapped(address))
+	{
+		// 68070 (On-chip)
+		if ((address & 0xC0000000) == 0x80000000)
+			return cpu.read8(address);
+
+		// Slave microcontroller bus
+		if ((address & 0x00FFFF00) == 0x00310000)
+		{
+			if (slave)
+				return slave->read8(address);
+			if (ikat)
+				return ikat->read8(address);
+		}
+
+		// CD+Audio microcontroller bus
+		if ((address & 0x00FF0000) == 0x00300000)
+		{
+			address &= 0x00FF3FFF;
+			if (cdic)
+				return cdic->read16(address);
+			if (ciap)
+				return ciap->read16(address);
+		}
+
+		// The Video Processing unit
+		if ((address & 0x00FFFF00) == 0x004FFF00 && vpu)
+		{
+			return vpu->read16(address);
+		}
+
+		return (read8(address) << 8) | read8(address+1);
+	}
+
+	return 0;
 }
 
 uint32_t PhilipsCDI::read32(int address)
 {
-	return !check_for_unmapped(address) ? 0
-		 : cdic != NULL && address >= 0x00300000 && address < 0x00303FFF ? cdic->read32(address)
-		 : static_cast<uint32_t>(read16(address) << 16 | read16(address+2));
+	if (check_for_unmapped(address))
+	{
+		// CD+Audio microcontroller bus
+		if ((address & 0x00FF0000) == 0x00300000 && cdic)
+		{
+			address &= 0x00FF3FFF;
+			return cdic->read32(address);
+		}
+
+		return (read16(address) << 16) | read16(address+2);
+	}
+
+	return 0;
 }
 
 void PhilipsCDI::write8(int address, uint8_t value)

@@ -58,9 +58,9 @@ bool CDiDisc::is_valid_sector(int lba)
 	const uint8_t mins = (lba+150) / (60 * 75);
 	const uint8_t secs = ((lba+150) / 75) % 60;
 	const uint8_t frac = (lba+150) % 75;
-	const uint8_t mins_bcd = mins / 10 * 16 + mins % 10;
-	const uint8_t secs_bcd = secs / 10 * 16 + secs % 10;
-	const uint8_t frac_bcd = frac / 10 * 16 + frac % 10;
+	const uint8_t mins_bcd = ((mins / 10) << 4) + mins % 10;
+	const uint8_t secs_bcd = ((secs / 10) << 4) + secs % 10;
+	const uint8_t frac_bcd = ((frac / 10) << 4) + frac % 10;
 
 	if (raw[3] != 1 && raw[3] != 2)
 		return false;

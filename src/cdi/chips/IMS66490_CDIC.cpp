@@ -281,9 +281,12 @@ void CDIC::write16(uint32_t addr, uint16_t value)
 		case 0x303FF8: case 0x303FF9:
 			//MiniCDI::Log("[CDIC] DMACTL <= %04X", value);
 			DMACTL = value;
-			if (value & 0x8000) {
-				_68070->dma_call(0, 0x300000 + (value & 0x3FFF));
-				if ((value & 0x3F00) == 0x2800 || (value & 0x3F00) == 0x3200) {
+			if (value & 0x8000)
+			{
+				_68070->DMA1.memory_transfer(0x300000 + (value & 0x3FFF));
+
+				if ((value & 0x3F00) == 0x2800 || (value & 0x3F00) == 0x3200)
+				{
 					AUDIOCONTROLLER_SETBUF((value & 0x3F00) == 0x3200 ? 2 : 1);
 				}
 			}

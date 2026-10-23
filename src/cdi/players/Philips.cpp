@@ -2,11 +2,10 @@
 #include "cdi/common.hpp"
 #include <numeric>
 
-// static int cpu_cycles = 0;
-static int sector_cycles = 0;
-static int mcd212_cycles = 0;
-static int timer0_cycles = 0;
-static int uart_cycles = 0;
+static int sector_cycles = 400000;
+static int mcd212_cycles = 960;
+static int timer0_cycles = 0xFFFF * 96;
+// static int uart_cycles = 0;
 
 void PhilipsCDI::run_frame(bool no_draw)
 {
@@ -19,44 +18,41 @@ void PhilipsCDI::run_frame(bool no_draw)
 	if (ikat) ikat->update();
 
 	/// Per CD-i 220 Service manual :
-	/// SYSCLK (MCD212): 30 MHz (PAL), 30.2098 MHz (NTSC)
-	/// SYSCLK/2 (CPU): 15 MHz (PAL), 15.1049 MHz (NTSC)
-	/// UART: 4.9152 MHz
+	/// SYSCLK: 30 MHz (PAL), 30.2098 MHz (NTSC)
+	/// SYSCLK/2 (CPU): 15 MHz (PAL), 15.1049 MHz (NTSC) - everything is calculated relative to this rate, except for MCD212 and sector rate
 
-	// int cycles_per_frame = MiniCDI::Config.PAL ? 599040 : 503040;
+	// int cycles_per_frame = MiniCDI::Config.PAL ? 149760 : 125760;
 
-	#define CYCLE_INCREMENT_RATE 48 /* 288 */
-
-	#define EVENT_BEGIN(cycles, rate)	cycles += CYCLE_INCREMENT_RATE; \
-										while (cycles >= (rate<<1)) \
+	#define EVENT_BEGIN(cycles, rate)	cycles -= cycles_to_next_event; \
+										while (cycles <= rate) \
 										{
 													
-	#define EVENT_END(cycles, rate)			cycles -= (rate<<1); \
+	#define EVENT_END(cycles, rate)			cycles += rate; \
 										}
 
-	// for (int cycles = 0; cycles < cycles_per_frame; cycles += CYCLE_INCREMENT_RATE)
 	while (1)
 	{
-		m68k_execute(CYCLE_INCREMENT_RATE);
+		int cycles_to_next_event = std::min({128, timer0_cycles, sector_cycles, mcd212_cycles});
+		m68k_execute(cycles_to_next_event);
 
-		EVENT_BEGIN(timer0_cycles, 96)
-			cpu.timer0_tick();
-		EVENT_END(timer0_cycles, 96)
+		EVENT_BEGIN(timer0_cycles, cpu.T.cycles_to_T0_interrupt)
+			cpu.T.T0_interrupt();
+		EVENT_END(timer0_cycles, cpu.T.cycles_to_T0_interrupt)
 
 		// EVENT_BEGIN(uart_cycles, uart_rate)
 			// cpu.uart_tx_tick();
 		// EVENT_END(uart_cycles, uart_rate)
 
-		EVENT_BEGIN(sector_cycles, 400000)
+		EVENT_BEGIN(sector_cycles, 200000)
 			if (disc.is_open())
 			{
 				if (cdic) cdic->tick();
 				if (dsp) dsp->tick();
 				if (ciap) ciap->tick();
 			}
-		EVENT_END(sector_cycles, 400000)
+		EVENT_END(sector_cycles, 200000)
 
-		/// SYSCLK /= PAL line frequency (15625) or NTSC line frequency (15734)
+		/// (CPU /= PAL line frequency (15625) or NTSC line frequency (15734)) / 2
 		EVENT_BEGIN(mcd212_cycles, 960)
 			if (vpu != NULL)
 			{

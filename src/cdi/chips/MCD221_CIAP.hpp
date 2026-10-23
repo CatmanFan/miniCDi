@@ -380,7 +380,7 @@ public:
 				if (_68070 != nullptr) _68070->Ipl.vectors[SCC68070::IPL_IN4N] = value >> 3 & 0xFF;
 				break;
 			case 0x3025C2: MiniCDI::Log("[CIAP] DMACTL <= %04X", value); DMACTL = value;
-				if (value & 0x4000) _68070->dma_call(0, 0x300000 + (value & 0x1FFF)); // check if the direction is automatically determined by OCR?
+				if (value & 0x4000) _68070->DMA1.memory_transfer(0x300000 + (value & 0x1FFF)); // check if the direction is automatically determined by OCR?
 				break;
 			case 0x3025FE: DLOAD = value; break;
 		}

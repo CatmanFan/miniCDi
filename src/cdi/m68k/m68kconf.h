@@ -222,7 +222,7 @@
 
 /* If ON, the CPU will emulate the 4-byte prefetch queue of a real 68000 */
 #ifndef M68K_EMULATE_PREFETCH
-#define M68K_EMULATE_PREFETCH       M68K_OPT_ON
+#define M68K_EMULATE_PREFETCH       M68K_OPT_OFF
 #endif
 
 

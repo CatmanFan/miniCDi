@@ -36,10 +36,10 @@ The latest commit is compiled automatically using GitHub Actions (`.github/workf
 ## Credits
 Special credits to [Stovent](https://github.com/Stovent), [CD-i Fan](https://github.com/cdifan) and [Slamy](https://github.com/Slamy) for helping me wherever possible on this project. The emulator uses [Musashi](https://github.com/kstenerud/Musashi) version 4.10 as a core for the 68070 processor.
 
-Resources:
-* Documents/datasheets as found in [CD-i Technical Documentation / System](http://www.icdia.co.uk/docs/index.html) at [The New International CD-i Association](http://www.icdia.co.uk)
-* Slamy's documentation of the CDIC (see [CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer))
-* CD-i Fan's [cdichips](https://github.com/cdifan/cdichips) documenting remaining hardware
+### Resources
+* ***[CD-i Technical Documentation / System](http://www.icdia.co.uk/docs/index.html)*** (The New International CD-i Association)
+* Slamy's **[CDIC_BlackBoxAnalyzer](https://github.com/Slamy/CDIC_BlackBoxAnalyzer)**
+* CD-i Fan's **[cdichips](https://github.com/cdifan/cdichips)** documenting remaining hardware
 
 Some of the emulation code is ported or adapted from:
 * Emulation of IKAT and CIAP in Stovent's [CeDImu](https://github.com/Stovent/CeDImu) (license unknown)

@@ -102,7 +102,7 @@ static int MiniCDI_op_trap_handler(int trap)
 static void MiniCDI_reset_handler()
 {
 	if (MY_PLAYER.scc68070)
-		MY_PLAYER.scc68070->reset_internal();
+		MY_PLAYER.scc68070->reset_onchip();
 }
 
 static void MiniCDI_set_fc(unsigned int new_fc)
@@ -281,7 +281,7 @@ bool PhilipsCDI::init(const std::string &bios, enum BoardType board)
 		this->board = board;
 
 		// Prepare CPU and video chip
-		this->cpu = SCC68070(this->memory);
+		this->cpu.memory = this->memory;
 		this->vpu = new MCD212(&this->cpu, this->memory);
 
 		// Load system ROM data and memory map

@@ -13,7 +13,7 @@ public:
 	};
 
 protected:
-	uint8_t *memory; // Contains full memory map
+	uint8_t *memory = nullptr; // Contains full memory map
 	static constexpr int memsize = 8388608;
 
 	uint32_t nvram;
@@ -58,7 +58,6 @@ public:
 		return false;
 	}
 
-	CDi() : memory(nullptr), cpu(memory) {}
 	virtual ~CDi() {}
 
 	/**

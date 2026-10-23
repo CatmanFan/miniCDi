@@ -5,63 +5,87 @@
 static struct
 {
 	uint8_t* memory;
-	PhilipsCDI* philips;
-	// GoldstarCDI* goldstar??
-	// SonyCDI* sony??
+	PhilipsCDI* philips; // goldstar, sony are non-existent
 	SCC68070* scc68070;
 } MY_PLAYER;
 
-unsigned int  m68k_read_disassembler_8(unsigned int address) { return m68k_read_memory_8(address); }
-unsigned int  m68k_read_disassembler_16(unsigned int address) { return m68k_read_memory_16(address); }
-unsigned int  m68k_read_disassembler_32(unsigned int address) { return m68k_read_memory_32(address); }
+unsigned int  m68k_read_disassembler_8(unsigned int address)
+{
+	return m68k_read_memory_8(address);
+}
+
+unsigned int  m68k_read_disassembler_16(unsigned int address)
+{
+	return m68k_read_memory_16(address);
+}
+
+unsigned int  m68k_read_disassembler_32(unsigned int address)
+{
+	return m68k_read_memory_32(address);
+}
 
 unsigned int  m68k_read_memory_8(unsigned int address)
 {
-	if (MY_PLAYER.philips) {
-		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
+	if (MY_PLAYER.philips)
+	{
+		if (!(FLAG_S && (address >> 30) == 0x2))
+			address &= 0xFFFFFF;
 		return MY_PLAYER.philips->read8(address);
 	}
+
 	return 0;
 }
 
 unsigned int  m68k_read_memory_16(unsigned int address)
 {
-	if (MY_PLAYER.philips) {
-		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
+	if (MY_PLAYER.philips)
+	{
+		if (!(FLAG_S && (address >> 30) == 0x2))
+			address &= 0xFFFFFF;
 		return MY_PLAYER.philips->read16(address);
 	}
+
 	return 0;
 }
 
 unsigned int  m68k_read_memory_32(unsigned int address)
 {
-	if (MY_PLAYER.philips) {
-		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
+	if (MY_PLAYER.philips)
+	{
+		if (!(FLAG_S && (address >> 30) == 0x2))
+			address &= 0xFFFFFF;
 		return MY_PLAYER.philips->read32(address);
 	}
+
 	return 0;
 }
 
 void m68k_write_memory_8(unsigned int address, unsigned int value)
 {
-	if (MY_PLAYER.philips) {
-		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
+	if (MY_PLAYER.philips)
+	{
+		if (!(FLAG_S && (address >> 30) == 0x2)) 
+			address &= 0xFFFFFF;
 		return MY_PLAYER.philips->write8(address, value);
 	}
 }
 
 void m68k_write_memory_16(unsigned int address, unsigned int value)
 {
-	if (MY_PLAYER.philips) {
-		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
+	if (MY_PLAYER.philips)
+	{
+		if (!(FLAG_S && (address >> 30) == 0x2))
+			address &= 0xFFFFFF;
 		return MY_PLAYER.philips->write16(address, value);
 	}
 }
 
 void m68k_write_memory_32(unsigned int address, unsigned int value)
 {
-	if (MY_PLAYER.philips) {
-		if (!(FLAG_S && (address >> 30) == 0x2)) address &= 0xFFFFFF;
+	if (MY_PLAYER.philips)
+	{
+		if (!(FLAG_S && (address >> 30) == 0x2))
+			address &= 0xFFFFFF;
 		return MY_PLAYER.philips->write32(address, value);
 	}
 }
@@ -77,12 +101,14 @@ static int MiniCDI_op_trap_handler(int trap)
 
 static void MiniCDI_reset_handler()
 {
-	if (MY_PLAYER.scc68070) MY_PLAYER.scc68070->reset_internal();
+	if (MY_PLAYER.scc68070)
+		MY_PLAYER.scc68070->reset_internal();
 }
 
 static void MiniCDI_set_fc(unsigned int new_fc)
 {
-	if (MY_PLAYER.scc68070) MY_PLAYER.scc68070->fc = /*new_fc*/FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
+	if (MY_PLAYER.scc68070)
+		MY_PLAYER.scc68070->fc = FLAG_S | (CPU_PREF_ADDR >> 24 & 0xC0);
 }
 
 static int MiniCDI_int_ack_handler(int int_level)
@@ -142,7 +168,9 @@ void CDi::nvram_load()
 		memory[this->nvram + 0x0006] = 0x01; // (BCD) mm: 1
 		memory[this->nvram + 0x0007] = 0x01; // (BCD) yy: 2001
 	}*/
-	if (!MiniCDI::Config.NvramFile.empty() && access(MiniCDI::Config.NvramFile.c_str(), F_OK) == 0 && this->nvram > 0) {
+
+	if (!MiniCDI::Config.NvramFile.empty() && access(MiniCDI::Config.NvramFile.c_str(), F_OK) == 0 && this->nvram > 0)
+	{
 		MiniCDI::Log("[NVRAM] loading %s to memory", MiniCDI::Config.NvramFile.c_str());
 		std::ifstream nvrStream(MiniCDI::Config.NvramFile, std::ios::binary);
 		std::vector<char> nvr((std::istreambuf_iterator<char>(nvrStream)),(std::istreambuf_iterator<char>()));
@@ -170,29 +198,33 @@ PhilipsCDI::~PhilipsCDI()
 
 	// Free peripherals and player structure
 	this->disc.eject();
-	if (this->ftd != NULL) {
-		delete this->ftd;
-		this->ftd = NULL;
-	}
-	switch (this->board) {
+
+	switch (this->board)
+	{
 		default:
 		case CDi::MonoI:
-			if (this->cdic != NULL) {
+			if (this->cdic != NULL)
+			{
 				delete this->cdic;
 				this->cdic = NULL;
 			}
-			if (this->slave != NULL) {
+
+			if (this->slave != NULL)
+			{
 				delete this->slave;
 				this->slave = NULL;
 			}
 			break;
 
 		case CDi::MonoII:
-			if (this->dsp != NULL) {
+			if (this->dsp != NULL)
+			{
 				delete this->dsp;
 				this->dsp = NULL;
 			}
-			if (this->slave != NULL) {
+
+			if (this->slave != NULL)
+			{
 				delete this->slave;
 				this->slave = NULL;
 			}
@@ -200,30 +232,39 @@ PhilipsCDI::~PhilipsCDI()
 
 		case CDi::MonoIII:
 		case CDi::MonoIV:
-			if (this->ciap != NULL) {
+			if (this->ciap != NULL)
+			{
 				delete this->ciap;
 				this->ciap = NULL;
 			}
-			if (this->ikat != NULL) {
+
+			if (this->ikat != NULL)
+			{
 				delete this->ikat;
 				this->ikat = NULL;
 			}
 			break;
 	}
-	if (this->vpu != NULL) {
+
+	if (this->vpu != NULL)
+	{
 		delete this->vpu;
 		this->vpu = NULL;
 	}
-	if (this->memory != NULL) {
+
+	if (this->memory != NULL)
+	{
 		MINICDI_MEMFREE(this->memory);
 		this->memory = NULL;
 	}
+
 	MY_PLAYER = {NULL};
 	this->board = CDi::Invalid;
 
 	// Stop logging
 	MiniCDI::Log("[CDI] shutdown");
-	if (MiniCDI::Config.LogFile != NULL) {
+	if (MiniCDI::Config.LogFile != NULL)
+	{
 		fclose(MiniCDI::Config.LogFile);
 		MiniCDI::Config.LogFile = NULL;
 	}
@@ -231,8 +272,12 @@ PhilipsCDI::~PhilipsCDI()
 
 bool PhilipsCDI::init(const std::string &bios, enum BoardType board)
 {
-	if (CDi::init(bios, board)) {
-		if (this->board != 0) return true;
+	if (CDi::init(bios, board))
+	{
+		// Check if already initialized
+		if (this->board != 0)
+			return true;
+
 		this->board = board;
 
 		// Prepare CPU and video chip
@@ -247,38 +292,44 @@ bool PhilipsCDI::init(const std::string &bios, enum BoardType board)
 		this->nvram_load();
 
 		// Setup remaining peripherals and player structure
-		switch (this->board) {
+		switch (this->board)
+		{
 			default:
 			case CDi::MonoI:
-				this->ftd = new FTD(FTD::FTD_220_20);
+				this->ftd = FTD(FTD::FTD_220_20);
 				this->cdic = new CDIC(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, this->cdic, NULL, this->memory, 0x00310000);
-				this->slave->set_ftd(this->ftd);
+				this->slave->set_ftd(&this->ftd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
 				break;
 
 			case CDi::MonoII:
-				this->ftd = new FTD(FTD::FTD_220_40);
+				this->ftd = FTD(FTD::FTD_220_40);
 				this->dsp = new DRVDSP(&this->cpu, this->memory, &this->disc);
 				this->slave = new SLAVE(&this->cpu, NULL, this->dsp, this->memory, 0x00310000);
-				this->slave->set_ftd(this->ftd);
+				this->slave->set_ftd(&this->ftd);
 				this->pd.IO.slave = this->slave;
 				this->nvram = 0x00320000;
 				break;
 
 			case CDi::MonoIII:
 			case CDi::MonoIV:
-				this->ftd = new FTD(FTD::FTD_470);
+				this->ftd = FTD(FTD::FTD_470);
 				this->ciap = new CIAP(&this->cpu, this->memory, &this->disc);
 				this->ikat = new IKAT(&this->cpu, this->ciap, this->memory);
-				this->ikat->set_ftd(this->ftd);
+				this->ikat->set_ftd(&this->ftd);
 				this->pd.IO.ikat = this->ikat;
 				this->nvram = 0x00320000;
 				break;
 		}
 
-		MY_PLAYER = { .memory = this->memory, .philips = this, .scc68070 = &this->cpu };
+		MY_PLAYER =
+		{
+			.memory = this->memory,
+			.philips = this,
+			.scc68070 = &this->cpu
+		};
 
 		// Init Musashi last (expects memory to already be setup in player struct)
 		m68k_init();

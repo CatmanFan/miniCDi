@@ -1,12 +1,11 @@
-#ifndef MINICDI_MCD212
-#define MINICDI_MCD212
+#pragma once
 
 /*****
   DISCLAIMER:
-  Sourced from official documentation of MCD212 by Motorola.
+  Sourced from official documentation of MCD212 by Motorola, unless stated otherwise.
  *****/
 
-class MCD212
+struct MCD212
 {
 	SCC68070* _68070;
 	uint8_t* memory;
@@ -61,7 +60,7 @@ class MCD212
 		Reserved = 0b11
 	};
 
-	class VDSC
+	struct VDSC
 	{
 		/*****
 		  DISCLAIMER:
@@ -154,7 +153,7 @@ class MCD212
 
 		uint32_t framebuffer[215040]; // max bounds (768x280)
 
-	public:
+	// public:
 		bool skip_draw = false;
 		uint8_t cursor[16*16];
 		Plane FG[2];
@@ -238,7 +237,7 @@ class MCD212
 	template <size_t Path> void ICA_execute();
 	template <size_t Path> void DCA_execute();
 
-public:
+// public:
 	MCD212() {}
 
 	MCD212(SCC68070 *_68070, uint8_t *memory) : _68070(_68070), memory(memory) {
@@ -255,6 +254,7 @@ public:
 	 */
 	bool tick();
 	bool skip_draw = false;
+	bool frame_ready = false;
 
 	uint8_t read8(uint32_t addr);
 	uint16_t read16(uint32_t addr);
@@ -270,5 +270,3 @@ public:
 		return vdsc.get_display_width();
 	}
 };
-
-#endif

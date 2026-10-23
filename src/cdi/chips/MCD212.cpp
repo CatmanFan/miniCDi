@@ -256,6 +256,8 @@ void MCD212::VDSC::mix_to_frame(int y)
 	int fb_xy = (FG[0].height == 240 ? y + 20 : y) * 768 + (FG[0].width == 360 || FG[0].width == 720 ? 24 : 0);
 	for (int x = 0; x < FG[0].width; x++)
 	{
+		framebuffer[fb_xy] = 0x000000ff;
+
 		// Update matte ICF
 		if (MCR.current < 8 && MCR.x[MCR.current] == static_cast<size_t>(FG[0].width < 400 ? x*2 : x))
 		{
@@ -737,6 +739,7 @@ bool MCD212::tick()
 	{
 		DA = 0;
 		PA ^= 1;
+		frame_ready = true;
 
 		linesV = 0;
 		line = 0;
@@ -776,7 +779,8 @@ uint8_t MCD212::read8(uint32_t addr)
 {
 	switch (addr)
 	{
-		default: return memory[addr];
+		default:
+			return memory[addr];
 
 		// CSR1R
 		case 0x4FFFF0:
@@ -797,7 +801,8 @@ uint16_t MCD212::read16(uint32_t addr)
 {
 	switch (addr)
 	{
-		default: return (memory[addr] << 8) | memory[addr+1];
+		default:
+			return (memory[addr] << 8) | memory[addr+1];
 
 		// CSR1R
 		case 0x4FFFF0:

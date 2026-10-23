@@ -31,23 +31,16 @@ class IKAT
 	uint8_t MR; // always 8F (in "set on Receiver Ready" interrupt mode and enable all channels)
 				// known as YCTL in cdiemu trace log
 
-	inline void set_ISR(uint8_t flag)
-	{
-		ISR |= flag;
-		if (IMR & flag) _68070->interrupt(SCC68070::IPL_IN2N, true);
-		//MiniCDI::Log("[IKAT] ISR %02X |= IMR %02X", ISR, IMR);
-	}
-
 	inline void send_packet(size_t c)
 	{
 		// Per MC68HC05i8 datasheet: under MRH's current mode RRDY when set is supposed to trigger the Rx/Tx bits in ISR.
 		// RRDY is not emulated by cdiemu.
-		// Ch[c].SR |= 0b01000000; // RRDY ON
 		Ch[c].SR &= ~0b00010000; // REMTY OFF
 
 		// set corresponding Rx bit
-		set_ISR(1 << (1+2*c));
-		//MiniCDI::Log("[IKAT] %sDR packet sent to CPU", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
+		uint8_t flag = (c == 3 ? 0x80 : c == 2 ? 0x20 : c == 1 ? 0x08 : 0x02);
+		ISR |= flag;
+		if (IMR & flag) _68070->interrupt(SCC68070::IPL_IN2N, true);
 	}
 
 	struct
@@ -123,7 +116,7 @@ public:
 	{
 		Disc = value;
 		if (Disc)
-			poll_packet(3, 0xB0, 0x00, 0x02, 0x10, 2); // imitate cdiemu
+			poll_packet(3, 0xB0, 0x00, 0x02, 0x10, 2); /// imitate CD-i Emulator (cdiemu)
 		else
 			poll_packet(3, 0xB0, 0x00, 0x00, 0x00, 2);
 	}
@@ -138,6 +131,10 @@ public:
 			case 0x31000F:
 				{
 					size_t c = (addr - 0x310009) >> 1;
+					_68070->interrupt(SCC68070::IPL_IN2N, ((ISR & 0x02) && (IMR & 0x02))
+													   || ((ISR & 0x08) && (IMR & 0x08))
+													   || ((ISR & 0x20) && (IMR & 0x20))
+													   || ((ISR & 0x80) && (IMR & 0x80)));
 
 					if (Ch[c].Out.size() > 0)
 					{
@@ -146,14 +143,13 @@ public:
 
 						if (Ch[c].Out.size() == 0)
 						{
-							ISR &= ~(1 << (1+2*c)); // imitate CeDImu
-							if ((ISR & IMR) == 0) _68070->interrupt(SCC68070::IPL_IN2N, false);
-							// Ch[c].SR &= ~0b01000000; // RRDY OFF
+							ISR &= ~(c == 3 ? 0x80 : c == 2 ? 0x20 : c == 1 ? 0x08 : 0x02); /// imitate CeDImu
 							Ch[c].SR |= 0b00010000; // REMTY ON
-							//MiniCDI::Log("[IKAT] %sDR read completed", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A");
 						}
 						else
+						{
 							Ch[c].SR &= ~0b00010000; // REMTY OFF
+						}
 					}
 					else
 						Ch[c].DR = 0xFF;
@@ -169,7 +165,6 @@ public:
 			case 0x310017:
 				{
 					size_t c = (addr - 0x310011) >> 1;
-
 					//MiniCDI::Log("[IKAT] %sSR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].SR);
 					return Ch[c].SR;
 				}
@@ -241,7 +236,8 @@ public:
 						switch (value)
 						{
 							default:
-								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
+								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize)
+								{
 									switch (Ch[c].In[0]) {
 										case 0x9A:
 											MiniCDI::Log("[IKAT] set FTD display (0x%02X)", Ch[c].In[0]);
@@ -303,8 +299,10 @@ public:
 						switch (value)
 						{
 							default:
-								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize) {
-									switch (Ch[c].In[0]) {
+								if (Ch[c].InSize > 0 && Ch[c].In.size() >= Ch[c].InSize)
+								{
+									switch (Ch[c].In[0])
+									{
 										case 0xA1:
 											MiniCDI::Log("[IKAT] SS_Enable? (0x%02X)", Ch[c].In[0]);
 											break;
@@ -321,19 +319,19 @@ public:
 										case 0xB0:
 											MiniCDI::Log("[IKAT] report disc status (0x%02X)", Ch[c].In[0]);
 											if (Disc)
-												poll_packet(c, 0xB0, 0x00, 0x02, 0x10, 2); // imitate cdiemu
+												poll_packet(c, 0xB0, 0x00, 0x02, 0x10, 2); /// imitate CD-i Emulator (cdiemu)
 											else
 												poll_packet(c, 0xB0, 0x00, 0x00, 0x00, 2);
 											break;
 
 										case 0xB1:
 											MiniCDI::Log("[IKAT] report disc base (0x%02X)", Ch[c].In[0]);
-											poll_packet(c, 0xB1, 0x00, 0x02, 0x00); // imitate cdiemu
+											poll_packet(c, 0xB1, 0x00, 0x02, 0x00); /// imitate CD-i Emulator (cdiemu)
 											break;
 
 										case 0xB2:
 											MiniCDI::Log("[IKAT] report disc select (0x%02X)", Ch[c].In[0]);
-											poll_packet(c, 0xB2, 0x20, 0x00, 0x01, 2); // imitate cdiemu
+											poll_packet(c, 0xB2, 0x20, 0x00, 0x01, 2); /// imitate CD-i Emulator (cdiemu)
 											break;
 
 										case 0xE0:
@@ -358,7 +356,7 @@ public:
 
 							case 0xB1: /** Disc Base **/
 								MiniCDI::Log("[IKAT] report disc base (0x%02X)", Ch[c].In[0]);
-								poll_packet(c, 0xB1, 0x00, 0x02, 0x00); // imitate cdiemu
+								poll_packet(c, 0xB1, 0x00, 0x02, 0x00); /// imitate CD-i Emulator (cdiemu)
 								break;
 
 							// IKAT PORT C => $A08200 ???
@@ -369,9 +367,8 @@ public:
 							case 0xB2: /** Disc Select **/
 							case 0xE0: /** Start CDDA playback **/
 							case 0xE1: /** Start CDDA sector read **/
-								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0) {
+								if (Ch[c].In.size() == 1 && Ch[c].InSize == 0)
 									Ch[c].InSize = 4;
-								}
 								break;
 						}
 						break;

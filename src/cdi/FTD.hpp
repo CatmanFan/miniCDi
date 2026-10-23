@@ -1,6 +1,4 @@
-#ifndef MINICDI_FTD
-#define MINICDI_FTD
-
+#pragma once
 #include <deque>
 
 struct FTD
@@ -10,19 +8,21 @@ struct FTD
 	size_t digit_spacingX = 0, digit_spacingY = 0;
 
 	enum FTDType {
-		FTD_220_20 = 0,
+		FTD_NONE = 0,
+		FTD_220_20,
 		FTD_220_40,
 		// FTD_450 (ABSENT)
 		FTD_470 // 490 uses same layout?
 	};
 	enum FTDType type;
 
-	FTD(enum FTDType type)
+	FTD(enum FTDType type = FTD_NONE)
 	{
 		this->type = type;
 		switch (this->type)
 		{
 			default:
+			case FTD_NONE:
 			case FTD_220_20:
 				digit_width = 5;
 				digit_height = 7;
@@ -53,6 +53,8 @@ struct FTD
 
 	inline void update(std::deque<uint8_t> &cmd)
 	{
+		if (this->type == FTD_NONE) return;
+
 		std::fill(begin(display), end(display), 0x00);
 
 		for (size_t i = cmd.size() - 2, digit = 0; i > 0 && digit < std::min((cmd.size()-1)/2, digit_count); i-=2, digit++)
@@ -194,9 +196,6 @@ struct FTD
 		}
 	}
 
-	inline uint8_t* get_display() { return &display[0]; }
 	inline size_t get_display_width() { return (digit_width+digit_spacingX) * digit_count; }
 	inline size_t get_display_height() { return (digit_height+digit_spacingY); }
 };
-
-#endif

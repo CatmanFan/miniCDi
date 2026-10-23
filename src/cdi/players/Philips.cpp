@@ -1,10 +1,12 @@
+#include "cdi/m68k/m68kcpu.h"
 #include "cdi/common.hpp"
 #include <numeric>
 
 // static int cpu_cycles = 0;
-static int timer_cycles = 192;
 static int sector_cycles = 0;
 static int mcd212_cycles = 0;
+static int timer0_cycles = 0;
+static int uart_cycles = 0;
 
 void PhilipsCDI::run_frame(bool no_draw)
 {
@@ -14,57 +16,60 @@ void PhilipsCDI::run_frame(bool no_draw)
 
 	// Update microcontroller
 	pd.send_packet();
-	if (ikat != NULL) ikat->update();
+	if (ikat) ikat->update();
 
-	int sector_rate, mcd212_rate, timer_rate = 192;
-	if (MiniCDI::Config.PAL)
-	{
-		sector_rate = 400000;
-		mcd212_rate = 1920;
-	}
-	else
-	{
-		sector_rate = 402797;
-		mcd212_rate = 1933;
-	}
+	/// Per CD-i 220 Service manual :
+	/// SYSCLK (MCD212): 30 MHz (PAL), 30.2098 MHz (NTSC)
+	/// SYSCLK/2 (CPU): 15 MHz (PAL), 15.1049 MHz (NTSC)
+	/// UART: 4.9152 MHz
 
-	for (int cycles = 0; cycles < (mcd212_rate * (MiniCDI::Config.PAL ? 312 : 262));)
-	{
-		int executed_cycles = std::min({240, sector_cycles, mcd212_cycles, timer_cycles});
-		m68k_execute(executed_cycles);
-		// cpu_cycles += m68k_execute(1);
+	// int cycles_per_frame = MiniCDI::Config.PAL ? 599040 : 503040;
 
-		timer_cycles -= executed_cycles;
-		while (timer_cycles <= 0)
-		{
-			timer_cycles += timer_rate;
+	#define CYCLE_INCREMENT_RATE 48 /* 288 */
+
+	#define EVENT_BEGIN(cycles, rate)	cycles += CYCLE_INCREMENT_RATE; \
+										while (cycles >= (rate<<1)) \
+										{
+													
+	#define EVENT_END(cycles, rate)			cycles -= (rate<<1); \
+										}
+
+	// for (int cycles = 0; cycles < cycles_per_frame; cycles += CYCLE_INCREMENT_RATE)
+	while (1)
+	{
+		m68k_execute(CYCLE_INCREMENT_RATE);
+
+		EVENT_BEGIN(timer0_cycles, 96)
 			cpu.timer0_tick();
-		}
+		EVENT_END(timer0_cycles, 96)
 
-		sector_cycles -= executed_cycles;
-		while (sector_cycles <= 0)
-		{
-			sector_cycles += sector_rate;
+		// EVENT_BEGIN(uart_cycles, uart_rate)
+			// cpu.uart_tx_tick();
+		// EVENT_END(uart_cycles, uart_rate)
+
+		EVENT_BEGIN(sector_cycles, 400000)
 			if (disc.is_open())
 			{
 				if (cdic) cdic->tick();
 				if (dsp) dsp->tick();
 				if (ciap) ciap->tick();
 			}
-		}
+		EVENT_END(sector_cycles, 400000)
 
-		mcd212_cycles -= executed_cycles;
-		while (mcd212_cycles <= 0)
-		{
-			mcd212_cycles += mcd212_rate;
+		/// SYSCLK /= PAL line frequency (15625) or NTSC line frequency (15734)
+		EVENT_BEGIN(mcd212_cycles, 960)
 			if (vpu != NULL)
 			{
 				vpu->skip_draw = no_draw;
 				vpu->tick();
 			}
-		}
+		EVENT_END(mcd212_cycles, 960)
 
-		cycles += executed_cycles;
+		if (vpu != NULL && vpu->frame_ready)
+		{
+			vpu->frame_ready = false;
+			break;
+		}
 	}
 }
 
@@ -75,8 +80,8 @@ void PhilipsCDI::reset()
 
 	nvram_save();
 	cpu.reset();
+	ftd.reset();
 	vpu->reset();
-	if (ftd != NULL) ftd->reset();
 
 	// Microcontroller
 	if (slave != NULL) slave->reset();
@@ -104,7 +109,7 @@ uint8_t PhilipsCDI::read8(int address)
 			return cpu.read8(address);
 
 		// Slave microcontroller bus
-		if ((address & 0x00FFFF00) == 0x00310000)
+		else if ((address & 0x00FFFF00) == 0x00310000)
 		{
 			if (slave != NULL)
 				return slave->read8(address);
@@ -113,20 +118,20 @@ uint8_t PhilipsCDI::read8(int address)
 		}
 
 		// CD+Audio microcontroller bus
-		if ((address & 0x00FF0000) == 0x00300000 && dsp)
+		else if ((address & 0x00FF0000) == 0x00300000 && dsp)
 		{
 			address &= 0x00FF3FFF;
 			return dsp->read8(address);
 		}
 
 		// The Video Processing unit
-		if ((address & 0x00FFFF00) == 0x004FFF00 && vpu)
+		else if ((address & 0x00FFFF00) == 0x004FFF00 && vpu)
 		{
 			return vpu->read8(address);
 		}
 
 		// RAM/ROM/everything else?
-		if (address < memsize)
+		else if (address < memsize)
 			return memory[address];
 	}
 
@@ -142,7 +147,7 @@ uint16_t PhilipsCDI::read16(int address)
 			return cpu.read8(address);
 
 		// Slave microcontroller bus
-		if ((address & 0x00FFFF00) == 0x00310000)
+		else if ((address & 0x00FFFF00) == 0x00310000)
 		{
 			if (slave)
 				return slave->read8(address);
@@ -151,7 +156,7 @@ uint16_t PhilipsCDI::read16(int address)
 		}
 
 		// CD+Audio microcontroller bus
-		if ((address & 0x00FF0000) == 0x00300000)
+		else if ((address & 0x00FF0000) == 0x00300000)
 		{
 			address &= 0x00FF3FFF;
 			if (cdic)
@@ -161,12 +166,10 @@ uint16_t PhilipsCDI::read16(int address)
 		}
 
 		// The Video Processing unit
-		if ((address & 0x00FFFF00) == 0x004FFF00 && vpu)
-		{
+		else if ((address & 0x00FFFF00) == 0x004FFF00 && vpu)
 			return vpu->read16(address);
-		}
 
-		return (read8(address) << 8) | read8(address+1);
+		else return (read8(address) << 8) | read8(address+1);
 	}
 
 	return 0;
@@ -183,7 +186,7 @@ uint32_t PhilipsCDI::read32(int address)
 			return cdic->read32(address);
 		}
 
-		return (read16(address) << 16) | read16(address+2);
+		else return (read16(address) << 16) | read16(address+2);
 	}
 
 	return 0;
@@ -191,70 +194,95 @@ uint32_t PhilipsCDI::read32(int address)
 
 void PhilipsCDI::write8(int address, uint8_t value)
 {
-	if (!check_for_unmapped(address))
-		return;
-	#ifdef MINICDI_DEADNVRAM
-	// Dead Timekeeper/NVRAM will not allow writing
-	if ((address & 0x00FFFF00) == 0x00320000)
-		return;
-	#endif
-	else if ((address & 0xC0000000) == 0x80000000)
-		cpu.write8(address, value);
-	else if (slave != NULL && (address & 0x00FFFF00) == 0x00310000)
-		slave->write8(address, value);
-	else if (ikat != NULL && (address & 0x00FFFF00) == 0x00310000)
-		ikat->write8(address, value);
-	else if (dsp != NULL && address >= 0x00300000 && address < 0x00303FFF)
-		dsp->write8(address, value);
-	else if (address < memsize)
-		memory[address] = value;
+	if (check_for_unmapped(address))
+	{
+		// 68070 (On-chip)
+		if ((address & 0xC0000000) == 0x80000000)
+			cpu.write8(address, value);
+
+		// Slave microcontroller bus
+		else if ((address & 0x00FFFF00) == 0x00310000)
+		{
+			if (slave)
+				slave->write8(address, value);
+			if (ikat)
+				ikat->write8(address, value);
+		}
+
+		// CD+Audio microcontroller bus
+		else if ((address & 0x00FF0000) == 0x00300000 && dsp)
+		{
+			address &= 0x00FF3FFF;
+			dsp->write8(address, value);
+		}
+
+		// Dead Timekeeper/NVRAM will not allow writing
+		// else if ((address & 0x00FFFF00) != 0x00320000)
+		else if (address < memsize)
+			memory[address] = value;
+	}
 }
 
 void PhilipsCDI::write16(int address, uint16_t value)
 {
-	if (!check_for_unmapped(address))
-		return;
-	if (vpu != NULL && (address & 0x00FFFF00) == 0x004FFF00)
-		vpu->write16(address, value);
-	else if (cdic != NULL && address >= 0x00300000 && address < 0x00303FFF)
-		cdic->write16(address, value);
-	else if (ciap != NULL && address >= 0x00300000 && address < 0x00303FFF)
-		ciap->write16(address, value);
-	else
+	if (check_for_unmapped(address))
 	{
-		write8(address, value >> 8 & 0xFF);
-		write8(address+1, value & 0xFF);
+		// CD+Audio microcontroller bus
+		if ((address & 0x00FF0000) == 0x00300000)
+		{
+			address &= 0x00FF3FFF;
+			if (cdic)
+				cdic->write16(address, value);
+			if (ciap)
+				ciap->write16(address, value);
+		}
+
+		// The Video Processing unit
+		else if ((address & 0x00FFFF00) == 0x004FFF00 && vpu)
+			vpu->write16(address, value);
+
+		else
+		{
+			write8(address, value >> 8 & 0xFF);
+			write8(address+1, value & 0xFF);
+		}
 	}
 }
 
 void PhilipsCDI::write32(int address, uint32_t value)
 {
-	if (!check_for_unmapped(address))
-		return;
-	if (cdic != NULL && address >= 0x00300000 && address < 0x00303FFF)
-		return cdic->write32(address, value);
-	else
+	if (check_for_unmapped(address))
 	{
-		write16(address, value >> 16 & 0xFFFF);
-		write16(address+2, value & 0xFFFF);
+		// CD+Audio microcontroller bus
+		if ((address & 0x00FF0000) == 0x00300000 && cdic)
+		{
+			address &= 0x00FF3FFF;
+			cdic->write32(address, value);
+		}
+
+		else
+		{
+			write16(address, value >> 16 & 0xFFFF);
+			write16(address+2, value & 0xFFFF);
+		}
 	}
 }
 
 void PhilipsCDI::play_disc()
 {
-	if (slave != NULL) slave->send_play_button();
+	if (slave)
+		slave->send_play_button();
 }
 
 void PhilipsCDI::swap_disc(const std::string &path)
 {
-	// Clear CD+Audio controller attributes of current disc
-	if (cdic != NULL)
-		cdic->reset();
+	// Clear CD+Audio controller attributes of current disc prior to ejecting
+	if (cdic) cdic->reset();
 
 	disc.eject();
 
 	// Read new disc
 	if (!disc.open(path)) return;
-	if (slave != NULL) slave->send_disc_status(true);
-	if (ikat != NULL) ikat->send_disc_status(true);
+	if (slave) slave->send_disc_status(true);
+	if (ikat) ikat->send_disc_status(true);
 }

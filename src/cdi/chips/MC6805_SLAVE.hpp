@@ -6,7 +6,7 @@
 #include "cdi/chips/DSP56001_DRVDSP.hpp"
 
 /// HLE implementation of SLAVE as found in MiniMMC & Mono-I.
-class SLAVE
+struct SLAVE
 {
 	SCC68070* _68070;
 	CDIC* _cdic;
@@ -35,10 +35,6 @@ class SLAVE
 
 	void assert_irq(size_t c); // For PointingDevice !!
 	uint8_t revision = 0;
-
-public:
-	friend class FTD;
-	friend class PointingDevice;
 
 	SLAVE(SCC68070* _68070, CDIC* _cdic, DRVDSP* _drvdsp, uint8_t* memory, uint32_t start);
 

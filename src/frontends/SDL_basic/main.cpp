@@ -66,7 +66,7 @@ public:
 		this->Video.renderer = SDL_CreateRenderer(this->Video.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->Video.texture = SDL_CreateTexture(this->Video.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 768, 280);
 
-		this->FTD.window = SDL_CreateWindow("FTD", 32, 32, ftd_width*3, ftd_height*3, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN);
+		this->FTD.window = SDL_CreateWindow("FTD", 32, 32, ftd_width*3, ftd_height*3, SDL_WINDOW_RESIZABLE/*, SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN*/);
 		this->FTD.renderer = SDL_CreateRenderer(this->FTD.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 		this->FTD.texture = SDL_CreateTexture(this->FTD.renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, ftd_width, ftd_height);
 		SDL_SetTextureScaleMode(this->FTD.texture, SDL_ScaleModeNearest);
@@ -160,6 +160,7 @@ int main(int argc, char** argv)
 	#endif
 	MiniCDI::Config.ShowFPS = false;
 	MiniCDI::Config.NvramFile = ini["CDI"]["AutosaveNVRAM"].compare("1") == 0 ? nvramPath : "";
+	// MiniCDI::Config.PCB_LLTest = true;
 
 	enum CDi::BoardType board = biosPath.stem().compare("cdi490a") == 0 ? CDi::MonoIV
 							  : biosPath.stem().compare("cdi220c") == 0 ? CDi::MonoII
@@ -230,22 +231,15 @@ int main(int argc, char** argv)
             }
         }
 
-		// Benchmark
+		// Benchmark start
 		const auto t1 = std::chrono::steady_clock::now();
 
-		if (frames_run == 0) {
-			cdi.run_frame(false);
-			frames_run += MiniCDI::Config.FrameSkip;
-		} else {
-			cdi.run_frame(true);
-			frames_run--;
-			continue;
-		}
-
+		cdi.run_frame();
 		screen.update_video(cdi.get_display(), cdi.get_display_width());
-		if (cdi.get_ftd()) screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
+		if (cdi.get_ftd())
+			screen.update_ftd(cdi.get_ftd(), cdi.get_ftd_width());
 
-		// Benchmark
+		// Benchmark end
 		const auto t2 = std::chrono::steady_clock::now();
 		const std::chrono::duration<uint_fast32_t, std::nano> t_duration = t2 - t1;
 		if (t_duration.count() < 16'666'667) {

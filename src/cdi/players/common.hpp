@@ -14,7 +14,7 @@ public:
 
 protected:
 	uint8_t *memory; // Contains full memory map
-	static constexpr int memsize = 8*1024*1024;
+	static constexpr int memsize = 8388608;
 
 	uint32_t nvram;
 	bool nvram_save();

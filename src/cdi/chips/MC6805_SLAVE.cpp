@@ -25,33 +25,61 @@ void SLAVE::set_ftd(FTD* ftd)
 void SLAVE::send_play_button()
 {
 	MiniCDI::Log("[SLAVE] report Play Button status (0xA1 ?)");
-	if (revision == 0x20) { Ch[1].Out = { 0x87, 0x20, 0xFF }; }
-	else { Ch[1].Out = { 0xA1, 0x87, 0x20, 0xFF }; }
-	assert_irq(1);
+
+	switch (revision)
+	{
+		default:
+			Ch[1].Out = { 0xA1, 0x87, 0x20, 0xFF };
+			assert_irq(1);
+			break;
+
+		case 0x20:
+			Ch[1].Out = { 0x87, 0x20, 0xFF };
+			assert_irq(1);
+			break;
+	}
 }
 
 void SLAVE::send_eject_button()
 {
 	MiniCDI::Log("[SLAVE] report Eject Button status (0xA1 ?)");
-	if (revision == 0x20) { Ch[1].Out = { 0x87, 0x08, 0xFF }; }
-	else { Ch[1].Out = { 0xA1, 0x87, 0x00, 0xFF }; }
-	assert_irq(1);
+
+	switch (revision)
+	{
+		default:
+			Ch[1].Out = { 0xA1, 0x87, 0x00, 0xFF };
+			assert_irq(1);
+			break;
+
+		case 0x20:
+			Ch[1].Out = { 0x87, 0x08, 0xFF };
+			assert_irq(1);
+			break;
+	}
 }
 
 void SLAVE::send_disc_status(bool value)
 {
-	if (value)
-	{
-		if (revision == 0x60) { Ch[3].Out = { 0xB0, 0x00, 0x06, 0x10 }; } // CDI 350 (per cdifan)
-		else { Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 }; }
-	}
-	else
-	{
-		Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
-	}
-	assert_irq(3);
-
 	Disc = value;
+
+	switch (revision)
+	{
+		default:
+			if (value)
+				Ch[3].Out = { 0xB0, 0x00, 0x02, 0x15 };
+			else
+				Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+			assert_irq(3);
+			break;
+
+		case 0x60:
+			if (value)
+				Ch[3].Out = { 0xB0, 0x00, 0x06, 0x10 }; // CDI 350 (per cdifan)
+			else
+				Ch[3].Out = { 0xB0, 0x00, 0x00, 0x00 };
+			assert_irq(3);
+			break;
+	}
 }
 
 uint8_t SLAVE::read8(uint32_t addr)
@@ -64,7 +92,7 @@ uint8_t SLAVE::read8(uint32_t addr)
 		if (!Ch[0].Available && !Ch[1].Available && !Ch[2].Available && !Ch[3].Available)
 			_68070->interrupt(SCC68070::IPL_IN2N, false);
 
-		if (Ch[c].Out.size() > 0)
+		if (Ch[c].Out.size())
 		{
 			//MiniCDI::Log("[SLAVE] %sDR => %02X", c == 3 ? "D" : c == 2 ? "C" : c == 1 ? "B" : "A", Ch[c].Out[0]);
 

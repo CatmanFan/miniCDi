@@ -1,9 +1,8 @@
 #ifndef MINICDI_POINTINGDEVICE
 #define MINICDI_POINTINGDEVICE
 
-class PointingDevice
+struct PointingDevice
 {
-public:
 	enum Buttons
 	{
 		Up = 0,
@@ -21,7 +20,6 @@ public:
 		Absolute
 	};
 
-private:
 	static constexpr int MAX_POINTER_X = 767;
 	static constexpr int MAX_POINTER_Y = 559;
 
@@ -39,7 +37,6 @@ private:
 	bool poll_state_changed = false;
 	enum PDType type = PointingDevice::Maneuvering;
 
-public:
 	struct
 	{
 		SLAVE* slave = NULL;
